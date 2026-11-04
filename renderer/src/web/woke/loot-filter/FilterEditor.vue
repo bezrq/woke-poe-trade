@@ -1,5 +1,5 @@
 <template>
-  <WPanel :title="config.wmTitle || 'Loot filter'" width="68rem" max-height="85vh" :scroll="false">
+  <WPanel :title="config.wmTitle || 'Loot filter'" icon="wisdom" width="68rem" max-height="85vh" :scroll="false">
     <template #actions>
       <button class="w-icon-btn" title="Close" @click="emit('close')"><i class="fas fa-times" /></button>
     </template>

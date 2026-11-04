@@ -17,7 +17,7 @@
         </div>
       </template>
     </DockItem>
-    <WPanel :title="config.wmTitle || 'Boss runs'" width="62rem" max-height="80vh" :scroll="false">
+    <WPanel :title="config.wmTitle || 'Boss runs'" icon="maven" :updated="prices.snapshot.value?.ts ?? null" :fresh-min="40" :stale-min="180" width="62rem" max-height="80vh" :scroll="false">
       <template #toolbar>
         <WSegmented v-model="config.tier" :options="tierOptions" />
         <WSegmented v-model="config.sort" :options="sortOptions" />
@@ -29,8 +29,7 @@
       </template>
       <template #meta>
         <template v-if="prices.snapshot.value">
-          <span>{{ prices.snapshot.value.league }}</span><span class="w-faint">·</span>
-          <span>prices {{ ago(prices.snapshot.value.ts) }}</span>
+          <span>{{ prices.snapshot.value.league }}</span>
           <template v-if="divine"><span class="w-faint">·</span><span>1 div = {{ Math.round(divine) }}c</span></template>
         </template>
         <span v-else style="color: var(--w-warn);"><i class="fas fa-exclamation-triangle" /> Waiting for poe.ninja prices. They load on their own within a minute or two.</span>
@@ -336,11 +335,6 @@ function subline (r: BossResult) {
   const parts = [formatRunTime(r.runSeconds)]
   if (l) parts.push(`${Math.round(l.beatEntry * 100)}% of runs beat entry`)
   return parts.join(' · ')
-}
-
-function ago (ts: number) {
-  const min = Math.round((Date.now() - ts) / 60000)
-  return min < 60 ? `${min} min ago` : `${Math.round(min / 60)} h ago`
 }
 
 function pct (chance: number) {

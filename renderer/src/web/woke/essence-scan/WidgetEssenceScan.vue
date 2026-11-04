@@ -15,7 +15,7 @@
         <div v-if="config.hotkey" class="w-faint text-xs px-3 py-1"><WKbd :keys="config.hotkey" /> to stop</div>
       </template>
     </DockItem>
-    <WPanel :title="config.wmTitle || 'Essence scan'" width="19rem">
+    <WPanel :title="config.wmTitle || 'Essence scan'" icon="essence" width="19rem">
       <template #actions>
         <button type="button" class="w-icon-btn" title="Read every essence on screen once" @click="readOnce"><i class="fas fa-expand" /></button>
         <span :class="[$style.led, { [$style.on]: running }]" />

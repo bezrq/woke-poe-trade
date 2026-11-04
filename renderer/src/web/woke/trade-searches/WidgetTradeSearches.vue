@@ -15,7 +15,7 @@
       </template>
     </DockItem>
     <div class="flex gap-2 min-h-0 items-start">
-      <WPanel :title="config.wmTitle || 'Trade searches'" width="19rem" max-height="70vh">
+      <WPanel ref="panel" :title="config.wmTitle || 'Trade searches'" icon="exalted" width="19rem" max-height="70vh">
         <template #actions>
           <WChip v-if="hasHotkeys" clickable :active="config.enableHotkeys" title="Use each search's hotkey"
             @click="config.enableHotkeys = !config.enableHotkeys"><i class="fas fa-keyboard" /> Hotkeys</WChip>
@@ -27,7 +27,8 @@
         <template v-for="group in groups" :key="group.category">
           <div class="w-group-label">{{ group.category }}</div>
           <WListItem v-for="entry in group.entries" :key="entry.id" :active="openId === entry.id"
-            :title="tooltip(entry)" @select="open(entry, 'overlay')">
+            :title="tooltip(entry)" @select="open(entry, 'overlay')"
+            @contextmenu="rowMenu($event, entry)" @keydown.c.ctrl.prevent="copyLink(entry)" @keydown.delete.prevent="remove(entry)">
             <i v-if="isLiveSearch(entry.url)" class="fas fa-bolt w-accent" title="Live search" />
             <span class="w-trunc">{{ entry.name || entry.url }}</span>
             <WChip v-if="otherLeague(entry)" :title="`Saved in ${otherLeague(entry)}. Opens in ${league}.`">{{ otherLeague(entry) }} → now</WChip>
@@ -39,12 +40,16 @@
             </template>
           </WListItem>
         </template>
-        <WEmpty v-if="!groups.length" icon="fas fa-search">
-          {{ config.entries.length ? 'No matches' : 'No saved searches yet. Open settings to add some.' }}
+        <WEmpty v-if="!groups.length && config.entries.length" icon="fas fa-filter">
+          Nothing matches "{{ filter }}". Search looks at names, tags and categories.
+          <template #actions><WButton size="sm" @click="filter = ''">Clear search</WButton></template>
+        </WEmpty>
+        <WEmpty v-else-if="!groups.length" :art="{ currency: 'exalted' }">
+          No saved searches yet. Paste a trade site link in this widget's settings to add one.
         </WEmpty>
 
         <template #footer>
-          <span>Opens the official trade site</span>
+          <span>Opens the official trade site · right-click for more</span>
         </template>
       </WPanel>
 
@@ -89,7 +94,7 @@ import { Host, MainProcess } from '@/web/background/IPC'
 import { AppConfig, pushHostConfig } from '@/web/Config'
 import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
-import { WPanel, WField, WChip, WKbd, WEmpty, WListItem } from '../ui'
+import { WPanel, WField, WChip, WKbd, WEmpty, WListItem, WButton, openMenu, toast } from '../ui'
 import DockItem from '../dock/DockItem.vue'
 import { hideWhilePlaying } from '../dock/dock'
 import { useLeagues } from '@/web/background/Leagues'
@@ -231,6 +236,36 @@ const hotkeyController = MainProcess.onEvent('MAIN->CLIENT::widget-action', (e) 
   if (entry) open(entry, parsed.where)
 })
 onUnmounted(() => { hotkeyController.abort() })
+
+const panel = shallowRef<InstanceType<typeof WPanel> | null>(null)
+
+function copyLink (entry: TradeSearchEntry) {
+  navigator.clipboard.writeText(urlFor(entry))
+    .then(() => toast('Copied the trade link', { anchor: panel.value?.el, ms: 1800 }))
+    .catch(() => {})
+}
+
+// No "are you sure": remove now, offer Undo (P9).
+function remove (entry: TradeSearchEntry) {
+  const before = props.config.entries
+  if (openId.value === entry.id) closeBrowser()
+  props.config.entries = before.filter(e => e.id !== entry.id)
+  pushHostConfig()
+  toast(`Removed "${entry.name || 'search'}"`, {
+    anchor: panel.value?.el,
+    undo: () => { props.config.entries = before; pushHostConfig() }
+  })
+}
+
+function rowMenu (e: MouseEvent, entry: TradeSearchEntry) {
+  openMenu(e, [
+    { label: 'Open here', icon: 'far fa-window-maximize', keys: entry.hotkeyOverlay ?? 'Enter', action: () => open(entry, 'overlay') },
+    { label: 'Open in browser', icon: 'fas fa-external-link-alt', keys: entry.hotkeyExternal ?? undefined, action: () => open(entry, 'external') },
+    { label: 'Copy link', icon: 'far fa-copy', keys: 'Ctrl + C', action: () => copyLink(entry) },
+    { separator: true },
+    { label: 'Remove', icon: 'fas fa-trash', keys: 'Del', danger: true, action: () => remove(entry) }
+  ])
+}
 
 function tooltip (entry: TradeSearchEntry) {
   return [entry.url, entry.tags.length ? `Tags: ${entry.tags.join(', ')}` : '', entry.notes]

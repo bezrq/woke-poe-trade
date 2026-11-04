@@ -1,5 +1,5 @@
 <template>
-  <WPanel :title="config.wmTitle || 'Map mods'" width="44rem" max-height="85vh">
+  <WPanel :title="config.wmTitle || 'Map mods'" icon="map" width="44rem" max-height="85vh">
     <template #actions>
       <WSelect :model-value="String(config.activeProfile)" :options="profileOptions"
         @update:model-value="config.activeProfile = Number($event)" title="Build profile" />

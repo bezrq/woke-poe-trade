@@ -19,7 +19,7 @@
         </div>
       </template>
     </DockItem>
-    <WPanel :title="config.wmTitle || 'Farming profit'" width="27rem">
+    <WPanel :title="config.wmTitle || 'Farming profit'" icon="chaos" width="27rem">
       <template #tabs>
         <WTabs v-model="tab" :options="tabs.map(t => ({ value: t.id, label: t.label }))" />
       </template>

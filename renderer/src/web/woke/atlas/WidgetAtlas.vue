@@ -21,7 +21,7 @@
       </template>
     </DockItem>
     <div class="flex gap-2 min-h-0 items-start">
-      <WPanel :title="config.wmTitle || 'Atlas strategies'" width="17rem">
+      <WPanel :title="config.wmTitle || 'Atlas strategies'" icon="map" width="17rem">
         <template #actions>
           <button class="w-icon-btn" :class="{ 'w-icon-btn--on': sortByProfit }" title="Best earning first (from Farming profit history)"
             @click="sortByProfit = !sortByProfit"><i class="fas fa-sort-amount-down" /></button>

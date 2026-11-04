@@ -56,3 +56,12 @@ export function mechanicIcon (id: string): { src: string | null, fa: string } {
   if (!m) return { src: null, fa: 'fas fa-circle' }
   return { src: m.src ?? (m.item ? gameIcon(m.item) : null), fa: m.fa }
 }
+
+// Art for a poe.ninja row ("UniqueArmour", "SkillGem", "DivinationCard",
+// "Currency", "Scarab"…) by name.
+export function ninjaIcon (type: string, name: string): string | null {
+  if (name === 'Chaos Orb') return CURRENCY_ICONS.chaos
+  if (name === 'Divine Orb') return CURRENCY_ICONS.divine
+  const ns: Ns = /^Unique/.test(type) ? 'UNIQUE' : /Gem/.test(type) ? 'GEM' : type === 'DivinationCard' ? 'DIVINATION_CARD' : 'ITEM'
+  return gameIcon(name, ns)
+}

@@ -15,7 +15,7 @@
         </div>
       </template>
     </DockItem>
-    <WPanel :title="config.wmTitle || 'League investments'" width="36rem" max-height="80vh">
+    <WPanel :title="config.wmTitle || 'League investments'" icon="divine" width="36rem" max-height="80vh">
       <template #actions>
         <WChip clickable :active="showChanged" title="Items a patch changed this league" @click="showChanged = !showChanged"><i class="fas fa-exclamation-triangle" /> Changed {{ changed.length }}</WChip>
         <WChip clickable :active="showData" @click="showData = !showData"><i class="fas fa-database" /> Past leagues {{ histories.length }}</WChip>

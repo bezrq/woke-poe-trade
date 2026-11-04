@@ -20,7 +20,7 @@
         <div v-if="config.hotkey" class="w-faint text-xs px-3 py-1"><WKbd :keys="config.hotkey" /> to stop</div>
       </template>
     </DockItem>
-    <WPanel :title="config.wmTitle || 'Map scan'" width="19rem">
+    <WPanel :title="config.wmTitle || 'Map scan'" icon="map" width="19rem">
       <template #actions>
         <span :class="[$style.led, { [$style.on]: running }]" />
         <WButton size="sm" :variant="running ? 'default' : 'primary'" @click="toggle">{{ running ? 'Stop' : 'Start' }}</WButton>

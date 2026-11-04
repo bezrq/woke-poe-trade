@@ -17,7 +17,7 @@
       </template>
     </DockItem>
     <div class="flex gap-2 min-h-0 items-start">
-      <WPanel :title="config.wmTitle || 'Labyrinth'" width="14rem">
+      <WPanel :title="config.wmTitle || 'Labyrinth'" icon="lab" width="14rem">
         <template #meta>
           <span title="Labs reset at midnight UTC"><i class="far fa-clock" /> resets in <span class="w-num">{{ resetIn }}</span></span>
         </template>
