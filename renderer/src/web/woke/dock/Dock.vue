@@ -38,7 +38,7 @@ function startDrag (e: PointerEvent) {
 }
 function onMove (e: PointerEvent) {
   if (!drag) return
-  const d = dockConfig()
+  const d = ensureDockConfig()
   d.x = clamp((e.clientX - drag.dx) / window.innerWidth * 100, 0, 97)
   d.y = clamp((e.clientY - drag.dy) / window.innerHeight * 100, 0, 96)
 }
@@ -48,7 +48,7 @@ function endDrag () {
   saveDock()
 }
 function flip () {
-  const d = dockConfig()
+  const d = ensureDockConfig()
   d.vertical = !d.vertical
   saveDock()
 }

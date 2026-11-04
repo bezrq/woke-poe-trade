@@ -10,6 +10,8 @@ import { scanEssenceLabel, scanAllEssenceLabels } from '../woke/essence-scan-vis
 
 let _heistGems: HeistGemFinder
 let _changeLangPromise = Promise.resolve()
+// woke: the language to fall back to when our own model fails to load.
+let _lastLang: { lang: string, binDir: string } | null = null
 
 const WorkerBody = {
   async init (binDir: string) {
@@ -18,14 +20,20 @@ const WorkerBody = {
   },
   async changeLanguage (lang: string, binDir: string) {
     await _changeLangPromise
+    _lastLang = { lang, binDir }
     _changeLangPromise = Bindings.changeLanguage(lang, binDir)
     await _changeLangPromise
   },
   // woke scans: read with our own model (trained on the game's font)
   async loadModel (data: Uint8Array, name: string) {
     await _changeLangPromise
-    _changeLangPromise = Promise.resolve().then(() => { Bindings.loadModelData(data, name) })
-    await _changeLangPromise
+    const load = Promise.resolve().then(() => { Bindings.loadModelData(data, name) })
+    // A model that fails to load leaves tesseract without one: go back to the
+    // game language, and don't leave every later scan waiting on a rejection.
+    _changeLangPromise = load.catch(async () => {
+      if (_lastLang) await Bindings.changeLanguage(_lastLang.lang, _lastLang.binDir)
+    }).catch(() => {})
+    await load
   },
   async findHeistGems (screenshot: ImageData) {
     await _changeLangPromise

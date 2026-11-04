@@ -5,6 +5,7 @@
 import { computed, markRaw, shallowReactive, shallowRef, watch } from 'vue'
 import type { Slots } from 'vue'
 import { AppConfig, saveConfig } from '@/web/Config'
+import { ensureWokeConfig } from '../modules'
 
 export type DockTone = 'accent' | 'up' | 'down' | 'warn'
 export type DockLed = 'on' | 'warn' | 'error'
@@ -89,13 +90,16 @@ export function dockConfig (): DockConfig {
   return AppConfig().woke?.dock ?? DEFAULT_DOCK
 }
 
-// Called once by the dock, outside any computed.
-export function ensureDockConfig () {
-  const woke = AppConfig().woke
-  if (!woke) return
+// The dock's own settings, created if missing. Called outside any computed:
+// by the dock on mount and before every change it makes. Settings and the
+// setup window replace the config object, and a fresh config has no `woke`
+// yet, so a drag must not edit DEFAULT_DOCK (lost on save) instead.
+export function ensureDockConfig (): DockConfig {
+  const woke = ensureWokeConfig(AppConfig()).woke
   if (!woke.dock) woke.dock = { ...DEFAULT_DOCK, noPeek: [], hidden: [] }
   if (woke.dock.noPeek == null) woke.dock.noPeek = []
   if (woke.dock.hidden == null) woke.dock.hidden = []
+  return woke.dock
 }
 
 export function saveDock () {
