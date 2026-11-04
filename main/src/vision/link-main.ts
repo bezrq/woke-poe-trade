@@ -58,6 +58,7 @@ export class OcrWorker {
   }
 
   async scanEssenceLabel (image: ImageData, opts: ScanOptions) {
+    await this.ready
     return await this.api.scanEssenceLabel(
       Comlink.transfer(image, [image.data.buffer]), opts)
   }
