@@ -1,80 +1,77 @@
 <template>
   <Widget :config="config" move-handles="corners" :inline-edit="false">
-    <div class="widget-default-style p-1 flex min-h-0 gap-x-1 text-gray-100">
-      <div class="flex flex-col min-h-0" style="width: 20rem; max-height: 70vh;">
-        <div class="p-1 flex items-center gap-2">
-          <span class="truncate grow">{{ config.wmTitle || 'PoB builds' }}</span>
-          <button @click="refresh" :class="$style.iconBtn" title="Reload builds folder">
+    <div class="flex gap-2 min-h-0 items-start">
+      <WPanel :title="config.wmTitle || 'PoB builds'" width="20rem" max-height="70vh">
+        <template #actions>
+          <button @click="refresh" class="w-icon-btn" title="Reload builds folder">
             <i class="fas fa-sync-alt" :class="{ 'fa-spin': loading }" />
           </button>
-        </div>
-        <input v-model="filter" placeholder="Filter by name, class, skill, folder…"
-          class="bg-gray-900 rounded px-1 mx-1 mb-1 leading-6" />
-        <div v-if="error" class="text-red-400 text-sm px-2 pb-1">{{ error }}</div>
-        <div class="overflow-y-auto min-h-0 px-1 flex flex-col gap-y-1">
-          <div v-for="b in shown" :key="b.relPath" class="flex gap-x-1">
-            <button @click="select(b)" :class="[$style.entryBtn, { [$style.selected]: selected === b.relPath }]"
-              :title="b.relPath">
-              <span class="flex items-center gap-1 min-w-0">
-                <i v-if="config.activeBuild === b.relPath" class="fas fa-check-circle text-green-400" title="Active build" />
-                <span class="truncate">{{ b.name }}</span>
-              </span>
-              <span class="text-xs text-gray-400 truncate">{{ describe(b) }}<template v-if="b.folder"> · {{ b.folder }}</template></span>
-            </button>
-            <button @click="togglePin(b.relPath)" :class="$style.iconBtn" :title="isPinned(b.relPath) ? 'Unpin' : 'Pin to top'">
-              <i :class="isPinned(b.relPath) ? 'fas fa-thumbtack text-yellow-400' : 'fas fa-thumbtack'" />
-            </button>
-          </div>
-          <div v-if="!loading && !shown.length && !error" class="text-gray-500 p-2 text-center">
-            {{ builds.length ? 'No matches' : `No builds found in ${dir || 'the builds folder'}` }}
-          </div>
-        </div>
-      </div>
+        </template>
+        <template #toolbar>
+          <WField v-model="filter" icon="fas fa-search" placeholder="Filter by name, class, skill, folder…" class="grow" />
+        </template>
+        <template v-if="error" #meta><span class="w-down">{{ error }}</span></template>
 
-      <div v-if="selectedBuild" class="flex flex-col min-h-0 border-l border-gray-700 pl-2" style="width: 22rem; max-height: 70vh;">
-        <div class="flex items-center gap-1 pb-1">
-          <span class="truncate grow font-semibold">{{ selectedBuild.name }}</span>
-          <button @click="selected = null" :class="$style.iconBtn" title="Close"><i class="fas fa-times" /></button>
-        </div>
-        <div class="flex flex-wrap gap-1 pb-2">
-          <button class="btn" @click="act(pobApi.open(config, selectedBuild.relPath))">Open in PoB</button>
-          <button class="btn" @click="act(pobApi.show(config, selectedBuild.relPath))">Show file</button>
-          <button class="btn" @click="setActive(selectedBuild.relPath)" :disabled="config.activeBuild === selectedBuild.relPath">
+        <WListItem v-for="b in shown" :key="b.relPath" :active="selected === b.relPath" :title="b.relPath" @select="select(b)">
+          <i v-if="config.activeBuild === b.relPath" class="fas fa-check-circle w-up" title="Active build" />
+          <span class="w-trunc">{{ b.name }}</span>
+          <template #sub>{{ describe(b) }}<template v-if="b.folder"> · {{ b.folder }}</template></template>
+          <template #actions>
+            <button @click="togglePin(b.relPath)" class="w-icon-btn" :class="{ 'w-icon-btn--on': isPinned(b.relPath) }"
+              :title="isPinned(b.relPath) ? 'Unpin' : 'Pin to top'">
+              <i class="fas fa-thumbtack" />
+            </button>
+          </template>
+        </WListItem>
+        <WEmpty v-if="!loading && !shown.length && !error" icon="fas fa-folder-open">
+          {{ builds.length ? 'No matches' : `No builds found in ${dir || 'the builds folder'}` }}
+        </WEmpty>
+      </WPanel>
+
+      <WPanel v-if="selectedBuild" :title="selectedBuild.name" width="23rem" max-height="70vh">
+        <template #actions>
+          <button @click="selected = null" class="w-icon-btn" title="Close"><i class="fas fa-times" /></button>
+        </template>
+        <template #toolbar>
+          <WButton size="sm" variant="primary" icon="fas fa-external-link-alt" @click="act(pobApi.open(config, selectedBuild.relPath))">Open in PoB</WButton>
+          <WButton size="sm" @click="act(pobApi.show(config, selectedBuild.relPath))">Show file</WButton>
+          <WButton size="sm" @click="setActive(selectedBuild.relPath)" :disabled="config.activeBuild === selectedBuild.relPath">
             {{ config.activeBuild === selectedBuild.relPath ? 'Active build' : 'Make active' }}
-          </button>
-        </div>
-        <div class="overflow-y-auto min-h-0 text-sm">
-          <div v-if="detailsError" class="text-red-400">{{ detailsError }}</div>
+          </WButton>
+        </template>
+
+        <div class="pb-2" style="padding-left: var(--w-pad); padding-right: var(--w-pad);">
+          <div v-if="detailsError" class="w-down">{{ detailsError }}</div>
           <template v-else-if="details">
-            <div class="text-gray-400 pb-2">{{ describe(details) }}</div>
+            <div class="w-dim pb-2">{{ describe(details) }}</div>
             <div v-if="details.trees.length" class="pb-2">
               <div :class="$style.heading">Passive trees</div>
               <a v-for="t in details.trees" :key="t.title + t.url" :href="safeUrl(t.url)" target="_blank"
-                class="block truncate hover:text-white" :class="t.isActive ? 'text-gray-100' : 'text-gray-400'">
-                <i class="fas fa-external-link-alt text-xs" /> {{ t.title }}<span v-if="t.isActive" class="text-gray-500"> (active)</span>
+                class="block w-trunc py-0.5 hover:underline" :class="t.isActive ? '' : 'w-dim'">
+                <i class="fas fa-external-link-alt text-xs w-faint" /> {{ t.title }}<span v-if="t.isActive" class="w-accent"> · active</span>
               </a>
             </div>
             <div v-if="details.skills.length" class="pb-2">
               <div :class="$style.heading">Gem setups</div>
-              <div v-for="(s, i) in details.skills" :key="i" class="pb-1" :class="{ 'opacity-50': !s.enabled }">
-                <div class="text-gray-400 text-xs">
-                  {{ s.label || s.slot || `Group ${i + 1}` }}<span v-if="s.isMain" class="text-yellow-400"> · main</span>
+              <div v-for="(s, i) in details.skills" :key="i" :class="[$style.setup, { 'opacity-50': !s.enabled }]">
+                <div class="w-dim text-xs">
+                  {{ s.label || s.slot || `Group ${i + 1}` }}<span v-if="s.isMain" class="w-accent"> · main</span>
                 </div>
-                <div class="pl-2">
-                  <span v-for="(g, j) in s.gems" :key="j" :class="{ 'line-through text-gray-500': !g.enabled }">
-                    {{ g.name }}<span class="text-gray-500 text-xs" v-if="g.level != null"> {{ g.level }}/{{ g.quality ?? 0 }}</span><span v-if="j < s.gems.length - 1">, </span>
+                <div class="flex flex-wrap gap-x-2">
+                  <span v-for="(g, j) in s.gems" :key="j" class="w-rarity-gem" :class="{ 'line-through opacity-50': !g.enabled }">
+                    {{ g.name }}<span class="w-faint text-xs w-num" v-if="g.level != null"> {{ g.level }}/{{ g.quality ?? 0 }}</span>
                   </span>
                 </div>
               </div>
             </div>
             <div v-if="details.notes">
               <div :class="$style.heading">Notes</div>
-              <div class="whitespace-pre-wrap text-gray-300">{{ details.notes }}</div>
+              <div class="whitespace-pre-wrap w-dim">{{ details.notes }}</div>
             </div>
           </template>
-          <div v-else class="text-gray-500">Loading…</div>
+          <WEmpty v-else icon="fas fa-spinner fa-spin">Loading…</WEmpty>
         </div>
-      </div>
+      </WPanel>
     </div>
   </Widget>
 </template>
@@ -97,6 +94,7 @@ export default {
 import { inject, computed, shallowRef, watch } from 'vue'
 import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
+import { WPanel, WField, WButton, WEmpty, WListItem } from '../ui'
 import { buildMatches, describe, pobApi, sortBuilds } from './widget'
 import type { PobBuildEntry, PobDetails } from './widget'
 
@@ -191,37 +189,16 @@ function act (p: Promise<unknown>) {
 }
 </script>
 
-<style lang="postcss" module>
-.entryBtn {
-  flex: 1 1 auto;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  @apply rounded px-2 py-1 leading-5;
-  @apply text-gray-100 bg-gray-800;
-  text-align: left;
-
-  &:hover {
-    @apply bg-gray-700;
-  }
-}
-
-.selected {
-  @apply bg-gray-600;
-}
-
-.iconBtn {
-  flex-shrink: 0;
-  @apply rounded px-2;
-  @apply text-gray-400 bg-gray-800;
-
-  &:hover {
-    @apply bg-gray-700 text-gray-100;
-  }
-}
-
+<style module>
 .heading {
-  @apply text-gray-500 text-xs uppercase pb-0.5;
+  padding: 4px 0 2px;
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--w-faint);
+}
+.setup {
+  padding: 4px 0;
+  border-bottom: 1px solid var(--w-line-soft);
 }
 </style>

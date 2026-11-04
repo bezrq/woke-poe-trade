@@ -1,39 +1,37 @@
 <template>
   <Widget :config="config" move-handles="corners" :inline-edit="false">
-    <div class="widget-default-style p-2 flex flex-col gap-1 text-gray-100 min-h-0" style="width: 22rem; max-height: 60vh;">
-      <div class="flex items-center gap-2">
-        <span class="font-semibold truncate grow">
-          <template v-if="s.zone">{{ actLabel(s.act) }}<template v-if="s.act"> · </template>{{ s.zone }}</template>
-          <template v-else>Waiting for a zone change…</template>
-        </span>
-      </div>
-      <div class="text-sm text-gray-400 flex gap-3 flex-wrap">
-        <span v-if="s.areaLevel != null">Area {{ s.areaLevel }}</span>
+    <WPanel width="22rem" max-height="60vh">
+      <template #title>
+        <template v-if="s.zone">{{ actLabel(s.act) }}<template v-if="s.act"> · </template>{{ s.zone }}</template>
+        <template v-else>Waiting for a zone change…</template>
+      </template>
+      <template #meta>
+        <span v-if="s.areaLevel != null">Area <span class="w-num">{{ s.areaLevel }}</span></span>
         <span v-if="s.level != null">
-          {{ s.charName || 'You' }} {{ s.level }}
-          <span v-if="levelDiff != null" :class="levelClass">({{ levelDiff > 0 ? '+' : '' }}{{ levelDiff }})</span>
+          {{ s.charName || 'You' }} <span class="w-num">{{ s.level }}</span>
+          <span v-if="levelDiff != null" :class="levelClass" class="w-num">({{ levelDiff > 0 ? '+' : '' }}{{ levelDiff }})</span>
         </span>
-        <span v-if="!s.updatedAt" class="text-gray-500">Updates on your next zone change (reads Client.txt)</span>
-      </div>
+        <span v-if="!s.updatedAt" class="w-faint">Updates on your next zone change (reads Client.txt)</span>
+      </template>
 
-      <div class="overflow-y-auto min-h-0 flex flex-col gap-2 pt-1">
-        <div v-if="zoneNote" class="whitespace-pre-wrap text-sm bg-gray-800 rounded p-1">{{ zoneNote }}</div>
-        <div v-if="actNote" class="whitespace-pre-wrap text-sm text-gray-300">{{ actNote }}</div>
+      <div class="flex flex-col gap-2 pb-2" style="padding-left: var(--w-pad); padding-right: var(--w-pad);">
+        <div v-if="zoneNote" :class="$style.callout" class="whitespace-pre-wrap">{{ zoneNote }}</div>
+        <div v-if="actNote" class="whitespace-pre-wrap w-dim">{{ actNote }}</div>
 
-        <div v-if="config.showBuild && activeBuild" class="text-sm border-t border-gray-700 pt-1">
-          <div class="text-gray-500 text-xs uppercase">Build: {{ activeBuild }}</div>
-          <div v-if="buildError" class="text-red-400">{{ buildError }}</div>
+        <div v-if="config.showBuild && activeBuild" :class="$style.build">
+          <div class="w-group-label px-0">Build · {{ activeBuild }}</div>
+          <div v-if="buildError" class="w-down">{{ buildError }}</div>
           <template v-else-if="details">
-            <a v-if="tree && safeUrl(tree.url)" :href="safeUrl(tree.url)" target="_blank" class="block truncate hover:text-white">
+            <a v-if="tree && safeUrl(tree.url)" :href="safeUrl(tree.url)" target="_blank" class="block w-trunc w-accent hover:underline">
               <i class="fas fa-external-link-alt text-xs" /> Tree: {{ tree.title }}
             </a>
-            <div v-for="(g, i) in mainGroups" :key="i" class="truncate text-gray-300" :title="g.gems.map(x => x.name).join(', ')">
+            <div v-for="(g, i) in mainGroups" :key="i" class="w-trunc w-rarity-gem" :title="g.gems.map(x => x.name).join(', ')">
               {{ g.gems.filter(x => x.enabled).map(x => x.name.replace(/ Support$/, '')).join(' · ') }}
             </div>
           </template>
         </div>
       </div>
-    </div>
+    </WPanel>
   </Widget>
 </template>
 
@@ -57,6 +55,7 @@ import { Host } from '@/web/background/IPC'
 import { AppConfig, saveConfig } from '@/web/Config'
 import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
+import { WPanel } from '../ui'
 import { actFromAreaId, actLabel, parseLogLine, pickTreeForLevel } from './log-parse'
 import { emptyState, safeLevelRange } from './widget'
 import { POB_BUILDS_TYPE, pobApi } from '../pob-builds/widget'
@@ -88,7 +87,7 @@ const levelDiff = computed(() => {
 })
 const levelClass = computed(() => {
   if (levelDiff.value == null || s.value.level == null) return ''
-  return Math.abs(levelDiff.value) <= safeLevelRange(s.value.level) ? 'text-green-400' : 'text-red-400'
+  return Math.abs(levelDiff.value) <= safeLevelRange(s.value.level) ? 'w-up' : 'w-down'
 })
 
 const zoneNote = computed(() => {
@@ -158,3 +157,16 @@ function safeUrl (url: string) {
   return /^https?:\/\//i.test(url) ? url : undefined
 }
 </script>
+
+<style module>
+.callout {
+  padding: 6px 8px;
+  background: var(--w-accent-soft);
+  border-left: 2px solid var(--w-accent);
+  border-radius: var(--w-radius-sm);
+}
+.build {
+  border-top: 1px solid var(--w-line);
+  padding-top: 4px;
+}
+</style>

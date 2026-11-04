@@ -1,29 +1,27 @@
 <template>
   <Widget :config="config" move-handles="corners" :inline-edit="false">
-    <div class="widget-default-style p-1 flex min-h-0 gap-x-1 text-gray-100">
-      <div class="flex flex-col min-h-0" style="width: 16rem; max-height: 75vh;">
-        <div class="p-1 truncate">{{ config.wmTitle || 'Atlas strategies' }}</div>
-        <input v-model="filter" placeholder="Filter strategies…" class="bg-gray-900 rounded px-1 mx-1 mb-1 leading-6" />
-        <div class="overflow-y-auto min-h-0 px-1 flex flex-col gap-y-1">
-          <button v-for="s in shown" :key="s.id" @click="config.selectedId = s.id"
-            :class="[$style.entryBtn, { [$style.selected]: config.selectedId === s.id }]">
-            <span class="truncate">{{ s.name || 'Untitled' }}</span>
-            <span class="text-xs text-gray-400 truncate">{{ [s.league, ...s.tags].filter(Boolean).join(' · ') }}</span>
-          </button>
-          <div v-if="!config.strategies.length" class="text-gray-500 p-2 text-center">
-            No strategies yet. Add or import them in this widget's settings.
-          </div>
-        </div>
-      </div>
+    <div class="flex gap-2 min-h-0 items-start">
+      <WPanel :title="config.wmTitle || 'Atlas strategies'" width="16rem">
+        <template #toolbar>
+          <WField v-model="filter" icon="fas fa-search" placeholder="Filter strategies…" class="grow" />
+        </template>
+        <WListItem v-for="s in shown" :key="s.id" :active="config.selectedId === s.id" @select="config.selectedId = s.id">
+          <span class="w-trunc">{{ s.name || 'Untitled' }}</span>
+          <template #sub>{{ [s.league, ...s.tags].filter(Boolean).join(' · ') }}</template>
+        </WListItem>
+        <WEmpty v-if="!config.strategies.length" icon="fas fa-map">
+          No strategies yet. Add or import them in this widget's settings.
+        </WEmpty>
+      </WPanel>
 
-      <div v-if="selected" class="flex flex-col min-h-0 border-l border-gray-700 pl-2" style="width: 26rem; max-height: 75vh;">
-        <div class="font-semibold pb-1 truncate">{{ selected.name || 'Untitled' }}</div>
-        <div class="flex flex-wrap gap-1 pb-2">
-          <a v-if="treeLink" :href="treeLink" target="_blank" class="btn">Open atlas tree</a>
-          <button v-if="selected.regex" class="btn" @click="copy(selected.regex)">{{ copied ? 'Copied' : 'Copy map regex' }}</button>
-          <button v-if="selected.regex" class="btn" @click="pasteSearch(selected.regex)" title="Types it into the in-game search box">Search with regex</button>
-        </div>
-        <div class="overflow-y-auto min-h-0 text-sm flex flex-col gap-2">
+      <WPanel v-if="selected" :title="selected.name || 'Untitled'" width="26rem">
+        <template v-if="treeLink || selected.regex" #toolbar>
+          <WButton v-if="treeLink" :href="treeLink" size="sm" variant="primary" icon="fas fa-external-link-alt">Open atlas tree</WButton>
+          <WButton v-if="selected.regex" size="sm" :icon="copied ? 'fas fa-check' : 'far fa-copy'" @click="copy(selected.regex)">{{ copied ? 'Copied' : 'Copy map regex' }}</WButton>
+          <WButton v-if="selected.regex" size="sm" icon="fas fa-search" @click="pasteSearch(selected.regex)" title="Types it into the in-game search box">Search with regex</WButton>
+        </template>
+
+        <div class="flex flex-col gap-2 pb-2" style="padding-left: var(--w-pad); padding-right: var(--w-pad);">
           <div v-if="selected.scarabs.trim()">
             <div :class="$style.heading">Scarabs</div>
             <div class="whitespace-pre-wrap">{{ selected.scarabs }}</div>
@@ -34,25 +32,25 @@
           </div>
           <div v-if="selected.notes.trim()">
             <div :class="$style.heading">Notes</div>
-            <div class="whitespace-pre-wrap text-gray-300">{{ selected.notes }}</div>
+            <div class="whitespace-pre-wrap w-dim">{{ selected.notes }}</div>
           </div>
 
           <div>
             <div :class="$style.heading">What to allocate</div>
-            <div v-if="!selected.treeUrl" class="text-gray-500">Add an atlas tree link in settings to see the allocation.</div>
-            <div v-else-if="decodeError" class="text-red-400">{{ decodeError }}</div>
-            <div v-else-if="atlasDataError && !atlasData" class="text-red-400">{{ atlasDataError }}</div>
-            <div v-else-if="!atlasData" class="text-gray-500">Loading atlas tree data…</div>
+            <div v-if="!selected.treeUrl" class="w-faint">Add an atlas tree link in settings to see the allocation.</div>
+            <div v-else-if="decodeError" class="w-down">{{ decodeError }}</div>
+            <div v-else-if="atlasDataError && !atlasData" class="w-down">{{ atlasDataError }}</div>
+            <div v-else-if="!atlasData" class="w-faint">Loading atlas tree data…</div>
             <template v-else-if="view">
-              <div class="text-gray-400 pb-1">
-                {{ view.total }} points · {{ notableCount }} notables and keystones · {{ view.small }} small
+              <div class="w-dim pb-1 text-xs">
+                <span class="w-num">{{ view.total }}</span> points · <span class="w-num">{{ notableCount }}</span> notables and keystones · <span class="w-num">{{ view.small }}</span> small
                 <span v-if="view.unknown"> · {{ view.unknown }} not in the tree data (outdated link or data)</span>
               </div>
-              <div v-for="g in view.groups" :key="g.mechanic" class="pb-1">
-                <div class="text-yellow-400 text-xs">{{ g.mechanic }} ({{ g.nodes.length }})</div>
-                <div class="pl-2">
-                  <span v-for="(n, i) in g.nodes" :key="n.id" :title="n.stats.join('\n')"
-                    :class="n.kind === 'keystone' ? 'font-semibold' : ''">{{ n.name }}<span v-if="i < g.nodes.length - 1">, </span></span>
+              <div v-for="g in view.groups" :key="g.mechanic" :class="$style.group">
+                <div class="w-accent text-xs">{{ g.mechanic }} <span class="w-faint">{{ g.nodes.length }}</span></div>
+                <div class="flex flex-wrap gap-x-2">
+                  <span v-for="n in g.nodes" :key="n.id" :title="n.stats.join('\n')"
+                    :class="n.kind === 'keystone' ? 'font-semibold' : ''">{{ n.name }}</span>
                 </div>
               </div>
             </template>
@@ -60,20 +58,20 @@
 
           <div v-if="otherStrategies.length && view">
             <div :class="$style.heading">Compare with</div>
-            <select v-model="compareId" class="bg-gray-900 rounded px-1 leading-6 mb-1">
+            <select v-model="compareId" :class="$style.select">
               <option :value="null">Choose a strategy…</option>
               <option v-for="s in otherStrategies" :key="s.id" :value="s.id">{{ s.name || 'Untitled' }}</option>
             </select>
-            <div v-if="compareError" class="text-red-400">{{ compareError }}</div>
+            <div v-if="compareError" class="w-down">{{ compareError }}</div>
             <template v-else-if="diff">
-              <div v-if="diff.added.length"><span class="text-green-400">Also allocate:</span> {{ diff.added.join(', ') }}</div>
-              <div v-if="diff.removed.length"><span class="text-red-400">Refund:</span> {{ diff.removed.join(', ') }}</div>
-              <div v-if="!diff.added.length && !diff.removed.length" class="text-gray-500">Same notables.</div>
-              <div class="text-gray-500 text-xs">Going from this strategy to the other; notables and keystones only.</div>
+              <div v-if="diff.added.length"><span class="w-up">Also allocate:</span> {{ diff.added.join(', ') }}</div>
+              <div v-if="diff.removed.length"><span class="w-down">Refund:</span> {{ diff.removed.join(', ') }}</div>
+              <div v-if="!diff.added.length && !diff.removed.length" class="w-faint">Same notables.</div>
+              <div class="w-faint text-xs">Going from this strategy to the other; notables and keystones only.</div>
             </template>
           </div>
         </div>
-      </div>
+      </WPanel>
     </div>
   </Widget>
 </template>
@@ -97,6 +95,7 @@ import { inject, computed, shallowRef } from 'vue'
 import { MainProcess } from '@/web/background/IPC'
 import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
+import { WPanel, WField, WButton, WEmpty, WListItem } from '../ui'
 import { strategyMatches, useAtlasData } from './widget'
 import { decodeTree, diffTrees, extractTreeCode, overview } from './tree'
 import type { DecodedTree } from './tree'
@@ -184,26 +183,26 @@ function pasteSearch (text: string) {
 }
 </script>
 
-<style lang="postcss" module>
-.entryBtn {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  flex-shrink: 0;
-  @apply rounded px-2 py-1 leading-5;
-  @apply text-gray-100 bg-gray-800;
-  text-align: left;
-
-  &:hover {
-    @apply bg-gray-700;
-  }
-}
-
-.selected {
-  @apply bg-gray-600;
-}
-
+<style module>
 .heading {
-  @apply text-gray-500 text-xs uppercase pb-0.5;
+  padding: 4px 0 2px;
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--w-faint);
+}
+.group {
+  padding: 3px 0;
+  border-bottom: 1px solid var(--w-line-soft);
+}
+.select {
+  height: 26px;
+  margin-bottom: 4px;
+  padding: 0 6px;
+  font-size: 12.5px;
+  color: var(--w-fg);
+  background: var(--w-panel-2);
+  border: 1px solid var(--w-line);
+  border-radius: var(--w-radius-sm);
 }
 </style>

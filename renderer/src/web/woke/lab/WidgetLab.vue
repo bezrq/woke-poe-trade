@@ -1,30 +1,31 @@
 <template>
   <Widget :config="config" move-handles="corners" :inline-edit="false">
-    <div class="widget-default-style p-1 flex min-h-0 gap-x-1 text-gray-100">
-      <div class="flex flex-col gap-1" style="width: 13rem;">
-        <div class="p-1 flex items-baseline gap-2">
-          <span class="truncate grow">{{ config.wmTitle || 'Labyrinth' }}</span>
-          <span class="text-xs text-gray-400 whitespace-nowrap" title="Labs reset at midnight UTC">resets in {{ resetIn }}</span>
-        </div>
-        <div v-for="d in DIFFICULTIES" :key="d" class="flex gap-x-1">
-          <button @click="open(d, 'overlay')" :class="[$style.entryBtn, { [$style.active]: openDiff === d }]">
-            <span>{{ labLabel(d) }}</span>
-            <span v-if="d === config.defaultDifficulty && config.hotkeyOverlay" :class="$style.hotkey">{{ config.hotkeyOverlay }}</span>
-          </button>
-          <button @click="open(d, 'external')" :class="$style.iconBtn" title="Open in your browser">
-            <i class="fas fa-external-link-alt" />
-          </button>
-        </div>
-        <div v-if="config.notes.trim()" class="whitespace-pre-wrap text-sm text-gray-300 px-1 pt-1">{{ config.notes }}</div>
-      </div>
-      <div v-if="openDiff" class="flex flex-col" style="width: 60vw; height: 80vh;">
-        <div class="flex items-center gap-x-2 px-1 pb-1">
-          <span class="truncate grow">{{ labLabel(openDiff) }} Labyrinth · poelab.com</span>
-          <span class="text-gray-500 text-xs whitespace-nowrap">{{ overlayKey }} to interact</span>
-          <button @click="openDiff = null" :class="$style.iconBtn" title="Close"><i class="fas fa-times" /></button>
-        </div>
-        <webview ref="webviewEl" class="pointer-events-auto flex-1" width="100%" height="100%" />
-      </div>
+    <div class="flex gap-2 min-h-0 items-start">
+      <WPanel :title="config.wmTitle || 'Labyrinth'" width="14rem">
+        <template #meta>
+          <span title="Labs reset at midnight UTC"><i class="far fa-clock" /> resets in <span class="w-num">{{ resetIn }}</span></span>
+        </template>
+        <WListItem v-for="d in DIFFICULTIES" :key="d" :active="openDiff === d" @select="open(d, 'overlay')">
+          <span class="w-trunc">{{ labLabel(d) }}</span>
+          <WKbd v-if="d === config.defaultDifficulty && config.hotkeyOverlay" :keys="config.hotkeyOverlay" class="ml-auto" />
+          <template #actions>
+            <button @click="open(d, 'external')" class="w-icon-btn" title="Open in your browser">
+              <i class="fas fa-external-link-alt" />
+            </button>
+          </template>
+        </WListItem>
+        <div v-if="config.notes.trim()" class="whitespace-pre-wrap w-dim py-2" style="padding-left: var(--w-pad); padding-right: var(--w-pad);">{{ config.notes }}</div>
+        <template #footer><span>Layouts from poelab.com</span></template>
+      </WPanel>
+      <WPanel v-if="openDiff" :title="`${labLabel(openDiff)} Labyrinth`" :scroll="false" max-height="none"
+        style="width: 60vw; height: 80vh;">
+        <template #actions>
+          <span class="w-faint text-xs whitespace-nowrap mr-1">{{ overlayKey }} to interact</span>
+          <button @click="open(openDiff, 'external')" class="w-icon-btn" title="Open in your browser"><i class="fas fa-external-link-alt" /></button>
+          <button @click="openDiff = null" class="w-icon-btn" title="Close"><i class="fas fa-times" /></button>
+        </template>
+        <webview ref="webviewEl" class="pointer-events-auto w-full h-full flex" width="100%" height="100%" />
+      </WPanel>
     </div>
   </Widget>
 </template>
@@ -49,6 +50,7 @@ import { Host, MainProcess } from '@/web/background/IPC'
 import { AppConfig } from '@/web/Config'
 import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
+import { WPanel, WKbd, WListItem } from '../ui'
 import { DEFAULT_LAB_URLS, DIFFICULTIES, formatDuration, labLabel, msUntilLabReset, parseHotkeyTarget } from './lab'
 import type { LabDifficulty, OpenTarget } from './lab'
 
@@ -113,36 +115,3 @@ const hotkeys = MainProcess.onEvent('MAIN->CLIENT::widget-action', (e) => {
 })
 onUnmounted(() => { hotkeys.abort() })
 </script>
-
-<style lang="postcss" module>
-.entryBtn {
-  flex: 1 1 auto;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  @apply rounded px-2 py-1 leading-5;
-  @apply text-gray-100 bg-gray-800;
-
-  &:hover {
-    @apply bg-gray-700;
-  }
-}
-
-.active {
-  @apply bg-gray-600;
-}
-
-.iconBtn {
-  flex-shrink: 0;
-  @apply rounded px-2;
-  @apply text-gray-400 bg-gray-800;
-
-  &:hover {
-    @apply bg-gray-700 text-gray-100;
-  }
-}
-
-.hotkey {
-  @apply text-black bg-gray-400 rounded px-1 text-xs;
-}
-</style>
