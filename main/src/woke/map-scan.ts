@@ -9,6 +9,7 @@ import type { Logger } from '../RemoteLogger'
 import type { GameWindow } from '../windowing/GameWindow'
 import { OcrWorker } from '../vision/link-main'
 import type { ScanOptions, ScanResult } from './map-scan-vision'
+import { perfRecord } from './perf'
 
 // Stop after this long without the game focused, so it can't run forever.
 const IDLE_STOP_MS = 30 * 60 * 1000
@@ -50,13 +51,31 @@ export const ESSENCE_SCAN: ScannerKind = {
 }
 
 // One OCR worker shared by all scan modes (each would load tesseract + opencv).
+// It holds 100-200 MB, so it's shut down once no scan has run for a while.
+const WORKER_IDLE_MS = 2 * 60 * 1000
 let sharedWorker: Promise<OcrWorker> | null = null
+let idleTimer: ReturnType<typeof setTimeout> | undefined
+const runningScanners = new Set<ScreenScanner>()
+
 async function getWorker (): Promise<OcrWorker> {
+  clearTimeout(idleTimer)
   sharedWorker ??= OcrWorker.create().then(async (w) => {
     await w.updateOptions('en')
     return w
   })
   return await sharedWorker
+}
+
+function scannerStopped (scanner: ScreenScanner) {
+  runningScanners.delete(scanner)
+  if (runningScanners.size || !sharedWorker) return
+  clearTimeout(idleTimer)
+  idleTimer = setTimeout(() => {
+    if (runningScanners.size || !sharedWorker) return
+    const worker = sharedWorker
+    sharedWorker = null
+    worker.then(async w => { await w.terminate() }).catch(() => {})
+  }, WORKER_IDLE_MS)
 }
 
 export class ScreenScanner {
@@ -90,16 +109,16 @@ export class ScreenScanner {
     if (process.platform !== 'win32') {
       throw new Error(`${this.kind.name} needs Windows (it uses the game screenshot API).`)
     }
-    if (!this.worker) {
-      try {
-        this.worker = await getWorker()
-      } catch (err) {
-        sharedWorker = null
-        throw err
-      }
+    try {
+      // Every start: the shared worker may have been shut down while idle.
+      this.worker = await getWorker()
+    } catch (err) {
+      sharedWorker = null
+      throw err
     }
     if (!this.running) {
       this.running = true
+      runningScanners.add(this)
       this.prevSig = null
       this.lastReadSig = null
       this.lastActive = Date.now()
@@ -118,6 +137,7 @@ export class ScreenScanner {
       this.loopId++
       clearTimeout(this.timer)
       uIOhook.removeListener('mousemove', this.onMouseMove)
+      scannerStopped(this)
       this.emitState(reason)
     }
     return { running: false }
@@ -148,6 +168,7 @@ export class ScreenScanner {
     if (cursor.x < 0 || cursor.y < 0 || cursor.x >= bounds.width || cursor.y >= bounds.height) return
 
     try {
+      const t0 = performance.now()
       const shot = this.poeWindow.screenshot()
       // Send only a vertical strip around the cursor: less to copy into the
       // worker and to colour-convert there.
@@ -158,6 +179,7 @@ export class ScreenScanner {
       const res = await this.kind.read(this.worker!,
         { width: x1 - x0, height: bounds.height, data },
         { cursor: { x: cursor.x - x0, y: cursor.y }, originX: x0, stableSig: this.prevSig, lastReadSig: this.lastReadSig })
+      perfRecord(`${this.kind.name}: frame`, performance.now() - t0)
       this.failures = 0
       this.prevSig = res.sig
       if (res.sig == null) {
@@ -169,6 +191,7 @@ export class ScreenScanner {
         return
       }
       if (res.lines) {
+        perfRecord(`${this.kind.name}: read text`, res.elapsed)
         this.lastReadSig = res.sig
         const reading: MapScanReading = {
           lines: res.lines,
