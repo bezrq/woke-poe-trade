@@ -1,7 +1,7 @@
 <template>
   <Widget :config="config" move-handles="corners" :inline-edit="false">
     <div class="flex gap-2 min-h-0 items-start">
-      <WPanel :title="config.wmTitle || 'PoB builds'" width="20rem" max-height="70vh">
+      <WPanel :title="config.wmTitle || 'PoB builds'" icon="wisdom" :busy="loading && builds.length > 0" width="20rem" max-height="70vh">
         <template #actions>
           <button @click="importOpen = !importOpen" class="w-icon-btn" :class="{ 'w-icon-btn--on': importOpen }" title="Import a pobb.in / pastebin link or PoB code">
             <i class="fas fa-file-import" />
@@ -17,12 +17,17 @@
           </div>
           <WField v-else v-model="filter" icon="fas fa-search" placeholder="Filter by name, class, skill, folder…" class="grow" />
         </template>
-        <template v-if="error || importMsg" #meta>
-          <span v-if="error" class="w-down">{{ error }}</span>
-          <span v-else :class="importOk ? 'w-up' : 'w-down'">{{ importMsg }}</span>
+        <template v-if="error" #banner>
+          <WBanner>Couldn't read the builds folder: {{ error }}<template #actions><WButton size="sm" @click="refresh">Retry</WButton></template></WBanner>
+        </template>
+        <template v-if="importMsg" #meta>
+          <span :class="importOk ? 'w-up' : 'w-down'">{{ importMsg }}</span>
         </template>
 
-        <WListItem v-for="b in shown" :key="b.relPath" :active="selected === b.relPath" :title="b.relPath" @select="select(b)">
+        <WSkeleton v-if="loading && !builds.length" :rows="6" />
+
+        <WListItem v-for="b in shown" :key="b.relPath" :active="selected === b.relPath" :title="b.relPath" @select="select(b)"
+          @contextmenu="buildMenu($event, b)" @keydown.p.prevent="togglePin(b.relPath)">
           <i v-if="config.activeBuild === b.relPath" class="fas fa-check-circle w-up" title="Active build" />
           <span class="w-trunc">{{ b.name }}</span>
           <template #sub>{{ describe(b) }}<template v-if="b.folder"> · {{ b.folder }}</template></template>
@@ -33,8 +38,13 @@
             </button>
           </template>
         </WListItem>
-        <WEmpty v-if="!loading && !shown.length && !error" icon="fas fa-folder-open">
-          {{ builds.length ? 'No matches' : `No builds found in ${dir || 'the builds folder'}` }}
+        <WEmpty v-if="!loading && !shown.length && !error && builds.length" icon="fas fa-filter">
+          Nothing matches "{{ filter }}". Search looks at names, classes, skills and folders.
+          <template #actions><WButton size="sm" @click="filter = ''">Clear search</WButton></template>
+        </WEmpty>
+        <WEmpty v-else-if="!loading && !shown.length && !error" icon="fas fa-folder-open">
+          No builds in {{ dir || 'the builds folder' }}. Save one in Path of Building, or import a pobb.in link with the button above.
+          <template #actions><WButton size="sm" @click="importOpen = true">Import a build</WButton></template>
         </WEmpty>
       </WPanel>
 
@@ -64,7 +74,7 @@ export default {
 import { inject, computed, shallowRef, watch } from 'vue'
 import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
-import { WPanel, WField, WButton, WEmpty, WListItem } from '../ui'
+import { WPanel, WField, WButton, WEmpty, WListItem, WBanner, WSkeleton, openMenu } from '../ui'
 import { saveConfig } from '@/web/Config'
 import BuildDetail from './BuildDetail.vue'
 import { useActiveBuild } from './active'
@@ -187,6 +197,16 @@ watch(() => props.config.wmWants, (wants) => { if (wants === 'show') refresh() }
 
 function isPinned (relPath: string) {
   return props.config.pinned.includes(relPath)
+}
+
+function buildMenu (e: MouseEvent, b: PobBuildEntry) {
+  const pinned = isPinned(b.relPath)
+  const active = props.config.activeBuild === b.relPath
+  openMenu(e, [
+    { label: selected.value === b.relPath ? 'Hide details' : 'Show details', icon: 'fas fa-info-circle', keys: 'Enter', action: () => select(b) },
+    { label: active ? 'Active build' : 'Make active build', icon: 'fas fa-check-circle', disabled: active, action: () => { props.config.activeBuild = b.relPath; saveConfig() } },
+    { label: pinned ? 'Unpin' : 'Pin to top', icon: 'fas fa-thumbtack', keys: 'P', action: () => togglePin(b.relPath) }
+  ])
 }
 
 function togglePin (relPath: string) {
