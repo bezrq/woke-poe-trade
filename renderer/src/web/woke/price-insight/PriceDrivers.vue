@@ -58,6 +58,7 @@ import { WPrice } from '../ui'
 import type { Insight, InsightOptions } from './insight'
 import { driverSeed, pickCandidates, measureDrivers, runLadder, LADDER_LABEL, searchBudget, searchKey, cachedDrivers, cacheDrivers, cachedLadder, cacheLadder } from './drivers'
 import { verdictExpanded } from './view'
+import { measuredDrivers } from './check-state'
 import type { DriverResult, LadderResult } from './drivers'
 
 const props = defineProps<{
@@ -98,6 +99,12 @@ const driverKey = computed(() => searchKey(props.filters, props.stats, candidate
 drivers.value = cachedDrivers(driverKey.value) ?? []
 ladder.value = cachedLadder(driverKey.value) ?? []
 
+// Measured drivers also feed the mod worth tags and "By value".
+function shareDrivers () {
+  if (drivers.value.length) measuredDrivers.value = { item: props.item, list: drivers.value }
+}
+shareDrivers()
+
 // While measuring, show finished results plus placeholders for the rest.
 const shownDrivers = computed<DriverResult[]>(() => {
   if (!busyDrivers.value) return drivers.value
@@ -126,6 +133,7 @@ async function measure () {
     drivers.value = await measureDrivers(props.filters, props.stats, baseFair.value, candidates.value, props.options,
       (done, wait) => { drivers.value = done; waiting.value = wait })
     cacheDrivers(driverKey.value, drivers.value)
+    shareDrivers()
   } catch (err) {
     error.value = (err as Error).message
   } finally {

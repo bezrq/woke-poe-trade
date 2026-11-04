@@ -13,6 +13,8 @@ import { readGameLogTail } from './game-log-tail'
 import { perfSnapshot, startProcessSampler } from './perf'
 import { hotkeyFailures } from './hotkey-failures'
 import { marketHandlers } from './market-store'
+import { labLayoutImage } from './lab-layout'
+import { sessionHandlers } from './session-store'
 
 type Handler = (args: any) => Promise<unknown> // eslint-disable-line @typescript-eslint/no-explicit-any
 
@@ -29,7 +31,9 @@ const handlers: Record<string, Handler> = {
   'perf-stats': async () => perfSnapshot(),
   'ocr-check': async () => checkOcr(),
   'hotkey-failures': async () => hotkeyFailures(),
-  ...marketHandlers
+  'lab-layout-image': labLayoutImage,
+  ...marketHandlers,
+  ...sessionHandlers
 }
 
 // For main-process parts set up outside initWoke (setup window, crash reports).

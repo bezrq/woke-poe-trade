@@ -1,5 +1,22 @@
 <template>
   <Widget :config="config" move-handles="corners" :inline-edit="false" :readonly="true">
+    <!-- With the campaign tracker placed, the run time is in its icon. -->
+    <DockItem id="run-timer" icon="fas fa-stopwatch" title="Run timer" :show="!docked && !!run && !run.finished"
+      :badge="delta != null ? formatDelta(delta) : null" :tone="delta == null ? 'accent' : delta <= 0 ? 'up' : 'down'"
+      :wm-id="config.wmId" card-width="17rem" @open-change="cardShown = $event">
+      <template #card>
+        <div v-if="run" class="flex flex-col gap-1" style="padding: 6px var(--w-pad) 8px;">
+          <div class="w-head-font w-accent w-trunc">{{ actLabel(run.act) }}<template v-if="run.zone"> · {{ run.zone }}</template></div>
+          <div class="flex justify-between w-num"><span class="w-dim">Run</span><span>{{ formatRunTime(total) }}</span></div>
+          <div v-if="current" class="flex justify-between w-num"><span class="w-dim">Act</span>
+            <span>{{ formatRunTime(current.segmentMs ?? 0) }}<span v-if="current.cmpSegmentMs != null" class="w-faint"> / {{ formatRunTime(current.cmpSegmentMs) }}</span></span></div>
+          <div class="flex justify-between w-num"><span class="w-dim">Zone</span><span>{{ formatRunTime(total - run.zoneSinceMs) }}</span></div>
+          <div v-if="delta != null" class="flex justify-between w-num"><span class="w-dim">vs {{ cmpLabel }}</span>
+            <span :class="delta <= 0 ? 'w-up' : 'w-down'">{{ formatDelta(delta) }}</span></div>
+          <div v-if="run.runningSince == null" class="w-num" style="color: var(--w-warn);">paused</div>
+        </div>
+      </template>
+    </DockItem>
     <div class="flex flex-col items-start gap-1" data-w-panel>
       <!-- HUD strip: always on while the run is going. The campaign tracker
            shows run time in its own strip, so the timer docks under it. -->
@@ -158,6 +175,8 @@ import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
 import { useVisibleClock } from '../shared/visible-clock'
 import { WPanel, WTabs, WChip, WEmpty } from '../ui'
+import DockItem from '../dock/DockItem.vue'
+import { hideWhilePlaying, tickWhile } from '../dock/dock'
 import { actLabel, parseLogLine } from './log-parse'
 import {
   applyRunEvent, comparisonRun, endRun, formatDelta, formatRunTime, headlineDelta, isComplete,
@@ -175,7 +194,7 @@ const props = defineProps<{
 const wm = inject<WidgetManager>('wm')!
 
 if (props.config.wmFlags[0] === 'uninitialized') {
-  props.config.wmFlags = []
+  props.config.wmFlags = ['invisible-on-blur']
   props.config.wmTitle = 'Campaign run timer'
   props.config.anchor = { pos: 'tc', x: 50, y: 1 }
   props.config.autoStart = true
@@ -187,6 +206,7 @@ if (props.config.wmFlags[0] === 'uninitialized') {
   wm.show(props.config.wmId)
 }
 migrateRunTimer(props.config)
+hideWhilePlaying(props.config)
 if (!props.config.lastLogAt) props.config.lastLogAt = Date.now()
 
 // The campaign tracker shows run time in its strip; then this widget only
@@ -201,6 +221,8 @@ const tab = shallowRef<'splits' | 'history'>('splits')
 const now = shallowRef(Date.now())
 // Ticks only while the widget is on screen.
 useVisibleClock(props.config, () => { now.value = Date.now() }, 1000)
+const cardShown = shallowRef(false)
+onUnmounted(tickWhile(() => cardShown.value, () => { now.value = Date.now() }, 1000))
 
 const run = computed(() => props.config.run)
 const total = computed(() => run.value ? runElapsed(run.value, now.value) : 0)

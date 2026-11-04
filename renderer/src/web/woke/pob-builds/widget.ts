@@ -12,6 +12,15 @@ export interface PobBuildsWidget extends Widget {
   pinned: string[]
   // The build other modules (e.g. the campaign tracker) should use.
   activeBuild: string | null
+  // Character name -> build file. When Client.txt shows that character
+  // levelling, its build becomes the active one.
+  followChars: Record<string, string>
+}
+
+export function migratePobWidget (w: PobBuildsWidget) {
+  if (!w.followChars || typeof w.followChars !== 'object') w.followChars = {}
+  if (!Array.isArray(w.pinned)) w.pinned = []
+  if (w.activeBuild === undefined) w.activeBuild = null
 }
 
 // Shapes returned by main/src/woke/pob-builds.ts
@@ -31,6 +40,8 @@ export interface PobGem {
   level: number | null
   quality: number | null
   enabled: boolean
+  // Older app versions didn't send it; fall back to the name.
+  support?: boolean
 }
 
 export interface PobSkillGroup {
@@ -47,6 +58,29 @@ export interface PobTreeSpec {
   isActive: boolean
 }
 
+export interface PobSkillSet {
+  title: string
+  isActive: boolean
+  groups: PobSkillGroup[]
+}
+
+export type PobRarity = 'NORMAL' | 'MAGIC' | 'RARE' | 'UNIQUE' | 'RELIC' | ''
+
+export interface PobItem {
+  rarity: PobRarity
+  name: string
+  base: string
+  sockets: string
+  implicits: string[]
+  mods: string[]
+}
+
+export interface PobItemSet {
+  title: string
+  isActive: boolean
+  slots: Array<{ slot: string, item: PobItem }>
+}
+
 export interface PobDetails {
   className: string
   ascendClassName: string
@@ -54,7 +88,9 @@ export interface PobDetails {
   mainSkill: string
   notes: string
   skills: PobSkillGroup[]
+  skillSets?: PobSkillSet[]
   trees: PobTreeSpec[]
+  itemSets?: PobItemSet[]
 }
 
 function dirArg (cfg: PobBuildsWidget) {

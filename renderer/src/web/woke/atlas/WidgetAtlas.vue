@@ -1,5 +1,25 @@
 <template>
   <Widget :config="config" move-handles="corners" :inline-edit="false">
+    <!-- In the hideout, while you set up the map device: the strategy you picked. -->
+    <DockItem id="atlas" icon="fas fa-globe" :title="selected?.name || 'Atlas strategy'" :show="!!selected && zone.kind === 'hideout'"
+      :wm-id="config.wmId" card-width="21rem">
+      <template #card>
+        <div v-if="selected" style="padding: 4px var(--w-pad) 6px;" class="flex flex-col gap-0.5">
+          <div v-for="(p, i) in pricedScarabs" :key="i" class="flex justify-between gap-2">
+            <span class="w-trunc">{{ p.qty > 1 ? p.qty + '× ' : '' }}{{ p.name }}</span>
+            <span v-if="p.item" class="w-num w-dim">{{ formatChaos(p.item.chaos * p.qty, prices.snapshot.value?.divine ?? null) }}</span>
+          </div>
+          <div v-if="scarabCost != null" class="flex justify-between w-num"><span class="w-dim">Scarabs per map</span>
+            <span class="w-accent">{{ formatChaos(scarabCost, prices.snapshot.value?.divine ?? null) }}</span></div>
+          <div v-if="selected.device.trim()" class="w-dim text-xs whitespace-pre-wrap">{{ selected.device.trim() }}</div>
+          <div v-if="selected.regex" class="flex items-center gap-1 text-xs">
+            <span class="w-dim">Map regex</span>
+            <code class="w-trunc" style="font-family: var(--w-num);">{{ selected.regex }}</code>
+            <button v-if="wm.active.value" class="w-icon-btn" title="Copy" @click="copy(selected.regex)"><i :class="copied ? 'fas fa-check' : 'far fa-copy'" /></button>
+          </div>
+        </div>
+      </template>
+    </DockItem>
     <div class="flex gap-2 min-h-0 items-start">
       <WPanel :title="config.wmTitle || 'Atlas strategies'" width="17rem">
         <template #actions>
@@ -133,6 +153,8 @@ import { AppConfig } from '@/web/Config'
 import { emptyStrategy, strategyMatches, useAtlasData } from './widget'
 import { parseGuideText, parseScarabs, priceScarabs } from './guide'
 import { usePriceIndex } from '../market/price-index'
+import DockItem from '../dock/DockItem.vue'
+import { useZone } from '../shared/zone'
 import { formatChaos } from '../market/analysis'
 import { FARMING_TYPE, strategyStats } from '../farming/farming'
 import type { FarmingWidget } from '../farming/farming'
@@ -192,6 +214,7 @@ function importPaste () {
   pasteText.value = ''
   pasteOpen.value = false
 }
+const zone = useZone()
 const selected = computed(() => props.config.strategies.find(s => s.id === props.config.selectedId) ?? null)
 const pricedScarabs = computed(() => selected.value && prices.snapshot.value
   ? priceScarabs(parseScarabs(selected.value.scarabs), prices.snapshot.value.items)

@@ -1,0 +1,33 @@
+<template>
+  <DockItem id="toolkit" icon="fas fa-exclamation" title="Toolkit" :show="lines.length > 0"
+    :badge="lines.length" tone="down" led="error" card-width="22rem">
+    <template #card>
+      <div :class="$style.body">
+        <div v-for="(l, i) in lines" :key="i" :class="$style.line"><i class="fas fa-exclamation-triangle" /> <span>{{ l }}</span></div>
+        <div class="w-faint text-xs">Hotkey problems: Settings → Hotkey list.</div>
+      </div>
+    </template>
+  </DockItem>
+</template>
+
+<script setup lang="ts">
+import { computed } from 'vue'
+import DockItem from './DockItem.vue'
+import { healthProblems } from './health'
+import { useHotkeyHealth } from '../switchboard/hotkey-health'
+
+const hotkeys = useHotkeyHealth()
+
+const lines = computed(() => {
+  const out: string[] = []
+  if (hotkeys.summary.value) out.push(hotkeys.summary.value)
+  out.push(...healthProblems.values())
+  return out
+})
+</script>
+
+<style module>
+.body { display: flex; flex-direction: column; gap: 4px; padding: 6px var(--w-pad) 8px; }
+.line { display: flex; gap: 6px; color: var(--w-down); }
+.line i { margin-top: 3px; font-size: 11px; }
+</style>

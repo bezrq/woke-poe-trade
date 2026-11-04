@@ -13,6 +13,8 @@ export interface CampaignState {
   className: string
   level: number | null
   updatedAt: number
+  // Build gems ticked as bought or taken for this character (PoB names).
+  gemsGot?: string[]
 }
 
 export interface ZoneNote {
@@ -46,7 +48,7 @@ export interface CampaignWidget extends Widget {
 }
 
 export function emptyState (): CampaignState {
-  return { zone: '', areaId: '', areaLevel: null, act: null, charName: '', className: '', level: null, updatedAt: 0 }
+  return { zone: '', areaId: '', areaLevel: null, act: null, charName: '', className: '', level: null, updatedAt: 0, gemsGot: [] }
 }
 
 // Fills settings added after the widget was first placed.
@@ -59,6 +61,7 @@ export function migrateCampaign (w: CampaignWidget) {
   if (w.hotkeyCard === undefined) w.hotkeyCard = null
   if (w.hotkeyNext === undefined) w.hotkeyNext = null
   if (w.hotkeyPrev === undefined) w.hotkeyPrev = null
+  if (w.state && !Array.isArray(w.state.gemsGot)) w.state.gemsGot = []
 }
 
 export type CampaignHotkey = 'card' | 'next' | 'prev'

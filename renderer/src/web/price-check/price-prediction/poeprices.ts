@@ -28,7 +28,21 @@ export interface RareItemPrice {
   }>
 }
 
-export async function requestPoeprices (item: ParsedItem): Promise<RareItemPrice> {
+// woke: the improved price view asks for the same item as this widget; share
+// one request instead of sending two.
+const inflight = new Map<string, Promise<RareItemPrice>>()
+
+export function requestPoeprices (item: ParsedItem): Promise<RareItemPrice> {
+  const key = `${useLeagues().selectedId.value}\u0000${item.rawText}`
+  let p = inflight.get(key)
+  if (!p) {
+    p = requestPoepricesOnce(item).finally(() => { inflight.delete(key) })
+    inflight.set(key, p)
+  }
+  return p
+}
+
+async function requestPoepricesOnce (item: ParsedItem): Promise<RareItemPrice> {
   const query = querystring({
     i: utf8ToBase64(transformItemText(item.rawText)),
     l: useLeagues().selectedId.value!,

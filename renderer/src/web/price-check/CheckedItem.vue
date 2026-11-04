@@ -5,8 +5,9 @@
       :filters="itemFilters"
       :item="item">
       <woke-dust-chip v-if="item.dustEquivalent" :amount="item.dustEquivalent" />
+      <woke-build-fit-chip :item="item" />
     </filter-name>
-    <woke-roll-presets :stats="itemStats" @apply="searchAfterPreset" />
+    <woke-roll-presets :stats="itemStats" :item="item" @apply="searchAfterPreset" />
     <price-prediction v-if="showPredictedPrice" class="mb-4"
       :item="item" />
     <price-trend v-else
@@ -70,6 +71,7 @@ import PricePrediction from './price-prediction/PricePrediction.vue'
 import StackValue from './expected-value/StackValue.vue'
 import WokeDustChip from '@/web/woke/price-insight/DustChip.vue'
 import WokeRollPresets from '@/web/woke/price-insight/RollPresets.vue'
+import WokeBuildFitChip from '@/web/woke/pob-builds/BuildFitChip.vue'
 import FilterName from './filters/FilterName.vue'
 import WokeMapStrip from '@/web/woke/map-mods/MapModStrip.vue'
 import { CATEGORY_TO_TRADE_ID, createTradeRequest } from './trade/pathofexile-trade'
@@ -86,6 +88,7 @@ export default defineComponent({
     WokeMapStrip,
     WokeDustChip,
     WokeRollPresets,
+    WokeBuildFitChip,
     PricePrediction,
     TradeListing,
     TradeBulk,

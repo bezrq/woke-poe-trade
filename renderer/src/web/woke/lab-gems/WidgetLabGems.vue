@@ -1,5 +1,18 @@
 <template>
   <Widget :config="config" move-handles="corners" :inline-edit="false" :readonly="true">
+    <!-- In the lab: the best font gem per colour, inside the lab icon's card. -->
+    <DockItem id="lab-gems" into="lab" icon="fas fa-gem" title="Divine Font, best per colour" :show="inLab" :wm-id="config.wmId">
+      <template #card>
+        <div style="padding: 2px var(--w-pad) 6px;">
+          <div v-for="r in rolls" :key="r.color" class="flex items-center gap-2">
+            <span :class="[$style.dot, $style[r.color]]" />
+            <span class="w-trunc flex-1">{{ r.top[0]?.name ?? 'no prices yet' }}</span>
+            <WPrice v-if="r.top[0]" :chaos="r.top[0].chaos ?? 0" :divine="snapshot?.divine" />
+            <span class="w-faint text-xs w-num" title="Expected value of a roll of this colour">EV <WPrice :chaos="r.ev" :divine="snapshot?.divine" /></span>
+          </div>
+        </div>
+      </template>
+    </DockItem>
     <WPanel :title="config.wmTitle || 'Lab gems'" width="30rem">
       <template #tabs>
         <WTabs v-model="config.view" :options="[{ value: 'color', label: 'Colour roll' }, { value: 'specific', label: 'Specific gem' }]" />
@@ -128,6 +141,8 @@ import { GEM_STATES, colorRolls, evByState, gemPrices, pickProfit, pickValue, sp
 import type { GemColor, GemState, SpecificPick } from './font'
 import type { LabGemsWidget } from './widget'
 import { gemIcon } from './icons'
+import DockItem from '../dock/DockItem.vue'
+import { useZone } from '../shared/zone'
 
 const props = defineProps<{
   config: LabGemsWidget
@@ -146,6 +161,9 @@ if (props.config.wmFlags[0] === 'uninitialized') {
   props.config.minProfit = 0
   wm.show(props.config.wmId)
 }
+
+const zone = useZone()
+const inLab = computed(() => zone.kind === 'lab')
 
 const COLOR_NAMES: Record<GemColor, string> = { r: 'Red', g: 'Green', b: 'Blue' }
 

@@ -9,8 +9,9 @@ import './shared/perf'
 import './ui'
 import AppearanceSettings from './ui/AppearanceSettings.vue'
 import ModulesSettings from './switchboard/ModulesSettings.vue'
-import OverlayExtras from './app/OverlayExtras.vue'
+import WokeOverlayRoot from './WokeOverlay.vue'
 import PerfSettings from './ui/PerfSettings.vue'
+import DockSettings from './dock/DockSettings.vue'
 import HotkeysSettings from './switchboard/HotkeysSettings.vue'
 import type { Component } from 'vue'
 import type { WidgetSpec } from '@/web/overlay/interfaces'
@@ -59,6 +60,7 @@ import WidgetBossRuns from './boss-runs/WidgetBossRuns.vue'
 import WidgetLootFilter from './loot-filter/WidgetLootFilter.vue'
 import LootFilterEditor from './loot-filter/loot-filter-editor.vue'
 import { LOOT_FILTER_TYPE } from './loot-filter/widget'
+import WidgetSessionAnalytics from './analytics/WidgetSessionAnalytics.vue'
 
 type WidgetComponent = Component & { widget: WidgetSpec }
 
@@ -80,7 +82,8 @@ export const wokeWidgets: WidgetComponent[] = [
   WidgetLabGems as unknown as WidgetComponent,
   WidgetLeagueInvest as unknown as WidgetComponent,
   WidgetBossRuns as unknown as WidgetComponent,
-  WidgetLootFilter as unknown as WidgetComponent
+  WidgetLootFilter as unknown as WidgetComponent,
+  WidgetSessionAnalytics as unknown as WidgetComponent
 ]
 
 const editors: Record<string, Component> = {
@@ -106,7 +109,8 @@ export function wokeSettingsFor (wmType: string | undefined): Component | undefi
 export { wokeShortcutsFor } from './shortcuts'
 
 // Extra pages for APT's main settings window (shown next to "General").
-export const wokeGeneralSettings: Component[] = [AppearanceSettings, ModulesSettings, HotkeysSettings, PerfSettings]
+export const wokeGeneralSettings: Component[] = [AppearanceSettings, DockSettings, ModulesSettings, HotkeysSettings, PerfSettings]
 
-// Mounted once inside APT's overlay window: module setup card, update and crash notices.
-export const WokeOverlay = OverlayExtras
+// Mounted once inside APT's overlay window: first-run module setup, the icon
+// dock, the toolkit health icon, and update / crash notices.
+export const WokeOverlay = WokeOverlayRoot

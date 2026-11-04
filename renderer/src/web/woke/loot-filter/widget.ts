@@ -1,5 +1,7 @@
 import type { Widget, Anchor } from '@/web/overlay/widgets'
 import type { FilterEdit } from './edits'
+import { DEFAULT_BUILD_RULES } from './build-rules'
+import type { BuildRuleSwitches } from './build-rules'
 
 export const LOOT_FILTER_TYPE = 'woke-loot-filter'
 // copy-item target: sample the hovered item and open its rule card.
@@ -33,6 +35,10 @@ export interface LootFilterWidget extends Widget {
   lastVersion: string | null
   // Area level used for AreaLevel conditions when Client.txt hasn't shown one.
   fallbackAreaLevel: number
+  // Rules made from the active PoB build (top of the saved filter).
+  buildRules: BuildRuleSwitches
+  // Fingerprint of the build rules at the last save, to flag unsaved changes.
+  savedBuildSig?: string
 }
 
 export function initLootFilterWidget (w: LootFilterWidget) {
@@ -51,6 +57,7 @@ export function initLootFilterWidget (w: LootFilterWidget) {
   w.edits = []
   w.lastVersion = null
   w.fallbackAreaLevel = 83
+  w.buildRules = { ...DEFAULT_BUILD_RULES }
 }
 
 export function normalizeLootFilterWidget (w: LootFilterWidget) {
@@ -67,6 +74,10 @@ export function normalizeLootFilterWidget (w: LootFilterWidget) {
   if (!Array.isArray(w.edits)) w.edits = []
   if (w.lastVersion === undefined) w.lastVersion = null
   if (typeof w.fallbackAreaLevel !== 'number') w.fallbackAreaLevel = 83
+  if (!w.buildRules || typeof w.buildRules !== 'object') w.buildRules = { ...DEFAULT_BUILD_RULES }
+  for (const k of Object.keys(DEFAULT_BUILD_RULES) as Array<keyof BuildRuleSwitches>) {
+    if (typeof w.buildRules[k] !== 'boolean') w.buildRules[k] = DEFAULT_BUILD_RULES[k]
+  }
 }
 
 export function editorHotkeyTarget (wmId: number): string {
