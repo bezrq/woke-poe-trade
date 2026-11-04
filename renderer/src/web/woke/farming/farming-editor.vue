@@ -1,0 +1,56 @@
+<template>
+  <div class="max-w-xl p-2 flex flex-col gap-3">
+    <input class="bg-gray-900 rounded px-1 w-48" placeholder="Widget title" v-model="title" />
+    <div class="grid gap-2 items-center" style="grid-template-columns: auto 1fr;">
+      <div class="text-gray-400">Add hovered item to loot</div>
+      <hotkey-input v-model="lootHotkey" />
+      <div class="text-gray-400">Bulk items sell for</div>
+      <div class="flex items-center gap-1">
+        <input v-model.number="bulkPct" type="number" min="0" max="100" step="5" class="bg-gray-900 rounded px-1 w-16"> % of poe.ninja
+        <span class="text-gray-500 text-sm">(currency, scarabs, fragments, cards… sold to bulk buyers)</span>
+      </div>
+      <div class="text-gray-400">Vendor junk below</div>
+      <div class="flex items-center gap-1">
+        <input v-model.number="junkBelow" type="number" min="0" step="1" class="bg-gray-900 rounded px-1 w-16"> chaos each
+        <span class="text-gray-500 text-sm">(counted as 0)</span>
+      </div>
+    </div>
+    <ui-checkbox v-model="autoPause">Pause the session after 5 minutes without a zone change (resumes on the next zone)</ui-checkbox>
+  </div>
+</template>
+
+<script lang="ts">
+import { computed, defineComponent } from 'vue'
+import HotkeyInput from '@/web/settings/HotkeyInput.vue'
+import { configProp, configModelValue } from '@/web/settings/utils'
+import { pushHostConfig } from '@/web/Config'
+import type { FarmingWidget } from './farming'
+
+export default defineComponent({
+  name: 'Farming profit',
+  components: { HotkeyInput },
+  props: configProp<FarmingWidget>(),
+  setup (props) {
+    const w = () => props.configWidget
+    return {
+      title: configModelValue(w, 'wmTitle'),
+      lootHotkey: computed({
+        get: () => w().lootHotkey ?? null,
+        set: (v: string | null) => { w().lootHotkey = v; pushHostConfig() }
+      }),
+      bulkPct: computed({
+        get: () => Math.round((w().bulkFactor ?? 0.8) * 100),
+        set: (v: number) => { w().bulkFactor = Math.min(100, Math.max(0, Number(v) || 0)) / 100 }
+      }),
+      junkBelow: computed({
+        get: () => w().junkBelow ?? 0,
+        set: (v: number) => { w().junkBelow = Math.max(0, Number(v) || 0) }
+      }),
+      autoPause: computed({
+        get: () => w().autoPause !== false,
+        set: (v: boolean) => { w().autoPause = v }
+      })
+    }
+  }
+})
+</script>

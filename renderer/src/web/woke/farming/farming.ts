@@ -1,6 +1,11 @@
 import type { Widget, Anchor } from '@/web/overlay/widgets'
+import { BULK_TYPES } from '../league-invest/invest'
 
 export const FARMING_TYPE = 'woke-farming'
+// copy-item target for the "add hovered item to loot" hotkey.
+export const FARMING_LOOT_TARGET = 'woke-farming-loot'
+// Pause the session after this long without a zone change.
+export const AUTO_PAUSE_MS = 5 * 60 * 1000
 
 export interface PricedRef {
   type: string
@@ -28,6 +33,14 @@ export interface FarmingSession {
   loot: LootLine[]
   // Chaos value not tied to a priced item (e.g. sold items, raw currency).
   extraChaos: number
+  // Zone tracking from Client.txt: last zone change, what kind of zone we
+  // are in, and time spent in maps vs everywhere else (hideout, town…).
+  lastZoneAt?: number
+  inMap?: boolean
+  mapMs?: number
+  otherMs?: number
+  // Paused by the idle rule (resumes on the next zone change).
+  autoPaused?: boolean
 }
 
 export interface FarmingResult {
@@ -47,6 +60,30 @@ export interface FarmingWidget extends Widget {
   autoCountMaps: boolean
   session: FarmingSession | null
   history: FarmingResult[]
+  // Hotkey that adds the hovered item to the session's loot.
+  lootHotkey?: string | null
+  // Share of poe.ninja price you actually get for bulk items (0..1).
+  bulkFactor?: number
+  // Items worth less than this each (chaos) count as vendor junk (0).
+  junkBelow?: number
+  autoPause?: boolean
+}
+
+export interface SellRules { bulkFactor: number, junkBelow: number }
+
+export function sellRules (w: FarmingWidget): SellRules {
+  return {
+    bulkFactor: typeof w.bulkFactor === 'number' ? Math.min(1, Math.max(0, w.bulkFactor)) : 0.8,
+    junkBelow: typeof w.junkBelow === 'number' ? Math.max(0, w.junkBelow) : 0
+  }
+}
+
+// What a loot line is really worth when sold: bulk items at a discount,
+// cheap items as nothing.
+export function sellPrice (r: PricedRef, ninja: number | null, rules: SellRules): number | null {
+  if (ninja == null) return null
+  if (ninja < rules.junkBelow) return 0
+  return BULK_TYPES.has(r.type) ? ninja * rules.bulkFactor : ninja
 }
 
 export function newSession (strategy: string, now: number): FarmingSession {
@@ -82,10 +119,11 @@ export function totals (
   session: FarmingSession,
   costs: CostLine[],
   price: (r: PricedRef) => number | null,
-  now: number
+  now: number,
+  rules?: SellRules
 ): Totals {
   const c = lineValue(costs, price)
-  const l = lineValue(session.loot, price)
+  const l = lineValue(session.loot, rules ? (r) => sellPrice(r, price(r), rules) : price)
   const cost = c.total * session.maps
   const loot = l.total + session.extraChaos
   const profit = loot - cost
@@ -121,6 +159,43 @@ export function strategyStats (history: FarmingResult[]): Array<{ strategy: stri
     const profit = list.reduce((n, r) => n + r.lootChaos - r.costChaos, 0)
     return { strategy, sessions: list.length, maps, hours, perHour: hours ? profit / hours : 0, perMap: maps ? profit / maps : 0 }
   }).sort((a, b) => b.perHour - a.perHour)
+}
+
+// Books zone time and decides auto-pause/resume. Call on each zone change.
+export function onZoneChange (s: FarmingSession, inMap: boolean, now: number): void {
+  const since = s.lastZoneAt ?? s.startedAt
+  if (s.runningSince != null) {
+    const span = now - Math.max(since, s.runningSince)
+    if (span > 0) {
+      if (s.inMap) s.mapMs = (s.mapMs ?? 0) + span
+      else s.otherMs = (s.otherMs ?? 0) + span
+    }
+  } else if (s.autoPaused) {
+    s.runningSince = now
+    s.autoPaused = false
+  }
+  s.lastZoneAt = now
+  s.inMap = inMap
+}
+
+// Pauses a running session that saw no zone change for AUTO_PAUSE_MS,
+// counting time only up to the idle limit. Returns true if it paused.
+export function maybeAutoPause (s: FarmingSession, now: number): boolean {
+  if (s.runningSince == null) return false
+  const last = Math.max(s.lastZoneAt ?? s.startedAt, s.runningSince)
+  if (now - last < AUTO_PAUSE_MS) return false
+  const until = last + AUTO_PAUSE_MS
+  const span = until - s.runningSince
+  s.elapsedMs += Math.max(0, span)
+  const zoneSpan = until - Math.max(s.lastZoneAt ?? s.startedAt, s.runningSince)
+  if (zoneSpan > 0) {
+    if (s.inMap) s.mapMs = (s.mapMs ?? 0) + zoneSpan
+    else s.otherMs = (s.otherMs ?? 0) + zoneSpan
+  }
+  s.lastZoneAt = until
+  s.runningSince = null
+  s.autoPaused = true
+  return true
 }
 
 export function formatHms (ms: number): string {

@@ -17,6 +17,8 @@ import { ESSENCE_SCAN_TYPE, essenceHotkeyTarget } from './essence-scan/widget'
 import type { EssenceScanWidget } from './essence-scan/widget'
 import { LOOT_FILTER_TYPE, LOOT_FILTER_SAMPLE_TARGET, editorHotkeyTarget } from './loot-filter/widget'
 import type { LootFilterWidget } from './loot-filter/widget'
+import { FARMING_TYPE, FARMING_LOOT_TARGET } from './farming/farming'
+import type { FarmingWidget } from './farming/farming'
 
 export function wokeShortcutsFor (widget: Widget, config: { woke?: { setupDone: boolean, off: string[] }, widgets: Widget[] }): ShortcutAction[] {
   // Modules that are switched off register no hotkeys.
@@ -75,6 +77,11 @@ export function wokeShortcutsFor (widget: Widget, config: { woke?: { setupDone: 
       actions.push({ shortcut: mapMods.regexHotkey, action: { type: 'stash-search', text: mapMods.regexText } })
     }
     return actions
+  }
+  if (widget.wmType === FARMING_TYPE) {
+    const farming = widget as FarmingWidget
+    if (!farming.lootHotkey) return []
+    return [{ shortcut: farming.lootHotkey, action: { type: 'copy-item', target: FARMING_LOOT_TARGET } }]
   }
   if (widget.wmType === MAP_SCAN_TYPE) {
     const scan = widget as MapScanWidget
