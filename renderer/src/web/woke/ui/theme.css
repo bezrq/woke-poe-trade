@@ -1,0 +1,211 @@
+/*
+ * Woke UI theme: design tokens + base classes shared by every woke module.
+ *
+ * Tokens live on :root as --w-* variables. A theme is just a token set selected
+ * with <html data-woke-theme="...">: "hybrid" (default), "native", "modern",
+ * or "classic" (leave APT's own look alone; only woke widgets use the tokens).
+ *
+ * Module code should only reference --w-* tokens (or the W* components), never
+ * literal colours, so a theme change restyles everything at once.
+ */
+
+:root {
+  /* Surfaces */
+  --w-panel: rgba(19, 17, 15, 0.94);
+  --w-panel-2: #1d1a16;
+  --w-panel-3: #29241d;
+  --w-line: rgba(212, 166, 74, 0.16);
+  --w-line-soft: rgba(212, 166, 74, 0.07);
+  --w-line-strong: rgba(212, 166, 74, 0.38);
+  --w-header-bg: linear-gradient(#211d18, #1a1713);
+  --w-blur: none;
+  --w-shadow: 0 10px 30px rgba(0, 0, 0, 0.55);
+
+  /* Text */
+  --w-fg: #e8e2d6;
+  --w-dim: #a0978a;
+  --w-faint: #6a6256;
+
+  /* Accent + state */
+  --w-accent: #d4a64a;
+  --w-accent-fg: #17130c;
+  --w-accent-soft: rgba(212, 166, 74, 0.12);
+  --w-up: #6cc77a;
+  --w-down: #e0675a;
+  --w-warn: #e3b341;
+  --w-info: #7fb5d6;
+
+  /* PoE item colours (same in every theme) */
+  --w-r-normal: #c8c8c8;
+  --w-r-magic: #8888ff;
+  --w-r-rare: #ffff77;
+  --w-r-unique: #af6025;
+  --w-r-gem: #1ba29b;
+  --w-r-currency: #aa9e82;
+  --w-r-divination: #7fb5d6;
+
+  /* Type */
+  --w-head: FontinSmallCaps, FrizQuadrataC, Georgia, serif;
+  --w-head-size: 15px;
+  --w-head-track: 0.03em;
+  --w-body: "IBM Plex Sans", system-ui, sans-serif;
+  --w-num: "JetBrains Mono", ui-monospace, monospace;
+  --w-text: 13px;
+  --w-text-sm: 11.5px;
+
+  /* Shape + density */
+  --w-radius: 6px;
+  --w-radius-sm: 4px;
+  --w-row-h: 28px;
+  --w-pad: 12px;
+}
+
+:root[data-woke-theme="native"] {
+  --w-panel: rgba(14, 11, 8, 0.96);
+  --w-panel-2: #1a140e;
+  --w-panel-3: #261c12;
+  --w-line: #4a3a26;
+  --w-line-soft: rgba(138, 106, 58, 0.18);
+  --w-line-strong: #8a6a3a;
+  --w-header-bg: linear-gradient(#2b2015, #160f09);
+  --w-shadow: 0 0 0 1px #000, 0 12px 30px rgba(0, 0, 0, 0.7);
+  --w-fg: #e3d6bd;
+  --w-dim: #a8957a;
+  --w-faint: #6b5a40;
+  --w-accent: #c8a35a;
+  --w-accent-fg: #1a120a;
+  --w-accent-soft: rgba(200, 163, 90, 0.14);
+  --w-head-size: 15px;
+  --w-head-track: 0.06em;
+  --w-body: Fontin, FrizQuadrataC, Georgia, serif;
+  --w-num: Fontin, FrizQuadrataC, Georgia, serif;
+  --w-radius: 1px;
+  --w-radius-sm: 1px;
+  --w-row-h: 30px;
+}
+
+:root[data-woke-theme="modern"] {
+  --w-panel: rgba(17, 18, 22, 0.86);
+  --w-panel-2: rgba(255, 255, 255, 0.04);
+  --w-panel-3: rgba(255, 255, 255, 0.08);
+  --w-line: rgba(255, 255, 255, 0.08);
+  --w-line-soft: rgba(255, 255, 255, 0.04);
+  --w-line-strong: rgba(255, 255, 255, 0.18);
+  --w-header-bg: transparent;
+  --w-blur: blur(18px) saturate(140%);
+  --w-shadow: 0 20px 40px rgba(0, 0, 0, 0.45);
+  --w-fg: #ececf1;
+  --w-dim: #8f919c;
+  --w-faint: #585a62;
+  --w-accent: #9aa8ff;
+  --w-accent-fg: #0d0f1a;
+  --w-accent-soft: rgba(154, 168, 255, 0.12);
+  --w-head: "IBM Plex Sans", system-ui, sans-serif;
+  --w-head-size: 13px;
+  --w-head-track: 0;
+  --w-radius: 12px;
+  --w-radius-sm: 7px;
+}
+
+/* ---------- Base classes (used by the W* components, usable directly too) ---------- */
+
+.w-surface {
+  background: var(--w-panel);
+  backdrop-filter: var(--w-blur);
+  border: 1px solid var(--w-line);
+  border-radius: var(--w-radius);
+  box-shadow: var(--w-shadow);
+  color: var(--w-fg);
+  font-family: var(--w-body);
+  font-size: var(--w-text);
+  line-height: 1.45;
+}
+
+.w-row {
+  display: grid;
+  align-items: center;
+  gap: 8px;
+  min-height: var(--w-row-h);
+  padding: 0 var(--w-pad);
+  border-bottom: 1px solid var(--w-line-soft);
+}
+.w-row:hover { background: var(--w-accent-soft); }
+.w-row--head {
+  min-height: 24px;
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--w-faint);
+}
+.w-row--head:hover { background: none; }
+
+.w-group-label {
+  padding: 6px var(--w-pad) 2px;
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--w-faint);
+}
+
+.w-num { font-family: var(--w-num); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.w-dim { color: var(--w-dim); }
+.w-faint { color: var(--w-faint); }
+.w-up { color: var(--w-up); }
+.w-down { color: var(--w-down); }
+.w-accent { color: var(--w-accent); }
+.w-trunc { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.w-head-font { font-family: var(--w-head); letter-spacing: var(--w-head-track); }
+
+.w-icon-btn {
+  width: 22px; height: 22px;
+  display: inline-grid; place-items: center;
+  border-radius: var(--w-radius-sm);
+  color: var(--w-dim);
+  flex: none;
+}
+.w-icon-btn:hover { background: var(--w-panel-3); color: var(--w-fg); }
+.w-icon-btn--on { color: var(--w-accent); }
+
+.w-scroll { overflow-y: auto; min-height: 0; }
+.w-scroll::-webkit-scrollbar { width: 8px; }
+.w-scroll::-webkit-scrollbar-thumb { background: var(--w-panel-3); border-radius: 4px; }
+
+.w-rarity-normal { color: var(--w-r-normal); }
+.w-rarity-magic { color: var(--w-r-magic); }
+.w-rarity-rare { color: var(--w-r-rare); }
+.w-rarity-unique { color: var(--w-r-unique); }
+.w-rarity-gem { color: var(--w-r-gem); }
+.w-rarity-currency { color: var(--w-r-currency); }
+.w-rarity-divination { color: var(--w-r-divination); }
+
+/* ---------- APT skin layer ----------
+ * Restyles APT's own widget shell (price check, stash search, menu…) through the
+ * same tokens without touching APT files. Disabled with data-woke-theme="classic".
+ */
+:root:not([data-woke-theme="classic"]) .widget-default-style {
+  background: var(--w-panel) !important;
+  backdrop-filter: var(--w-blur);
+  border: 1px solid var(--w-line);
+  border-radius: var(--w-radius) !important;
+  box-shadow: var(--w-shadow) !important;
+  color: var(--w-fg);
+}
+
+/* Map APT's Tailwind greys onto the theme so price check, menus and settings
+ * match the woke widgets. Only colours change; layout stays upstream's. */
+:root:not([data-woke-theme="classic"]) #overlay-window .bg-gray-900 { background-color: var(--w-panel); }
+:root:not([data-woke-theme="classic"]) #overlay-window .bg-gray-800 { background-color: var(--w-panel-2); }
+:root:not([data-woke-theme="classic"]) #overlay-window .bg-gray-700 { background-color: var(--w-panel-3); }
+:root:not([data-woke-theme="classic"]) #overlay-window .bg-gray-600 { background-color: var(--w-line-strong); }
+:root:not([data-woke-theme="classic"]) #overlay-window .hover\:bg-gray-700:hover,
+:root:not([data-woke-theme="classic"]) #overlay-window .hover\:bg-gray-600:hover { background-color: var(--w-accent-soft); }
+:root:not([data-woke-theme="classic"]) #overlay-window .text-gray-100,
+:root:not([data-woke-theme="classic"]) #overlay-window .text-gray-200 { color: var(--w-fg); }
+:root:not([data-woke-theme="classic"]) #overlay-window .text-gray-400,
+:root:not([data-woke-theme="classic"]) #overlay-window .text-gray-500 { color: var(--w-dim); }
+:root:not([data-woke-theme="classic"]) #overlay-window .text-gray-600 { color: var(--w-faint); }
+:root:not([data-woke-theme="classic"]) #overlay-window .border-gray-500 { border-color: var(--w-line-strong); }
+:root:not([data-woke-theme="classic"]) #overlay-window .border-gray-600,
+:root:not([data-woke-theme="classic"]) #overlay-window .border-gray-700,
+:root:not([data-woke-theme="classic"]) #overlay-window .border-gray-800 { border-color: var(--w-line); }
+:root:not([data-woke-theme="classic"]) #overlay-window .rounded { border-radius: var(--w-radius-sm); }

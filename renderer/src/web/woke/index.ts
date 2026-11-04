@@ -5,6 +5,8 @@
 // To add a module: create `woke/<module>/`, then register its widget, settings
 // editor below, and its hotkeys in `shortcuts.ts`.
 
+import './ui'
+import AppearanceSettings from './ui/AppearanceSettings.vue'
 import type { Component } from 'vue'
 import type { WidgetSpec } from '@/web/overlay/interfaces'
 
@@ -56,3 +58,6 @@ export function wokeSettingsFor (wmType: string | undefined): Component | undefi
 }
 
 export { wokeShortcutsFor } from './shortcuts'
+
+// Extra pages for APT's main settings window (shown next to "General").
+export const wokeGeneralSettings: Component[] = [AppearanceSettings]

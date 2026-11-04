@@ -56,7 +56,7 @@ import { APP_PATRONS } from '@/assets/data'
 import { Host } from '@/web/background/IPC'
 import type { Widget, WidgetManager, WidgetSpec } from '@/web/overlay/interfaces'
 import AppTitleBar from '@/web/ui/AppTitlebar.vue'
-import { wokeSettingsFor } from '@/web/woke'
+import { wokeSettingsFor, wokeGeneralSettings } from '@/web/woke'
 import SettingsHotkeys from './hotkeys.vue'
 import SettingsChat from './chat.vue'
 import SettingsGeneral from './general.vue'
@@ -215,7 +215,7 @@ function menuByType (type?: string) {
     default:
       return [
         [SettingsHotkeys, SettingsChat],
-        [SettingsGeneral],
+        [SettingsGeneral, ...wokeGeneralSettings],
         [SettingsPricecheck, SettingsMaps, SettingsItemcheck],
         [SettingsDebug, SettingsAbout]
       ]

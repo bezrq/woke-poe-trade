@@ -1,35 +1,38 @@
 <template>
   <Widget :config="config" move-handles="corners" :inline-edit="false">
-    <div class="widget-default-style p-1 flex flex-col min-h-0" style="min-width: 16rem; max-width: 24rem; max-height: 70vh;">
-      <div class="text-gray-100 p-1 flex items-center justify-between gap-2">
-        <span class="truncate">{{ config.wmTitle || 'Regex library' }}</span>
-        <ui-toggle v-if="hasHotkeys" v-model="config.enableHotkeys">Keys</ui-toggle>
-      </div>
-      <input v-model="filter" placeholder="Filter by name, tag, category…"
-        class="bg-gray-900 rounded px-1 mx-1 mb-1 leading-6 text-gray-100" />
-      <div class="flex flex-col gap-y-1 overflow-y-auto min-h-0 px-1">
-        <template v-for="group in groups" :key="group.category">
-          <div class="text-gray-500 text-xs uppercase pt-1">{{ group.category }}</div>
-          <div v-for="entry in group.entries" :key="entry.id" class="flex gap-x-1">
-            <button @click="stashSearch(entry.text)" :class="$style.searchBtn"
-              :title="tooltip(entry)">
-              <span class="truncate">{{ entry.name || entry.text }}</span>
-              <span v-if="entry.text.length > MAX_SEARCH_LENGTH" :class="$style.warn">{{ entry.text.length }}/{{ MAX_SEARCH_LENGTH }}</span>
-              <span v-if="entry.hotkey && config.enableHotkeys" :class="$style.hotkey">{{ entry.hotkey }}</span>
-            </button>
-            <button @click="copy(entry)" :class="$style.iconBtn" title="Copy to clipboard">
+    <WPanel :title="config.wmTitle || 'Regex library'" width="22rem" max-height="70vh">
+      <template #actions>
+        <WChip v-if="hasHotkeys" clickable :active="config.enableHotkeys" title="Use each entry's hotkey"
+          @click="config.enableHotkeys = !config.enableHotkeys"><i class="fas fa-keyboard" /> Hotkeys</WChip>
+      </template>
+      <template #toolbar>
+        <WField v-model="filter" icon="fas fa-search" placeholder="Filter by name, tag, category…" class="grow" />
+      </template>
+
+      <template v-for="group in groups" :key="group.category">
+        <div class="w-group-label">{{ group.category }}</div>
+        <WListItem v-for="entry in group.entries" :key="entry.id" :title="tooltip(entry)" @select="stashSearch(entry.text)">
+          <span class="w-trunc">{{ entry.name || entry.text }}</span>
+          <WChip v-for="tag in entry.tags.slice(0, 2)" :key="tag">{{ tag }}</WChip>
+          <span v-if="entry.text.length > MAX_SEARCH_LENGTH" class="w-down text-xs shrink-0">{{ entry.text.length }}/{{ MAX_SEARCH_LENGTH }}</span>
+          <WKbd v-if="entry.hotkey && config.enableHotkeys" :keys="entry.hotkey" class="ml-auto" />
+          <template v-if="entry.name" #sub>{{ entry.text }}</template>
+          <template #actions>
+            <button @click="copy(entry)" class="w-icon-btn" :class="{ 'w-up': copiedId === entry.id }" title="Copy to clipboard">
               <i :class="copiedId === entry.id ? 'fas fa-check' : 'far fa-copy'" />
             </button>
-          </div>
-        </template>
-        <div v-if="!groups.length" class="text-gray-500 p-2 text-center">
-          {{ config.entries.length ? 'No matches' : 'No saved strings yet. Open settings to add some.' }}
-        </div>
-      </div>
-      <div class="flex justify-end gap-x-3 px-1 pt-1 text-xs">
-        <a href="https://poe.re/" target="_blank" class="text-gray-400 hover:text-gray-100">Generate on poe.re</a>
-      </div>
-    </div>
+          </template>
+        </WListItem>
+      </template>
+      <WEmpty v-if="!groups.length" icon="fas fa-filter">
+        {{ config.entries.length ? 'No matches' : 'No saved strings yet. Open settings to add some.' }}
+      </WEmpty>
+
+      <template #footer>
+        <span>Click to search stash</span>
+        <a href="https://poe.re/" target="_blank" class="ml-auto w-accent hover:underline">Generate on poe.re</a>
+      </template>
+    </WPanel>
   </Widget>
 </template>
 
@@ -64,7 +67,7 @@ import { MainProcess } from '@/web/background/IPC'
 import { pushHostConfig } from '@/web/Config'
 import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
-import UiToggle from '@/web/ui/UiToggle.vue'
+import { WPanel, WField, WChip, WKbd, WEmpty, WListItem } from '../ui'
 import { MAX_SEARCH_LENGTH, groupByCategory, matchesFilter } from './widget'
 import type { RegexEntry } from './widget'
 
@@ -113,41 +116,3 @@ function tooltip (entry: RegexEntry) {
     .filter(Boolean).join('\n')
 }
 </script>
-
-<style lang="postcss" module>
-.searchBtn {
-  flex: 1 1 auto;
-  min-width: 0;
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-  @apply rounded p-2 leading-4;
-  @apply text-gray-100 bg-gray-800;
-  text-align: left;
-
-  &:hover {
-    @apply bg-gray-700;
-  }
-}
-
-.iconBtn {
-  flex-shrink: 0;
-  @apply rounded px-2;
-  @apply text-gray-400 bg-gray-800;
-
-  &:hover {
-    @apply bg-gray-700 text-gray-100;
-  }
-}
-
-.hotkey {
-  margin-left: auto;
-  flex-shrink: 0;
-  @apply text-black bg-gray-400 rounded px-1;
-}
-
-.warn {
-  flex-shrink: 0;
-  @apply text-red-400 text-xs;
-}
-</style>
