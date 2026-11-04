@@ -1,4 +1,4 @@
-import { shallowRef } from 'vue'
+import { shallowRef, getCurrentScope, onScopeDispose } from 'vue'
 import { createGlobalState } from '@vueuse/core'
 import { usePoeninja } from '@/web/background/Prices'
 import { onWokePricesLoaded } from './hook'
@@ -13,15 +13,23 @@ import { perfTime, perfTimeAsync, whenIdle } from '../shared/perf'
 // so history is collected even when no price check happens.
 const KEEPALIVE_MS = 10 * 60 * 1000
 
-export const useMarketCollector = createGlobalState(() => {
-  const poeninja = usePoeninja()
+// Mounted widgets hold the collector: `users` get snapshots saved whenever APT
+// loads prices; `pollers` (history modules) also keep the 10 min refresh going.
+// With no holders nothing is saved or polled.
+let users = 0
+let pollers = 0
+let keepalive: ReturnType<typeof setInterval> | null = null
 
+export const collectorHolders = shallowRef({ users: 0, pollers: 0 })
+
+const useCollectorState = createGlobalState(() => {
   const lastSnapshot = shallowRef<{ league: string, ts: number, count: number, divine: number | null } | null>(null)
   const lastError = shallowRef<string | null>(null)
   // Bumped after every save so views can reload.
   const revision = shallowRef(0)
 
   onWokePricesLoaded((league, chunks) => {
+    if (users === 0) return
     const ts = Date.now()
     // Parsing and saving a few thousand rows takes a while; wait for a quiet
     // moment so it never delays a price check.
@@ -47,8 +55,39 @@ export const useMarketCollector = createGlobalState(() => {
       })
   }
 
-  poeninja.queuePricesFetch()
-  setInterval(() => { poeninja.queuePricesFetch() }, KEEPALIVE_MS)
-
   return { lastSnapshot, lastError, revision }
 })
+
+function retain (poll: boolean) {
+  const poeninja = usePoeninja()
+  // A fresh holder wants current prices; APT skips the fetch if they are recent.
+  if (++users === 1) poeninja.queuePricesFetch()
+  if (poll && ++pollers === 1) {
+    keepalive = setInterval(() => { poeninja.queuePricesFetch() }, KEEPALIVE_MS)
+  }
+  collectorHolders.value = { users, pollers }
+}
+
+function release (poll: boolean) {
+  users--
+  if (poll && --pollers === 0 && keepalive) {
+    clearInterval(keepalive)
+    keepalive = null
+  }
+  collectorHolders.value = { users, pollers }
+}
+
+// Call from a component's setup; released when it unmounts.
+// `poll: true` keeps prices refreshing for history (market, investments, lab gems).
+export function useMarketCollector (opts: { poll?: boolean } = {}) {
+  const state = useCollectorState()
+  const poll = Boolean(opts.poll)
+  retain(poll)
+  if (getCurrentScope()) {
+    onScopeDispose(() => { release(poll) })
+  }
+  return state
+}
+
+// Read-only access without holding the collector open.
+export { useCollectorState }

@@ -1,4 +1,5 @@
 // Turns a parsed map/logbook into a verdict + juice score.
+import { isModuleOn } from '../modules'
 import { AppConfig } from '@/web/Config'
 import { ItemCategory, ItemRarity } from '@/parser'
 import type { ParsedItem } from '@/parser'
@@ -75,6 +76,8 @@ export function checkMap (item: ParsedItem, config: MapModsWidget): MapCheckResu
 // The checker's config, for the strip inside APT's own windows. Null when the
 // widget hasn't been added from the overlay menu yet.
 export function findMapModsConfig (): MapModsWidget | null {
+  // Switched off in Settings → Modules: no strip in price check / map check.
+  if (!isModuleOn(AppConfig(), 'map-mods')) return null
   const w = AppConfig().widgets.find(w => w.wmType === MAP_MODS_TYPE) as MapModsWidget | undefined
   if (!w || w.wmFlags[0] === 'uninitialized' || !Array.isArray(w.profiles)) return null
   return w

@@ -3,11 +3,13 @@
 // Upstream files only call into this file (widget registry, settings window,
 // host shortcuts), so merging upstream changes stays a small, predictable diff.
 // To add a module: create `woke/<module>/`, then register its widget, settings
-// editor below, and its hotkeys in `shortcuts.ts`.
+// editor below, its hotkeys in `shortcuts.ts`, and its switch in `modules.ts`.
 
 import './shared/perf'
 import './ui'
 import AppearanceSettings from './ui/AppearanceSettings.vue'
+import ModulesSettings from './switchboard/ModulesSettings.vue'
+import SetupOverlay from './switchboard/SetupOverlay.vue'
 import PerfSettings from './ui/PerfSettings.vue'
 import type { Component } from 'vue'
 import type { WidgetSpec } from '@/web/overlay/interfaces'
@@ -50,6 +52,9 @@ import { ESSENCE_SCAN_TYPE } from './essence-scan/widget'
 import WidgetLabGems from './lab-gems/WidgetLabGems.vue'
 import WidgetLeagueInvest from './league-invest/WidgetLeagueInvest.vue'
 import WidgetBossRuns from './boss-runs/WidgetBossRuns.vue'
+import WidgetLootFilter from './loot-filter/WidgetLootFilter.vue'
+import LootFilterEditor from './loot-filter/loot-filter-editor.vue'
+import { LOOT_FILTER_TYPE } from './loot-filter/widget'
 
 type WidgetComponent = Component & { widget: WidgetSpec }
 
@@ -69,7 +74,8 @@ export const wokeWidgets: WidgetComponent[] = [
   WidgetEssenceScan as unknown as WidgetComponent,
   WidgetLabGems as unknown as WidgetComponent,
   WidgetLeagueInvest as unknown as WidgetComponent,
-  WidgetBossRuns as unknown as WidgetComponent
+  WidgetBossRuns as unknown as WidgetComponent,
+  WidgetLootFilter as unknown as WidgetComponent
 ]
 
 const editors: Record<string, Component> = {
@@ -83,7 +89,8 @@ const editors: Record<string, Component> = {
   [MAP_MODS_TYPE]: MapModsEditor,
   [MAP_SCAN_TYPE]: MapScanEditor,
   [ESSENCE_SCAN_TYPE]: EssenceScanEditor,
-  [MECHANICS_TYPE]: MechanicsEditor
+  [MECHANICS_TYPE]: MechanicsEditor,
+  [LOOT_FILTER_TYPE]: LootFilterEditor
 }
 
 export function wokeSettingsFor (wmType: string | undefined): Component | undefined {
@@ -93,4 +100,7 @@ export function wokeSettingsFor (wmType: string | undefined): Component | undefi
 export { wokeShortcutsFor } from './shortcuts'
 
 // Extra pages for APT's main settings window (shown next to "General").
-export const wokeGeneralSettings: Component[] = [AppearanceSettings, PerfSettings]
+export const wokeGeneralSettings: Component[] = [AppearanceSettings, ModulesSettings, PerfSettings]
+
+// Mounted once inside APT's overlay window: first-run module setup.
+export const WokeOverlay = SetupOverlay

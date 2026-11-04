@@ -32,6 +32,17 @@ export class GameLogWatcher {
     private logger: Logger,
   ) {}
 
+  // woke: stop tailing when no enabled module reads the log.
+  async stop () {
+    this._wantedPath = null
+    if (this._state) {
+      unwatchFile(this._state.path)
+      const { file } = this._state
+      this._state = null
+      await file.close()
+    }
+  }
+
   async restart (logFile: string) {
     if (this._wantedPath !== logFile) {
       this._wantedPath = logFile

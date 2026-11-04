@@ -1,0 +1,78 @@
+<template>
+  <span :class="$style.wrap">
+    <span :class="[$style.label, { [$style.hidden]: visibility === 'Hide' }]" :style="labelStyle">{{ text }}</span>
+    <span v-if="extras && visibility !== 'Hide'" :class="$style.extras">
+      <span v-if="style.effect" :title="`Beam: ${style.effect.color}${style.effect.temp ? ' (temporary)' : ''}`" :class="$style.beam" :style="{ background: poeColour(style.effect.color) }" />
+      <span v-if="style.icon" :title="`Minimap: ${style.icon.color} ${style.icon.shape}`" :style="{ color: poeColour(style.icon.color) }">{{ shapeGlyph(style.icon.shape) }}</span>
+      <span v-if="style.sound" :title="`Sound ${style.sound.id}, volume ${style.sound.volume}`" class="w-dim"><i class="fas fa-volume-up" /> {{ style.sound.id }}</span>
+    </span>
+  </span>
+</template>
+
+<script setup lang="ts">
+import { computed } from 'vue'
+import type { FilterAction } from './parse'
+import { DEFAULT_BG, DEFAULT_FONT, DEFAULT_TEXT, readStyle } from './edits'
+import type { Colour, StylePatch } from './edits'
+import { poeColour, shapeGlyph } from './colours'
+
+const props = withDefaults(defineProps<{
+  text: string
+  actions?: FilterAction[]
+  styleOverride?: StylePatch
+  visibility?: 'Show' | 'Hide' | 'Minimal'
+  extras?: boolean
+  // Scale: 1 for list rows, larger for the main preview.
+  scale?: number
+}>(), { actions: () => [], styleOverride: undefined, visibility: 'Show', extras: true, scale: 1 })
+
+const style = computed<StylePatch>(() => ({ ...readStyle(props.actions), ...(props.styleOverride ?? {}) }))
+
+const css = (c: Colour) => `rgba(${c[0]}, ${c[1]}, ${c[2]}, ${(c[3] ?? 255) / 255})`
+
+const labelStyle = computed(() => {
+  const s = style.value
+  // Game font sizes run 18-45 (default 32).
+  const size = s.fontSize ?? DEFAULT_FONT
+  const px = (9 + (size - 18) * 0.28) * props.scale
+  return {
+    color: css(s.text ?? DEFAULT_TEXT),
+    background: css(s.background ?? DEFAULT_BG),
+    borderColor: s.border ? css(s.border) : 'transparent',
+    fontSize: `${px.toFixed(1)}px`
+  }
+})
+</script>
+
+<style module>
+.wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.label {
+  display: inline-block;
+  padding: 1px 7px;
+  border: 1px solid transparent;
+  font-family: FontinSmallCaps, FrizQuadrataC, Georgia, serif;
+  white-space: nowrap;
+  line-height: 1.35;
+}
+.hidden {
+  opacity: 0.45;
+  text-decoration: line-through;
+}
+.extras {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--w-text-sm);
+}
+.beam {
+  display: inline-block;
+  width: 3px;
+  height: 14px;
+  border-radius: 2px;
+}
+</style>

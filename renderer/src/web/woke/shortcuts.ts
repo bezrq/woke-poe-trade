@@ -12,10 +12,15 @@ import { MAP_MODS_TYPE, MAP_MODS_TARGET } from './map-mods/widget'
 import type { MapModsWidget } from './map-mods/widget'
 import { MAP_SCAN_TYPE, scanHotkeyTarget } from './map-mods/scan'
 import type { MapScanWidget } from './map-mods/scan'
+import { isWidgetTypeOn } from './modules'
 import { ESSENCE_SCAN_TYPE, essenceHotkeyTarget } from './essence-scan/widget'
 import type { EssenceScanWidget } from './essence-scan/widget'
+import { LOOT_FILTER_TYPE, LOOT_FILTER_SAMPLE_TARGET, editorHotkeyTarget } from './loot-filter/widget'
+import type { LootFilterWidget } from './loot-filter/widget'
 
-export function wokeShortcutsFor (widget: Widget): ShortcutAction[] {
+export function wokeShortcutsFor (widget: Widget, config: { woke?: { setupDone: boolean, off: string[] }, widgets: Widget[] }): ShortcutAction[] {
+  // Modules that are switched off register no hotkeys.
+  if (!isWidgetTypeOn(config, widget.wmType)) return []
   if (widget.wmType === REGEX_LIBRARY_TYPE) {
     const lib = widget as RegexLibraryWidget
     if (!lib.enableHotkeys) return []
@@ -80,6 +85,17 @@ export function wokeShortcutsFor (widget: Widget): ShortcutAction[] {
     const scan = widget as EssenceScanWidget
     if (!scan.hotkey) return []
     return [{ shortcut: scan.hotkey, keepModKeys: true, action: { type: 'trigger-event', target: essenceHotkeyTarget(widget.wmId) } }]
+  }
+  if (widget.wmType === LOOT_FILTER_TYPE) {
+    const lf = widget as LootFilterWidget
+    const actions: ShortcutAction[] = []
+    if (lf.sampleHotkey) {
+      actions.push({ shortcut: lf.sampleHotkey, action: { type: 'copy-item', target: LOOT_FILTER_SAMPLE_TARGET, focusOverlay: true } })
+    }
+    if (lf.editorHotkey) {
+      actions.push({ shortcut: lf.editorHotkey, keepModKeys: true, action: { type: 'trigger-event', target: editorHotkeyTarget(widget.wmId) } })
+    }
+    return actions
   }
   return []
 }

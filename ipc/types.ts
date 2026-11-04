@@ -8,6 +8,8 @@ export interface HostConfig {
   logKeys: boolean
   windowTitle: string
   language: string
+  // woke: false when no enabled module needs Client.txt, so main stops tailing it
+  wokeGameLog?: boolean
 }
 
 export interface ShortcutAction {
@@ -179,6 +181,10 @@ type IpcUserAction =
     action: 'check-for-update' | 'update-and-restart' | 'quit'
   } | {
     action: 'stash-search'
+    text: string
+  } | {
+    // woke: loot filter editor reloads the saved filter with /itemfilter.
+    action: 'paste-in-chat'
     text: string
   }>
 

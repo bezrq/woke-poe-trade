@@ -5,6 +5,8 @@ import { HostConfig, ShortcutAction } from '@ipc/types'
 import type * as widget from './overlay/widgets'
 import type { StashSearchWidget } from './stash-search/widget'
 import { wokeShortcutsFor } from './woke/shortcuts'
+import { filterAptShortcuts, needsGameLog } from './woke/modules'
+import type { WokeModulesConfig } from './woke/modules'
 import type { ItemCheckWidget } from './item-check/widget'
 import type { ItemSearchWidget } from './item-search/widget'
 import { registry as widgetRegistry } from './overlay/widget-registry.js'
@@ -121,6 +123,7 @@ export interface Config {
   widgets: widget.Widget[]
   fontSize: number
   showAttachNotification: boolean
+  woke?: WokeModulesConfig
 }
 
 export const defaultConfig = (): Config => ({
@@ -512,7 +515,7 @@ function getConfigForHost (): HostConfig {
     }
   }
   for (const widget of config.widgets) {
-    actions.push(...wokeShortcutsFor(widget))
+    actions.push(...wokeShortcutsFor(widget, config))
     if (widget.wmType === 'stash-search') {
       const stashSearch = widget as StashSearchWidget
       if (!stashSearch.enableHotkeys) continue
@@ -560,7 +563,7 @@ function getConfigForHost (): HostConfig {
   }
 
   return {
-    shortcuts: actions,
+    shortcuts: filterAptShortcuts(config, actions),
     restoreClipboard: config.restoreClipboard,
     clientLog: config.clientLog,
     gameConfig: config.gameConfig,
@@ -568,6 +571,7 @@ function getConfigForHost (): HostConfig {
     overlayKey: config.overlayKey,
     logKeys: config.logKeys,
     windowTitle: config.windowTitle,
-    language: config.language
+    language: config.language,
+    wokeGameLog: needsGameLog(config)
   }
 }
