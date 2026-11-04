@@ -151,6 +151,17 @@ export const PAGES: SettingsPage[] = [
     find: ['Saved searches', 'Live search alert', 'Open old searches in the current league']
   },
   {
+    id: 'trade',
+    name: 'Trade assistant',
+    group: 'modules',
+    sub: 'Trade & prices',
+    icon: { art: CURRENCY_ICONS.divine, fa: 'fas fa-handshake' },
+    description: 'Trade whispers in the icon row, one-key replies and a sales log.',
+    modules: ['trade'],
+    widgets: ['woke-trade'],
+    find: ['Trade whispers', 'Next step', 'Busy reply', 'Invite', 'Kick', 'Sales log', 'Replies', 'Ping']
+  },
+  {
     id: 'market',
     name: 'Market & investments',
     group: 'modules',

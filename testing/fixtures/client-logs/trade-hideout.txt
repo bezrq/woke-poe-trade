@@ -1,0 +1,18 @@
+# Selling from the hideout, as Client.txt logs it (English client). Two
+# buyers whisper from the trade site (one of them twice), a bulk buyer offers
+# chaos for divines, the first buyer comes over and the trade goes through,
+# then you whisper a seller yourself. Names are made up.
+2026/11/04 21:30:02 400100000 1a4f3d1 [INFO Client 21088] Connecting to instance server at 159.65.86.12:6112
+2026/11/04 21:30:04 400102000 2caa1679 [DEBUG Client 21088] Generating level 68 area "HideoutCelestial" with seed 1
+2026/11/04 21:30:06 400104000 cff94598 [INFO Client 21088] : You have entered Celestial Hideout.
+2026/11/04 21:40:11 400705000 cff94598 [INFO Client 21088] @From <GLD> Kaltenhalt: Hi, I would like to buy your Headhunter Leather Belt listed for 120 divine in Settlers (stash tab "Sale"; position: left 3, top 5)
+2026/11/04 21:40:30 400724000 cff94598 [INFO Client 21088] @From xXLeagueStartXx: Hi, I'd like to buy your 10 Divine Orb for my 1450 Chaos Orb in Settlers.
+2026/11/04 21:40:33 400727000 cff94598 [INFO Client 21088] #Spammer: WTS cheap carries pm
+2026/11/04 21:40:45 400739000 cff94598 [INFO Client 21088] @From <GLD> Kaltenhalt: Hi, I would like to buy your Headhunter Leather Belt listed for 120 divine in Settlers (stash tab "Sale"; position: left 3, top 5)
+2026/11/04 21:40:52 400746000 cff94598 [INFO Client 21088] @To Kaltenhalt: Hi, sure, inviting
+2026/11/04 21:41:02 400756000 cff94598 [INFO Client 21088] : Kaltenhalt has joined the area.
+2026/11/04 21:41:20 400774000 cff94598 [INFO Client 21088] : Trade accepted.
+2026/11/04 21:41:25 400779000 cff94598 [INFO Client 21088] @To Kaltenhalt: Thanks, have fun!
+2026/11/04 21:41:31 400785000 cff94598 [INFO Client 21088] : Kaltenhalt has left the area.
+2026/11/04 21:45:00 400994000 cff94598 [INFO Client 21088] @To Ozzy_Seller: Hi, I would like to buy your Mageblood Heavy Belt listed for 310 divine in Settlers (stash tab "~price 310 divine"; position: left 1, top 1)
+2026/11/04 21:45:05 400999000 cff94598 [INFO Client 21088] : AFK mode is now ON. Autoreply "brb"

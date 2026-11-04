@@ -16,6 +16,7 @@ import { hotkeyFailures } from './hotkey-failures'
 import { marketHandlers } from './market-store'
 import { labLayoutImage } from './lab-layout'
 import { sessionHandlers } from './session-store'
+import { tradeLogHandlers } from './trade-log'
 import { browsePath, pathStat } from './settings-files'
 
 type Handler = (args: any) => Promise<unknown> // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -42,7 +43,8 @@ const handlers: Record<string, Handler> = {
   'path-stat': pathStat,
   'browse-path': browsePath,
   ...marketHandlers,
-  ...sessionHandlers
+  ...sessionHandlers,
+  ...tradeLogHandlers
 }
 
 // For main-process parts set up outside initWoke (setup window, crash reports).

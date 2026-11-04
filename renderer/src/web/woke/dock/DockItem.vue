@@ -23,6 +23,7 @@ const props = withDefaults(defineProps<{
   into?: string
   wmId?: number
   cardWidth?: string
+  interactive?: boolean
 }>(), {
   art: null,
   badge: null,
@@ -30,7 +31,8 @@ const props = withDefaults(defineProps<{
   led: null,
   into: undefined,
   wmId: undefined,
-  cardWidth: undefined
+  cardWidth: undefined,
+  interactive: false
 })
 
 const emit = defineEmits<{

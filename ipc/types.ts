@@ -186,6 +186,9 @@ type IpcUserAction =
     // woke: loot filter editor reloads the saved filter with /itemfilter.
     action: 'paste-in-chat'
     text: string
+    // woke: trade replies go out right away instead of waiting for a pause
+    // in typing (the key that sent them was just released).
+    immediate?: boolean
   }>
 
 interface Event<TName extends string, TPayload = undefined> {

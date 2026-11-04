@@ -28,6 +28,9 @@ export interface DockItemProps {
   // Widget to open when the icon is clicked with the overlay open.
   wmId?: number
   cardWidth?: string
+  // The card has buttons: resting on it makes the overlay clickable (and
+  // hands focus back to the game when the mouse leaves).
+  interactive?: boolean
 }
 
 export interface DockEntry {
@@ -41,12 +44,13 @@ export interface DockEntry {
 
 // Fixed order, so icons don't jump around as they come and go.
 export const DOCK_ORDER = [
-  'toolkit', 'campaign', 'run-timer', 'lab', 'lab-gems', 'mechanics', 'farming', 'boss-runs',
+  'toolkit', 'trade', 'campaign', 'run-timer', 'lab', 'lab-gems', 'mechanics', 'farming', 'boss-runs',
   'map-scan', 'essence-scan', 'trade-live', 'atlas', 'regex-library', 'market', 'league-invest', 'loot-filter'
 ]
 
 export const DOCK_NAMES: Record<string, string> = {
   'toolkit': 'Toolkit health',
+  'trade': 'Trades',
   'campaign': 'Campaign tracker',
   'run-timer': 'Run timer',
   'lab': 'Labyrinth',
