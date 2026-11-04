@@ -16,7 +16,7 @@ const parts = computed(() => (props.keys ?? '').split('+').map(s => s.trim()).fi
 .keys { display: inline-flex; gap: 3px; }
 .kbd {
   font-family: var(--w-num);
-  font-size: 10.5px;
+  font-size: var(--w-fs-xs);
   line-height: 14px;
   padding: 0 5px;
   border: 1px solid var(--w-line-strong);

@@ -30,7 +30,7 @@
           <WChip v-for="tag in entry.tags.slice(0, 2)" :key="tag">{{ tag }}</WChip>
           <span v-if="effectiveText(entry).length > MAX_SEARCH_LENGTH" class="w-down text-xs shrink-0" title="Too long: the game cuts the search off at 250 characters">{{ effectiveText(entry).length }}/{{ MAX_SEARCH_LENGTH }}</span>
           <WKbd v-if="entry.hotkey && config.enableHotkeys" :keys="entry.hotkey" class="ml-auto" />
-          <template v-if="entry.name" #sub>{{ effectiveText(entry) }}</template>
+          <template v-if="entry.name" #sub><span class="w-mono">{{ effectiveText(entry) }}</span></template>
           <template #actions>
             <button @click="copy(entry)" class="w-icon-btn" :class="{ 'w-up': copiedId === entry.id }" title="Copy to clipboard">
               <i :class="copiedId === entry.id ? 'fas fa-check' : 'far fa-copy'" />
