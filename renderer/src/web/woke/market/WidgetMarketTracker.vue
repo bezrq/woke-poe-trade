@@ -1,5 +1,20 @@
 <template>
   <Widget :config="config" move-handles="corners" :inline-edit="false" :readonly="true">
+    <!-- Town and hideout, while a watched item is past one of your alerts. -->
+    <DockItem id="market" icon="fas fa-chart-line" title="Market alerts" :show="dockShow" :badge="unseenAlerts || null"
+      tone="down" :wm-id="config.wmId" card-width="20rem" @open-change="onCard">
+      <template #card>
+        <div style="padding: 4px var(--w-pad) 6px;" class="flex flex-col gap-0.5">
+          <div v-for="w in alerted" :key="key(w)" class="flex justify-between gap-2">
+            <span class="w-trunc">{{ w.name }}<span v-if="w.variant" class="w-dim"> {{ w.variant }}</span></span>
+            <span class="w-num whitespace-nowrap" :class="w.alertState === 'above' ? 'w-up' : 'w-down'">
+              <WPrice :chaos="priceNow(w)" :divine="latest?.divine" /> {{ w.alertState === 'above' ? '≥' : '≤' }} {{ w.alertState === 'above' ? w.above : w.below }}c
+            </span>
+          </div>
+          <div v-if="latest?.divine" class="w-faint text-xs mt-1">Divine {{ Math.round(latest.divine) }}c · poe.ninja</div>
+        </div>
+      </template>
+    </DockItem>
     <WPanel :title="config.wmTitle || 'Market tracker'" width="30rem">
       <template #tabs>
         <WTabs v-model="config.view" :options="[
@@ -132,6 +147,8 @@ import { isThin, itemKey, thinTitle, utcDate } from './types'
 import type { PriceItem, Snapshot } from './types'
 import { PERIOD_MS, checkAlert } from './widget'
 import type { WatchedItem } from './widget'
+import DockItem from '../dock/DockItem.vue'
+import { useZone } from '../shared/zone'
 
 const props = defineProps<{
   config: MarketTrackerWidget
@@ -294,6 +311,19 @@ function setAlert (w: WatchedItem, side: 'above' | 'below', value: string | numb
   const n = Number(value)
   w[side] = Number.isFinite(n) && n > 0 ? n : null
   w.alertState = null
+}
+
+// ---- dock icon ----
+const zone = useZone()
+const alerted = computed(() => props.config.watchlist.filter(w => w.alertState != null))
+const dockShow = computed(() => alerted.value.length > 0 && (zone.kind === 'town' || zone.kind === 'hideout'))
+const seenAlerts = shallowRef(new Set<string>())
+const unseenAlerts = computed(() => alerted.value.filter(w => !seenAlerts.value.has(`${itemKey(w)}:${w.alertState}`)).length)
+function onCard (open: boolean) {
+  if (open) seenAlerts.value = new Set(alerted.value.map(w => `${itemKey(w)}:${w.alertState}`))
+}
+function priceNow (w: WatchedItem) {
+  return latest.value?.items.find(i => itemKey(i) === itemKey(w))?.chaos ?? null
 }
 
 watch([league, collector.revision], loadLatest, { immediate: true })

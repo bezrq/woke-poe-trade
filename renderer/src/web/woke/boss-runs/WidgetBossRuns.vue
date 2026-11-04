@@ -1,5 +1,22 @@
 <template>
   <Widget :config="config" move-handles="corners" :inline-edit="false" :readonly="true">
+    <!-- In a pinnacle arena: what this fight costs and pays. -->
+    <DockItem id="boss-runs" icon="fas fa-skull" title="Boss runs" :show="arenaBosses.length > 0"
+      :badge="arenaBosses.length === 1 && arenaBosses[0].kills ? arenaBosses[0].kills : null" :wm-id="config.wmId" card-width="20rem">
+      <template #card>
+        <div style="padding: 4px var(--w-pad) 6px;" class="flex flex-col gap-2">
+          <div v-for="r in arenaBosses" :key="r.boss.id" class="flex flex-col gap-0.5 w-num">
+            <div class="w-head-font w-accent w-trunc">{{ r.boss.name }}</div>
+            <div class="flex justify-between"><span class="w-dim">Entry</span>
+              <span class="w-down"><template v-if="r.entryMissing.length">?</template><WPrice v-else :chaos="-r.entry" :divine="divine" /></span></div>
+            <div class="flex justify-between"><span class="w-dim">{{ r.myLoot != null ? 'Your average drop' : 'Average drop' }}</span><WPrice :chaos="r.myLoot ?? r.loot" :divine="divine" /></div>
+            <div v-if="r.ready" class="flex justify-between"><span class="w-dim">Per run</span>
+              <span :class="r.profit >= 0 ? 'w-up' : 'w-down'"><WPrice :chaos="r.profit" :divine="divine" /></span></div>
+            <div v-if="r.kills" class="w-dim text-xs">{{ r.kills }} kill{{ r.kills === 1 ? '' : 's' }} logged</div>
+          </div>
+        </div>
+      </template>
+    </DockItem>
     <WPanel :title="config.wmTitle || 'Boss runs'" width="62rem" max-height="80vh" :scroll="false">
       <template #toolbar>
         <WSegmented v-model="config.tier" :options="tierOptions" />
@@ -237,6 +254,8 @@ import UiCheckbox from '@/web/ui/UiCheckbox.vue'
 import { WPanel, WTabs, WSegmented, WField, WButton, WEmpty, WPrice, WChip, WListItem } from '../ui'
 import { usePriceIndex } from '../market/price-index'
 import { BOSSES } from './bosses'
+import DockItem from '../dock/DockItem.vue'
+import { BOSS_ARENAS, useZone } from '../shared/zone'
 import { evaluateBoss, formatRunTime, luck, parseRunTime, priceResolver, unidentifiedTradeUrl } from './calc'
 import type { BossResult, DropRow, KillRecord, PriceMode, RateSource } from './calc'
 import { OWN_RATE_KILLS } from './calc'
@@ -297,6 +316,13 @@ const ranked = computed(() => {
     losing: withData.filter(r => r.profit < 0),
     noData: results.value.filter(r => !r.ready)
   }
+})
+
+// Bosses this arena can hold (shared/zone.ts), across every tier.
+const zone = useZone()
+const arenaBosses = computed(() => {
+  const ids = zone.kind === 'boss' ? BOSS_ARENAS[zone.name] ?? [] : []
+  return BOSSES.filter(b => ids.includes(b.id)).map(b => evaluateBoss(b, props.config, px.value))
 })
 
 const sel = computed(() => results.value.find(r => r.boss.id === props.config.selected) ?? results.value[0] ?? null)

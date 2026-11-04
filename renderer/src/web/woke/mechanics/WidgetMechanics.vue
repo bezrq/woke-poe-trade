@@ -1,22 +1,16 @@
 <template>
   <Widget :config="config" move-handles="corners" :inline-edit="false" :readonly="true">
     <div class="flex gap-2 min-h-0 items-start">
-      <!-- Collapsed: a small see-through icon; hovering it shows the glance card. -->
-      <div v-if="!config.expanded && iconShown" ref="glanceEl" :class="$style.glanceRoot" data-w-panel>
-        <!-- Not a <button>, so it can be dragged; a click without dragging expands. -->
-        <span v-if="!showGlance" data-widget-drag :class="$style.icon"
-          :title="`League mechanics: ${mech.label}. Rest the mouse here for prices; with the overlay open, drag to move or click to expand.`"
-          @click="config.expanded = true">
-          <i :class="mech.icon" />
-        </span>
-
-        <WPanel v-else width="19rem" max-height="60vh">
-          <template #title>{{ mech.label }}</template>
-          <template v-if="wm.active.value" #actions>
+      <!-- While you play: an icon in the dock, only in a zone with a mechanic;
+           resting the mouse on it shows the glance card. -->
+      <DockItem id="mechanics" :icon="mech.icon" :title="mech.label" :show="dockShow" :wm-id="config.wmId"
+        card-width="19rem" @activate="config.expanded = true">
+        <template #card>
+          <div v-if="wm.active.value" class="flex justify-end gap-1" style="padding: 2px 6px 0;">
             <button class="w-icon-btn" title="Previous mechanic" @click="step(-1)"><i class="fas fa-chevron-left" /></button>
             <button class="w-icon-btn" title="Next mechanic" @click="step(1)"><i class="fas fa-chevron-right" /></button>
             <button class="w-icon-btn" title="Expand" @click="config.expanded = true"><i class="fas fa-expand-alt" /></button>
-          </template>
+          </div>
           <div v-if="!hasPrices" :class="$style.warn"><i class="fas fa-exclamation-triangle" /> Waiting for poe.ninja prices…</div>
           <template v-if="mech.id === 'betrayal' && goals.length">
             <div class="w-group-label">Goals · {{ goalsDone }} of {{ goals.length }} in place</div>
@@ -39,11 +33,11 @@
               <WPrice :chaos="s.chaos" :divine="divine" />
             </WChip>
           </div>
-        </WPanel>
-      </div>
+        </template>
+      </DockItem>
 
       <!-- Expanded: rail of mechanics, prices, then scarabs and tips. -->
-      <WPanel v-else-if="config.expanded" :title="config.wmTitle || 'League mechanics'" width="40rem" max-height="70vh" :scroll="false">
+      <WPanel v-if="config.expanded" :title="config.wmTitle || 'League mechanics'" width="40rem" max-height="70vh" :scroll="false">
         <template #actions>
           <button class="w-icon-btn" :class="{ 'w-icon-btn--on': config.autoSwitch }" @click="config.autoSwitch = !config.autoSwitch"
             :title="config.autoSwitch ? 'Switches mechanic when you enter its zone. Click to turn off.' : 'Click to switch mechanic when you enter its zone'">
@@ -170,12 +164,13 @@ export default {
 </script>
 
 <script setup lang="ts">
-import { inject, computed, shallowRef, watch, onUnmounted } from 'vue'
+import { inject, computed, shallowRef } from 'vue'
 import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
 import { WPanel, WSegmented, WButton, WPrice, WChip, WField, WSelect } from '../ui'
 import { usePriceIndex } from '../market/price-index'
-import { useHoverZone } from '../shared/hover'
+import DockItem from '../dock/DockItem.vue'
+import { hideWhilePlaying } from '../dock/dock'
 import MechanicPrices from './MechanicPrices.vue'
 import { MECHANICS, mechanicById, priceScarabs } from './data'
 import { DIVISIONS, MEMBERS, REWARDS, adviceFor, goalsFromStars, priceReward, slotKey } from './betrayal'
@@ -189,8 +184,7 @@ const props = defineProps<{
 const wm = inject<WidgetManager>('wm')!
 
 if (props.config.wmFlags[0] === 'uninitialized') {
-  // No 'invisible-on-blur': the icon stays on screen while you play.
-  props.config.wmFlags = []
+  props.config.wmFlags = ['invisible-on-blur']
   props.config.wmTitle = 'League mechanics'
   // Above the stash and inventory panels, so the glance never covers them.
   props.config.anchor = { pos: 'tl', x: 2, y: 8 }
@@ -203,6 +197,9 @@ if (props.config.wmFlags[0] === 'uninitialized') {
   props.config.betrayalOverrides = {}
   wm.show(props.config.wmId)
 }
+
+// The expanded window shows only with the overlay open; the dock covers play.
+hideWhilePlaying(props.config)
 
 // Icons placed before: the old default spot (left edge, 30% down) is inside
 // the stash grid. Move it above, once.
@@ -234,35 +231,11 @@ useMechanicZone((id) => {
   zoneMech.value = id
   if (id && props.config.autoSwitch && !props.config.hidden.includes(id)) props.config.tab = id
 })
-// The icon is contextual: it shows only in a zone with a mechanic (it used to
-// show the last or default tab, Delve, everywhere). With the overlay open it
-// always shows, so it can be moved or opened.
-const iconShown = computed(() => wm.active.value || (zoneMech.value != null && !props.config.hidden.includes(zoneMech.value)))
-
-// ---- Glance (hover) ----
-const glanceEl = shallowRef<HTMLElement | null>(null)
-// Read-only over the game: making it clickable would pull the whole overlay up
-// and take focus from the game. Its buttons appear when the overlay is open.
-const hovering = useHoverZone(glanceEl, {
-  enabled: () => !props.config.expanded
-})
-// Opens only once the mouse rests on the icon, so sweeping past it while
-// moving items doesn't pop the card up. Small delay before closing so moving
-// between icon and card doesn't flicker.
-const OPEN_AFTER_MS = 400
-const CLOSE_AFTER_MS = 250
-const showGlance = shallowRef(false)
-let glanceTimer: ReturnType<typeof setTimeout> | null = null
-watch(hovering, (on) => {
-  if (glanceTimer) { clearTimeout(glanceTimer); glanceTimer = null }
-  if (on === showGlance.value) return
-  glanceTimer = setTimeout(() => { showGlance.value = on }, on ? OPEN_AFTER_MS : CLOSE_AFTER_MS)
-})
-onUnmounted(() => { if (glanceTimer) clearTimeout(glanceTimer) })
+// The icon is contextual: it shows only in a zone with a mechanic.
+const dockShow = computed(() => zoneMech.value != null && !props.config.hidden.includes(zoneMech.value))
 
 function collapse () {
   props.config.expanded = false
-  showGlance.value = false
 }
 
 const scarabs = computed(() => mech.value.scarabs ? priceScarabs(mech.value.scarabs, items.value) : [])
@@ -345,22 +318,6 @@ function boardMatch (member: string, div: string, reward: string) {
 </script>
 
 <style module>
-.glanceRoot { display: inline-block; }
-.icon {
-  width: 34px;
-  height: 34px;
-  display: grid;
-  place-items: center;
-  border-radius: 50%;
-  font-size: 15px;
-  color: var(--w-accent);
-  background: color-mix(in srgb, var(--w-panel) 45%, transparent);
-  border: 1px solid var(--w-line);
-  opacity: 0.55;
-  transition: opacity 0.15s;
-  cursor: grab;
-}
-.icon:hover { opacity: 1; }
 .warn { color: var(--w-warn); padding: 6px var(--w-pad); font-size: 12px; }
 .glanceBtr { grid-template-columns: minmax(0, 1fr) 64px; }
 .pad { padding: 4px var(--w-pad) 8px; }
@@ -464,5 +421,4 @@ function boardMatch (member: string, div: string, reward: string) {
 .cell:hover { background: var(--w-accent-soft); }
 .cellOn { background: var(--w-accent-soft); box-shadow: inset 0 0 0 1px var(--w-line-strong); }
 .cellDim { opacity: 0.28; }
-@media (prefers-reduced-motion: reduce) { .icon { transition: none; } }
 </style>

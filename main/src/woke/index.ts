@@ -13,6 +13,7 @@ import { readGameLogTail } from './game-log-tail'
 import { perfSnapshot, startProcessSampler } from './perf'
 import { hotkeyFailures } from './hotkey-failures'
 import { marketHandlers } from './market-store'
+import { labLayoutImage } from './lab-layout'
 
 type Handler = (args: any) => Promise<unknown> // eslint-disable-line @typescript-eslint/no-explicit-any
 
@@ -29,6 +30,7 @@ const handlers: Record<string, Handler> = {
   'perf-stats': async () => perfSnapshot(),
   'ocr-check': async () => checkOcr(),
   'hotkey-failures': async () => hotkeyFailures(),
+  'lab-layout-image': labLayoutImage,
   ...marketHandlers
 }
 

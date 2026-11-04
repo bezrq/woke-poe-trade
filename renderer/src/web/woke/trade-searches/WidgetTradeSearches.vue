@@ -1,5 +1,19 @@
 <template>
   <Widget :config="config" move-handles="corners" :inline-edit="false">
+    <!-- A live search keeps running out of sight; its icon counts new results. -->
+    <DockItem ref="dockRef" id="trade-live" icon="fas fa-bolt" :title="openEntry?.name || 'Live search'" :show="liveOpen"
+      :badge="unseen || null" :tone="unseen ? 'down' : 'accent'" :led="liveOpen ? 'on' : null" :wm-id="config.wmId"
+      card-width="20rem" @open-change="onCard">
+      <template #card>
+        <div style="padding: 4px var(--w-pad) 6px;">
+          <div class="w-dim text-xs">{{ unseen ? `${unseen} new since you last looked` : 'No new results since you last looked' }}<template v-if="total >= 0"> · {{ total }} on the page</template></div>
+          <div v-for="(r, i) in latest" :key="i" class="flex justify-between gap-2">
+            <span class="w-trunc">{{ r.name || 'Item' }}</span><span class="w-num w-accent whitespace-nowrap">{{ r.price }}</span>
+          </div>
+          <div class="w-faint text-xs mt-1">Ping {{ config.liveAlert ? 'on' : 'off' }} · open the overlay and click the icon to whisper</div>
+        </div>
+      </template>
+    </DockItem>
     <div class="flex gap-2 min-h-0 items-start">
       <WPanel :title="config.wmTitle || 'Trade searches'" width="19rem" max-height="70vh">
         <template #actions>
@@ -76,6 +90,8 @@ import { AppConfig, pushHostConfig } from '@/web/Config'
 import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
 import { WPanel, WField, WChip, WKbd, WEmpty, WListItem } from '../ui'
+import DockItem from '../dock/DockItem.vue'
+import { hideWhilePlaying } from '../dock/dock'
 import { useLeagues } from '@/web/background/Leagues'
 import { groupByCategory, isLiveSearch, isValidUrl, leagueOf, matchesFilter, parseHotkeyTarget, withLeague } from './widget'
 import type { OpenTarget, TradeSearchEntry } from './widget'
@@ -117,18 +133,37 @@ function urlFor (entry: TradeSearchEntry): string {
 const flashing = shallowRef(false)
 let lastCount = -1
 const ROWS_JS = "document.querySelectorAll('.resultset > .row[data-id]').length"
+// The newest few results (name, price), for the dock card.
+const LATEST_JS = `JSON.stringify(Array.from(document.querySelectorAll('.resultset > .row[data-id]')).slice(0, 3).map(r => ({
+  name: (r.querySelector('.itemName') || {}).innerText || '',
+  price: ((r.querySelector('[data-field="price"]') || {}).innerText || '').replace(/\\s+/g, ' ').trim()
+})))`
+const unseen = shallowRef(0)
+const total = shallowRef(-1)
+const latest = shallowRef<Array<{ name: string, price: string }>>([])
+const dockRef = shallowRef<InstanceType<typeof DockItem> | null>(null)
 const livePoll = setInterval(async () => {
   const el = webviewEl.value
-  if (!props.config.liveAlert || !openEntry.value || !isLiveSearch(openEntry.value.url) || !el?.executeJavaScript) {
+  if (!liveOpen.value || !el?.executeJavaScript) {
     lastCount = -1
     return
   }
   try {
     const n = Number(await el.executeJavaScript(ROWS_JS))
-    if (lastCount >= 0 && n > lastCount) ping()
+    if (lastCount >= 0 && n > lastCount) {
+      unseen.value += n - lastCount
+      if (props.config.liveAlert) ping()
+      latest.value = JSON.parse(String(await el.executeJavaScript(LATEST_JS))) as Array<{ name: string, price: string }>
+      const top = latest.value[0]
+      if (top && !wm.active.value) dockRef.value?.peek(`${top.name || 'New result'} · ${top.price}`)
+    }
     lastCount = n
+    total.value = n
   } catch {}
 }, 1500)
+function onCard (open: boolean) {
+  if (!open) unseen.value = 0
+}
 onUnmounted(() => { clearInterval(livePoll) })
 
 function ping () {
@@ -156,10 +191,17 @@ const overlayKey = computed(() => AppConfig().overlayKey)
 
 watch(() => props.config.enableHotkeys, () => { pushHostConfig() })
 
-// While a search is open, keep it visible over the game (useful for live
-// searches); the list alone hides when the game has focus, like stash search.
+const liveOpen = computed(() => !!openEntry.value && isLiveSearch(openEntry.value.url))
+
+// A search you opened stays over the game until you close it, like before,
+// except a live search: it keeps running out of sight and its dock icon
+// shows new results. The list alone shows only with the overlay open.
+hideWhilePlaying(props.config)
 watch(openEntry, (entry) => {
-  wm.setFlag(props.config.wmId, 'invisible-on-blur', !entry)
+  unseen.value = 0
+  total.value = -1
+  latest.value = []
+  wm.setFlag(props.config.wmId, 'invisible-on-blur', !entry || isLiveSearch(entry.url))
 })
 
 function open (entry: TradeSearchEntry, where: OpenTarget) {

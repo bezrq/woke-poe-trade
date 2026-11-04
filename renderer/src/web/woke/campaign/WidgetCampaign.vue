@@ -1,5 +1,46 @@
 <template>
   <Widget :config="config" move-handles="corners" :inline-edit="false" :readonly="true">
+    <!-- While you play: one icon (act badge, green while ahead of your best);
+         the strip and guide below show only with the overlay open. -->
+    <DockItem ref="dockRef" id="campaign" icon="fas fa-route" title="Campaign" :show="dockShow"
+      :badge="s.act ? actShort(s.act) : null" :tone="dockTone" :wm-id="config.wmId" card-width="24rem"
+      @open-change="cardShown = $event">
+      <template #card>
+        <div :class="$style.body">
+          <div class="flex items-baseline gap-2">
+            <span class="w-head-font w-accent w-trunc">{{ s.act ? actLabel(s.act) + ' · ' : '' }}{{ s.zone || 'waiting for a zone change' }}</span>
+            <span v-if="s.level != null" class="ml-auto w-num whitespace-nowrap">Lv {{ s.level }}
+              <span v-if="xp" :class="[$style.pill, $style['pill--' + xp.band]]">{{ xpLabel }}</span></span>
+          </div>
+          <template v-if="current">
+            <div v-for="(st, i) in shown" :key="st.index" :class="i === 0 ? $style.now : $style.next">
+              <div class="flex gap-1.5">
+                <span :class="i === 0 ? 'w-accent' : 'w-faint'">{{ i === 0 ? '›' : '·' }}</span>
+                <span class="min-w-0"><RouteParts :parts="st.parts" />
+                  <span v-if="st.recommendedLevel != null" class="w-num" :class="lowFor(st) ? 'w-down' : 'w-faint'"> · lv {{ st.recommendedLevel }}</span></span>
+              </div>
+              <div v-for="(sub, j) in (i === 0 ? st.subs : [])" :key="j" :class="$style.sub" class="w-dim"><RouteParts :parts="sub" /></div>
+            </div>
+          </template>
+          <div v-else class="w-dim">Route finished. Good luck in maps.</div>
+          <div v-if="note" :class="$style.callout" class="whitespace-pre-wrap">{{ note }}</div>
+          <div v-if="timer" class="flex gap-2 w-num" :class="$style.build">
+            <span class="w-dim">Run</span> {{ formatRunTime(timer.total) }}
+            <span v-if="timer.delta != null" :class="timer.delta <= 0 ? 'w-up' : 'w-down'">{{ formatDelta(timer.delta) }}</span>
+            <span v-if="timer.paused" style="color: var(--w-warn);">paused</span>
+            <span v-if="timer.act" class="ml-auto w-dim">act {{ formatRunTime(timer.act) }}</span>
+          </div>
+          <div v-if="nextGem" :class="$style.build" class="w-trunc" :title="nextGem.source ?? undefined">
+            <span class="w-dim">Next gem</span> <span class="w-rarity-gem">{{ nextGem.name.replace(/ Support$/, '') }}</span>
+            <span class="w-num w-faint"> · lv {{ nextGem.requiredLevel }}</span>
+            <div v-if="nextGem.source" class="w-dim text-xs w-trunc">{{ nextGem.source }}</div>
+          </div>
+          <div v-else-if="config.showBuild && activeBuild && mainGroups.length" :class="$style.build" class="w-trunc w-rarity-gem">
+            {{ mainGroups[0].gems.filter(x => x.enabled).map(x => x.name.replace(/ Support$/, '')).join(' · ') }}
+          </div>
+        </div>
+      </template>
+    </DockItem>
     <div v-if="visible" class="flex flex-col items-start gap-1" data-w-panel>
       <!-- HUD strip -->
       <div :class="$style.strip">
@@ -110,6 +151,10 @@ import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
 import { useVisibleClock } from '../shared/visible-clock'
 import RouteParts from './RouteParts.vue'
+import DockItem from '../dock/DockItem.vue'
+import { hideWhilePlaying, tickWhile } from '../dock/dock'
+import { reportProblem } from '../dock/health'
+import { nextGems } from '../pob-builds/gems'
 import { actFromAreaId, actLabel, parseLogLine, pickTreeForLevel } from './log-parse'
 import type { LogEvent } from './log-parse'
 import { emptyState, migrateCampaign, parseHotkeyTarget } from './widget'
@@ -133,7 +178,7 @@ const props = defineProps<{
 const wm = inject<WidgetManager>('wm')!
 
 if (props.config.wmFlags[0] === 'uninitialized') {
-  props.config.wmFlags = []
+  props.config.wmFlags = ['invisible-on-blur']
   props.config.wmTitle = 'Campaign tracker'
   props.config.anchor = { pos: 'tc', x: 50, y: 1 }
   props.config.charName = ''
@@ -144,6 +189,7 @@ if (props.config.wmFlags[0] === 'uninitialized') {
   wm.show(props.config.wmId)
 }
 migrateCampaign(props.config)
+hideWhilePlaying(props.config)
 
 const s = computed(() => props.config.state)
 
@@ -216,6 +262,9 @@ const note = computed(() => {
 const now = shallowRef(Date.now())
 // Ticks only while the widget is on screen.
 useVisibleClock(props.config, () => { now.value = Date.now() }, 1000)
+// ...and while the dock card is open.
+const cardShown = shallowRef(false)
+onUnmounted(tickWhile(() => cardShown.value, () => { now.value = Date.now() }, 1000))
 
 const timerWidget = computed(() => {
   const cfg = AppConfig()
@@ -230,6 +279,7 @@ const timer = computed(() => {
   return {
     total: runElapsed(run, now.value),
     delta: headlineDelta(rows),
+    act: rows.find(r => r.state === 'current')?.segmentMs ?? null,
     paused: !run.finished && run.runningSince == null
   }
 })
@@ -243,6 +293,22 @@ const visible = computed(() => {
   // Still show in campaign zones (e.g. the Epilogue), hide in maps and hideouts.
   return actFromAreaId(s.value.areaId) != null
 })
+
+// ---- dock icon ----
+
+// Campaign areas and towns only; maps, hideouts and the lab hide it.
+const dockShow = computed(() => visible.value && actFromAreaId(s.value.areaId) != null)
+const dockTone = computed(() => {
+  const d = timer.value?.delta
+  return d == null ? 'accent' : d <= 0 ? 'up' : 'down'
+})
+const dockRef = shallowRef<InstanceType<typeof DockItem> | null>(null)
+
+function peekStep () {
+  const step = current.value
+  if (!step || !s.value.zone) return
+  dockRef.value?.peek(`${s.value.zone} · ${step.parts.map(p => p.text).join('')}`)
+}
 
 // ---- Client.txt ----
 
@@ -264,6 +330,7 @@ function apply (ev: LogEvent): boolean {
     props.config.step = advanceOnEnter(route.value, props.config.step, ev.areaId, routeData)
   } else if (ev.kind === 'zone') {
     state.zone = ev.name
+    if (caughtUp) setTimeout(peekStep, 0)
   } else if (ev.kind === 'level') {
     // Party members' level-ups are logged too. Follow the character named
     // in the settings, or else the first one seen, the way the run timer does.
@@ -313,6 +380,7 @@ function applyLines (lines: string[], at: number) {
     if (ev && apply(ev)) changed = true
   }
   if (changed) {
+    now.value = Date.now()
     props.config.state.updatedAt = at
     // Log events arrive while the game has focus, when APT doesn't save config.
     saveConfig()
@@ -327,6 +395,7 @@ const logListener = Host.onEvent('MAIN->CLIENT::game-log', (e) => {
 // Catch up on what happened while the app was closed, then go live.
 logTail().then(tail => {
   logMissing.value = tail.path == null
+  reportProblem('client-log', logMissing.value ? 'Client.txt not found, so the campaign tracker can\'t follow you. Set its path in Settings → General.' : null)
   for (const { line, at } of linesAfter(tail, props.config.state.updatedAt)) applyLines([line], at)
 }).finally(() => {
   caughtUp = true
@@ -368,6 +437,13 @@ const mainGroups = computed(() => {
   const groups = details.value?.skills.filter(g => g.enabled && g.gems.length) ?? []
   const main = groups.filter(g => g.isMain)
   return (main.length ? main : groups).slice(0, 2)
+})
+
+// The next gem the build uses that you can't use yet.
+const nextGem = computed(() => {
+  if (!props.config.showBuild || !details.value) return null
+  const level = s.value.level ?? 1
+  return nextGems(details.value, level, s.value.className).find(g => g.requiredLevel > level) ?? null
 })
 
 function safeUrl (url: string) {

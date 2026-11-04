@@ -1,5 +1,20 @@
 <template>
   <Widget :config="config" move-handles="corners" :inline-edit="false" :readonly="true">
+    <!-- First two weeks of a league, in town and hideout: today's best buys. -->
+    <DockItem id="league-invest" icon="fas fa-seedling" title="League start buys" :show="dockShow"
+      :badge="day != null ? `D${day}` : null" :wm-id="config.wmId" card-width="21rem">
+      <template #card>
+        <div style="padding: 4px var(--w-pad) 6px;" class="flex flex-col gap-0.5">
+          <div v-for="r in ranked.slice(0, 5)" :key="opportunityKey(r.opportunity)" class="flex justify-between gap-2">
+            <span class="w-trunc">{{ r.opportunity.name }}<span v-if="r.opportunity.variant" class="w-dim"> {{ r.opportunity.variant }}</span></span>
+            <span class="w-num whitespace-nowrap"><span class="w-up">+{{ Math.round((r.opportunity.median - 1) * 100) }}%</span>
+              <span v-if="r.chaos != null" class="w-dim"> · {{ formatChaos(r.chaos, snapshot?.divine ?? null) }}</span></span>
+          </div>
+          <div v-if="!ranked.length" class="w-dim text-xs">No buys stand out for day {{ day }}.</div>
+          <div class="w-faint text-xs mt-1">From past leagues, rise by day {{ (day ?? 0) + config.horizon }}</div>
+        </div>
+      </template>
+    </DockItem>
     <WPanel :title="config.wmTitle || 'League investments'" width="36rem" max-height="80vh">
       <template #actions>
         <WChip clickable :active="showChanged" title="Items a patch changed this league" @click="showChanged = !showChanged"><i class="fas fa-exclamation-triangle" /> Changed {{ changed.length }}</WChip>
@@ -127,6 +142,8 @@ import type { Opportunity } from './invest'
 import { allLeagues, deleteLeague, saveLeague } from './store'
 import { leagueDay, leagueStartDates } from './league-start'
 import { readZip } from './zip'
+import DockItem from '../dock/DockItem.vue'
+import { useZone } from '../shared/zone'
 import type { LeagueInvestWidget } from './widget'
 import { changedMatchers, isChanged } from './widget'
 
@@ -187,6 +204,10 @@ const day = computed<number | null>(() => {
   if (props.config.dayOverride != null) return props.config.dayOverride
   return start.value ? Math.max(0, leagueDay(start.value)) : null
 })
+
+const zone = useZone()
+const dockShow = computed(() => day.value != null && day.value <= 14 && histories.value.length > 0 &&
+  (zone.kind === 'town' || zone.kind === 'hideout'))
 
 function onDayInput (e: Event) {
   const v = (e.target as HTMLInputElement).value.trim()
