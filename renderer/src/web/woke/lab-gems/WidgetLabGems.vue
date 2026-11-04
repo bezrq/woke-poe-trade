@@ -33,6 +33,7 @@
             <span class="w-num text-right" :class="i === 0 ? 'w-up' : ''" title="Expected value of the best of the 3 offered gems">EV {{ fmt(roll.ev) }}</span>
           </div>
           <div v-for="g in roll.top" :key="g.name" class="w-row" :class="$style.gemGrid">
+            <img v-if="gemIcon(g.name)" :src="gemIcon(g.name)!" :class="$style.icon" alt="" loading="lazy" decoding="async" draggable="false"><span v-else />
             <span class="w-trunc w-rarity-gem">{{ g.name }}</span>
             <WPrice :chaos="g.chaos ?? 0" :divine="snapshot?.divine" />
           </div>
@@ -50,13 +51,14 @@
           <template v-for="p in picks" :key="p.baseName">
             <button class="w-row w-full text-left" :class="$style.pickGrid" @click="toggle(p.baseName)">
               <span :class="[$style.dot, $style[p.color]]" />
-              <span class="w-trunc">{{ p.baseName }} <i class="fas text-xs w-faint" :class="expanded === p.baseName ? 'fa-chevron-up' : 'fa-chevron-down'" /></span>
+              <span :class="$style.named"><img v-if="gemIcon(p.baseName)" :src="gemIcon(p.baseName)!" :class="$style.icon" alt="" loading="lazy" decoding="async" draggable="false"><span v-else :class="$style.icon" /><span class="w-trunc">{{ p.baseName }} <i class="fas text-xs w-faint" :class="expanded === p.baseName ? 'fa-chevron-up' : 'fa-chevron-down'" /></span></span>
               <span class="text-right w-dim" title="Base gem price"><WPrice v-if="p.baseChaos != null" :chaos="p.baseChaos" :divine="snapshot?.divine" /><template v-else>?</template></span>
               <WPrice :chaos="value(p)" :divine="snapshot?.divine" />
               <span class="text-right w-up w-num" title="Profit after buying the base gem">+<WPrice :chaos="profit(p)" :divine="snapshot?.divine" /></span>
             </button>
             <template v-if="expanded === p.baseName">
-              <div v-for="v in p.variants" :key="v.name" class="w-row" :class="$style.gemGrid" style="padding-left: calc(var(--w-pad) + 18px);">
+              <div v-for="v in p.variants" :key="v.name" class="w-row" :class="$style.gemGrid">
+                <img v-if="gemIcon(v.name)" :src="gemIcon(v.name)!" :class="$style.icon" alt="" loading="lazy" decoding="async" draggable="false"><span v-else />
                 <span class="w-trunc w-rarity-gem">{{ v.name }}</span>
                 <WPrice :chaos="v.chaos" :divine="snapshot?.divine" />
               </div>
@@ -98,6 +100,7 @@ import type { Snapshot } from '../market/types'
 import { GEM_STATES, colorRolls, gemPrices, pickProfit, pickValue, specificPicks } from './font'
 import type { GemColor, GemState, SpecificPick } from './font'
 import type { LabGemsWidget } from './widget'
+import { gemIcon } from './icons'
 
 const props = defineProps<{
   config: LabGemsWidget
@@ -172,7 +175,9 @@ function ago (ts: number) {
 
 <style module>
 .poolGrid { grid-template-columns: 10px minmax(0, 1fr) auto 84px; }
-.gemGrid { grid-template-columns: minmax(0, 1fr) 76px; padding-left: calc(var(--w-pad) + 18px); }
+.gemGrid { grid-template-columns: 20px minmax(0, 1fr) 76px; padding-left: calc(var(--w-pad) + 18px); }
+.icon { width: 20px; height: 20px; object-fit: contain; flex: none; }
+.named { display: flex; align-items: center; gap: 6px; min-width: 0; }
 .pickGrid { grid-template-columns: 10px minmax(0, 1fr) 70px 70px 76px; }
 .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; flex: none; }
 .r { background: #d0533f; }
