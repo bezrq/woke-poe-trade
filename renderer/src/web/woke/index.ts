@@ -15,18 +15,23 @@ import WidgetTradeSearches from './trade-searches/WidgetTradeSearches.vue'
 import TradeSearchesEditor from './trade-searches/trade-searches-editor.vue'
 import { TRADE_SEARCHES_TYPE } from './trade-searches/widget'
 import WidgetMarketTracker from './market/WidgetMarketTracker.vue'
+import WidgetPobBuilds from './pob-builds/WidgetPobBuilds.vue'
+import PobBuildsEditor from './pob-builds/pob-builds-editor.vue'
+import { POB_BUILDS_TYPE } from './pob-builds/widget'
 
 type WidgetComponent = Component & { widget: WidgetSpec }
 
 export const wokeWidgets: WidgetComponent[] = [
   WidgetRegexLibrary as unknown as WidgetComponent,
   WidgetTradeSearches as unknown as WidgetComponent,
-  WidgetMarketTracker as unknown as WidgetComponent
+  WidgetMarketTracker as unknown as WidgetComponent,
+  WidgetPobBuilds as unknown as WidgetComponent
 ]
 
 const editors: Record<string, Component> = {
   [REGEX_LIBRARY_TYPE]: RegexLibraryEditor,
-  [TRADE_SEARCHES_TYPE]: TradeSearchesEditor
+  [TRADE_SEARCHES_TYPE]: TradeSearchesEditor,
+  [POB_BUILDS_TYPE]: PobBuildsEditor
 }
 
 export function wokeSettingsFor (wmType: string | undefined): Component | undefined {
