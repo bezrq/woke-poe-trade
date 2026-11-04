@@ -8,6 +8,8 @@ import { listFilters, readFilter, writeFilter, showFilterFolder } from './loot-f
 import { ScreenScanner, MAP_SCAN, ESSENCE_SCAN } from './map-scan'
 import { WokeHoverTracker } from './hover'
 import type { OverlayWindow } from '../windowing/OverlayWindow'
+import type { GameLogWatcher } from '../host-files/GameLogWatcher'
+import { readGameLogTail } from './game-log-tail'
 import { perfSnapshot, startProcessSampler } from './perf'
 
 type Handler = (args: any) => Promise<unknown> // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -24,7 +26,8 @@ const handlers: Record<string, Handler> = {
   'perf-stats': async () => perfSnapshot()
 }
 
-export function initWoke (server: ServerEvents, logger: Logger, poeWindow: GameWindow): void {
+export function initWoke (server: ServerEvents, logger: Logger, poeWindow: GameWindow, gameLog: GameLogWatcher): void {
+  handlers['game-log-tail'] = async (args) => await readGameLogTail(gameLog, args)
   for (const kind of [MAP_SCAN, ESSENCE_SCAN]) {
     const scanner = new ScreenScanner(server, logger, poeWindow, kind)
     handlers[`${kind.topic}-start`] = async () => await scanner.start()
