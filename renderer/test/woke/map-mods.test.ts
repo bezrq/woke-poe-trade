@@ -6,6 +6,7 @@ import { loadGameData } from '../helpers/game-data'
 import { allAreaMods, allMapNames, profileRegex } from '@/web/woke/map-mods/data'
 import { atLeast, buildMapRegex, MAX_SEARCH_LENGTH, TOOLTIP_LINES } from '@/web/woke/map-mods/regex'
 import { PRESETS, defaultProfile, rateMods, juiceScore } from '@/web/woke/map-mods/rules'
+import { TooltipMatcher } from '@/web/woke/map-mods/tooltip-parse'
 import type { MapModProfile } from '@/web/woke/map-mods/rules'
 
 // PoE's stash search: space-separated terms (quotes group spaces), all must
@@ -171,6 +172,12 @@ describe('rules', () => {
     expect(rateMods([{ matcher: 'Area contains two Unique Bosses' }, { matcher: 'Players cannot Regenerate Life, Mana or Energy Shield' }], p).verdict).toBe('careful')
     expect(rateMods([{ matcher: 'Monsters reflect #% of Physical Damage', roll: 18 }], p).verdict).toBe('skip')
     expect(rateMods([], p).verdict).toBe('run')
+  })
+
+  it('a scanned negative roll keeps its sign', () => {
+    const scan = new TooltipMatcher(MODS).parse(['Map Tier: 16', 'Players have -12% to all maximum Resistances'])!
+    const res = rateMods(scan.mods, defaultProfile())
+    expect(res.warn.map(m => m.text)).toEqual(['Players have -12% to all maximum Resistances'])
   })
 
   it('juice grows with quantity and pack size', () => {
