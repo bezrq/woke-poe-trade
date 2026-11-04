@@ -223,9 +223,12 @@ logTail().then(tail => {
   const since = Date.now() - 30 * 60_000
   const until = Date.now() + 60_000
   for (const line of tail.lines) {
-    seenAtStart.add(line)
     const ev = parseTradeLine(line, 0)
-    if (ev && ev.at >= since && ev.at <= until) handle(line, false)
+    if (!ev || ev.at < since || ev.at > until) continue
+    // The same line may also arrive live if it was written as the app
+    // started: count it once.
+    seenAtStart.add(line)
+    handle(line, false)
   }
   prune(book, Date.now())
 }).catch(() => {})

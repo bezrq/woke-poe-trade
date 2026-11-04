@@ -5,7 +5,7 @@ Three layers, all run by CI on every pull request (`.github/workflows/test.yml`)
 
 | Layer | Where | What it covers |
 | --- | --- | --- |
-| Unit tests | `renderer/test` (vitest) | Item parsing, map stash regex against every map mod, campaign route walked end to end, Client.txt parsing (farming, mechanics, lab), loot filter parse/match/edits, poe.ninja, trade insight, essences, boss runs, league-start investments |
+| Unit tests | `renderer/test` (vitest) | Item parsing, map stash regex against every map mod, campaign route walked end to end, Client.txt parsing (farming, mechanics, lab, trade whispers), loot filter parse/match/edits, poe.ninja, trade insight, essences, boss runs, league-start investments |
 | OCR tests | `testing/vision` (vitest) | APT's opencv + tesseract reading map tooltips and essence monoliths from screenshots |
 | Fake-game tests | `testing/e2e` (Playwright) | The real app on a fake Path of Exile: hotkeys, clipboard, Client.txt, screenshots, the overlay, settings on disk |
 
