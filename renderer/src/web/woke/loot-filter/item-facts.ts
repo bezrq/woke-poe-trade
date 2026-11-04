@@ -40,6 +40,9 @@ export interface ItemFacts {
   uberBlightedMap?: boolean
   anyEnchantment?: boolean
   hasImplicitMod?: boolean
+  // Tier (1-6) of the Searing Exarch / Eater of Worlds implicit, 0 for none.
+  exarchTier?: number
+  eaterTier?: number
   corruptedMods?: number
   enchantmentPassiveNum?: number
   enchantPassiveNodes?: string[]
@@ -60,6 +63,9 @@ const RARITY: Partial<Record<string, FilterRarity>> = {
 function sections (text: string): string[][] {
   return text.split(/\r?\n--------\r?\n/).map(s => s.split(/\r?\n/).map(l => l.trim()).filter(Boolean))
 }
+
+// Eldritch implicit ranks as the copy names them, tier 1 to 6.
+const ELDRITCH_RANKS = ['Lesser', 'Greater', 'Grand', 'Exceptional', 'Exquisite', 'Perfect']
 
 function num (text: string | undefined): number | undefined {
   if (text == null) return undefined
@@ -100,10 +106,20 @@ export function itemFacts (clipboard: string, parsed: ParsedItem | null): ItemFa
   const enchantments: string[] = []
   let hasImplicit = false
   let corruptedMods = 0
+  let exarchTier = 0
+  let eaterTier = 0
   for (const l of all) {
-    const mod = /^\{ (Prefix|Suffix) Modifier "([^"]+)"/.exec(l)
+    // Fractured mods are explicit mods too ("{ Fractured Prefix Modifier "Merciless" … }").
+    const mod = /^\{ (?:Fractured )?(Prefix|Suffix) Modifier "([^"]+)"/.exec(l)
     if (mod) explicitModNames.push(mod[2])
-    if (/^\{ Implicit Modifier/.test(l)) hasImplicit = true
+    // Corrupted, eldritch, vestigial and synthesised implicits count as well.
+    if (/^\{ (?:[\w' ]+ )?Implicit Modifier\b/.test(l)) hasImplicit = true
+    const eldritch = /^\{ (Searing Exarch|Eater of Worlds) Implicit Modifier \((\w+)\)/.exec(l)
+    if (eldritch) {
+      const tier = ELDRITCH_RANKS.indexOf(eldritch[2]) + 1
+      if (eldritch[1] === 'Searing Exarch') exarchTier = Math.max(exarchTier, tier)
+      else eaterTier = Math.max(eaterTier, tier)
+    }
     if (/\(enchant\)$/.test(l)) enchantments.push(l.replace(/\s*\(enchant\)$/, ''))
     if (/^\{ Corruption Implicit Modifier/.test(l)) corruptedMods++
   }
@@ -141,7 +157,7 @@ export function itemFacts (clipboard: string, parsed: ParsedItem | null): ItemFa
     replica: rarity === 'Unique' && /^Replica /.test(nameLines[0] ?? ''),
     foulborn: parsed ? !!parsed.isFoulborn : /^Foulborn /.test(name),
     vestigial: parsed ? !!parsed.isVestigial : undefined,
-    transfigured: undefined,
+    transfigured: parsed ? Boolean(parsed.info.gem?.transfigured) : undefined,
     imbued: parsed?.imbuedGem ?? all.some(l => /^Imbued\b/.test(l)),
     // The copy doesn't show crucible trees; they only exist on legacy items.
     crucibleTree: false,
@@ -149,6 +165,8 @@ export function itemFacts (clipboard: string, parsed: ParsedItem | null): ItemFa
     uberBlightedMap: itemClass === 'Maps' ? /Blight-ravaged/.test(name) : false,
     anyEnchantment: enchantments.length > 0,
     hasImplicitMod: hasImplicit,
+    exarchTier,
+    eaterTier,
     corruptedMods,
     enchantmentPassiveNum,
     enchantPassiveNodes,
