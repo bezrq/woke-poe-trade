@@ -278,7 +278,9 @@ const bossRows = computed<StrategyRow[]>(() => {
   const px = priceResolver(prices.snapshot.value?.items ?? [])
   const out: StrategyRow[] = []
   for (const boss of BOSSES) {
-    const kills = (w.kills[boss.id] ?? []).filter(k => inRange(k.ts, props.config.range, now.value))
+    // "League" shows this league's kills (and old kills saved without one).
+    const kills = (w.kills[boss.id] ?? []).filter(k => inRange(k.ts, props.config.range, now.value) &&
+      (props.config.range === 'all' || !k.league || k.league === league.value))
     if (!kills.length) continue
     const r = evaluateBoss(boss, w, px)
     const units: Unit[] = kills.map(k => ({

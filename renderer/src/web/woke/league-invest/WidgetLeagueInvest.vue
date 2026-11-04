@@ -211,7 +211,9 @@ const dockShow = computed(() => day.value != null && day.value <= 14 && historie
 
 function onDayInput (e: Event) {
   const v = (e.target as HTMLInputElement).value.trim()
-  props.config.dayOverride = v === '' ? null : Math.max(0, Math.floor(Number(v)))
+  const n = Math.floor(Number(v))
+  // Blank or not a number: back to the day from the league start.
+  props.config.dayOverride = v === '' || !Number.isFinite(n) ? null : Math.max(0, n)
 }
 
 // Live prices: exact item match, or by name for currency-like items

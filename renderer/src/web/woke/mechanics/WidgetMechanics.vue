@@ -177,6 +177,7 @@ import { MECHANICS, mechanicById, priceScarabs } from './data'
 import { DIVISIONS, MEMBERS, REWARDS, adviceFor, goalsFromStars, priceReward, slotKey } from './betrayal'
 import type { AdviceKind } from './betrayal'
 import { useMechanicZone } from './zone'
+import { nowMinute } from '../ui/format'
 
 const props = defineProps<{
   config: MechanicsWidget
@@ -249,7 +250,8 @@ function shortScarab (name: string) {
 const snapshotAge = computed(() => {
   const ts = prices.snapshot.value?.ts
   if (!ts) return ''
-  const min = Math.round((Date.now() - ts) / 60000)
+  // nowMinute ticks, so the age keeps counting while the panel is open.
+  const min = Math.round((nowMinute.value - ts) / 60000)
   return min < 60 ? `${min}m ago` : `${Math.round(min / 60)}h ago`
 })
 

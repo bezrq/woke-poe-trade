@@ -247,8 +247,9 @@ onUnmounted(tickWhile(() => dockShow.value && (cardShown.value || (inMapNow.valu
   () => { now.value = Date.now() }, 1000))
 const mapClock = computed(() => {
   const sess = s.value
-  if (!sess || !inMapNow.value || !sess.inMap || sess.lastZoneAt == null) return null
-  return Math.max(0, now.value - Math.max(sess.lastZoneAt, sess.runningSince ?? sess.lastZoneAt))
+  // Paused: no running clock (it used to keep counting the paused time).
+  if (!sess || !inMapNow.value || !sess.inMap || sess.lastZoneAt == null || sess.runningSince == null) return null
+  return Math.max(0, now.value - Math.max(sess.lastZoneAt, sess.runningSince))
 })
 const dockBadge = computed(() => {
   if (mapClock.value != null) return formatHms(mapClock.value).replace(/^0:/, '')

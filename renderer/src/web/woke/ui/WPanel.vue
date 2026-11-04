@@ -165,7 +165,8 @@ function onKey (e: KeyboardEvent) {
   const typing = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT' || target.isContentEditable
   if (typing) {
     if (e.key === 'Escape' && target.tagName !== 'SELECT') target.blur()
-    else if (e.key === 'ArrowDown' && target.tagName === 'INPUT') { e.preventDefault(); focusRow(el, 0) }
+    // Not in a number field: there ArrowDown steps the value down.
+    else if (e.key === 'ArrowDown' && target.tagName === 'INPUT' && (target as HTMLInputElement).type !== 'number') { e.preventDefault(); focusRow(el, 0) }
     return
   }
   if (e.key === '/') {

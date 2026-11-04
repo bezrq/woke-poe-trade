@@ -252,6 +252,7 @@ import Widget from '@/web/overlay/Widget.vue'
 import UiCheckbox from '@/web/ui/UiCheckbox.vue'
 import { WPanel, WTabs, WSegmented, WField, WButton, WEmpty, WPrice, WChip, WListItem, mechanicIcon } from '../ui'
 import { usePriceIndex } from '../market/price-index'
+import { useLeagues } from '@/web/background/Leagues'
 import { BOSSES } from './bosses'
 import DockItem from '../dock/DockItem.vue'
 import { BOSS_ARENAS, useZone } from '../shared/zone'
@@ -424,11 +425,16 @@ function toggleLogged (name: string, variant?: string) {
   if (!logging.value[name]) next[name] = { variant, qty: 1 }
   logging.value = next
 }
+const leagues = useLeagues()
 function saveKill () {
   if (!logging.value || !sel.value) return
   const id = sel.value.boss.id
   const list = props.config.kills[id] ?? (props.config.kills[id] = [])
-  list.push({ ts: Date.now(), drops: Object.entries(logging.value).map(([name, d]) => ({ name, variant: d.variant, qty: d.qty })) })
+  list.push({
+    ts: Date.now(),
+    drops: Object.entries(logging.value).map(([name, d]) => ({ name, variant: d.variant, qty: d.qty })),
+    league: leagues.selectedId.value ?? undefined
+  })
   logging.value = null
 }
 function killsOf (id: string): KillRecord[] {
