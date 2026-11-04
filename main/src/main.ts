@@ -14,6 +14,7 @@ import { AppTray } from './AppTray'
 import { OverlayVisibility } from './windowing/OverlayVisibility'
 import { GameLogWatcher } from './host-files/GameLogWatcher'
 import { HttpProxy } from './proxy'
+import { initWoke } from './woke'
 
 if (!app.requestSingleInstanceLock()) {
   app.exit()
@@ -34,6 +35,7 @@ app.on('ready', async () => {
   const poeWindow = new GameWindow()
   const appUpdater = new AppUpdater(eventPipe)
   const _httpProxy = new HttpProxy(server, logger)
+  initWoke(eventPipe, logger)
 
   setTimeout(
     async () => {
