@@ -8,6 +8,9 @@ import { ocrDir } from '../woke/ocr-dir'
 import { perfTime } from '../woke/perf'
 
 export class OcrWorker {
+  // woke: how many are loaded now (each holds 100-200 MB); for the perf tests.
+  static live = 0
+
   // woke: the installer ships the OCR files; the config folder copy still wins.
   private binDir = ocrDir()
   private api: Comlink.Remote<WorkerAPI>
@@ -19,6 +22,8 @@ export class OcrWorker {
 
   private constructor () {
     this.worker = new Worker(__dirname + '/vision.js')
+    OcrWorker.live++
+    this.worker.once('exit', () => { OcrWorker.live-- })
     this.api = Comlink.wrap<WorkerAPI>(nodeEndpoint(this.worker))
   }
 

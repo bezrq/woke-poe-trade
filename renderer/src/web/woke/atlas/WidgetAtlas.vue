@@ -164,7 +164,8 @@ import { WPanel, WField, WButton, WEmpty, WListItem, WIcon, WBanner, WSkeleton, 
 import { ninjaIcon } from '../ui/game-icons'
 import type { AtlasStrategy } from './widget'
 import { AppConfig } from '@/web/Config'
-import { emptyStrategy, strategyMatches, useAtlasData, retryAtlasData } from './widget'
+import { emptyStrategy, strategyMatches, useAtlasData, retryAtlasData, atlasDataState } from './widget'
+import { useWidgetVisible } from '../shared/visible-clock'
 import { parseGuideText, parseScarabs, priceScarabs } from './guide'
 import { usePriceIndex } from '../market/price-index'
 import DockItem from '../dock/DockItem.vue'
@@ -191,9 +192,14 @@ if (props.config.wmFlags[0] === 'uninitialized') {
   wm.show(props.config.wmId)
 }
 
-const { atlasData, atlasDataError } = useAtlasData(props.config.dataUrl)
-// A new data URL from the settings applies without restarting.
-watch(() => props.config.dataUrl, (url) => { useAtlasData(url) })
+// The tree data (1.4 MB) is only drawn in this panel: load it the first time
+// the panel is on screen, not at startup. A new data URL from the settings
+// applies without restarting.
+const { atlasData, atlasDataError } = atlasDataState()
+const panelVisible = useWidgetVisible(() => props.config)
+watch(() => panelVisible.value && props.config.dataUrl, () => {
+  if (panelVisible.value) useAtlasData(props.config.dataUrl)
+}, { immediate: true })
 
 const filter = shallowRef('')
 const compareId = shallowRef<number | null>(null)

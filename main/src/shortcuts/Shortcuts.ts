@@ -15,6 +15,8 @@ import type { ServerEvents } from '../server'
 import { perfRecord } from '../woke/perf'
 
 type UiohookKeyT = keyof typeof UiohookKey
+// woke: the heist gem OCR worker shuts down after this long unused.
+const OCR_IDLE_MS = 5 * 60 * 1000
 const UiohookToName = Object.fromEntries(Object.entries(UiohookKey).map(([k, v]) => ([v, k])))
 
 export class Shortcuts {
@@ -121,8 +123,12 @@ export class Shortcuts {
     this.logKeys = logKeys
     this.clipboard.updateOptions(restoreClipboard)
     this.ocrLanguage = language
-    if (actions.some(a => a.action.type === 'ocr-text')) {
-      this.getOcrWorker().then(w => w.updateOptions(language)).catch(() => {})
+    // woke: the heist gem OCR worker (opencv + tesseract, 100-200 MB) used to
+    // load at startup whenever the hotkey was set. It now loads on the first
+    // press and shuts down after a few idle minutes; a loaded one follows a
+    // language change.
+    if (this.ocrWorker) {
+      this.ocrWorker.then(w => w.updateOptions(language)).catch(() => {})
     }
 
     const allShortcuts = new Set([
@@ -161,12 +167,19 @@ export class Shortcuts {
     }
   }
 
+  private ocrIdleTimer: ReturnType<typeof setTimeout> | undefined
+
   private getOcrWorker () {
-    if (!this.ocrWorker) {
-      const language = this.ocrLanguage
-      this.ocrWorker = OcrWorker.create().then(async w => { await w.updateOptions(language); return w })
-    }
-    return this.ocrWorker
+    const language = this.ocrLanguage
+    const current = this.ocrWorker ??= OcrWorker.create().then(async w => { await w.updateOptions(language); return w })
+    // woke: free it once heist gems haven't been read for a while.
+    clearTimeout(this.ocrIdleTimer)
+    this.ocrIdleTimer = setTimeout(() => {
+      const worker = this.ocrWorker
+      this.ocrWorker = null
+      worker?.then(async w => { await w.terminate() }).catch(() => {})
+    }, OCR_IDLE_MS)
+    return current
   }
 
   private register () {
