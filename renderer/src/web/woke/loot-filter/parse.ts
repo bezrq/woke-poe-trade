@@ -138,6 +138,9 @@ function parseTags (comment: string): { type: string | null, tier: string | null
 function isBlockLine (line: string, disabled: boolean): boolean {
   // Rule lines are indented; commented-out blocks keep the indent after `#`.
   if (/^\s+\S/.test(line)) return true
+  // Hand-written filters often don't indent; any non-header keyword line
+  // still belongs to the block above it.
+  if (!disabled && /^[A-Z][A-Za-z]+\b/.test(line) && !HEADER_RE.test(line)) return true
   return disabled && /^#(\t|\s{2,})[A-Z][A-Za-z]+\b/.test(line)
 }
 
@@ -247,7 +250,7 @@ export function formatCondition (c: FilterCondition): string {
   const values = BARE_KEYS.has(c.key) || c.values.every(v => /^(True|False|-?\d+)$/.test(v))
     ? c.values.join(' ')
     : c.values.map(quote).join(' ')
-  const op = c.op ? `${c.op}${c.count != null ? c.count : ''} ` : (c.count != null ? `>=${c.count} ` : '')
+  const op = c.op ? `${c.op}${c.count != null ? c.count : ''} ` : (c.count != null ? `${c.count} ` : '')
   return `${c.key} ${op}${values}`.trimEnd()
 }
 

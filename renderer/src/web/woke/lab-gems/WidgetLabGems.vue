@@ -188,9 +188,10 @@ const priceCount = computed(() => prices.value.size)
 const rolls = computed(() => colorRolls(prices.value, props.config.topN || 5))
 const picks = computed(() => {
   const mode = props.config.specificMode
+  // Same profit as shown on each row (runner mode takes off the lab entry).
   return specificPicks(prices.value)
-    .filter(p => pickValue(p, mode) > 0 && pickProfit(p, mode) >= (props.config.minProfit || 0))
-    .sort((a, b) => pickProfit(b, mode) - pickProfit(a, mode))
+    .filter(p => pickValue(p, mode) > 0 && profit(p) >= (props.config.minProfit || 0))
+    .sort((a, b) => profit(b) - profit(a))
     .slice(0, 60)
 })
 

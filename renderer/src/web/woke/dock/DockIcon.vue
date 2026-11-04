@@ -82,17 +82,21 @@ watch(hovering, (on) => {
   if (on === showCard.value) return
   timer = setTimeout(() => { showCard.value = on }, on ? OPEN_AFTER_MS : CLOSE_AFTER_MS)
 })
+// Entries told the card is open; extras can join or leave while it is.
+const told = new Set<DockEntry>()
+function tellOpen (open: boolean) {
+  const now = open ? [props.host, ...props.extras] : []
+  for (const e of told) if (!now.includes(e)) { e.onOpen(false); told.delete(e) }
+  for (const e of now) if (!told.has(e)) { e.onOpen(true); told.add(e) }
+}
 watch(showCard, (open) => {
   if (open) place()
-  props.host.onOpen(open)
-  for (const ex of props.extras) ex.onOpen(open)
+  tellOpen(open)
 })
+watch(() => [props.host, ...props.extras], () => { tellOpen(showCard.value) })
 onUnmounted(() => {
   if (timer) clearTimeout(timer)
-  if (showCard.value) {
-    props.host.onOpen(false)
-    for (const ex of props.extras) ex.onOpen(false)
-  }
+  tellOpen(false)
 })
 
 // Card opens below (or beside, for a vertical dock), flipped when there's

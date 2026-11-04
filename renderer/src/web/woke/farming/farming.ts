@@ -222,6 +222,17 @@ export function onZoneChange (s: FarmingSession, inMap: boolean, now: number): v
   s.inMap = inMap
 }
 
+// Manual pause (and session end): books the open zone span into the map/other
+// split and the current run, then stops the clock.
+export function pauseSession (s: FarmingSession, now: number): void {
+  if (s.runningSince == null) return
+  bookSpan(s, now - Math.max(s.lastZoneAt ?? s.startedAt, s.runningSince))
+  s.elapsedMs += Math.max(0, now - s.runningSince)
+  s.lastZoneAt = now
+  s.runningSince = null
+  s.autoPaused = false
+}
+
 // Pauses a running session that saw no zone change for AUTO_PAUSE_MS,
 // counting time only up to the idle limit. Returns true if it paused.
 export function maybeAutoPause (s: FarmingSession, now: number): boolean {

@@ -406,6 +406,8 @@ export class ScreenScanner {
           lastReadSig: this.lastReadSig
         })
       perfRecord(`${this.kind.name}: ${lock ? 'locked frame' : 'frame'}`, performance.now() - t0)
+      // Stopped or paused while the worker was reading: drop the result.
+      if (!this.running || this.paused) return
       this.failures = 0
       if (this.rolling && res.rect) {
         const found = { ...res.rect, x: res.rect.x + crop.x, y: res.rect.y + crop.y }
@@ -439,7 +441,7 @@ export class ScreenScanner {
         res.lines = res.lines.filter(l => l.length > 2)
         perfRecord(`${this.kind.name}: OCR ${res.lineImages.length} lines`, performance.now() - t1)
         res.elapsed += performance.now() - t1
-        if (!this.running) return
+        if (!this.running || this.paused) return
       }
       if (res.lines) {
         perfRecord(`${this.kind.name}: read text`, res.elapsed)

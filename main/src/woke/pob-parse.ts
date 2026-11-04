@@ -161,6 +161,8 @@ function parseTrees (xml: string): PobTreeSpec[] {
     const url = urlMatch ? decodeEntities(urlMatch[1].trim()) : ''
     out.push({ title: a.title || `Tree ${i}`, url, isActive: active === i })
   }
+  // No (or a stale) activeSpec: PoB opens the first tree.
+  if (out.length && !out.some(t => t.isActive)) out[0].isActive = true
   return out
 }
 
@@ -191,6 +193,8 @@ export function parseItemText (text: string): PobItem {
     const imp = /^Implicits:\s*(\d+)/.exec(line)
     if (imp) { implicitsLeft = Number(imp[1]); continue }
     if (implicitsLeft < 0) continue
+    // Flags PoB writes after the mods aren't mods.
+    if (/^(Corrupted|Mirrored|Split|Unreleased|Foulborn|Fractured Item|Synthesised Item)$/.test(line)) continue
     let mod = line
     let allowed = true
     for (const tag of mod.matchAll(/\{([^}]*)\}/g)) {

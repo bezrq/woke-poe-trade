@@ -197,7 +197,7 @@ import { useLeagues } from '@/web/background/Leagues'
 import { useSessionStore } from '../analytics/store'
 import { ANALYTICS_TYPE } from '../analytics/types'
 import type { AtlasWidget } from '../atlas/widget'
-import { FARMING_LOOT_TARGET, addLoot as addLootTo, costsForStrategy, countNewMap, currentRun, elapsed, formatHms, historyToRecords, isMapArea, lineValue, maybeAutoPause, nameRun, newSession, onZoneChange, rememberCosts, removeLoot, sellPrice, sellRules, startRun, strategyStats, toSessionRecord, totals } from './farming'
+import { FARMING_LOOT_TARGET, addLoot as addLootTo, costsForStrategy, countNewMap, currentRun, elapsed, formatHms, historyToRecords, isMapArea, lineValue, maybeAutoPause, nameRun, pauseSession, newSession, onZoneChange, rememberCosts, removeLoot, sellPrice, sellRules, startRun, strategyStats, toSessionRecord, totals } from './farming'
 import type { CostLine, LiveRun, LootLine, PricedRef } from './farming'
 
 const props = defineProps<{
@@ -396,10 +396,10 @@ function toggle () {
   const sess = props.config.session
   if (!sess) return
   if (sess.runningSince != null) {
-    sess.elapsedMs += Date.now() - sess.runningSince
-    sess.runningSince = null
+    pauseSession(sess, Date.now())
   } else {
     sess.runningSince = Date.now()
+    sess.autoPaused = false
   }
 }
 
@@ -407,6 +407,8 @@ function end () {
   const sess = props.config.session
   if (!sess) return
   const nowTs = Date.now()
+  // Book the zone you are in when ending, so the last run's time counts.
+  pauseSession(sess, nowTs)
   const tt = totals(sess, props.config.costs, price, nowTs, rules.value)
   if (sess.maps || sess.loot.length || sess.extraChaos) {
     const record = toSessionRecord(sess, props.config.costs, price, rules.value, {

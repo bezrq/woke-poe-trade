@@ -134,8 +134,16 @@ export function useLootFilter (config: LootFilterWidget) {
       if (config.sourceOnline) {
         // Read only; saves go to a local copy.
       } else if (text.startsWith(WOKE_MARK)) {
-        // Our own output (overwrite mode): the original lives in the .bak.
-        text = (await hostRequest<{ text: string }>('filter-read', { dir: config.folder, name: config.sourceName + '.bak' })).text
+        // Our own output. Overwrite mode keeps the original in the .bak; a
+        // copy-mode output names its source in the header instead.
+        try {
+          text = (await hostRequest<{ text: string }>('filter-read', { dir: config.folder, name: config.sourceName + '.bak' })).text
+        } catch (e) {
+          const from = /^# Made from "([^"]+\.filter)"/m.exec(text)?.[1]
+          if (!from || from === config.sourceName) throw e
+          text = (await hostRequest<{ text: string }>('filter-read', { dir: config.folder, name: from })).text
+          config.sourceName = from
+        }
       } else if (config.saveMode === 'overwrite') {
         baseNeedsBackup.value = true
       }
