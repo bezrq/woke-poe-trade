@@ -1,0 +1,329 @@
+// League mechanic definitions: which poe.ninja items to price for each
+// mechanic, a few rules of thumb, and the zones that switch to it.
+// Kept data-only so the widget layout can change without touching it.
+
+import type { PriceItem } from '../market/types'
+
+export interface PriceGroup {
+  label: string
+  // poe.ninja overview type ('Fossil', 'Currency', …); omit to search all types.
+  types?: string[]
+  match?: RegExp
+  // Show the price for this many units (lifeforce is traded per 100).
+  unit?: number
+  // Short tag shown next to an item, e.g. the Expedition vendor.
+  tag?: (item: PriceItem) => string | undefined
+  limit?: number
+}
+
+export interface Mechanic {
+  id: string
+  label: string
+  // 3-letter label for compact layouts.
+  short: string
+  icon: string
+  groups: PriceGroup[]
+  // Scarab family words (matched against Scarab names).
+  scarabs?: RegExp
+  tips: string[]
+  // Client.txt area id or zone name that switches the widget to this mechanic.
+  zone?: RegExp
+}
+
+const EXPEDITION_VENDORS: Record<string, string> = {
+  'Exotic Coinage': 'Tujen',
+  'Scrap Metal': 'Gwennen',
+  'Astragali': 'Rog',
+  'Burial Medallion': 'Dannig'
+}
+
+const LIFEFORCE_COLOUR: Record<string, string> = {
+  'Vivid Crystallised Lifeforce': 'yellow',
+  'Primal Crystallised Lifeforce': 'blue',
+  'Wild Crystallised Lifeforce': 'purple'
+}
+
+export const MECHANICS: Mechanic[] = [
+  {
+    id: 'delve',
+    label: 'Delve',
+    short: 'DLV',
+    icon: 'fas fa-gem',
+    groups: [
+      { label: 'Fossils', types: ['Fossil'], limit: 12 },
+      { label: 'Resonators', types: ['Resonator'], limit: 4 }
+    ],
+    scarabs: /Sulphite/,
+    tips: [
+      'Fossil nodes show their fossil icon on the mine map; detour only for the ones at the top of this list.',
+      'Walls hide extra fossil and resonator chests; flares reveal them from the cart path.',
+      'APT\'s Delve grid widget is still there for marking the map.'
+    ],
+    zone: /^Delve|Azurite Mine/i
+  },
+  {
+    id: 'expedition',
+    label: 'Expedition',
+    short: 'EXP',
+    icon: 'fas fa-bomb',
+    groups: [
+      {
+        label: 'Vendor currency, per unit',
+        types: ['Currency'],
+        match: /^(Exotic Coinage|Scrap Metal|Astragali|Burial Medallion)$/,
+        tag: i => EXPEDITION_VENDORS[i.name]
+      },
+      { label: 'Artifacts', types: ['Artifact'], limit: 8 }
+    ],
+    scarabs: /Expedition/,
+    tips: [
+      'Run logbooks for the faction whose vendor currency is worth most per unit.',
+      'Place explosives on remnants that add artifact quantity or rarity first.',
+      'Skip remnants your build cannot handle; one bad remnant can brick the run.'
+    ],
+    zone: /^Expedition/i
+  },
+  {
+    id: 'harvest',
+    label: 'Harvest',
+    short: 'HRV',
+    icon: 'fas fa-seedling',
+    groups: [
+      {
+        label: 'Lifeforce colours',
+        types: ['Currency'],
+        match: /^(Vivid|Primal|Wild) Crystallised Lifeforce$/,
+        unit: 100,
+        tag: i => LIFEFORCE_COLOUR[i.name]
+      },
+      { label: 'Sacred lifeforce', types: ['Currency'], match: /^Sacred Crystallised Lifeforce$/ }
+    ],
+    scarabs: /Harvest/,
+    tips: [
+      'Each pair of plots lets you open one; pick the colour that ranks higher here.',
+      'Colours are priced per 100; Sacred lifeforce per unit.',
+      'Kill the tier 4 monsters first: they drop the most lifeforce.'
+    ],
+    zone: /Sacred Grove|^Harvest/i
+  },
+  {
+    id: 'blight',
+    label: 'Blight',
+    short: 'BLT',
+    icon: 'fas fa-biohazard',
+    groups: [
+      { label: 'Oils', types: ['Oil'], limit: 14 },
+      { label: 'Blighted maps', types: ['BlightedMap', 'BlightRavagedMap'], limit: 5 }
+    ],
+    scarabs: /Blight/,
+    tips: [
+      'Cassia upgrades three oils into one of the next tier; compare with the next price up.',
+      'Blight-ravaged maps drop Tainted Oil and have more lanes; bring a tower setup that covers all of them.'
+    ],
+    zone: /Blight/i
+  },
+  {
+    id: 'essence',
+    label: 'Essence',
+    short: 'ESS',
+    icon: 'fas fa-flask',
+    groups: [
+      { label: 'Essences', types: ['Essence'], limit: 12 }
+    ],
+    scarabs: /Essence/,
+    tips: [
+      'Corrupting with a Remnant of Corruption can turn essences into Horror, Hysteria, Insanity or Delirium.',
+      'Three of an essence upgrade to the next tier at the vendor.'
+    ]
+  },
+  {
+    id: 'breach',
+    label: 'Breach',
+    short: 'BRC',
+    icon: 'fas fa-hand-paper',
+    groups: [
+      { label: 'Splinters', types: ['Fragment'], match: /^Splinter of / },
+      { label: 'Breachstones', types: ['Fragment'], match: /Breachstone$/, limit: 8 },
+      { label: 'Blessings', types: ['Currency', 'Fragment'], match: /^Blessing of / }
+    ],
+    scarabs: /Breach/,
+    tips: [
+      'Sell splinters in stacks of 100 or combine them into Breachstones, whichever this list says is worth more.'
+    ],
+    zone: /Breach/i
+  },
+  {
+    id: 'legion',
+    label: 'Legion',
+    short: 'LGN',
+    icon: 'fas fa-shield-alt',
+    groups: [
+      { label: 'Splinters and emblems', types: ['Fragment'], match: /^Timeless .*(Splinter|Emblem)$/ },
+      { label: 'Incubators', types: ['Incubator'], limit: 8 }
+    ],
+    scarabs: /Legion/,
+    tips: [
+      'Open the generals and sergeants first: they carry the splinter and incubator drops.'
+    ],
+    zone: /Legion/i
+  },
+  {
+    id: 'delirium',
+    label: 'Delirium',
+    short: 'DLR',
+    icon: 'fas fa-cloud',
+    groups: [
+      { label: 'Delirium orbs', types: ['DeliriumOrb'], limit: 12 },
+      { label: 'Simulacrum', types: ['Fragment'], match: /Simulacrum/ }
+    ],
+    scarabs: /Delirium/,
+    tips: [
+      'Put delirium orbs on maps whose reward type is near the top of this list.'
+    ],
+    zone: /Affliction|Simulacrum/i
+  },
+  {
+    id: 'ritual',
+    label: 'Ritual',
+    short: 'RTL',
+    icon: 'fas fa-skull',
+    groups: [
+      { label: 'Omens', types: ['Omen'], limit: 12 }
+    ],
+    scarabs: /Ritual/,
+    tips: [
+      'Defer cheap rewards so expensive ones show up again on later altars.'
+    ]
+  },
+  {
+    id: 'ultimatum',
+    label: 'Ultimatum',
+    short: 'ULT',
+    icon: 'fas fa-dungeon',
+    groups: [
+      { label: 'Inscribed Ultimatum', match: /^Inscribed Ultimatum/, limit: 4 },
+      { label: 'Catalysts', types: ['Currency'], match: /Catalyst$/, limit: 10 }
+    ],
+    scarabs: /Ultimatum/,
+    tips: [
+      'Stop when the next round adds a modifier your build cannot handle; you lose everything on failure.'
+    ],
+    zone: /Ultimatum|Trialmaster/i
+  },
+  {
+    id: 'sanctum',
+    label: 'Sanctum',
+    short: 'SNC',
+    icon: 'fas fa-place-of-worship',
+    groups: [
+      { label: 'Tome', match: /Forbidden Tome/, limit: 2 },
+      { label: 'Relics', types: ['UniqueRelic'], limit: 10 }
+    ],
+    tips: [
+      'Keep resolve high early; take deferred currency rewards on floors you are sure to clear.',
+      'Pick rooms that remove afflictions before stacking boons.'
+    ],
+    zone: /^Sanctum|Forbidden Sanctum/i
+  },
+  {
+    id: 'heist',
+    label: 'Heist',
+    short: 'HST',
+    icon: 'fas fa-user-secret',
+    groups: [
+      { label: 'Replica uniques', types: ['UniqueWeapon', 'UniqueArmour', 'UniqueAccessory', 'UniqueJewel', 'UniqueFlask'], match: /^Replica /, limit: 12 }
+    ],
+    tips: [
+      'Blueprint reward rooms are revealed by rogues; check this list before choosing which reward to take.',
+      'Grand Heist curio displays hold replica uniques and experimented bases.'
+    ],
+    zone: /^Heist|Rogue Harbour/i
+  },
+  {
+    id: 'bestiary',
+    label: 'Bestiary',
+    short: 'BST',
+    icon: 'fas fa-paw',
+    groups: [
+      { label: 'Captured beasts', types: ['Beast'], limit: 12 }
+    ],
+    scarabs: /Bestiary/,
+    tips: [
+      'Itemise beasts you will not use; the top ones are worth more sold than spent on recipes.'
+    ]
+  },
+  {
+    id: 'incursion',
+    label: 'Incursion',
+    short: 'INC',
+    icon: 'fas fa-archway',
+    groups: [
+      { label: 'Vials', types: ['Vial'], limit: 10 }
+    ],
+    scarabs: /Incursion/,
+    tips: [
+      'Upgrade the Locus of Corruption and Apex rooms when vials at the top of this list are worth it.'
+    ],
+    zone: /Incursion|Temple of Atzoatl/i
+  },
+  {
+    id: 'betrayal',
+    label: 'Betrayal',
+    short: 'BTR',
+    icon: 'fas fa-balance-scale',
+    groups: [],
+    scarabs: /Betrayal/,
+    tips: [
+      'Interrogate to move a member up or out; Bargain to swap divisions.',
+      'The captain of a division gives the best version of its reward.'
+    ],
+    zone: /Betrayal|Syndicate|Safehouse|Mastermind/i
+  }
+]
+
+export function mechanicById (id: string): Mechanic | undefined {
+  return MECHANICS.find(m => m.id === id)
+}
+
+// Mechanic for a Client.txt area id or zone name, if any.
+export function mechanicForZone (areaIdOrName: string): Mechanic | undefined {
+  if (!areaIdOrName) return undefined
+  return MECHANICS.find(m => m.zone?.test(areaIdOrName))
+}
+
+export interface PricedRow {
+  item: PriceItem
+  // Price for `unit` items.
+  chaos: number
+  unit: number
+  tag?: string
+}
+
+export function priceGroup (group: PriceGroup, items: PriceItem[]): PricedRow[] {
+  const unit = group.unit ?? 1
+  const seen = new Set<string>()
+  const rows: PricedRow[] = []
+  for (const item of items) {
+    if (group.types && !group.types.includes(item.type)) continue
+    if (group.match && !group.match.test(item.name)) continue
+    // Keep one row per name (gems/maps have variants; take the first, usually the base).
+    if (seen.has(item.name)) continue
+    seen.add(item.name)
+    rows.push({ item, chaos: item.chaos * unit, unit, tag: group.tag?.(item) })
+  }
+  rows.sort((a, b) => b.chaos - a.chaos)
+  return rows.slice(0, group.limit ?? 20)
+}
+
+export function priceScarabs (family: RegExp, items: PriceItem[], limit = 8): PricedRow[] {
+  return priceGroup({ label: 'Scarabs', types: ['Scarab'], match: family, limit }, items)
+}
+
+// One-line pick: the top item of the first group that has prices.
+export function verdict (mech: Mechanic, items: PriceItem[]): { best: PricedRow, next?: PricedRow } | null {
+  for (const group of mech.groups) {
+    const rows = priceGroup(group, items)
+    if (rows.length) return { best: rows[0], next: rows[1] }
+  }
+  return null
+}

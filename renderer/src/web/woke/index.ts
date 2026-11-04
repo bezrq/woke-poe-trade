@@ -30,6 +30,9 @@ import WidgetLab from './lab/WidgetLab.vue'
 import LabEditor from './lab/lab-editor.vue'
 import { LAB_TYPE } from './lab/lab'
 import WidgetFarming from './farming/WidgetFarming.vue'
+import WidgetMechanics from './mechanics/WidgetMechanics.vue'
+import MechanicsEditor from './mechanics/mechanics-editor.vue'
+import { MECHANICS_TYPE } from './mechanics/widget'
 
 type WidgetComponent = Component & { widget: WidgetSpec }
 
@@ -41,7 +44,8 @@ export const wokeWidgets: WidgetComponent[] = [
   WidgetCampaign as unknown as WidgetComponent,
   WidgetAtlas as unknown as WidgetComponent,
   WidgetLab as unknown as WidgetComponent,
-  WidgetFarming as unknown as WidgetComponent
+  WidgetFarming as unknown as WidgetComponent,
+  WidgetMechanics as unknown as WidgetComponent
 ]
 
 const editors: Record<string, Component> = {
@@ -50,7 +54,8 @@ const editors: Record<string, Component> = {
   [POB_BUILDS_TYPE]: PobBuildsEditor,
   [CAMPAIGN_TYPE]: CampaignEditor,
   [ATLAS_TYPE]: AtlasEditor,
-  [LAB_TYPE]: LabEditor
+  [LAB_TYPE]: LabEditor,
+  [MECHANICS_TYPE]: MechanicsEditor
 }
 
 export function wokeSettingsFor (wmType: string | undefined): Component | undefined {
