@@ -21,13 +21,20 @@ export interface LabWidget extends Widget {
   hotkeyOverlay: string | null
   hotkeyExternal: string | null
   notes: string
-  // Open the layout when you enter Aspirant's Plaza (default on).
+  // Open the layout when you enter Aspirants' Plaza (default on).
   autoOpen?: boolean
   // Show poelab's whole page instead of just the layout image.
   fullPage?: boolean
 }
 
-export const PLAZA_ZONE = "Aspirant's Plaza"
+// The lab's entrance. The game spells it "Aspirants' Plaza" (its boss rooms
+// are "Aspirant's Trial"), so it is recognised by its area id, which is the
+// same in every client language: "3_Labyrinth_Airlock" (merciless), etc.
+export const PLAZA_ZONE = "Aspirants' Plaza"
+
+export function isPlazaArea (areaId: string): boolean {
+  return /(^|_)Labyrinth_Airlock$/i.test(areaId)
+}
 
 // The plaza's area level tells the difficulty: 33 / 55 / 68 / 75.
 export function difficultyForAreaLevel (level: number): LabDifficulty {

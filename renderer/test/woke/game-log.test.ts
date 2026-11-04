@@ -11,7 +11,7 @@ import type { RouteOptions } from '@/web/woke/campaign/route-parse'
 import { countNewMap, isMapArea, newSession, onZoneChange, maybeAutoPause, AUTO_PAUSE_MS } from '@/web/woke/farming/farming'
 import { mechanicForSpeaker } from '@/web/woke/mechanics/zone'
 import { mechanicForZone } from '@/web/woke/mechanics/data'
-import { difficultyForAreaLevel, msUntilLabReset, PLAZA_ZONE } from '@/web/woke/lab/lab'
+import { difficultyForAreaLevel, isPlazaArea, msUntilLabReset, PLAZA_ZONE } from '@/web/woke/lab/lab'
 
 function logLines (name: string): string[] {
   return fixture(`client-logs/${name}`).split('\n').filter(l => l && !l.startsWith('#'))
@@ -140,6 +140,14 @@ describe('league mechanics', () => {
     expect(found).toEqual(['npc:bestiary', 'zone:delve', 'npc:delve'])
   })
 
+  it('knows the league NPCs by the names the game logs', () => {
+    const say = (who: string) => mechanicForSpeaker(`2026/11/04 20:04:10 1 2 [INFO Client 1] ${who}: Exile!`)
+    expect(say('Alva, Master Explorer')).toBe('incursion')
+    expect(say('Jun, Veiled Master')).toBe('betrayal')
+    expect(say('Niko, Master of the Depths')).toBe('delve')
+    expect(say('Rog')).toBe('expedition')
+  })
+
   it('player chat is never an NPC', () => {
     expect(mechanicForSpeaker('2026/11/04 20:04:10 1 2 [INFO Client 1] @From Einhar, Beastmaster: wtb')).toBeUndefined()
     expect(mechanicForSpeaker('2026/11/04 20:04:10 1 2 [INFO Client 1] #Einhar, Beastmaster: hi')).toBeUndefined()
@@ -152,6 +160,10 @@ describe('lab', () => {
     const area = lines.map(parseLogLine).find(e => e?.kind === 'area')
     expect(area && area.kind === 'area' && difficultyForAreaLevel(area.areaLevel)).toBe('merciless')
     expect(lines.map(parseLogLine).some(e => e?.kind === 'zone' && e.name === PLAZA_ZONE)).toBe(true)
+    // Recognised by area id, whatever the client language calls it.
+    expect(area && area.kind === 'area' && isPlazaArea(area.areaId)).toBe(true)
+    expect(isPlazaArea('EndGame_Labyrinth_Airlock')).toBe(true)
+    expect(isPlazaArea('3_Labyrinth_boss_3')).toBe(false)
     expect(difficultyForAreaLevel(33)).toBe('normal')
     expect(difficultyForAreaLevel(55)).toBe('cruel')
     expect(difficultyForAreaLevel(75)).toBe('uber')

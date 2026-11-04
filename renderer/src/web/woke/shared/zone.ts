@@ -34,7 +34,7 @@ export const BOSS_ARENAS: Record<string, string[]> = {
   'The Feared': ['feared']
 }
 
-const LAB_ZONES = new Set(["Aspirant's Plaza", "Aspirant's Trial"])
+const LAB_ZONES = new Set(["Aspirants' Plaza", "Aspirant's Trial"])
 
 export function zoneKind (areaId: string, name: string): ZoneKind {
   if (name && BOSS_ARENAS[name]) return 'boss'

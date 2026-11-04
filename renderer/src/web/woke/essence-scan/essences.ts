@@ -4,6 +4,8 @@ import { similarity } from '../map-mods/tooltip-parse'
 
 export const ESSENCE_TIERS = ['Whispering', 'Muttering', 'Weeping', 'Wailing', 'Screaming', 'Shrieking', 'Deafening'] as const
 
+// In groups of four by the lowest tier they come in: Greed to Woe from
+// Whispering, Fear to Sorrow from Muttering, … Scorn to Dread from Screaming.
 export const ESSENCE_TYPES = [
   'Greed', 'Contempt', 'Hatred', 'Woe', 'Fear', 'Anger', 'Torment', 'Sorrow',
   'Rage', 'Suffering', 'Wrath', 'Doubt', 'Loathing', 'Zeal', 'Anguish', 'Spite',
@@ -27,7 +29,9 @@ export interface Essence {
 }
 
 export const ALL_ESSENCES: Essence[] = [
-  ...ESSENCE_TYPES.flatMap(type => ESSENCE_TIERS.map(tier => ({ name: `${tier} Essence of ${type}`, type, tier }))),
+  // Only the 100 that exist ("Whispering Essence of Misery" doesn't), so a
+  // misread tier word can't match a name no monolith holds.
+  ...ESSENCE_TYPES.flatMap((type, i) => ESSENCE_TIERS.slice(Math.floor(i / 4)).map(tier => ({ name: `${tier} Essence of ${type}`, type, tier }))),
   ...CORRUPTION_ONLY.map(type => ({ name: `Essence of ${type}`, type, tier: null }))
 ]
 

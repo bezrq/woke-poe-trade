@@ -170,7 +170,8 @@ export class TooltipMatcher {
     if (norm.length < 8) return null
     const best = this.best(norm)
     if (!best) return null
-    const num = /(\d+)/.exec(line)
+    // Keep the sign: "Players have -12% to all maximum Resistances".
+    const num = /(-?\d+)/.exec(line)
     return { matcher: best.matcher, roll: num ? Number(num[1]) : undefined, score: best.score }
   }
 

@@ -6,6 +6,7 @@ import { loadGameData } from '../helpers/game-data'
 import { allAreaMods, allMapNames, profileRegex } from '@/web/woke/map-mods/data'
 import { atLeast, buildMapRegex, MAX_SEARCH_LENGTH, TOOLTIP_LINES } from '@/web/woke/map-mods/regex'
 import { PRESETS, defaultProfile, rateMods, juiceScore } from '@/web/woke/map-mods/rules'
+import { TooltipMatcher } from '@/web/woke/map-mods/tooltip-parse'
 import type { MapModProfile } from '@/web/woke/map-mods/rules'
 
 // PoE's stash search: space-separated terms (quotes group spaces), all must
@@ -47,7 +48,7 @@ function mapTooltip (mods: string[], props: { quantity?: number, rarity?: number
 
 let MODS: string[]
 // See 'finds a unique token…' below.
-const KNOWN_UNSEARCHABLE = 31
+const KNOWN_UNSEARCHABLE = 27
 beforeAll(async () => {
   await loadGameData()
   MODS = allAreaMods()
@@ -106,6 +107,22 @@ describe('stash regex', () => {
     expect(missing.length, missing.join('\n')).toBeLessThanOrEqual(KNOWN_UNSEARCHABLE)
   })
 
+  // The search box takes one line, so a token across a two-line mod's line
+  // break can't be typed. The T17 "can't be slowed" mod reads exactly like
+  // the first line of a two-line one; that must not leave it without a token.
+  it('tokens stay on one line', () => {
+    const multi = MODS.filter(m => m.includes('\n'))
+    expect(multi.length).toBeGreaterThan(0)
+    for (const mod of multi) {
+      const { text } = buildMapRegex({ avoid: [mod], want: [], mins: {}, highlight: 'good' }, MODS, allMapNames())
+      expect(text, mod).not.toContain('\n')
+    }
+    const slow = "Monsters' Action Speed cannot be modified to below Base Value"
+    const res = buildMapRegex({ avoid: [slow], want: [], mins: {}, highlight: 'good' }, MODS, allMapNames())
+    expect(res.missing).toEqual([])
+    expect(stashSearch(res.text, mapTooltip([slow]))).toBe(false)
+  })
+
   it('wanted mods and minimums: the search keeps maps meeting them', () => {
     const want = ['Area contains two Unique Bosses']
     const res = buildMapRegex({ avoid: [], want, mins: { quantity: 80, packSize: 20 }, highlight: 'good' }, MODS, allMapNames())
@@ -155,6 +172,12 @@ describe('rules', () => {
     expect(rateMods([{ matcher: 'Area contains two Unique Bosses' }, { matcher: 'Players cannot Regenerate Life, Mana or Energy Shield' }], p).verdict).toBe('careful')
     expect(rateMods([{ matcher: 'Monsters reflect #% of Physical Damage', roll: 18 }], p).verdict).toBe('skip')
     expect(rateMods([], p).verdict).toBe('run')
+  })
+
+  it('a scanned negative roll keeps its sign', () => {
+    const scan = new TooltipMatcher(MODS).parse(['Map Tier: 16', 'Players have -12% to all maximum Resistances'])!
+    const res = rateMods(scan.mods, defaultProfile())
+    expect(res.warn.map(m => m.text)).toEqual(['Players have -12% to all maximum Resistances'])
   })
 
   it('juice grows with quantity and pack size', () => {

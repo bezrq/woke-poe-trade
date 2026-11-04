@@ -8,18 +8,20 @@ import { mechanicForZone } from './data'
 // which tells us a mechanic is in the current map even without its own zone.
 // Player chat has a channel prefix (#, $, &, %, @) or a different name, and
 // these speaker names are exact, so they don't clash with chat in practice.
+// Names are as the game logs them, title included ("Alva, Master Explorer").
 const NPC_MECHANIC: Record<string, string> = {
   'Einhar, Beastmaster': 'bestiary',
-  'Alva Valai': 'incursion',
+  'Alva, Master Explorer': 'incursion',
   'Niko, Master of the Depths': 'delve',
-  'Jun Ortoi': 'betrayal',
+  'Jun, Veiled Master': 'betrayal',
   'Sister Cassia': 'blight',
   'Oshabi': 'harvest',
   'Strange Voice': 'delirium',
   'The Trialmaster': 'ultimatum',
   'Dannig, Warrior Skald': 'expedition',
   'Tujen, the Haggler': 'expedition',
-  'Rog, the Dealer': 'expedition',
+  // Rog is logged as just "Rog", greeting or not.
+  'Rog': 'expedition',
   'Gwennen, the Gambler': 'expedition'
 }
 

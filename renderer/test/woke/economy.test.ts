@@ -10,7 +10,7 @@ import { CATEGORY_TYPES } from '@/web/woke/market/types'
 import type { PriceItem } from '@/web/woke/market/types'
 import { buildInsight } from '@/web/woke/price-insight/insight'
 import type { InsightListing } from '@/web/woke/price-insight/insight'
-import { parseMonolith, rateMonolith, MEDS } from '@/web/woke/essence-scan/essences'
+import { parseMonolith, rateMonolith, MEDS, ALL_ESSENCES } from '@/web/woke/essence-scan/essences'
 import { BOSSES } from '@/web/woke/boss-runs/bosses'
 import { evaluateBoss, priceResolver, observedRates, parseRunTime, formatRunTime } from '@/web/woke/boss-runs/calc'
 import type { BossPrefs } from '@/web/woke/boss-runs/calc'
@@ -98,6 +98,16 @@ describe('essence corruption', () => {
     expect(rateMonolith(meds, MEDS, price).verdict).toBe('corrupt')
     const plain = parseMonolith(['Shrieking Essence of Greed'])!
     expect(rateMonolith(plain, MEDS, price).verdict).not.toBe('corrupt')
+  })
+
+  it('knows only essences that exist', () => {
+    // Every essence the game has (APT's item data), and nothing else.
+    const items = fs.readFileSync(path.join(__dirname, '../../public/data/en/items.ndjson'), 'utf8')
+    const real = new Set([...items.matchAll(/"name":"((?:\w+ )?Essence of \w+)"/g)].map(m => m[1]))
+    expect(ALL_ESSENCES.map(e => e.name).filter(n => !real.has(n))).toEqual([])
+    expect(ALL_ESSENCES).toHaveLength(104)
+    // A misread tier can't land on a name no monolith holds.
+    expect(parseMonolith(['Wailing Essence of Misery'])?.essences[0]?.name).not.toBe('Wailing Essence of Misery')
   })
 
   it('reads OCR-ish lines', () => {
