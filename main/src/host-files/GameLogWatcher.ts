@@ -95,9 +95,22 @@ export class GameLogWatcher {
   }
 
   private async open (logFile: string) {
+    // woke: restart, stop and gameStarted can overlap. A file opened for a
+    // path that is no longer wanted is closed again, and one open landing
+    // after another replaces it instead of leaking its handle and watcher.
+    const wanted = this._wantedPath
     try {
       const file = await fs.open(logFile, 'r')
       const stats = await file.stat()
+      if (this._wantedPath !== wanted) {
+        await file.close()
+        return
+      }
+      await this.close()
+      if (this._state || this._wantedPath !== wanted) {
+        await file.close()
+        return
+      }
       watchFile(logFile, { interval: 450 }, this.handleFileChange.bind(this))
       this._state = {
         path: logFile,

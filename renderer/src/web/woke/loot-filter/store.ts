@@ -36,7 +36,9 @@ function stem (name: string): string {
   return name.replace(/\.filter$/i, '')
 }
 
-export function useLootFilter (config: LootFilterWidget) {
+// Takes a getter: Settings replaces the whole config object while the widget
+// stays mounted, so a captured object would go stale (edits lost on save).
+export function useLootFilter (cfg: () => LootFilterWidget) {
   const files = shallowRef<FilterFile[]>([])
   const folder = ref('')
   // The untouched NeverSink text the edits apply to.
@@ -52,15 +54,15 @@ export function useLootFilter (config: LootFilterWidget) {
   const error = ref<string | null>(null)
   // Rules from the active PoB build; part of what "unsaved" compares.
   const buildInput = useBuildRuleInput()
-  const buildSig = computed(() => JSON.stringify(buildInput.value ? [buildInput.value, config.buildRules] : null))
+  const buildSig = computed(() => JSON.stringify(buildInput.value ? [buildInput.value, cfg().buildRules] : null))
   // Price moves and the safety net's current list are part of the file too.
   const safetyList = shallowRef<string>('')
-  const extraSig = () => hash(JSON.stringify([config.priceTiers.on ? config.priceTiers.moves : [], config.safetyNet.on ? safetyList.value : '']))
-  const signature = () => JSON.stringify([config.edits, hash(buildSig.value), extraSig()])
+  const extraSig = () => hash(JSON.stringify([cfg().priceTiers.on ? cfg().priceTiers.moves : [], cfg().safetyNet.on ? safetyList.value : '']))
+  const signature = () => JSON.stringify([cfg().edits, hash(buildSig.value), extraSig()])
   // The build part is only known once the build file is read, so start from
   // what the last save used.
-  const savedEdits = ref(JSON.stringify([config.edits, config.savedBuildSig ?? hash(buildSig.value), config.savedExtraSig ?? extraSig()]))
-  const prices = useFilterPrices(() => config.priceTiers.uniqueRule)
+  const savedEdits = ref(JSON.stringify([cfg().edits, cfg().savedBuildSig ?? hash(buildSig.value), cfg().savedExtraSig ?? extraSig()]))
+  const prices = useFilterPrices(() => cfg().priceTiers.uniqueRule)
   // Problems found by the last save attempt.
   const problems = shallowRef<FilterProblem[]>([])
   const safetyCount = ref(0)
@@ -103,7 +105,7 @@ export function useLootFilter (config: LootFilterWidget) {
   const dirty = computed(() => signature() !== savedEdits.value)
   const failed = computed(() => statuses.value.filter(s => !s.ok))
   const updatedSinceSave = computed(() =>
-    baseVersion.value != null && config.lastVersion != null && baseVersion.value !== config.lastVersion)
+    baseVersion.value != null && cfg().lastVersion != null && baseVersion.value !== cfg().lastVersion)
 
   function rebuild () {
     if (baseText.value == null) { doc.value = null; return }
@@ -112,39 +114,39 @@ export function useLootFilter (config: LootFilterWidget) {
     const input = buildInput.value
     buildBlockCount.value = 0
     if (input) {
-      const blocks = buildRuleBlocks(input, config.buildRules)
+      const blocks = buildRuleBlocks(input, cfg().buildRules)
       insertBuildBlocks(next, blocks)
       buildBlockCount.value = blocks.length
     }
     // Price moves next: your own moves (edits) are applied after them and win.
-    if (config.priceTiers.on && config.priceTiers.moves.length) applyPriceMoves(next, config.priceTiers.moves)
+    if (cfg().priceTiers.on && cfg().priceTiers.moves.length) applyPriceMoves(next, cfg().priceTiers.moves)
     const isNetEdit = (e: FilterEdit) => e.type === SAFETY_RULE_TYPE
-    const results = new Map(applyEdits(next, config.edits.filter(e => !isNetEdit(e))).map(r => [r.edit.id, r]))
+    const results = new Map(applyEdits(next, cfg().edits.filter(e => !isNetEdit(e))).map(r => [r.edit.id, r]))
     // The safety net goes on top, listing only what the rest still hides.
     // Restyles of the net apply after it exists.
     safetyCount.value = 0
     safetyList.value = ''
     const lookup = prices.lookup.value
-    if (config.safetyNet.on && lookup) {
-      const bases = safetyBases(next, lookup, config.safetyNet.minChaos)
+    if (cfg().safetyNet.on && lookup) {
+      const bases = safetyBases(next, lookup, cfg().safetyNet.minChaos)
       const blocks = safetyBlocks(bases)
       insertBuildBlocks(next, blocks)
       safetyCount.value = bases.plain.length + bases.unique.length
       safetyList.value = JSON.stringify(bases)
     }
-    for (const r of applyEdits(next, config.edits.filter(isNetEdit))) results.set(r.edit.id, r)
-    statuses.value = config.edits.map(e => results.get(e.id)!)
+    for (const r of applyEdits(next, cfg().edits.filter(isNetEdit))) results.set(r.edit.id, r)
+    statuses.value = cfg().edits.map(e => results.get(e.id)!)
     doc.value = next
     publishActiveFilter(api)
   }
 
   // ---- prices ----
 
-  const locked = computed(() => lockedByEdits(config.edits, config.priceTiers.locks))
+  const locked = computed(() => lockedByEdits(cfg().edits, cfg().priceTiers.locks))
   const plan = computed<RetierPlan | null>(() => {
     const d = doc.value
     const lookup = prices.lookup.value
-    if (!d || !lookup || !config.priceTiers.on) return null
+    if (!d || !lookup || !cfg().priceTiers.on) return null
     return planRetier(d, lookup, { locked: locked.value })
   })
   // Valuable items the filter (without the safety net) hides or shows small.
@@ -152,21 +154,21 @@ export function useLootFilter (config: LootFilterWidget) {
     const d = doc.value
     const lookup = prices.lookup.value
     if (!d || !lookup) return []
-    return auditBases(d, lookup, Math.min(config.safetyNet.minChaos, 10)).filter(v => v.state !== 'ok' && !v.thin)
+    return auditBases(d, lookup, Math.min(cfg().safetyNet.minChaos, 10)).filter(v => v.state !== 'ok' && !v.thin)
   })
 
   // Applies the planned moves (all, or the ones passed).
   function applyPrices (moves?: PriceMove[]) {
     const list = moves ?? plan.value?.moves ?? []
     if (!list.length) return () => {}
-    const before = config.priceTiers.moves
-    config.priceTiers.prev = before
-    config.priceTiers.moves = mergeMoves(before, list)
-    config.priceTiers.appliedAt = Date.now()
+    const before = cfg().priceTiers.moves
+    cfg().priceTiers.prev = before
+    cfg().priceTiers.moves = mergeMoves(before, list)
+    cfg().priceTiers.appliedAt = Date.now()
     rebuild()
     return () => {
-      config.priceTiers.moves = before
-      config.priceTiers.prev = null
+      cfg().priceTiers.moves = before
+      cfg().priceTiers.prev = null
       rebuild()
     }
   }
@@ -174,27 +176,27 @@ export function useLootFilter (config: LootFilterWidget) {
   // Keeps an item where it is: prices won't move it again.
   function lockItem (type: string, base: string) {
     const key = lockKey(type, base)
-    if (!config.priceTiers.locks.includes(key)) config.priceTiers.locks = [...config.priceTiers.locks, key]
-    return () => { config.priceTiers.locks = config.priceTiers.locks.filter(k => k !== key) }
+    if (!cfg().priceTiers.locks.includes(key)) cfg().priceTiers.locks = [...cfg().priceTiers.locks, key]
+    return () => { cfg().priceTiers.locks = cfg().priceTiers.locks.filter(k => k !== key) }
   }
 
   // Back to NeverSink's own tiers for every price group.
   function resetPrices () {
-    const before = config.priceTiers.moves
-    config.priceTiers.prev = before
-    config.priceTiers.moves = []
+    const before = cfg().priceTiers.moves
+    cfg().priceTiers.prev = before
+    cfg().priceTiers.moves = []
     rebuild()
-    return () => { config.priceTiers.moves = before; rebuild() }
+    return () => { cfg().priceTiers.moves = before; rebuild() }
   }
 
   // Price index updates, or settings that change the net: refresh.
-  watch(() => [prices.lookup.value, config.safetyNet.on, config.safetyNet.minChaos, config.priceTiers.on], () => {
+  watch(() => [prices.lookup.value, cfg().safetyNet.on, cfg().safetyNet.minChaos, cfg().priceTiers.on], () => {
     if (baseText.value != null) rebuild()
   })
 
   async function listFiles () {
     try {
-      const res = await hostRequest<{ dir: string, files: FilterFile[] }>('filter-list', { dir: config.folder })
+      const res = await hostRequest<{ dir: string, files: FilterFile[] }>('filter-list', { dir: cfg().folder })
       folder.value = res.dir
       files.value = res.files
     } catch (e) {
@@ -203,43 +205,43 @@ export function useLootFilter (config: LootFilterWidget) {
   }
 
   async function load () {
-    if (!config.sourceName) {
+    if (!cfg().sourceName) {
       await listFiles()
       // Pick the most recently changed NeverSink file as a starting point.
       const ns = files.value.find(f => !f.online && /neversink/i.test(f.name) && !/\(woke\)/i.test(f.name)) ??
         files.value.find(f => f.online && /neversink/i.test(f.title ?? ''))
       if (!ns) return
-      config.sourceName = ns.name
-      config.sourceOnline = Boolean(ns.online)
-      config.sourceTitle = ns.title ?? ''
+      cfg().sourceName = ns.name
+      cfg().sourceOnline = Boolean(ns.online)
+      cfg().sourceTitle = ns.title ?? ''
     }
     loading.value = true
     error.value = null
     prices.wantPrices()
     try {
-      let { text } = await hostRequest<{ text: string }>('filter-read', { dir: config.folder, name: config.sourceName, online: config.sourceOnline })
+      let { text } = await hostRequest<{ text: string }>('filter-read', { dir: cfg().folder, name: cfg().sourceName, online: cfg().sourceOnline })
       baseNeedsBackup.value = false
-      if (config.sourceOnline) {
+      if (cfg().sourceOnline) {
         // Read only; saves go to a local copy.
       } else if (text.startsWith(WOKE_MARK)) {
         // Our own output. Overwrite mode keeps the original in the .bak; a
         // copy-mode output names its source in the header instead.
         try {
-          text = (await hostRequest<{ text: string }>('filter-read', { dir: config.folder, name: config.sourceName + '.bak' })).text
+          text = (await hostRequest<{ text: string }>('filter-read', { dir: cfg().folder, name: cfg().sourceName + '.bak' })).text
         } catch (e) {
           const from = /^# Made from "([^"]+\.filter)"/m.exec(text)?.[1]
-          if (!from || from === config.sourceName) throw e
-          text = (await hostRequest<{ text: string }>('filter-read', { dir: config.folder, name: from })).text
-          config.sourceName = from
+          if (!from || from === cfg().sourceName) throw e
+          text = (await hostRequest<{ text: string }>('filter-read', { dir: cfg().folder, name: from })).text
+          cfg().sourceName = from
         }
-      } else if (config.saveMode === 'overwrite') {
+      } else if (cfg().saveMode === 'overwrite') {
         baseNeedsBackup.value = true
       }
       baseText.value = text
       rebuild()
       baseVersion.value = doc.value?.version ?? null
     } catch (e) {
-      error.value = `Can't open ${config.sourceName}: ${(e as Error).message}`
+      error.value = `Can't open ${cfg().sourceName}: ${(e as Error).message}`
       baseText.value = null
       doc.value = null
     } finally {
@@ -248,58 +250,58 @@ export function useLootFilter (config: LootFilterWidget) {
   }
 
   function edit (e: NewFilterEdit | FilterEdit) {
-    config.edits = addEdit(config.edits, { ...e, id: nextEditId() } as FilterEdit)
+    cfg().edits = addEdit(cfg().edits, { ...e, id: nextEditId() } as FilterEdit)
     rebuild()
   }
 
   // Adds an edit and returns a function that takes it back out (for Undo).
   function editWithUndo (e: NewFilterEdit | FilterEdit): () => void {
-    const before = config.edits
+    const before = cfg().edits
     edit(e)
-    return () => { config.edits = before; rebuild() }
+    return () => { cfg().edits = before; rebuild() }
   }
 
   // Points a failed edit at a new group/tier (after a NeverSink update).
   function replaceEdit (next: FilterEdit) {
-    config.edits = config.edits.map(e => e.id === next.id ? next : e)
+    cfg().edits = cfg().edits.map(e => e.id === next.id ? next : e)
     rebuild()
   }
 
   // Returns a function that puts the edit back (for the Undo toast).
   function removeEdit (id: number) {
-    const before = config.edits
-    config.edits = before.filter(e => e.id !== id)
+    const before = cfg().edits
+    cfg().edits = before.filter(e => e.id !== id)
     rebuild()
-    return () => { config.edits = before; rebuild() }
+    return () => { cfg().edits = before; rebuild() }
   }
 
   function header (): string[] {
     const d = doc.value!
     return [
       WOKE_MARK,
-      `# Made from "${config.sourceOnline ? `${config.sourceTitle} (online filter, this copy doesn't auto-update)` : config.sourceName}"${d.version ? ` (NeverSink ${d.version})` : ''} with ${config.edits.length} change(s)${buildBlockCount.value ? ` and ${buildBlockCount.value} build rule(s) for ${buildInput.value?.buildName ?? 'your build'}` : ''}.`,
+      `# Made from "${cfg().sourceOnline ? `${cfg().sourceTitle} (online filter, this copy doesn't auto-update)` : cfg().sourceName}"${d.version ? ` (NeverSink ${d.version})` : ''} with ${cfg().edits.length} change(s)${buildBlockCount.value ? ` and ${buildBlockCount.value} build rule(s) for ${buildInput.value?.buildName ?? 'your build'}` : ''}.`,
       '# This file is rewritten on every save from the loot filter editor; change it there.',
       ''
     ]
   }
 
   function pushHistory () {
-    const last = config.history[0]
-    const moves = config.priceTiers.moves
-    if (last && JSON.stringify([last.edits, last.moves]) === JSON.stringify([config.edits, moves])) return
-    const label = `${config.edits.length} change(s)${moves.length ? `, ${moves.length} price move(s)` : ''}`
-    config.history = [{ ts: Date.now(), label, edits: config.edits, moves }, ...config.history].slice(0, HISTORY_SIZE)
+    const last = cfg().history[0]
+    const moves = cfg().priceTiers.moves
+    if (last && JSON.stringify([last.edits, last.moves]) === JSON.stringify([cfg().edits, moves])) return
+    const label = `${cfg().edits.length} change(s)${moves.length ? `, ${moves.length} price move(s)` : ''}`
+    cfg().history = [{ ts: Date.now(), label, edits: cfg().edits, moves }, ...cfg().history].slice(0, HISTORY_SIZE)
   }
 
   // Puts the changes back as they were at an earlier save.
   function restore (ts: number) {
-    const point = config.history.find(h => h.ts === ts)
+    const point = cfg().history.find(h => h.ts === ts)
     if (!point) return () => {}
-    const before = { edits: config.edits, moves: config.priceTiers.moves }
-    config.edits = point.edits
-    config.priceTiers.moves = point.moves
+    const before = { edits: cfg().edits, moves: cfg().priceTiers.moves }
+    cfg().edits = point.edits
+    cfg().priceTiers.moves = point.moves
     rebuild()
-    return () => { config.edits = before.edits; config.priceTiers.moves = before.moves; rebuild() }
+    return () => { cfg().edits = before.edits; cfg().priceTiers.moves = before.moves; rebuild() }
   }
 
   async function save (): Promise<boolean> {
@@ -312,19 +314,19 @@ export function useLootFilter (config: LootFilterWidget) {
     saving.value = true
     error.value = null
     try {
-      const name = outputName(config)
-      if (!config.sourceOnline && config.saveMode === 'overwrite' && baseNeedsBackup.value) {
-        await hostRequest('filter-write', { dir: config.folder, name: config.sourceName + '.bak', text: baseText.value })
+      const name = outputName(cfg())
+      if (!cfg().sourceOnline && cfg().saveMode === 'overwrite' && baseNeedsBackup.value) {
+        await hostRequest('filter-write', { dir: cfg().folder, name: cfg().sourceName + '.bak', text: baseText.value })
         baseNeedsBackup.value = false
       }
-      await hostRequest('filter-write', { dir: config.folder, name, text: serializeFilter(doc.value, header()) })
+      await hostRequest('filter-write', { dir: cfg().folder, name, text: serializeFilter(doc.value, header()) })
       savedEdits.value = signature()
-      config.savedBuildSig = hash(buildSig.value)
-      config.savedExtraSig = extraSig()
+      cfg().savedBuildSig = hash(buildSig.value)
+      cfg().savedExtraSig = extraSig()
       pushHistory()
-      config.lastVersion = doc.value.version
+      cfg().lastVersion = doc.value.version
       lastSaved.value = Date.now()
-      if (config.reloadViaChat) reloadInGame()
+      if (cfg().reloadViaChat) reloadInGame()
       return true
     } catch (e) {
       error.value = `Couldn't save: ${(e as Error).message}`
@@ -337,7 +339,7 @@ export function useLootFilter (config: LootFilterWidget) {
   // One chat command, sent because the user pressed Save. With
   // reloadWhenSafe it waits until town/hideout, so it never lands mid-fight.
   function reloadInGame (force = false) {
-    if (!force && config.reloadWhenSafe && inSafeZone.value !== true) {
+    if (!force && cfg().reloadWhenSafe && inSafeZone.value !== true) {
       pendingReload.value = true
       return
     }
@@ -348,7 +350,7 @@ export function useLootFilter (config: LootFilterWidget) {
   function sendReload () {
     MainProcess.sendEvent({
       name: 'CLIENT->MAIN::user-action',
-      payload: { action: 'paste-in-chat', text: `/itemfilter ${stem(outputName(config))}` }
+      payload: { action: 'paste-in-chat', text: `/itemfilter ${stem(outputName(cfg()))}` }
     })
   }
 
@@ -356,7 +358,7 @@ export function useLootFilter (config: LootFilterWidget) {
   watch(buildSig, () => { if (baseText.value != null) rebuild() })
 
   const api = {
-    config,
+    get config () { return cfg() },
     prices,
     plan,
     health,

@@ -129,7 +129,11 @@ const emit = defineEmits<{
 
 const areaLevelModel = computed({
   get: () => props.areaLevel,
-  set: (v: number) => emit('area-level', v)
+  // A cleared box gives '' (read as area level 0): ignore it.
+  set: (v: number | string) => {
+    const n = Number(v)
+    if (v !== '' && Number.isFinite(n) && n >= 1 && n <= 86) emit('area-level', Math.round(n))
+  }
 })
 
 const final = computed(() => props.match.final!.block)

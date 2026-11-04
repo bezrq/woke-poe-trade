@@ -60,8 +60,10 @@ if (props.config.wmFlags[0] === 'uninitialized') {
   wm.show(props.config.wmId)
 }
 normalizeLootFilterWidget(props.config)
+// Settings can swap in a whole new config object; fill in any new fields.
+watch(() => props.config, (c) => normalizeLootFilterWidget(c))
 
-const store = useLootFilter(props.config)
+const store = useLootFilter(() => props.config)
 const mode = ref<'card' | 'editor'>('editor')
 const sample = shallowRef<ItemFacts | null>(null)
 const samplePosition = shallowRef({ x: 1, y: 1 })

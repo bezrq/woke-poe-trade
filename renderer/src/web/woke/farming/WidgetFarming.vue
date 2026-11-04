@@ -184,6 +184,7 @@ import { WPanel, WTabs, WField, WButton, WEmpty, WKbd, WIcon, WBanner, toast } f
 import { ninjaIcon } from '../ui/game-icons'
 import { MainProcess } from '@/web/background/IPC'
 import { parseClipboard } from '@/parser'
+import { getDetailsId } from '@/web/price-check/trends/getDetailsId'
 import { usePriceIndex } from '../market/price-index'
 import { formatChaos } from '../market/analysis'
 import { itemKey } from '../market/types'
@@ -516,8 +517,14 @@ const itemListener = MainProcess.onEvent('MAIN->CLIENT::item-text', (e) => {
   const name = parsed.info.refName
   const snap = prices.snapshot.value
   const candidates = snap?.items.filter(i => i.name === name) ?? []
-  const gemState = parsed.gemLevel != null ? `${parsed.gemLevel}${parsed.quality ? `/${parsed.quality}` : ''}` : ''
-  const match = candidates.find(i => i.variant === gemState) ?? candidates.find(i => !i.variant) ?? candidates[0]
+  // poe.ninja's variant the way APT's price check builds it ("20/20c" for a
+  // corrupted gem, map tier and generation); with no exact match, the
+  // cheapest variant rather than whichever is listed first (a 21/23c gem).
+  let wanted = ''
+  try { wanted = getDetailsId(parsed)?.variant ?? '' } catch {}
+  const match = candidates.find(i => i.variant === wanted) ??
+    candidates.find(i => !i.variant) ??
+    candidates.slice().sort((a, b) => a.chaos - b.chaos)[0]
   const ref = match ?? { type: '', name, variant: '' }
   const qty = parsed.stackSize?.value ?? 1
   addLootTo(sess, ref, qty)

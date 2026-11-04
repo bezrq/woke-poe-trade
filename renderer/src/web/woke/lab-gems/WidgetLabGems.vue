@@ -174,13 +174,17 @@ const league = computed(() => leagues.selectedId.value)
 const snapshot = shallowRef<Snapshot | null>(null)
 const expanded = shallowRef<string | null>(null)
 
+// A slow read for the previous league must not land after a newer one.
+let loadSeq = 0
 async function load () {
-  if (!league.value) { snapshot.value = null; return }
+  const seq = ++loadSeq
+  const id = league.value
+  if (!id) { snapshot.value = null; return }
   try {
-    const [snap] = await latestSnapshots(league.value, 1)
-    snapshot.value = snap ?? null
+    const [snap] = await latestSnapshots(id, 1)
+    if (seq === loadSeq) snapshot.value = snap ?? null
   } catch {
-    snapshot.value = null
+    if (seq === loadSeq) snapshot.value = null
   }
 }
 watch([league, collector.revision], load, { immediate: true })
