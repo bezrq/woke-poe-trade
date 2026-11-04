@@ -71,7 +71,7 @@
         </div>
       </div>
 
-      <WEmpty v-if="note" icon="fas fa-chart-line">{{ note }}</WEmpty>
+      <WEmpty v-if="note" :art="{ currency: 'divine' }">{{ note }}</WEmpty>
       <template v-else>
         <div v-if="plan.length" :class="$style.hero">
           <div><div :class="$style.k">Spend</div><div :class="$style.big" class="w-num">{{ fmt(planCost) }}</div></div>

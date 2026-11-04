@@ -6,6 +6,7 @@ import '@fontsource/inter/600.css'
 import '@fontsource/jetbrains-mono/400.css'
 import './theme.css'
 import './scale'
+import './density'
 
 export type WokeTheme = 'hybrid' | 'native' | 'modern' | 'classic'
 

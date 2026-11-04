@@ -28,6 +28,15 @@
       </label>
       <div class="text-gray-500 text-sm">Sizes the toolkit's panels; APT's own windows keep their size. Saved instantly.</div>
     </div>
+    <div>
+      <div class="mb-1">Row density</div>
+      <div class="flex flex-col gap-1">
+        <label class="flex items-center gap-2"><input type="radio" name="woke-density" :checked="density === 'comfortable'" @change="density = 'comfortable'">
+          <span>Comfortable <span class="text-gray-500 text-sm">28 px rows, easiest to hit mid-map</span></span></label>
+        <label class="flex items-center gap-2"><input type="radio" name="woke-density" :checked="density === 'compact'" @change="density = 'compact'">
+          <span>Compact <span class="text-gray-500 text-sm">24 px rows, more on screen at 1440p and up</span></span></label>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -41,6 +50,7 @@ export default {
 import { computed } from 'vue'
 import { wokeTheme, WOKE_THEMES } from './theme'
 import { MAX_SCALE, MIN_SCALE, uiScale } from './scale'
+import { density } from './density'
 
 const isAuto = computed(() => uiScale.value === 'auto')
 // The settings window isn't the game's size, so auto shows as 100% here.
