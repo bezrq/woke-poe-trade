@@ -80,7 +80,9 @@ export type IpcEvent =
   IpcUserAction |
   // woke modules (see main/src/woke, renderer/src/web/woke)
   IpcWokeRequest |
-  IpcWokeResponse
+  IpcWokeResponse |
+  IpcWokeHoverZones |
+  IpcWokeHover
 
 export type IpcEventPayload<Name extends IpcEvent['name'], T extends IpcEvent = IpcEvent> =
   T extends { name: Name, payload: infer P } ? P : never
@@ -199,4 +201,20 @@ type IpcWokeResponse =
     ok: boolean
     data?: unknown
     error?: string
+  }>
+
+// Hover zones: lets a woke widget react to the mouse while the game has
+// focus (the overlay is click-through then, so the DOM sees no hover).
+type IpcWokeHoverZones =
+  Event<'OVERLAY->MAIN::woke-hover-zones', {
+    // Replaces all zones owned by `owner`. Rects in CSS pixels, screen space.
+    owner: string
+    zones: Array<{ id: string, x: number, y: number, width: number, height: number, activate?: boolean }>
+    dpr: number
+  }>
+
+type IpcWokeHover =
+  Event<'MAIN->OVERLAY::woke-hover', {
+    id: string
+    inside: boolean
   }>

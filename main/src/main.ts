@@ -14,7 +14,7 @@ import { AppTray } from './AppTray'
 import { OverlayVisibility } from './windowing/OverlayVisibility'
 import { GameLogWatcher } from './host-files/GameLogWatcher'
 import { HttpProxy } from './proxy'
-import { initWoke } from './woke'
+import { initWoke, initWokeOverlay } from './woke'
 
 if (!app.requestSingleInstanceLock()) {
   app.exit()
@@ -41,6 +41,7 @@ app.on('ready', async () => {
     async () => {
       const overlay = new OverlayWindow(eventPipe, logger, poeWindow)
       new OverlayVisibility(eventPipe, overlay, gameConfig)
+      initWokeOverlay(eventPipe, overlay)
       const shortcuts = await Shortcuts.create(logger, overlay, poeWindow, gameConfig, eventPipe)
       eventPipe.onEventAnyClient('CLIENT->MAIN::update-host-config', (cfg) => {
         overlay.updateOpts(cfg.overlayKey, cfg.windowTitle)
