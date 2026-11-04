@@ -244,7 +244,8 @@ export function issueUrl (r: CrashReport, context?: string): string {
       block('Overlay errors', r.rendererErrors.join('\n\n').slice(0, 1500)) +
       block('Log', logLines.join('\n'))
     const url = `${ISSUES_URL}?${new URLSearchParams({ title, body, labels: r.kind === 'manual' ? 'bug' : 'crash' }).toString()}`
-    if (url.length < 7000 || !logLines.length) return url.slice(0, 7900)
+    // Never cut inside a %XX escape: GitHub rejects a malformed URL.
+    if (url.length < 7000 || !logLines.length) return url.slice(0, 7900).replace(/%[0-9A-Fa-f]?$/, '')
     logLines = logLines.slice(Math.ceil(logLines.length / 4))
   }
 }

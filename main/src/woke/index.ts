@@ -57,7 +57,8 @@ export function initWoke (server: ServerEvents, logger: Logger, poeWindow: GameW
   handlers['essence-scan-once'] = async () => await readAllEssenceLabels(poeWindow)
 
   server.onEventAnyClient('CLIENT->MAIN::woke-request', ({ id, op, args }) => {
-    const handler = handlers[op]
+    // Own keys only: an op like "constructor" must not reach Object.prototype.
+    const handler = Object.prototype.hasOwnProperty.call(handlers, op) ? handlers[op] : undefined
     const reply = (payload: { ok: boolean, data?: unknown, error?: string }) => {
       server.sendEventTo('broadcast', { name: 'MAIN->CLIENT::woke-response', payload: { id, ...payload } })
     }
@@ -65,7 +66,8 @@ export function initWoke (server: ServerEvents, logger: Logger, poeWindow: GameW
       reply({ ok: false, error: `Unknown op: ${op}` })
       return
     }
-    handler(args)
+    Promise.resolve()
+      .then(async () => await handler(args))
       .then(data => reply({ ok: true, data }))
       .catch((err: unknown) => {
         logger.write(`error [woke] ${op}: ${String(err)}`)

@@ -134,10 +134,15 @@ const labDiff = computed<LabDifficulty | null>(() => inLab.value && zone.areaLev
 const peekDiff = shallowRef<LabDifficulty | null>(null)
 const peekImg = shallowRef<string | null>(null)
 const peekError = shallowRef<string | null>(null)
+let peekDay = ''
 const dockRef = shallowRef<InstanceType<typeof DockItem> | null>(null)
 watch(() => [zone.name, labDiff.value] as const, async ([name, d]) => {
   if (name !== PLAZA_ZONE || !d || props.config.autoOpen === false) return
-  if (peekDiff.value === d && peekImg.value) return
+  // Reuse the layout only within the same lab day (resets at midnight UTC),
+  // and retry when what we got was yesterday's because today's wasn't up.
+  const day = new Date().toISOString().slice(0, 10)
+  if (peekDiff.value === d && peekImg.value && peekDay === day && !staleOf(peekImg.value)) return
+  peekDay = day
   peekImg.value = null
   peekError.value = null
   peekDiff.value = d

@@ -10,15 +10,19 @@ export async function labLayoutImage (args: { url: string }): Promise<string | n
   const res = await net.fetch(url.toString(), { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' } })
   if (!res.ok) throw new Error(`poelab answered ${res.status}`)
   const html = await res.text()
-  return findLayoutImage(html)
+  return findLayoutImage(html, url.toString())
 }
 
 // Same rule as the page script: the image with id notesImg, or else the first
 // image from the labfiles folder.
-export function findLayoutImage (html: string): string | null {
+export function findLayoutImage (html: string, pageUrl = 'https://www.poelab.com/'): string | null {
   const tags = html.match(/<img\b[^>]*>/gi) ?? []
   const srcOf = (tag: string) => /\ssrc\s*=\s*["']([^"']+)["']/i.exec(tag)?.[1] ?? null
   const notes = tags.find(t => /\sid\s*=\s*["']notesImg["']/i.test(t))
   const pick = (notes && srcOf(notes)) ?? tags.map(srcOf).find(src => src != null && /labfiles/i.test(src)) ?? null
-  return pick && /^https:\/\//.test(pick) ? pick : null
+  if (!pick) return null
+  // Relative ("/wp-content/labfiles/...") and protocol-relative srcs too.
+  let abs: URL
+  try { abs = new URL(pick.replace(/&amp;/g, '&'), pageUrl) } catch { return null }
+  return abs.protocol === 'https:' ? abs.toString() : null
 }
