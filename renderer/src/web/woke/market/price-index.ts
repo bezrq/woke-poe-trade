@@ -13,14 +13,16 @@ const usePriceIndexState = createGlobalState(() => {
   const leagues = useLeagues()
   const snapshot = shallowRef<Snapshot | null>(null)
 
+  let seq = 0
   watch([leagues.selectedId, collector.revision], async ([league]) => {
+    const mine = ++seq
     if (!league) { snapshot.value = null; return }
+    let snap: Snapshot | null = null
     try {
-      const [snap] = await latestSnapshots(league, 1)
-      snapshot.value = snap ?? null
-    } catch {
-      snapshot.value = null
-    }
+      snap = (await latestSnapshots(league, 1))[0] ?? null
+    } catch {}
+    // A league switch while reading: keep only the newest answer.
+    if (mine === seq) snapshot.value = snap
   }, { immediate: true })
 
   const byKey = computed(() => new Map((snapshot.value?.items ?? []).map(i => [itemKey(i), i])))

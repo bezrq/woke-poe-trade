@@ -127,7 +127,8 @@ export function itemFacts (clipboard: string, parsed: ParsedItem | null): ItemFa
     quality: parsed?.quality ?? num(line('Quality:')) ?? 0,
     stackSize: parsed?.stackSize?.value ?? num(line('Stack Size:')),
     mapTier: parsed?.mapTier ?? num(line('Map Tier:')),
-    gemLevel: parsed?.gemLevel ?? num(line('Level:')),
+    // Not from "Level:" on other items: that's the requirement.
+    gemLevel: parsed?.gemLevel ?? (/Gem/.test(itemClass ?? '') ? num(line('Level:')) : undefined),
     width: parsed?.info.w,
     height: parsed?.info.h,
     memoryStrands: parsed?.memoryStrands ?? num(line('Memory Strands:')) ?? 0,

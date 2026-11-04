@@ -40,6 +40,8 @@ export const useActiveBuild = createGlobalState(() => {
       const d = await pobApi.read(pobWidget.value, path)
       if (relPath.value === path) details.value = d
     } catch (err) {
+      // A build you already switched away from failing doesn't matter.
+      if (relPath.value !== path) return
       // The file moved or was deleted; helpers just go quiet.
       details.value = null
       error.value = (err as Error).message

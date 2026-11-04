@@ -121,6 +121,20 @@ watch(active.charName, (name) => {
     saveConfig()
   }
 })
+// The name match needs the build list, which loads after mount: try it once
+// the list is in for a character that has no build linked yet.
+watch(builds, (list) => {
+  const name = active.charName.value
+  if (!name || name.length < 4 || props.config.followChars[name] || !list.length) return
+  const lower = name.toLowerCase()
+  const rel = list.find(b => b.name.toLowerCase().includes(lower))?.relPath
+  if (!rel) return
+  props.config.followChars = { ...props.config.followChars, [name]: rel }
+  if (rel !== props.config.activeBuild) {
+    props.config.activeBuild = rel
+    saveConfig()
+  }
+})
 
 async function doImport () {
   const input = importText.value.trim()
@@ -176,7 +190,7 @@ watch(selected, async (relPath) => {
     const d = await pobApi.read(props.config, relPath)
     if (selected.value === relPath) details.value = d
   } catch (err) {
-    detailsError.value = (err as Error).message
+    if (selected.value === relPath) detailsError.value = (err as Error).message
   }
 })
 

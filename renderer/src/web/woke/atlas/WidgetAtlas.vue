@@ -144,7 +144,7 @@ export default {
 </script>
 
 <script setup lang="ts">
-import { inject, computed, shallowRef } from 'vue'
+import { inject, computed, shallowRef, watch } from 'vue'
 import { MainProcess } from '@/web/background/IPC'
 import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
@@ -178,6 +178,8 @@ if (props.config.wmFlags[0] === 'uninitialized') {
 }
 
 const { atlasData, atlasDataError } = useAtlasData(props.config.dataUrl)
+// A new data URL from the settings applies without restarting.
+watch(() => props.config.dataUrl, (url) => { useAtlasData(url) })
 
 const filter = shallowRef('')
 const compareId = shallowRef<number | null>(null)

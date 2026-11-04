@@ -223,6 +223,7 @@ const mech = computed(() => {
 
 function step (dir: number) {
   const list = visible.value
+  if (!list.length) return
   const i = list.findIndex(m => m.id === mech.value.id)
   props.config.tab = list[(i + dir + list.length) % list.length].id
 }

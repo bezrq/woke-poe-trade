@@ -139,11 +139,13 @@ const current = shallowRef<Entry | null>(null)
 let nextId = 1
 
 // Badge: monoliths worth corrupting since the dock card was last opened.
-const seenCorrupt = shallowRef(0)
-const corruptCount = computed(() => entries.value.filter(e => e.rated.verdict === 'corrupt').length)
-const unseenCorrupt = computed(() => Math.max(0, corruptCount.value - seenCorrupt.value))
+// By entry, not by count: a re-read monolith replaces its entry, so counts
+// can drop and a new find would hide behind the old total.
+const seenCorrupt = shallowRef(new Set<number>())
+const corruptIds = computed(() => entries.value.filter(e => e.rated.verdict === 'corrupt').map(e => e.id))
+const unseenCorrupt = computed(() => corruptIds.value.filter(id => !seenCorrupt.value.has(id)).length)
 function onCard (open: boolean) {
-  if (open) seenCorrupt.value = corruptCount.value
+  if (open) seenCorrupt.value = new Set(corruptIds.value)
 }
 
 const prices = usePriceIndex()
@@ -234,15 +236,18 @@ function onReading (reading: { lines: string[], at: { x: number, y: number } }) 
     return
   }
   const alert = props.config.valueAlertChaos
+  // The same monolith read again (after corrupting it, say): replace it,
+  // keeping its id while the verdict stays the same so the badge doesn't
+  // count it again.
+  const list = entries.value.slice()
+  const idx = list.findIndex(e => Math.hypot(e.at.x - reading.at.x, e.at.y - reading.at.y) < 0.06)
+  const prev = idx >= 0 ? list[idx] : null
   const entry: Entry = {
-    id: nextId++,
+    id: prev && prev.rated.verdict === rated.verdict ? prev.id : nextId++,
     at: reading.at,
     rated,
     bigValue: alert > 0 && rated.totalChaos >= alert
   }
-  // The same monolith read again (after corrupting it, say): replace it.
-  const list = entries.value.slice()
-  const idx = list.findIndex(e => Math.hypot(e.at.x - reading.at.x, e.at.y - reading.at.y) < 0.06)
   if (idx >= 0) list.splice(idx, 1)
   list.push(entry)
   entries.value = list.slice(-50)
@@ -285,7 +290,7 @@ async function toggle () {
 
 function clear () {
   entries.value = []
-  seenCorrupt.value = 0
+  seenCorrupt.value = new Set()
   current.value = null
   hostRequest('essence-scan-reread', null).catch(() => {})
 }
