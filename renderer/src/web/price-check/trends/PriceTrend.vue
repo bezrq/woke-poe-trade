@@ -59,12 +59,15 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, PropType, computed, watch } from 'vue'
+import { defineComponent, defineAsyncComponent, PropType, computed, watch } from 'vue'
 import { useI18nNs } from '@/web/i18n'
 import { usePoeninja } from '@/web/background/Prices'
 import { isValuableBasetype, getDetailsId } from './getDetailsId'
 import ItemQuickPrice from '@/web/ui/ItemQuickPrice.vue'
-import VueApexcharts from 'vue3-apexcharts'
+// woke: apexcharts is a quarter of the startup bundle (550 KB) and only draws
+// this sparkline, so it loads separately; app/prefetch.ts fetches it once the
+// overlay is idle after startup, before the first price check needs it.
+const VueApexcharts = defineAsyncComponent(() => import('vue3-apexcharts'))
 import { ParsedItem } from '@/parser'
 import { artificialSlowdown } from '../trade/artificial-slowdown'
 import { ItemFilters } from '../filters/interfaces'

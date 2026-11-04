@@ -75,10 +75,15 @@ function itemNamesFromLines (items: Generator<BaseType>) {
 }
 
 async function loadItems (language: string) {
-  const ndjson = await (await fetch(`${import.meta.env.BASE_URL}data/${language}/items.ndjson`)).text()
+  // woke: the three files load side by side (they were fetched one by one).
+  const [ndjson, namesBuf, refNamesBuf] = await Promise.all([
+    fetch(`${import.meta.env.BASE_URL}data/${language}/items.ndjson`).then(r => r.text()),
+    fetch(`${import.meta.env.BASE_URL}data/${language}/items-name.index.bin`).then(r => r.arrayBuffer()),
+    fetch(`${import.meta.env.BASE_URL}data/${language}/items-ref.index.bin`).then(r => r.arrayBuffer())
+  ])
   const INDEX_WIDTH = 2
-  const indexNames = new Uint32Array(await (await fetch(`${import.meta.env.BASE_URL}data/${language}/items-name.index.bin`)).arrayBuffer())
-  const indexRefNames = new Uint32Array(await (await fetch(`${import.meta.env.BASE_URL}data/${language}/items-ref.index.bin`)).arrayBuffer())
+  const indexNames = new Uint32Array(namesBuf)
+  const indexRefNames = new Uint32Array(refNamesBuf)
 
   function commonFind (index: Uint32Array, prop: 'name' | 'refName') {
     return function (ns: BaseType['namespace'], name: string): BaseType[] | undefined {
@@ -107,10 +112,15 @@ async function loadItems (language: string) {
 }
 
 async function loadStats (language: string) {
-  const ndjson = await (await fetch(`${import.meta.env.BASE_URL}data/${language}/stats.ndjson`)).text()
+  // woke: side by side, as in loadItems.
+  const [ndjson, refBuf, matcherBuf] = await Promise.all([
+    fetch(`${import.meta.env.BASE_URL}data/${language}/stats.ndjson`).then(r => r.text()),
+    fetch(`${import.meta.env.BASE_URL}data/${language}/stats-ref.index.bin`).then(r => r.arrayBuffer()),
+    fetch(`${import.meta.env.BASE_URL}data/${language}/stats-matcher.index.bin`).then(r => r.arrayBuffer())
+  ])
   const INDEX_WIDTH = 2
-  const indexRef = new Uint32Array(await (await fetch(`${import.meta.env.BASE_URL}data/${language}/stats-ref.index.bin`)).arrayBuffer())
-  const indexMatcher = new Uint32Array(await (await fetch(`${import.meta.env.BASE_URL}data/${language}/stats-matcher.index.bin`)).arrayBuffer())
+  const indexRef = new Uint32Array(refBuf)
+  const indexMatcher = new Uint32Array(matcherBuf)
 
   STAT_BY_REF_V2 = function (ref: string) {
     let start = dataBinarySearch(indexRef, Number(fnv1a(ref, { size: 32 })), 0, INDEX_WIDTH)
@@ -190,11 +200,13 @@ export function stat (text: string) {
 }
 
 export async function init (lang: string) {
-  CLIENT_STRINGS_REF = (await import(/* @vite-ignore */`${import.meta.env.BASE_URL}data/en/client_strings.js`)).default
-  ITEM_DROP = await (await fetch(`${import.meta.env.BASE_URL}data/item-drop.json`)).json()
-  APP_PATRONS = await (await fetch(`${import.meta.env.BASE_URL}data/patrons.json`)).json()
-
-  await loadForLang(lang)
+  // woke: everything loads side by side; it used to be ten requests in a row.
+  await Promise.all([
+    import(/* @vite-ignore */`${import.meta.env.BASE_URL}data/en/client_strings.js`).then(m => { CLIENT_STRINGS_REF = m.default }),
+    fetch(`${import.meta.env.BASE_URL}data/item-drop.json`).then(r => r.json()).then(d => { ITEM_DROP = d }),
+    fetch(`${import.meta.env.BASE_URL}data/patrons.json`).then(r => r.json()).then(d => { APP_PATRONS = d }),
+    loadForLang(lang)
+  ])
 
   for (const text of DELAYED_STAT_VALIDATION) {
     const statOrGroup = STAT_BY_REF_V2(text)
@@ -217,7 +229,9 @@ export async function init (lang: string) {
 }
 
 export async function loadForLang (lang: string) {
-  CLIENT_STRINGS = (await import(/* @vite-ignore */`${import.meta.env.BASE_URL}data/${lang}/client_strings.js`)).default
-  await loadItems(lang)
-  await loadStats(lang)
+  await Promise.all([
+    import(/* @vite-ignore */`${import.meta.env.BASE_URL}data/${lang}/client_strings.js`).then(m => { CLIENT_STRINGS = m.default }),
+    loadItems(lang),
+    loadStats(lang)
+  ])
 }
