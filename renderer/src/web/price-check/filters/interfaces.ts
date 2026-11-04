@@ -131,6 +131,8 @@ export interface StatFilter {
     dp: boolean
     isNegated: boolean
     goodness?: number
+    // woke: 1 = higher is better, -1 = lower is better, 0 = not comparable (set after negation)
+    better?: 1 | -1 | 0
   }
   option?: {
     value: number // NOTE: mutable in UI

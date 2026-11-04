@@ -3,6 +3,8 @@
     <button class="px-2 rounded border overflow-hidden text-ellipsis"
       :class="{ 'border-gray-500': showAsActive, 'border-gray-900': !showAsActive }"
       @click="toggleAccuracy">{{ label }}</button>
+    <span class="ml-auto" />
+    <slot />
     <button v-if="filters.corrupted" class="px-2" @click="corrupted = !corrupted">
       <span v-if="corrupted" class="text-red-500">{{ t('item.corrupted') }}</span>
       <span v-else class="text-gray-600">{{ t('item.not_corrupted') }}</span>
