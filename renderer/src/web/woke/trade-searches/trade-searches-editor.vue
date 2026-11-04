@@ -6,6 +6,7 @@
       Paste a pathofexile.com/trade search link (live searches end in <code>/live</code>).
       Each search can have one hotkey for the overlay browser and one for your normal browser.
     </div>
+    <ui-checkbox v-model="followLeague" class="mb-2">Open searches in the league picked in price check settings, even if they were saved in an older league</ui-checkbox>
     <dnd-container tag="div" class="flex flex-col gap-y-3"
       v-model="entries" item-key="id"
       handle="[data-qa=drag-handle]" :animation="200" :force-fallback="true">
@@ -56,7 +57,7 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, shallowRef } from 'vue'
+import { computed, defineComponent, shallowRef } from 'vue'
 import DndContainer from 'vuedraggable'
 import HotkeyInput from '@/web/settings/HotkeyInput.vue'
 import { configProp, configModelValue } from '@/web/settings/utils'
@@ -76,6 +77,10 @@ export default defineComponent({
     return {
       isValidUrl,
       title: configModelValue(() => props.configWidget, 'wmTitle'),
+      followLeague: computed({
+        get: () => props.configWidget.followLeague !== false,
+        set: (v: boolean) => { props.configWidget.followLeague = v }
+      }),
       entries: configModelValue(() => props.configWidget, 'entries'),
       ioMode,
       ioText,

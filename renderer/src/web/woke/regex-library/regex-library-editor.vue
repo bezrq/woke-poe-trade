@@ -12,7 +12,7 @@
           </button>
           <input v-model="entry.text" placeholder="search string or regex"
             class="px-1 col-span-2 leading-6"
-            :class="(entry.text.length > MAX_SEARCH_LENGTH) ? 'bg-red-800' : 'bg-gray-900'">
+            :class="(effectiveText(entry).length > MAX_SEARCH_LENGTH) ? 'bg-red-800' : 'bg-gray-900'">
           <button class="leading-none rounded-r bg-gray-700 w-6 h-6" @click="removeEntry(entry.id)">
             <i class="fas fa-times text-gray-400" />
           </button>
@@ -25,8 +25,13 @@
           <hotkey-input v-model="entry.hotkey" />
           <input v-model="entry.notes" placeholder="notes"
             class="bg-gray-900 px-1 col-start-2 col-span-2 leading-6 rounded">
-          <div class="col-start-2 col-span-2 text-xs text-gray-500">
-            {{ entry.text.length }}/{{ MAX_SEARCH_LENGTH }} characters
+          <div class="col-start-2 col-span-2 flex items-center gap-x-3 text-xs">
+            <span :class="effectiveText(entry).length > MAX_SEARCH_LENGTH ? 'text-red-400' : 'text-gray-500'">
+              {{ effectiveText(entry).length }}/{{ MAX_SEARCH_LENGTH }} characters<template v-if="effectiveText(entry).length > MAX_SEARCH_LENGTH">: too long, the game cuts it off. Drop terms, or build map strings with the Map regex builder.</template>
+            </span>
+            <label v-if="canNegate(entry.text)" class="flex items-center gap-x-1 text-gray-400 cursor-pointer" title='Wraps the term as "!…" so the search highlights items WITHOUT it'>
+              <input type="checkbox" v-model="entry.negate"> Exclude (highlight items without it)
+            </label>
           </div>
         </div>
       </template>
@@ -38,7 +43,7 @@
     </div>
     <div v-if="ioMode" class="mt-2 flex flex-col gap-1">
       <div class="text-gray-400 text-sm">
-        {{ ioMode === 'export' ? 'Copy this JSON to back up or share your library.' : 'Paste a JSON array of entries. They are added after your existing ones.' }}
+        {{ ioMode === 'export' ? 'Copy this JSON to back up or share your library.' : 'Paste one search string per line (optionally "name = string"), or a JSON export. They are added after your existing ones.' }}
       </div>
       <textarea v-model="ioText" rows="8" class="bg-gray-900 rounded p-1 font-mono text-xs"
         :readonly="ioMode === 'export'" />
@@ -56,7 +61,7 @@ import { defineComponent, shallowRef } from 'vue'
 import DndContainer from 'vuedraggable'
 import HotkeyInput from '@/web/settings/HotkeyInput.vue'
 import { configProp, configModelValue } from '@/web/settings/utils'
-import { MAX_SEARCH_LENGTH, emptyEntry, exportEntries, parseImport } from './widget'
+import { MAX_SEARCH_LENGTH, canNegate, effectiveText, emptyEntry, exportEntries, parseImport } from './widget'
 import type { RegexEntry, RegexLibraryWidget } from './widget'
 import { parseTags } from '../shared/library'
 
@@ -71,6 +76,8 @@ export default defineComponent({
 
     return {
       MAX_SEARCH_LENGTH,
+      canNegate,
+      effectiveText,
       title: configModelValue(() => props.configWidget, 'wmTitle'),
       entries: configModelValue(() => props.configWidget, 'entries'),
       ioMode,

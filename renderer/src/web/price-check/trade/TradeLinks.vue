@@ -6,6 +6,7 @@
     </template>
     <button v-else
       @click="open(true)" class="bg-gray-700 text-gray-400 rounded px-2">{{ t('Trade') }} <i class="fas fa-external-link-alt text-xs" /></button>
+    <woke-save-search :get-link="getLink" class="ml-1" />
   </div>
 </template>
 
@@ -15,8 +16,10 @@ import { useI18n } from 'vue-i18n'
 import { Host } from '@/web/background/IPC'
 import { AppConfig } from '@/web/Config'
 import { PriceCheckWidget } from '@/web/overlay/widgets'
+import WokeSaveSearch from '@/web/woke/trade-searches/SaveSearchButton.vue'
 
 export default defineComponent({
+  components: { WokeSaveSearch },
   props: {
     getLink: {
       type: Function as PropType<() => string>,

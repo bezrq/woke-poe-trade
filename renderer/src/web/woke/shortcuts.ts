@@ -2,7 +2,7 @@
 // and components import Config.ts.
 import type { ShortcutAction } from '@ipc/types'
 import type { Widget } from '@/web/overlay/widgets'
-import { REGEX_LIBRARY_TYPE } from './regex-library/widget'
+import { REGEX_LIBRARY_TYPE, effectiveText } from './regex-library/widget'
 import type { RegexLibraryWidget } from './regex-library/widget'
 import { TRADE_SEARCHES_TYPE, hotkeyTarget } from './trade-searches/widget'
 import type { TradeSearchesWidget } from './trade-searches/widget'
@@ -28,7 +28,7 @@ export function wokeShortcutsFor (widget: Widget, config: { woke?: { setupDone: 
       .filter(entry => entry.hotkey && entry.text)
       .map(entry => ({
         shortcut: entry.hotkey!,
-        action: { type: 'stash-search', text: entry.text }
+        action: { type: 'stash-search', text: effectiveText(entry) }
       }))
   }
   if (widget.wmType === TRADE_SEARCHES_TYPE) {
