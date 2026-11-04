@@ -1,0 +1,21 @@
+{
+  "kind": "essence",
+  "source": "Guy, 2560x1440, PoE screenshot-0026",
+  "cursor": {
+    "x": 1187,
+    "y": 600
+  },
+  "note": "health bar covers \"of Doubt\"",
+  "essences": [
+    "Wailing Essence of Doubt",
+    "Weeping Essence of Woe"
+  ],
+  "corrupted": false,
+  "box": {
+    "x": 895,
+    "y": 290,
+    "width": 585,
+    "height": 285
+  },
+  "knownMiss": "a health bar covers part of the label"
+}

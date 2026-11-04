@@ -29,8 +29,8 @@ inside Electron. Each test boots the overlay with the widgets it needs:
 ```ts
 test('Alt+S scans the hovered map', async ({ overlay }) => {
   await overlay.boot({ widgets: [{ wmType: 'woke-map-scan' }] })
-  await overlay.showScreen('screens/map-tooltip-deadly.png')
-  await overlay.moveMouse(616, 356)
+  await overlay.showScreen('screens/map-real-07.png')
+  await overlay.moveMouse(605, 810)
   await overlay.pressHotkey('Alt + S')
   await expect(overlay.page.getByText('CARE')).toBeVisible()
 })
@@ -61,9 +61,11 @@ npx playwright show-report report        # screenshots of every scenario
   from `Path of Exile/logs/Client.txt`, replace character and account names,
   and keep a `#` comment on top saying what happens.
 - `items/`: item text as Ctrl+Alt+C copies it in game (advanced format).
-- `screens/`: screenshots plus a `.json` with the cursor position and what
-  should be read. The current ones are rendered by `tools/render-screens.mjs`
-  (`"synthetic": true`); real 1920x1080 screenshots can go next to them.
+- `screens/`: real 2560x1440 game screenshots (blacked out away from the
+  tooltip) plus a `.json` with the cursor position and what should be read.
+  `main/ocr-bench` reads the same files and reports accuracy; its README
+  says how to add one. `essence-real-two` puts two real monolith labels in
+  one frame for the whole-screen read.
 - `http/`: recorded responses, `fixtures/http/<host>/<path>[.post].json`,
   with `_any.json` for any path in that folder. poe.ninja prices come from
   `tools/make-ninja-fixture.mjs`. Requests without a fixture are listed in
@@ -72,10 +74,10 @@ npx playwright show-report report        # screenshots of every scenario
 
 ## Known gaps the tests mark
 
-- The synthetic map screenshots use an older tooltip layout (a grey "Map
-  Tier:" line), whose grey labels OCR garbles; real screenshots read fine.
-  `vision/ocr.test.ts` marks tier/properties on them as an expected failure
-  until they're replaced by real labelled screenshots.
+- Two essence screenshots have a monster health bar over the label and read
+  wrong; their `.json` has `knownMiss`, and the test expects the miss.
+- Map scan reads from the first property line down, so the tier in the
+  header ("Map (Tier 16)") isn't read or checked.
 - 31 map mods can't be put in a stash search (every word of them is also in
   another mod). `renderer/test/woke/map-mods.test.ts` keeps the list from
   growing.

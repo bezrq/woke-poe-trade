@@ -13,11 +13,14 @@ You need the OCR files the app uses (APT's `cv-ocr.zip`, see
 
 ```
 cd main
-npm run ocr-bench -- --ocr <cv-ocr dir> --samples ocr-bench/samples/maps --fails
-npm run ocr-bench -- --ocr <cv-ocr dir> --samples ocr-bench/samples/essences --fails
+npm run ocr-bench -- --ocr <cv-ocr dir> --fails
 ```
 
 Options:
+
+- `--samples <dir>`: labelled screenshots. Default: `testing/fixtures/screens`,
+  the real ones the OCR tests also read.
+- `--kind map|essence`: only one kind.
 
 - `--model <name or path>`: read with a different model. Default: the one
   the app ships (`renderer/public/data/ocr/poe.traineddata`); `eng` is stock English.
@@ -32,26 +35,29 @@ precision, and whether "corrupted" was right.
 
 ## Samples
 
-`samples/maps` and `samples/essences` hold real 2560x1440 screenshots
-(cropped around the tooltip to keep the repo small; `screenHeight` says the
-real window height). Each `<id>.png` has an `<id>.json`:
+The samples are `testing/fixtures/screens/map-real-*` and `essence-real-*`:
+Guy's 2560x1440 screenshots, blacked out away from the tooltip to keep them
+small. The OCR tests (`testing/vision/ocr.test.ts`) read the same files, so a
+new sample is also a new test. Each `<id>.png` has an `<id>.json`:
 
 ```jsonc
 // map
-{ "kind": "map", "screenHeight": 1440,
-  "cursor": { "x": 905, "y": 680 },          // where the hovered item was
-  "box": { "x": 160, "y": 160, "width": 813, "height": 470 },  // tooltip, for --oracle
-  "lines": ["Monster Level: 81", ...],       // every line, for character accuracy
-  "modLines": ["Players cannot inflict Exposure", ...],
-  "props": { "quantity": 46, "rarity": 27, "packSize": 18 } }
+{ "kind": "map", "cursor": { "x": 2080, "y": 1020 },   // where the hovered item was
+  "tier": 14,
+  "props": { "quantity": 46, "rarity": 27, "packSize": 18 },
+  "mods": ["Players cannot inflict Exposure", ...],    // matcher strings, for the tests
+  "modLines": ["Players cannot inflict Exposure", ...],// as shown, for the bench
+  "lines": ["Ancient Vector", "Map (Tier 14)", ...],   // every line, for character accuracy
+  "box": { "x": 1675, "y": 525, "width": 813, "height": 470 } }  // tooltip, for --oracle
 
 // essence
-{ "kind": "essence", "screenHeight": 1440, "cursor": { ... },
-  "essences": ["Weeping Essence of Woe", "Wailing Essence of Spite"], "corrupted": false }
+{ "kind": "essence", "cursor": { ... },
+  "essences": ["Weeping Essence of Woe", "Wailing Essence of Spite"], "corrupted": false,
+  "knownMiss": "a health bar covers part of the label" }  // optional: the test expects a miss
 ```
 
-To add one: take a screenshot in game (Options > Input > Screenshot), crop
-it around the tooltip with some background, and write the label. Hard
+To add one: take a screenshot in game (Options > Input > Screenshot), black
+out everything more than ~160 px from the tooltip, and write the label. Hard
 cases (busy backgrounds, health bars over labels, 1080p, 4K) are the most
 useful.
 

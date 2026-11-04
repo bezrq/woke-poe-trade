@@ -8,8 +8,9 @@ test.skip(!haveOcr, 'OCR files missing: npm run get:ocr')
 
 test('Alt+E reads a monolith with Misery and Scorn: CORRUPT, with the flagged essences', async ({ overlay }) => {
   await overlay.boot({ widgets: [{ wmType: 'woke-essence-scan', wmWants: 'show' }] })
-  await overlay.showScreen('screens/essence-monolith.png')
-  const { cursor } = JSON.parse(fs.readFileSync(path.join(FIXTURES, 'screens/essence-monolith.json'), 'utf8'))
+  // Real screenshot: Screaming Essence of Misery, Rage and Scorn.
+  await overlay.showScreen('screens/essence-real-25.png')
+  const { cursor } = JSON.parse(fs.readFileSync(path.join(FIXTURES, 'screens/essence-real-25.json'), 'utf8'))
   await overlay.moveMouse(cursor.x, cursor.y)
   await overlay.pressHotkey('Alt + E')
 

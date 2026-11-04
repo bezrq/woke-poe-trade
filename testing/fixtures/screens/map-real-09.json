@@ -1,0 +1,44 @@
+{
+  "kind": "map",
+  "source": "Guy, 2560x1440, PoE screenshot-0009",
+  "cursor": {
+    "x": 540,
+    "y": 740
+  },
+  "tier": 16,
+  "props": {
+    "quantity": 55,
+    "rarity": 33,
+    "packSize": 21
+  },
+  "mods": [
+    "Area contains two Unique Bosses",
+    "Monsters have #% chance to Suppress Spell Damage",
+    "Monsters steal Power, Frenzy and Endurance charges on Hit",
+    "Players have #% less Accuracy Rating"
+  ],
+  "modLines": [
+    "Area contains two Unique Bosses",
+    "Monsters have +60% chance to Suppress Spell Damage",
+    "Monsters steal Power, Frenzy and Endurance charges on Hit",
+    "Players have 25% less Accuracy Rating"
+  ],
+  "lines": [
+    "Soul Toil",
+    "Map (Tier 16)",
+    "Monster Level: 83",
+    "Item Quantity: +55%",
+    "Item Rarity: +33%",
+    "Monster Pack Size: +21%",
+    "Area contains two Unique Bosses",
+    "Monsters have +60% chance to Suppress Spell Damage",
+    "Monsters steal Power, Frenzy and Endurance charges on Hit",
+    "Players have 25% less Accuracy Rating"
+  ],
+  "box": {
+    "x": 170,
+    "y": 300,
+    "width": 740,
+    "height": 410
+  }
+}

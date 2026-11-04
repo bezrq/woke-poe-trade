@@ -1,0 +1,19 @@
+{
+  "kind": "essence",
+  "source": "Guy, 2560x1440, PoE screenshot-0017",
+  "cursor": {
+    "x": 1760,
+    "y": 300
+  },
+  "essences": [
+    "Wailing Essence of Anger",
+    "Screaming Essence of Doubt"
+  ],
+  "corrupted": false,
+  "box": {
+    "x": 1470,
+    "y": 40,
+    "width": 585,
+    "height": 235
+  }
+}
