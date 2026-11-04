@@ -5,6 +5,7 @@ import { describe, it, expect } from 'vitest'
 import { fixture } from '../helpers/game-data'
 import { parseLogLine, actFromAreaId, isTown } from '@/web/woke/campaign/log-parse'
 import { pickStage } from '@/web/woke/pob-builds/build-model'
+import { gemData } from '@/web/woke/pob-builds/gems'
 import { bundledRoute, routeData } from '@/web/woke/campaign/route-data'
 import { advanceOnEnter, resyncTo, DEFAULT_ROUTE_OPTIONS, xpMultiplier } from '@/web/woke/campaign/route-parse'
 import type { RouteOptions } from '@/web/woke/campaign/route-parse'
@@ -205,6 +206,11 @@ describe('lab', () => {
   it('a Trial of Ascendancy in a map is not the lab', () => {
     expect(zoneKind('1_Labyrinth_Airlock', '')).toBe('lab')
     expect(zoneKind('EndGame_Labyrinth_trials_spikes', '')).not.toBe('lab')
+    // Hubs that work like a town (Exile-UI's town check).
+    expect(zoneKind('HeistHub', '')).toBe('town')
+    expect(zoneKind('Menagerie', '')).toBe('town')
+    expect(zoneKind('SanctumFoyer_1_1', '')).toBe('town')
+    expect(zoneKind('HeistDungeon1', '')).not.toBe('town')
   })
 
   it('counts down to the daily reset (midnight UTC)', () => {
@@ -216,5 +222,13 @@ describe('lab', () => {
     expect(staleLayoutDate(url, Date.UTC(2026, 10, 4, 23, 59))).toBeNull()
     expect(staleLayoutDate(url, Date.UTC(2026, 10, 5, 0, 1))).toBe('2026-11-04')
     expect(staleLayoutDate(null, Date.UTC(2026, 10, 5))).toBeNull()
+  })
+})
+
+describe('build gems', () => {
+  it('knows transfigured gems by their base gem', () => {
+    expect(gemData('Kinetic Blast of Clustering')).toMatchObject({ name: 'Kinetic Blast of Clustering', colour: 'b', requiredLevel: 28, sources: [] })
+    expect(gemData('Combustion')?.name).toBe('Combustion Support')
+    expect(gemData('Not A Gem of Anything')).toBeNull()
   })
 })

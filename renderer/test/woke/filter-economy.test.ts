@@ -155,6 +155,17 @@ describe('re-tier from prices', () => {
     expect(priceLookup(uniques, on, 'max')(group, 'Silk Robe')?.chaos).toBe(400)
     expect(priceLookup(uniques, on, 'min')(group, 'Silk Robe')?.chaos).toBe(1)
   })
+
+  it('leaves replicas out of a base price: they have their own blocks', () => {
+    const uniques: PriceItem[] = [
+      { type: 'UniqueAccessory', name: 'Junk Belt', variant: '', chaos: 2 },
+      { type: 'UniqueAccessory', name: 'Replica Junk Belt', variant: '', chaos: 3000 }
+    ]
+    const on = (base: string) => base === 'Leather Belt' ? ['Junk Belt', 'Replica Junk Belt'] : []
+    const group = ECONOMY_GROUPS.find(g => g.unique)!
+    expect(priceLookup(uniques, on, 'max')(group, 'Leather Belt')?.chaos).toBe(2)
+    expect(priceLookup(uniques, b => b === 'Onyx Amulet' ? ['Replica Junk Belt'] : [], 'max')(group, 'Onyx Amulet')).toBeNull()
+  })
 })
 
 describe('safety net', () => {

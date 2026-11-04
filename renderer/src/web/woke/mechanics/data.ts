@@ -297,16 +297,20 @@ export interface PricedRow {
 
 export function priceGroup (group: PriceGroup, items: PriceItem[]): PricedRow[] {
   const unit = group.unit ?? 1
-  const seen = new Set<string>()
-  const rows: PricedRow[] = []
+  // One row per name. Variants: prefer the plain one, and never a 5- or
+  // 6-link unique (poe.ninja lists those separately at many times the
+  // price of the one that drops) unless that is all there is.
+  const linked = (i: PriceItem) => /\b[56]L\b/.test(i.variant)
+  const better = (a: PriceItem, b: PriceItem) =>
+    linked(a) !== linked(b) ? !linked(a) : (!a.variant && Boolean(b.variant))
+  const best = new Map<string, PriceItem>()
   for (const item of items) {
     if (group.types && !group.types.includes(item.type)) continue
     if (group.match && !group.match.test(item.name)) continue
-    // Keep one row per name (gems/maps have variants; take the first, usually the base).
-    if (seen.has(item.name)) continue
-    seen.add(item.name)
-    rows.push({ item, chaos: item.chaos * unit, unit, tag: group.tag?.(item) })
+    const prev = best.get(item.name)
+    if (!prev || better(item, prev)) best.set(item.name, item)
   }
+  const rows: PricedRow[] = [...best.values()].map(item => ({ item, chaos: item.chaos * unit, unit, tag: group.tag?.(item) }))
   rows.sort((a, b) => b.chaos - a.chaos)
   return rows.slice(0, group.limit ?? 20)
 }

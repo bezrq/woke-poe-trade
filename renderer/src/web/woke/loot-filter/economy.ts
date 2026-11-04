@@ -88,7 +88,12 @@ export function priceLookup (
       const hit = find(group.ninja, base)
       return hit ? { chaos: hit.chaos, thin: isThin(hit) } : null
     }
-    const priced = uniquesOnBase(base).map(name => find(group.ninja, name)).filter((x): x is PriceItem => Boolean(x))
+    // Replicas have their own NeverSink blocks above the unique tiers, so
+    // they never land in them and must not set the base's price.
+    const priced = uniquesOnBase(base)
+      .filter(name => !/^Replica /.test(name))
+      .map(name => find(group.ninja, name))
+      .filter((x): x is PriceItem => Boolean(x))
     if (!priced.length) return null
     // "max": the base is worth what its best unique is worth, so a valuable
     // unique is never hidden because it shares a base with junk.

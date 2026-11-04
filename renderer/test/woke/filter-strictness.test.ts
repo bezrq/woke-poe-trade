@@ -1,7 +1,7 @@
 // Loot filter strictness: the ladder that follows your maps, and the hotkey
 // targets for stepping it.
 import { describe, it, expect } from 'vitest'
-import { DEFAULT_LADDER, defaultStrictnessAuto, ladderTarget, levelForArea, pushArea, stepLabel, clampLevel } from '@/web/woke/loot-filter/strictness'
+import { DEFAULT_LADDER, defaultStrictnessAuto, ladderTarget, ladderZone, levelForArea, pushArea, stepLabel, clampLevel } from '@/web/woke/loot-filter/strictness'
 import { outputName, parseStrictnessTarget, strictnessHotkeyTarget, NEVERSINK_OUTPUT, normalizeLootFilterWidget } from '@/web/woke/loot-filter/widget'
 import type { LootFilterWidget } from '@/web/woke/loot-filter/widget'
 
@@ -25,6 +25,11 @@ describe('strictness ladder', () => {
     for (const a of [70, 70, 70]) recent = pushArea(recent, a)
     expect(recent).toEqual([70, 70, 70])
     expect(ladderTarget(defaultStrictnessAuto(), recent)).toBe(2)
+  })
+
+  it('follows maps and the campaign, not the lab, boss arenas or side areas', () => {
+    expect(['MapWorldsStrand', '1_2_3', '2_10_1'].every(ladderZone)).toBe(true)
+    expect(['3_Labyrinth_boss_3', 'MapWorldsShapersRealm', 'MapSideArea_Vaal', 'Delve_Main', 'HeistDungeon1', 'HideoutCoastal'].some(ladderZone)).toBe(false)
   })
 
   it('does nothing when off, paused, or before any map', () => {

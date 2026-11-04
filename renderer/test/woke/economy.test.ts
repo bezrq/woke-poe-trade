@@ -16,7 +16,8 @@ import { BOSSES } from '@/web/woke/boss-runs/bosses'
 import { evaluateBoss, priceResolver, observedRates, parseRunTime, formatRunTime } from '@/web/woke/boss-runs/calc'
 import type { BossPrefs } from '@/web/woke/boss-runs/calc'
 import { DumpImporter } from '@/web/woke/league-invest/dumps'
-import { MECHANICS } from '@/web/woke/mechanics/data'
+import { MECHANICS, mechanicById, priceGroup } from '@/web/woke/mechanics/data'
+import { REWARDS } from '@/web/woke/mechanics/betrayal'
 import { MECHANIC_ICONS } from '@/web/woke/ui/game-icons'
 import { mechanicOf } from '@/web/woke/atlas/tree'
 import type { AtlasNode } from '@/web/woke/atlas/tree'
@@ -136,6 +137,24 @@ describe('league mechanics', () => {
       }
     }
     expect(empty).toEqual([])
+  })
+
+  it('safehouse scarab rewards name scarabs that exist', () => {
+    const scarabs = [...names].filter(n => / Scarab\b/.test(n))
+    const missing = Object.values(REWARDS).flat()
+      .map(r => /^(.+) Scarabs$/.exec(r)?.[1])
+      .filter((family): family is string => !!family && !scarabs.some(n => n.startsWith(`${family} Scarab`)))
+    expect(missing).toEqual([])
+  })
+
+  it('prices a replica unique as it drops, not its 6-link listing', () => {
+    const heist = mechanicById('heist')!.groups[0]
+    const rows = priceGroup(heist, [
+      { type: 'UniqueArmour', name: 'Replica Robe', variant: 'Vaal Regalia, 6L', chaos: 900 },
+      { type: 'UniqueArmour', name: 'Replica Robe', variant: 'Vaal Regalia', chaos: 40 },
+      { type: 'UniqueArmour', name: 'Replica Mail', variant: 'Astral Plate, 6L', chaos: 300 }
+    ])
+    expect(rows.map(r => [r.item.name, r.chaos])).toEqual([['Replica Mail', 300], ['Replica Robe', 40]])
   })
 
   it('mechanic icons show items that exist', () => {
