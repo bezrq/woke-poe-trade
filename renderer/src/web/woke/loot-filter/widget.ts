@@ -2,12 +2,38 @@ import type { Widget, Anchor } from '@/web/overlay/widgets'
 import type { FilterEdit } from './edits'
 import { DEFAULT_BUILD_RULES } from './build-rules'
 import type { BuildRuleSwitches } from './build-rules'
+import type { PriceMove, UniqueRule } from './economy'
+import { DEFAULT_SAFETY_NET } from './safety'
+import type { SafetyNet } from './safety'
 
 export const LOOT_FILTER_TYPE = 'woke-loot-filter'
 // copy-item target: sample the hovered item and open its rule card.
 export const LOOT_FILTER_SAMPLE_TARGET = 'woke-loot-filter'
 
 export type SaveMode = 'copy' | 'overwrite'
+
+export interface PriceTiers {
+  // Re-tier price groups from poe.ninja (reviewed before anything moves).
+  on: boolean
+  // Moves applied on top of NeverSink's tiers, kept until prices say otherwise.
+  moves: PriceMove[]
+  // The list before the last Apply, for Undo.
+  prev: PriceMove[] | null
+  // `${type}|${base}` keys you kept where they are.
+  locks: string[]
+  appliedAt: number | null
+  // How a base with several uniques is priced.
+  uniqueRule: UniqueRule
+}
+
+export interface SavePoint {
+  ts: number
+  label: string
+  edits: FilterEdit[]
+  moves: PriceMove[]
+}
+
+export const HISTORY_SIZE = 20
 
 export interface LootFilterWidget extends Widget {
   anchor: Anchor
@@ -39,6 +65,16 @@ export interface LootFilterWidget extends Widget {
   buildRules: BuildRuleSwitches
   // Fingerprint of the build rules at the last save, to flag unsaved changes.
   savedBuildSig?: string
+  // Fingerprint of price moves + safety net at the last save.
+  savedExtraSig?: string
+  priceTiers: PriceTiers
+  safetyNet: SafetyNet
+  // Changes as they were at each of the last saves, newest first.
+  history: SavePoint[]
+}
+
+export function defaultPriceTiers (): PriceTiers {
+  return { on: true, moves: [], prev: null, locks: [], appliedAt: null, uniqueRule: 'max' }
 }
 
 export function initLootFilterWidget (w: LootFilterWidget) {
@@ -58,6 +94,9 @@ export function initLootFilterWidget (w: LootFilterWidget) {
   w.lastVersion = null
   w.fallbackAreaLevel = 83
   w.buildRules = { ...DEFAULT_BUILD_RULES }
+  w.priceTiers = defaultPriceTiers()
+  w.safetyNet = { ...DEFAULT_SAFETY_NET }
+  w.history = []
 }
 
 export function normalizeLootFilterWidget (w: LootFilterWidget) {
@@ -78,6 +117,24 @@ export function normalizeLootFilterWidget (w: LootFilterWidget) {
   for (const k of Object.keys(DEFAULT_BUILD_RULES) as Array<keyof BuildRuleSwitches>) {
     if (typeof w.buildRules[k] !== 'boolean') w.buildRules[k] = DEFAULT_BUILD_RULES[k]
   }
+  const pt = w.priceTiers as Partial<PriceTiers> | undefined
+  if (!pt || typeof pt !== 'object') {
+    w.priceTiers = defaultPriceTiers()
+  } else {
+    const d = defaultPriceTiers()
+    w.priceTiers = {
+      on: typeof pt.on === 'boolean' ? pt.on : d.on,
+      moves: Array.isArray(pt.moves) ? pt.moves : [],
+      prev: Array.isArray(pt.prev) ? pt.prev : null,
+      locks: Array.isArray(pt.locks) ? pt.locks.filter(x => typeof x === 'string') : [],
+      appliedAt: typeof pt.appliedAt === 'number' ? pt.appliedAt : null,
+      uniqueRule: pt.uniqueRule === 'min' ? 'min' : 'max'
+    }
+  }
+  if (!w.safetyNet || typeof w.safetyNet !== 'object') w.safetyNet = { ...DEFAULT_SAFETY_NET }
+  if (typeof w.safetyNet.on !== 'boolean') w.safetyNet.on = DEFAULT_SAFETY_NET.on
+  if (typeof w.safetyNet.minChaos !== 'number' || !(w.safetyNet.minChaos > 0)) w.safetyNet.minChaos = DEFAULT_SAFETY_NET.minChaos
+  if (!Array.isArray(w.history)) w.history = []
 }
 
 export function editorHotkeyTarget (wmId: number): string {

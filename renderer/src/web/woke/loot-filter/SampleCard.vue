@@ -14,6 +14,15 @@
         </label>
       </div>
 
+      <div v-if="match.final" :class="$style.keys" role="toolbar" aria-label="Quick fixes">
+        <button v-for="q in quick" :key="q.key" type="button" class="w-focusable" :class="[$style.key, { [$style.keyOff]: q.disabled }]"
+          :disabled="q.disabled" :title="q.title" @click="q.run()">
+          <span :class="$style.cap" :style="focused ? '' : 'opacity: .55'">{{ q.key }}</span>
+          <span>{{ q.label }}</span>
+        </button>
+      </div>
+      <div v-if="match.final && !focused" class="text-xs w-faint" style="margin-top: -8px;">Move the mouse onto this card, then press 1-5.</div>
+
       <div v-if="!match.final" class="w-dim text-sm">
         No rule matches this item, so it drops with the game's default look.
       </div>
@@ -64,7 +73,7 @@
           This rule doesn't list items by name, so moving to another tier isn't possible. Restyle it, or give this item its own rule.
         </div>
 
-        <div :class="$style.section">
+        <div ref="lookSection" :class="$style.section">
           <div class="w-group-label" :class="$style.label">Change the look</div>
           <WSegmented v-if="!isOwn" v-model="scope" :options="scopeOptions" />
           <StyleEditor :look="editLook" :visibility="editVisibility" :preview-text="facts.baseType ?? facts.name"
@@ -88,8 +97,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
-import { WPanel, WButton, WSegmented, WChip } from '../ui'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { WPanel, WButton, WSegmented, WChip, toast } from '../ui'
+import { SAFETY_LOOK } from './safety'
+import { tierRank } from './economy'
 import LabelPreview from './LabelPreview.vue'
 import StyleEditor from './StyleEditor.vue'
 import type { LootFilterStore } from './store'
@@ -203,6 +214,99 @@ function removeOwnRule () {
   if (ownEdit.value) props.store.removeEdit(ownEdit.value.id)
 }
 
+// ---- one-key fixes (1-5) ----
+
+function afterFix (text: string, undo: () => void) {
+  toast(text, { undo: () => { undo(); props.store.save() } })
+  // Saved now; the game reloads it when you're next in town or hideout.
+  props.store.save()
+}
+
+// Lower/Raise walk the price tiers in rank order (t1, t2...) when the group
+// has them, otherwise the tiers in file order.
+const ladder = computed(() => {
+  const names = moveTiers.value.map(t => t.tier)
+  const ranked = moveTiers.value
+    .map(t => ({ t, r: tierRank(t.tier, names) }))
+    .filter(x => x.r != null)
+    .sort((a, b) => a.r! - b.r!)
+    .map(x => x.t)
+  return ranked.some(t => t.tier === final.value.tier) ? ranked : moveTiers.value
+})
+const tierIndex = computed(() => ladder.value.findIndex(t => t.tier === final.value.tier))
+const shownNow = computed(() => props.match.visibility !== 'Hide')
+const name = computed(() => base.value || props.facts.name)
+
+const quick = computed(() => {
+  const i = tierIndex.value
+  const lower = i >= 0 ? ladder.value[i + 1] : undefined
+  const higher = i > 0 ? ladder.value[i - 1] : undefined
+  const canOwn = Boolean(base.value && origin.value.type && origin.value.tier)
+  return [
+    {
+      key: '1',
+      label: shownNow.value ? 'Hide' : 'Hidden',
+      title: `Hide ${name.value} from now on (own rule, just this item)`,
+      disabled: !canOwn || !shownNow.value,
+      run: () => afterFix(`Hid ${name.value}`, props.store.editWithUndo({ kind: 'item', type: origin.value.type, tier: origin.value.tier, base: base.value, visibility: 'Hide', patch: {} }))
+    },
+    {
+      key: '2',
+      label: 'Lower',
+      title: lower ? `Move to ${lower.tier}` : 'Already in the lowest tier, or this rule doesn\'t list items by name',
+      disabled: !lower,
+      run: () => lower && afterFix(`${name.value}: ${final.value.tier} → ${lower.tier}`, props.store.editWithUndo({ kind: 'move', type: origin.value.type, base: base.value, from: final.value.tier ?? '', to: lower.tier }))
+    },
+    {
+      key: '3',
+      label: 'Raise',
+      title: higher ? `Move to ${higher.tier}` : 'Already in the top tier, or this rule doesn\'t list items by name',
+      disabled: !higher,
+      run: () => higher && afterFix(`${name.value}: ${final.value.tier} → ${higher.tier}`, props.store.editWithUndo({ kind: 'move', type: origin.value.type, base: base.value, from: final.value.tier ?? '', to: higher.tier }))
+    },
+    {
+      key: '4',
+      label: 'Own look',
+      title: 'Change the look of just this item below',
+      disabled: !canOwn,
+      run: () => { scope.value = 'item'; lookSection.value?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }) }
+    },
+    {
+      key: '5',
+      label: 'Always show',
+      title: 'Own rule that shows this item at every strictness and after NeverSink updates',
+      disabled: !canOwn || (isOwn.value && ownEdit.value?.visibility === 'Show'),
+      run: () => afterFix(`${name.value} always shows`, props.store.editWithUndo({ kind: 'item', type: origin.value.type, tier: origin.value.tier, base: base.value, visibility: 'Show', patch: shownNow.value ? {} : SAFETY_LOOK }))
+    }
+  ]
+})
+
+const lookSection = ref<HTMLElement | null>(null)
+const focused = ref(document.hasFocus())
+const onFocus = () => { focused.value = true }
+const onBlur = () => { focused.value = false }
+
+// Keys reach the overlay only while it has focus, so they never drink a flask.
+function onKey (e: KeyboardEvent) {
+  if (e.ctrlKey || e.altKey || e.metaKey || e.repeat) return
+  const t = e.target as HTMLElement | null
+  if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return
+  const q = quick.value.find(x => x.key === e.key)
+  if (!q || q.disabled) return
+  e.preventDefault()
+  q.run()
+}
+onMounted(() => {
+  window.addEventListener('keydown', onKey)
+  window.addEventListener('focus', onFocus)
+  window.addEventListener('blur', onBlur)
+})
+onUnmounted(() => {
+  window.removeEventListener('keydown', onKey)
+  window.removeEventListener('focus', onFocus)
+  window.removeEventListener('blur', onBlur)
+})
+
 function tri (r: Tri) {
   if (r === true) return { icon: '✓', cls: 'w-up' }
   if (r === false) return { icon: '✗', cls: 'w-down' }
@@ -275,6 +379,40 @@ function unknownKeys (m: BlockMatch): string[] {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.keys {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 4px;
+}
+.key {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 2px;
+  border: 1px solid var(--w-line);
+  border-radius: var(--w-r-sm);
+  background: var(--w-panel-2);
+  color: var(--w-fg);
+  font-size: var(--w-fs-xs);
+  cursor: pointer;
+}
+.key:hover:not(:disabled) {
+  border-color: var(--w-accent);
+}
+.keyOff {
+  opacity: 0.4;
+  cursor: default;
+}
+.cap {
+  font-family: var(--w-mono);
+  font-weight: 600;
+  font-size: var(--w-fs-xs);
+  padding: 0 5px;
+  border: 1px solid var(--w-line-strong);
+  border-bottom-width: 2px;
+  border-radius: 3px;
 }
 .num {
   width: 3.2rem;
