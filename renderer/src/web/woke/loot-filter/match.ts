@@ -149,6 +149,8 @@ export function evalCondition (c: FilterCondition, item: ItemFacts): Tri {
     case 'UberBlightedMap': return bool(c, item.uberBlightedMap)
     case 'AnyEnchantment': return bool(c, item.anyEnchantment)
     case 'HasImplicitMod': return bool(c, item.hasImplicitMod)
+    case 'HasSearingExarchImplicit': return numeric(c, item.exarchTier)
+    case 'HasEaterOfWorldsImplicit': return numeric(c, item.eaterTier)
     case 'HasInfluence': return influence(c, item.influences)
     case 'HasExplicitMod': return item.identified === false ? (c.op === '!=' || c.op === '!') : strings(c, item.explicitModNames)
     case 'HasEnchantment': return strings(c, item.enchantments)

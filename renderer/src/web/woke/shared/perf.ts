@@ -18,6 +18,8 @@ let freezeCount = 0
 export function perfMark (name: string): void {
   if (marks.some(m => m.name === name)) return
   marks.push({ name, ms: Math.round(performance.now()) })
+  // Also a User Timing mark, so DevTools and the perf tests see it.
+  try { performance.mark(`woke: ${name}`) } catch {}
 }
 
 export function perfRecord (name: string, ms: number): void {
@@ -103,6 +105,9 @@ function round1 (n: number) { return Math.round(n * 10) / 10 }
 // --- Always-on probes -------------------------------------------------------
 
 perfMark('Bundle evaluated')
+
+// For the perf tests (testing/perf) and a look from DevTools.
+;(window as unknown as { __wokePerf?: unknown }).__wokePerf = rendererPerf
 
 // Anything that blocks the overlay's main thread for 50 ms or more: these are
 // the moments the overlay would feel stuck.

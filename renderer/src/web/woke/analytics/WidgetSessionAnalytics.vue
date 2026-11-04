@@ -281,7 +281,11 @@ const divineNow = computed(() => prices.snapshot.value?.divine ?? null)
 const tradeLog = useTradeLog()
 if (isModuleOn(AppConfig(), 'trade')) tradeLog.load()
 const trading = computed(() => {
-  const list = tradesInRange(tradeLog.trades.value, props.config.range, leagues.selectedId.value ?? '', now.value)
+  // Like the sessions: "Last 7 days" means this league's last 7 days.
+  const range = props.config.range
+  const leagueId = leagues.selectedId.value ?? ''
+  const ofLeague = range === 'all' ? tradeLog.trades.value : tradesInRange(tradeLog.trades.value, 'league', leagueId, now.value)
+  const list = range === '7d' ? tradesInRange(ofLeague, '7d', leagueId, now.value) : ofLeague
   if (!list.length) return null
   // Each trade at the divine rate it happened at (today's for old ones).
   let sold = 0

@@ -80,7 +80,7 @@ export default {
 </script>
 
 <script setup lang="ts">
-import { computed, inject, nextTick, onUnmounted, reactive, shallowRef } from 'vue'
+import { computed, inject, nextTick, onUnmounted, reactive, shallowRef, watch } from 'vue'
 import { Host, MainProcess } from '@/web/background/IPC'
 import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
@@ -179,11 +179,19 @@ function expand (o: Offer) {
 }
 
 const now = shallowRef(Date.now())
-const clock = setInterval(() => {
-  if (!book.offers.length) return
-  now.value = Date.now()
-  prune(book, now.value)
-}, 1000)
+// Ticks only while there are offers to age (the perf checks count wakeups
+// while you play).
+let clock: ReturnType<typeof setInterval> | undefined
+watch(() => book.offers.length > 0, (any) => {
+  clearInterval(clock)
+  clock = undefined
+  if (any) {
+    clock = setInterval(() => {
+      now.value = Date.now()
+      prune(book, now.value)
+    }, 1000)
+  }
+}, { immediate: true })
 
 // --- Client.txt ---
 const dockRef = shallowRef<InstanceType<typeof DockItem> | null>(null)
@@ -211,9 +219,15 @@ function announce (o: Offer) {
   nextTick(() => dockRef.value?.peek(`${o.who}: ${offerLabel(o)} · ${priceLabel(o.price)}`))
 }
 
+// Lines handled live before the start-up read came back: that read (it
+// retries for a few seconds while the log watcher starts) can hold them too.
+let replayed = false
+const seenLive = new Set<string>()
+
 const logListener = Host.onEvent('MAIN->CLIENT::game-log', (e) => {
   for (const line of e.lines) {
     if (seenAtStart.has(line)) continue
+    if (!replayed) seenLive.add(line)
     handle(line, true)
   }
 })
@@ -223,6 +237,7 @@ logTail().then(tail => {
   const since = Date.now() - 30 * 60_000
   const until = Date.now() + 60_000
   for (const line of tail.lines) {
+    if (seenLive.has(line)) continue
     const ev = parseTradeLine(line, 0)
     if (!ev || ev.at < since || ev.at > until) continue
     // The same line may also arrive live if it was written as the app
@@ -231,7 +246,10 @@ logTail().then(tail => {
     handle(line, false)
   }
   prune(book, Date.now())
-}).catch(() => {})
+}).catch(() => {}).finally(() => {
+  replayed = true
+  seenLive.clear()
+})
 
 function ping () {
   try {
