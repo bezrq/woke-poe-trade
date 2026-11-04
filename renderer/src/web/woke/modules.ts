@@ -38,6 +38,7 @@ export const MODULES: ModuleDef[] = [
   { id: 'league-invest', name: 'Investments', description: 'League-start buys ranked from past leagues', group: 'economy', widgetTypes: ['woke-league-invest'], needs: ['poll', 'network'] },
   { id: 'lab-gems', name: 'Lab gems', description: 'Divine Font gem values by colour', group: 'economy', widgetTypes: ['woke-lab-gems'], needs: ['poll'] },
   { id: 'farming', name: 'Farming profit', description: 'Session profit per hour', group: 'economy', widgetTypes: ['woke-farming'], needs: ['log', 'prices', 'hotkeys'] },
+  { id: 'session-analytics', name: 'Session analytics', description: 'Profit per map, strategy and hour over time', group: 'economy', widgetTypes: ['woke-session-analytics'], needs: ['prices'] },
   { id: 'boss-runs', name: 'Boss runs', description: 'Profit per boss kill', group: 'economy', widgetTypes: ['woke-boss-runs'], needs: ['prices'] },
 
   { id: 'map-mods', name: 'Map mods', description: 'Danger strip on price check and map regex', group: 'mapping', widgetTypes: ['woke-map-mods'], needs: ['hotkeys'] },
@@ -70,7 +71,7 @@ export interface Preset {
 
 export const PRESETS: Preset[] = [
   { id: 'everything', label: 'Everything', on: 'all' },
-  { id: 'mapper', label: 'Mapper', on: ['market', 'farming', 'boss-runs', 'map-mods', 'map-scan', 'essence-scan', 'loot-filter', 'atlas', 'mechanics', 'trade-searches', 'regex-library'] },
+  { id: 'mapper', label: 'Mapper', on: ['market', 'farming', 'session-analytics', 'boss-runs', 'map-mods', 'map-scan', 'essence-scan', 'loot-filter', 'atlas', 'mechanics', 'trade-searches', 'regex-library'] },
   { id: 'leveling', label: 'Leveling', on: ['campaign', 'run-timer', 'lab', 'pob-builds', 'regex-library'] },
   { id: 'trader', label: 'Trader', on: ['market', 'league-invest', 'lab-gems', 'trade-searches', 'regex-library'] },
   { id: 'price-check-only', label: 'Price check only', on: [] }

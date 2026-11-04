@@ -19,6 +19,7 @@ const ICONS: Record<string, string> = {
   'woke-league-invest': 'fa-sack-dollar',
   'woke-lab-gems': 'fa-gem',
   'woke-farming': 'fa-coins',
+  'woke-session-analytics': 'fa-chart-bar',
   'woke-boss-runs': 'fa-skull',
   'woke-map-mods': 'fa-map',
   'woke-map-scan': 'fa-expand',
