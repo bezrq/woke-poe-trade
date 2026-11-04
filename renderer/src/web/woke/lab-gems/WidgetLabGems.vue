@@ -1,79 +1,74 @@
 <template>
   <Widget :config="config" move-handles="corners" :inline-edit="false" :readonly="true">
-    <div class="widget-default-style p-1 flex flex-col min-h-0 text-gray-100" style="width: 30rem; max-height: 75vh;">
-      <div class="p-1 flex items-center gap-2">
-        <span class="truncate grow">{{ config.wmTitle || 'Lab gems' }}</span>
-        <button :class="[$style.tab, { [$style.tabActive]: config.view === 'color' }]" @click="config.view = 'color'">Colour roll</button>
-        <button :class="[$style.tab, { [$style.tabActive]: config.view === 'specific' }]" @click="config.view = 'specific'">Specific gem</button>
-      </div>
-      <div class="flex gap-1 px-1 pb-1 items-center text-sm">
-        <select v-model="config.gemState" class="bg-gray-900 rounded px-1 leading-6" title="Gem level / quality">
-          <option v-for="s in GEM_STATES" :key="s" :value="s">{{ stateLabel(s) }}</option>
-        </select>
-        <template v-if="config.view === 'color'">
-          <select v-model.number="config.topN" class="bg-gray-900 rounded px-1 leading-6">
-            <option :value="3">Top 3</option>
-            <option :value="5">Top 5</option>
-            <option :value="8">Top 8</option>
-          </select>
-        </template>
+    <WPanel :title="config.wmTitle || 'Lab gems'" width="30rem">
+      <template #tabs>
+        <WTabs v-model="config.view" :options="[{ value: 'color', label: 'Colour roll' }, { value: 'specific', label: 'Specific gem' }]" />
+      </template>
+      <template #toolbar>
+        <WSelect v-model="config.gemState" :options="GEM_STATES.map(s => ({ value: s, label: stateLabel(s) }))" title="Gem level / quality" />
+        <WSegmented v-if="config.view === 'color'" :model-value="String(config.topN)"
+          :options="[{ value: '3', label: 'Top 3' }, { value: '5', label: 'Top 5' }, { value: '8', label: 'Top 8' }]"
+          @update:model-value="config.topN = Number($event)" />
         <template v-else>
-          <select v-model="config.specificMode" class="bg-gray-900 rounded px-1 leading-6"
-            title="Whether the font lets you choose the transfigured version or gives a random one">
-            <option value="choose">I choose the version</option>
-            <option value="random">Random version</option>
-          </select>
-          <label class="flex items-center gap-1 text-gray-400 whitespace-nowrap">
-            profit ≥ <input v-model.number="config.minProfit" type="number" min="0" class="bg-gray-900 rounded px-1 w-14 leading-6"> c
-          </label>
+          <WSelect v-model="config.specificMode" title="Whether the font lets you choose the transfigured version or gives a random one"
+            :options="[{ value: 'choose', label: 'I choose the version' }, { value: 'random', label: 'Random version' }]" />
+          <WField v-model="config.minProfit" type="number" suffix="c profit min" style="width: 9rem;" />
         </template>
-      </div>
-      <div class="px-1 pb-1 text-xs text-gray-500">
+      </template>
+      <template #meta>
         <template v-if="snapshot">
-          {{ snapshot.league }} · {{ priceCount }} gem prices · updated {{ ago(snapshot.ts) }}
+          <span>{{ snapshot.league }}</span><span class="w-faint">·</span>
+          <span>{{ priceCount }} gem prices</span><span class="w-faint">·</span>
+          <span>updated {{ ago(snapshot.ts) }}</span>
         </template>
-        <template v-else>Waiting for poe.ninja prices (open the Market tracker once, or price check anything)…</template>
-      </div>
+        <span v-else>Waiting for poe.ninja prices (open the Market tracker once, or price check anything)…</span>
+      </template>
 
-      <div v-if="config.view === 'color'" class="overflow-y-auto min-h-0 px-1">
-        <div v-for="roll in rolls" :key="roll.color" class="pb-2">
-          <div :class="$style.row">
+      <template v-if="config.view === 'color'">
+        <div v-for="(roll, i) in rolls" :key="roll.color" class="pb-1">
+          <div class="w-row" :class="$style.poolGrid">
             <span :class="[$style.dot, $style[roll.color]]" />
-            <span class="grow">{{ COLOR_NAMES[roll.color] }} pool</span>
-            <span class="text-gray-500 text-xs whitespace-nowrap">{{ roll.listed }}/{{ roll.poolSize }} priced · each gem {{ pct(roll.chanceEach) }}</span>
-            <span class="whitespace-nowrap w-20 text-right" title="Expected value of the best of the 3 offered gems">EV {{ fmt(roll.ev) }}</span>
+            <span>{{ COLOR_NAMES[roll.color] }} pool</span>
+            <span class="w-faint text-xs whitespace-nowrap">{{ roll.listed }}/{{ roll.poolSize }} priced · each {{ pct(roll.chanceEach) }}</span>
+            <span class="w-num text-right" :class="i === 0 ? 'w-up' : ''" title="Expected value of the best of the 3 offered gems">EV {{ fmt(roll.ev) }}</span>
           </div>
-          <div v-for="g in roll.top" :key="g.name" :class="[$style.row, 'pl-4 text-sm']">
-            <span class="truncate grow">{{ g.name }}</span>
-            <span class="whitespace-nowrap w-20 text-right">{{ fmt(g.chaos ?? 0) }}</span>
+          <div v-for="g in roll.top" :key="g.name" class="w-row" :class="$style.gemGrid">
+            <span class="w-trunc w-rarity-gem">{{ g.name }}</span>
+            <WPrice :chaos="g.chaos ?? 0" :divine="snapshot?.divine" />
           </div>
         </div>
-        <div class="text-xs text-gray-500 pb-1">
+        <div class="w-faint text-xs py-2" style="padding-left: var(--w-pad); padding-right: var(--w-pad);">
           The font shows 3 random transfigured gems of the colour you insert and you take one.
           EV assumes you take the most valuable; unpriced gems count as 0.
         </div>
-      </div>
+      </template>
 
-      <div v-else class="overflow-y-auto min-h-0 px-1">
-        <div v-if="!picks.length" class="text-gray-500 p-2 text-center">No gems match.</div>
-        <div v-for="p in picks" :key="p.baseName" class="pb-1">
-          <div :class="$style.row">
-            <span :class="[$style.dot, $style[p.color]]" />
-            <button class="truncate grow text-left" @click="toggle(p.baseName)">{{ p.baseName }}</button>
-            <span class="text-gray-500 text-sm whitespace-nowrap" title="Base gem price">{{ p.baseChaos != null ? fmt(p.baseChaos) : '?' }} →</span>
-            <span class="whitespace-nowrap w-16 text-right">{{ fmt(value(p)) }}</span>
-            <span class="whitespace-nowrap w-16 text-right text-green-400" title="Profit after buying the base gem">+{{ fmt(profit(p)) }}</span>
-          </div>
-          <template v-if="expanded === p.baseName">
-            <div v-for="v in p.variants" :key="v.name" :class="[$style.row, 'pl-4 text-sm text-gray-400']">
-              <span class="truncate grow">{{ v.name }}</span>
-              <span class="whitespace-nowrap w-16 text-right">{{ v.chaos != null ? fmt(v.chaos) : '—' }}</span>
-            </div>
+      <template v-else>
+        <WEmpty v-if="!picks.length" icon="fas fa-gem">No gems match.</WEmpty>
+        <template v-else>
+          <div class="w-row w-row--head" :class="$style.pickGrid"><span /><span>Base gem</span><span class="text-right">Base</span><span class="text-right">Value</span><span class="text-right">Profit</span></div>
+          <template v-for="p in picks" :key="p.baseName">
+            <button class="w-row w-full text-left" :class="$style.pickGrid" @click="toggle(p.baseName)">
+              <span :class="[$style.dot, $style[p.color]]" />
+              <span class="w-trunc">{{ p.baseName }} <i class="fas text-xs w-faint" :class="expanded === p.baseName ? 'fa-chevron-up' : 'fa-chevron-down'" /></span>
+              <span class="text-right w-dim" title="Base gem price"><WPrice v-if="p.baseChaos != null" :chaos="p.baseChaos" :divine="snapshot?.divine" /><template v-else>?</template></span>
+              <WPrice :chaos="value(p)" :divine="snapshot?.divine" />
+              <span class="text-right w-up w-num" title="Profit after buying the base gem">+<WPrice :chaos="profit(p)" :divine="snapshot?.divine" /></span>
+            </button>
+            <template v-if="expanded === p.baseName">
+              <div v-for="v in p.variants" :key="v.name" class="w-row" :class="$style.gemGrid" style="padding-left: calc(var(--w-pad) + 18px);">
+                <span class="w-trunc w-rarity-gem">{{ v.name }}</span>
+                <WPrice :chaos="v.chaos" :divine="snapshot?.divine" />
+              </div>
+            </template>
           </template>
-        </div>
-      </div>
-      <div class="px-1 pt-1 text-xs text-gray-600">Maths from GemCheck (MIT). Prices are poe.ninja listings, uncorrupted only.</div>
-    </div>
+        </template>
+      </template>
+
+      <template #footer>
+        <span>Maths from GemCheck (MIT) · poe.ninja prices, uncorrupted only</span>
+      </template>
+    </WPanel>
   </Widget>
 </template>
 
@@ -94,6 +89,7 @@ export default {
 import { inject, computed, shallowRef, watch, onUnmounted } from 'vue'
 import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
+import { WPanel, WTabs, WSelect, WSegmented, WField, WPrice, WEmpty } from '../ui'
 import { useLeagues } from '@/web/background/Leagues'
 import { useMarketCollector } from '../market/collector'
 import { latestSnapshots } from '../market/db'
@@ -174,31 +170,12 @@ function ago (ts: number) {
 }
 </script>
 
-<style lang="postcss" module>
-.tab {
-  @apply rounded px-2 text-sm text-gray-400 bg-gray-800;
-
-  &:hover {
-    @apply bg-gray-700 text-gray-100;
-  }
-}
-
-.tabActive {
-  @apply bg-gray-600 text-gray-100;
-}
-
-.row {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  @apply py-0.5 border-b border-gray-800;
-}
-
-.dot {
-  @apply inline-block w-2 h-2 rounded-full shrink-0;
-}
-
-.r { @apply bg-red-500; }
-.g { @apply bg-green-500; }
-.b { @apply bg-blue-500; }
+<style module>
+.poolGrid { grid-template-columns: 10px minmax(0, 1fr) auto 84px; }
+.gemGrid { grid-template-columns: minmax(0, 1fr) 76px; padding-left: calc(var(--w-pad) + 18px); }
+.pickGrid { grid-template-columns: 10px minmax(0, 1fr) 70px 70px 76px; }
+.dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; flex: none; }
+.r { background: #d0533f; }
+.g { background: #57b04d; }
+.b { background: #4f7ed6; }
 </style>
