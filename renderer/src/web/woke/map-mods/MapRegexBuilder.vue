@@ -259,7 +259,7 @@ function paste () {
 .regex {
   flex: 1;
   min-width: 0;
-  font-family: var(--w-num);
+  font-family: var(--w-mono);
   font-size: 12px;
   overflow: hidden;
   white-space: nowrap;

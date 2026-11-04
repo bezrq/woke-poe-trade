@@ -239,7 +239,7 @@ function unknownKeys (m: BlockMatch): string[] {
   padding: 0;
 }
 .conds {
-  font-family: var(--w-num);
+  font-family: var(--w-mono);
   font-size: 11px;
   color: var(--w-dim);
   line-height: 1.6;

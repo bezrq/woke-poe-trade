@@ -29,7 +29,7 @@ const emit = defineEmits<{ (e: 'update:modelValue', v: string): void }>()
 }
 .tab:hover { color: var(--w-fg); }
 .active { color: var(--w-fg); border-bottom-color: var(--w-accent); }
-.count { margin-left: 5px; font-size: 10.5px; color: var(--w-faint); }
+.count { margin-left: 5px; font-size: var(--w-fs-xs); color: var(--w-faint); }
 :global([data-woke-theme="native"]) .tab { font-family: var(--w-head); letter-spacing: 0.05em; }
 :global([data-woke-theme="modern"]) .tab { border: 0; border-radius: 6px; padding: 3px 10px; margin: 0 0 4px; }
 :global([data-woke-theme="modern"]) .active { background: var(--w-panel-3); }

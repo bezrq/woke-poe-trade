@@ -34,6 +34,6 @@ const emit = defineEmits<{ (e: 'select'): void }>()
   text-align: left;
 }
 .line { display: flex; align-items: center; gap: 8px; min-width: 0; }
-.sub { font-family: var(--w-num); font-size: 11px; color: var(--w-dim); }
+.sub { font-size: var(--w-fs-sm); color: var(--w-dim); }
 .actions { display: flex; gap: 2px; flex: none; }
 </style>
