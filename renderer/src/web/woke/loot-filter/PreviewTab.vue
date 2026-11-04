@@ -112,18 +112,25 @@ const compareOptions = computed(() => {
 const other = shallowRef<FilterDoc | null>(null)
 const otherLoading = ref(false)
 const compareError = ref<string | null>(null)
+// A slow read of the level picked before must not land after the one
+// picked now (it would show under the new level's name).
+let compareSeq = 0
 watch([compare, () => props.store.doc.value], async ([c]) => {
+  const seq = ++compareSeq
   compareError.value = null
-  if (c === 'off') { other.value = null; return }
+  if (c === 'off') { other.value = null; otherLoading.value = false; return }
   otherLoading.value = true
   try {
-    other.value = await props.store.compareDoc(c === 'untouched' ? 'untouched' : Number(c))
-    if (!other.value) compareError.value = 'Nothing to compare with yet.'
+    const doc = await props.store.compareDoc(c === 'untouched' ? 'untouched' : Number(c))
+    if (seq !== compareSeq) return
+    other.value = doc
+    if (!doc) compareError.value = 'Nothing to compare with yet.'
   } catch (e) {
+    if (seq !== compareSeq) return
     other.value = null
     compareError.value = `Couldn't load that level: ${(e as Error).message}`
   } finally {
-    otherLoading.value = false
+    if (seq === compareSeq) otherLoading.value = false
   }
 }, { immediate: true })
 

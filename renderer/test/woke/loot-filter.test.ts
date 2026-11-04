@@ -52,6 +52,29 @@ describe('match', () => {
     expect(ruleFor(doc, 'items/gem-enlighten.txt').visibility).toBe('Hide')
   })
 
+  it('reads transfigured gems, fractured mods and eldritch implicits', () => {
+    const doc = parseFilter([
+      'Show # $type->gems->special $tier->altany', '\tTransfiguredGem True', '\tClass == "Skill Gems"', '',
+      'Show # $type->rare->exarch $tier->anyhigh', '\tHasSearingExarchImplicit >= 2', '\tRarity Rare', '',
+      'Show # $type->rare->eater $tier->any', '\tHasEaterOfWorldsImplicit >= 1', '\tRarity Rare', '',
+      'Show # $type->magicid $tier->t1phys', '\tHasExplicitMod >=1 "Merciless"', '',
+      'Show # $type->any $tier->rest', ''
+    ].join('\n'))
+    const gem = facts('items/gem-transfigured.txt')
+    expect(gem.transfigured).toBe(true)
+    expect(ruleFor(doc, 'items/gem-transfigured.txt').tier).toBe('gems->special/altany')
+    expect(facts('items/gem-enlighten.txt').transfigured).toBe(false)
+    // Greater exarch (tier 2) and lesser eater (tier 1) implicits.
+    const boots = facts('items/rare-eldritch.txt')
+    expect([boots.exarchTier, boots.eaterTier, boots.hasImplicitMod]).toEqual([2, 1, true])
+    expect(ruleFor(doc, 'items/rare-eldritch.txt').tier).toBe('rare->exarch/anyhigh')
+    expect(matchItem(doc, { ...boots, exarchTier: 1 }).final?.block.tier).toBe('any')
+    expect(facts('items/rare-ring.txt')).toMatchObject({ exarchTier: 0, eaterTier: 0 })
+    // A fractured mod is an explicit mod.
+    expect(facts('items/rare-fractured.txt').explicitModNames).toEqual(['Merciless', 'of the Ranger'])
+    expect(ruleFor(doc, 'items/rare-fractured.txt').tier).toBe('magicid/t1phys')
+  })
+
   it('applies style from the Continue block it passed through', () => {
     const doc = parseFilter(SOURCE)
     const ring = matchItem(doc, { ...facts('items/rare-ring.txt'), corrupted: true })

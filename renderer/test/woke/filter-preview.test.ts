@@ -34,6 +34,12 @@ describe('drop pile', () => {
     expect(a).toHaveLength(60)
   })
 
+  it('gives drops the item class filters see (a Stacked Deck is currency)', () => {
+    const decks = rollDrops(83, 5, 3000).filter(d => d.facts.baseType === 'Stacked Deck')
+    expect(decks.length).toBeGreaterThan(0)
+    expect(new Set(decks.map(d => d.facts.itemClass))).toEqual(new Set(['Stackable Currency']))
+  })
+
   it('drops what the area level allows', () => {
     const acts = rollDrops(45, 3, 400)
     expect(acts.some(d => d.facts.itemClass === 'Maps')).toBe(false)

@@ -1,0 +1,24 @@
+Item Class: Boots
+Rarity: Rare
+Gale Track
+Two-Toned Boots
+--------
+Armour: 120
+Energy Shield: 25
+--------
+Requirements:
+Level: 70
+Str: 62
+Int: 62
+--------
+Sockets: R-B-B
+--------
+Item Level: 84
+--------
+{ Searing Exarch Implicit Modifier (Greater) — Damage }
+10% increased Damage
+{ Eater of Worlds Implicit Modifier (Lesser) — Attack }
++5% chance to Suppress Spell Damage
+--------
+{ Prefix Modifier "Rotund" (Tier: 3) — Life }
++64(60-69) to maximum Life

@@ -1,0 +1,29 @@
+Item Class: Two Hand Swords
+Rarity: Rare
+Doom Edge
+Reaver Sword
+--------
+Two Hand Sword
+Physical Damage: 47-98
+Critical Strike Chance: 5.00%
+Attacks per Second: 1.50
+Weapon Range: 1.3 metres
+--------
+Requirements:
+Level: 71
+Str: 167
+Dex: 167
+--------
+Sockets: R-R G
+--------
+Item Level: 85
+--------
+{ Implicit Modifier — Attack }
++60% to Global Critical Strike Multiplier
+--------
+{ Fractured Prefix Modifier "Merciless" (Tier: 1) — Damage, Physical, Attack }
+177(170-179)% increased Physical Damage
+{ Suffix Modifier "of the Ranger" (Tier: 6) — Attack }
++120(100-150) to Accuracy Rating
+--------
+Fractured Item
