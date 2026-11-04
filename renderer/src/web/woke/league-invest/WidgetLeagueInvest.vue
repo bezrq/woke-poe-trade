@@ -1,95 +1,84 @@
 <template>
   <Widget :config="config" move-handles="corners" :inline-edit="false" :readonly="true">
-    <div class="widget-default-style p-1 flex flex-col min-h-0 text-gray-100" style="width: 34rem; max-height: 80vh;">
-      <div class="p-1 flex items-center gap-2">
-        <span class="truncate grow">{{ config.wmTitle || 'League investments' }}</span>
-        <button :class="[$style.tab, { [$style.tabActive]: showData }]" @click="showData = !showData">
-          Past leagues ({{ histories.length }})
-        </button>
-      </div>
+    <WPanel :title="config.wmTitle || 'League investments'" width="36rem" max-height="80vh">
+      <template #actions>
+        <WChip clickable :active="showData" @click="showData = !showData"><i class="fas fa-database" /> Past leagues {{ histories.length }}</WChip>
+      </template>
+      <template #toolbar>
+        <WField v-model="config.budgetDiv" type="number" suffix="div budget" style="width: 8.5rem;" />
+        <WField v-model="config.slots" type="number" suffix="items" style="width: 6rem;" />
+        <WSegmented :model-value="String(config.horizon)" title="How long to hold"
+          :options="[{ value: '3', label: '3d' }, { value: '7', label: '7d' }, { value: '14', label: '14d' }]"
+          @update:model-value="config.horizon = Number($event)" />
+        <WChip clickable :active="config.bulkOnly" title="Only items sold in bulk at one price (currency, fragments, scarabs, cards…)"
+          @click="config.bulkOnly = !config.bulkOnly">Bulk only</WChip>
+      </template>
+      <template #meta>
+        <span>{{ league || 'No league selected' }}</span><span class="w-faint">·</span>
+        <span class="inline-flex items-center gap-1">day
+          <input :value="day ?? ''" type="number" min="0" :class="$style.dayInput"
+            title="League day (0 = launch day). Clear to use the start date." @change="onDayInput"></span>
+        <span v-if="config.dayOverride == null && start" class="w-faint">started {{ start }}</span>
+        <span v-else-if="config.dayOverride == null" style="color: var(--w-warn);">start date unknown, enter the day</span>
+        <button v-else class="w-accent hover:underline" @click="config.dayOverride = null">use start date</button>
+        <template v-if="snapshot?.divine"><span class="w-faint">·</span><span class="inline-flex items-center gap-1"><img src="/images/divine.png" class="w-4 h-4"> = {{ Math.round(snapshot.divine) }}c</span></template>
+      </template>
 
-      <div v-if="showData || !histories.length" class="px-1 pb-2 text-sm">
-        <div class="text-gray-400 pb-1">
+      <div v-if="showData || !histories.length" :class="$style.data">
+        <div class="w-dim pb-2">
           Import poe.ninja league dumps from
-          <a href="https://poe.ninja/poe1/data" target="_blank" class="underline">poe.ninja/poe1/data</a>
+          <a href="https://poe.ninja/poe1/data" target="_blank" class="w-accent hover:underline">poe.ninja/poe1/data</a>
           (the .zip, or the &lt;League&gt;.items.csv and .currency.csv files). Only challenge softcore leagues are kept.
         </div>
-        <div class="flex items-center gap-2 pb-1">
-          <button :class="$style.btn" :disabled="importing" @click="fileInput?.click()">
+        <div class="flex items-center gap-2 pb-2">
+          <WButton variant="primary" size="sm" icon="fas fa-file-import" :disabled="importing" @click="fileInput?.click()">
             {{ importing ? 'Importing…' : 'Import files' }}
-          </button>
-          <span v-if="importMsg" class="text-xs" :class="importError ? 'text-red-400' : 'text-gray-400'">{{ importMsg }}</span>
+          </WButton>
+          <span v-if="importMsg" class="text-xs" :class="importError ? 'w-down' : 'w-dim'">{{ importMsg }}</span>
           <input ref="fileInput" type="file" multiple accept=".zip,.csv" class="hidden" @change="onFiles">
         </div>
-        <div v-for="h in histories" :key="h.league" :class="$style.row">
-          <span class="grow">{{ h.league }}</span>
-          <span class="text-gray-500 text-xs">from {{ h.start }} · {{ h.days }} days · {{ h.items.length }} items</span>
-          <button class="text-gray-500 hover:text-red-400 px-1" title="Remove" @click="remove(h.league)"><i class="fas fa-times" /></button>
+        <div v-for="h in histories" :key="h.league" class="w-row px-0" style="grid-template-columns: minmax(0, 1fr) auto 22px;">
+          <span class="w-trunc">{{ h.league }}</span>
+          <span class="w-faint text-xs">from {{ h.start }} · {{ h.days }} days · {{ h.items.length }} items</span>
+          <button class="w-icon-btn" title="Remove" @click="remove(h.league)"><i class="fas fa-times" /></button>
         </div>
       </div>
 
-      <div class="flex flex-wrap gap-x-2 gap-y-1 px-1 pb-1 items-center text-sm">
-        <label class="flex items-center gap-1 text-gray-400">
-          budget <input v-model.number="config.budgetDiv" type="number" min="0" step="0.5" class="bg-gray-900 rounded px-1 w-14 leading-6"> div
-        </label>
-        <label class="flex items-center gap-1 text-gray-400">
-          over <input v-model.number="config.slots" type="number" min="1" max="20" class="bg-gray-900 rounded px-1 w-10 leading-6"> items
-        </label>
-        <select v-model.number="config.horizon" class="bg-gray-900 rounded px-1 leading-6" title="How long to hold">
-          <option :value="3">hold 3 days</option>
-          <option :value="7">hold 7 days</option>
-          <option :value="14">hold 14 days</option>
-        </select>
-        <label class="flex items-center gap-1 text-gray-400" title="Only items sold in bulk at one price (currency, fragments, scarabs, cards…)">
-          <input v-model="config.bulkOnly" type="checkbox"> bulk only
-        </label>
-      </div>
-      <div class="px-1 pb-1 text-xs text-gray-500 flex items-center gap-1 flex-wrap">
-        <span>{{ league || 'No league selected' }} ·</span>
-        <span>day</span>
-        <input :value="day ?? ''" type="number" min="0" class="bg-gray-900 rounded px-1 w-10"
-          title="League day (0 = launch day). Clear to use the start date." @change="onDayInput">
-        <span v-if="config.dayOverride == null && start">(started {{ start }})</span>
-        <span v-else-if="config.dayOverride == null" class="text-yellow-500">start date unknown, enter the day</span>
-        <button v-else class="underline" @click="config.dayOverride = null">use start date</button>
-        <span v-if="snapshot?.divine">· 1 div = {{ Math.round(snapshot.divine) }} c</span>
-      </div>
-
-      <div class="overflow-y-auto min-h-0 px-1">
-        <div v-if="note" class="text-gray-500 p-2 text-center">{{ note }}</div>
-        <template v-else>
-          <div v-if="plan.length" class="pb-2">
-            <div class="text-xs uppercase text-gray-500 pt-1">Suggested split</div>
-            <div v-for="line in plan" :key="key(line.opportunity)" :class="$style.row">
-              <span class="truncate grow">{{ line.qty }}× {{ label(line.opportunity) }}</span>
-              <span class="whitespace-nowrap text-gray-400">{{ fmt(line.cost) }}</span>
-              <span class="whitespace-nowrap w-20 text-right text-green-400" title="Typical value at the end of the hold, in today's divines">≈ {{ fmtDiv(divOf(line.cost) * line.opportunity.median) }}</span>
-            </div>
-            <div class="flex text-sm pt-1">
-              <span class="grow text-gray-400">Spend {{ fmt(planCost) }} · typical result</span>
-              <span class="text-green-400">{{ fmtDiv(planExpected) }}</span>
-            </div>
-          </div>
-
-          <div class="text-xs uppercase text-gray-500 pt-1">
-            Rose most reliably from day {{ day }} to day {{ (day ?? 0) + config.horizon }}
-          </div>
-          <div v-for="r in rows" :key="key(r.opportunity)" :class="$style.row">
-            <span class="truncate grow" :title="r.opportunity.type">
-              {{ label(r.opportunity) }}
-              <span class="text-gray-600 text-xs"> {{ r.opportunity.type }}</span>
-            </span>
-            <span class="whitespace-nowrap w-16 text-right" title="Price now">{{ r.chaos != null ? fmt(r.chaos) : '—' }}</span>
-            <span class="whitespace-nowrap w-14 text-right text-green-400" title="Median rise in divines across past leagues">×{{ r.opportunity.median.toFixed(r.opportunity.median >= 10 ? 0 : 1) }}</span>
-            <span class="whitespace-nowrap w-12 text-right text-gray-400" title="Leagues where it rose ≥10% / leagues with data">{{ hits(r.opportunity) }}/{{ r.opportunity.leagues.length }}</span>
-            <span class="whitespace-nowrap w-10 text-right text-gray-500" title="Share of days it went up">{{ Math.round(r.opportunity.upDays * 100) }}%</span>
-          </div>
-          <div class="text-xs text-gray-600 py-1">
-            Past patterns break when a patch changes drops. Prices are poe.ninja listings, not sales.
+      <WEmpty v-if="note" icon="fas fa-chart-line">{{ note }}</WEmpty>
+      <template v-else>
+        <div v-if="plan.length" :class="$style.hero">
+          <div><div :class="$style.k">Spend</div><div :class="$style.big" class="w-num">{{ fmt(planCost) }}</div></div>
+          <div><div :class="$style.k">Typical after {{ config.horizon }}d</div><div :class="$style.big" class="w-num w-up">{{ fmtDiv(planExpected) }}</div></div>
+          <div><div :class="$style.k">Items</div><div :class="$style.big" class="w-num">{{ plan.length }}</div></div>
+        </div>
+        <template v-if="plan.length">
+          <div class="w-group-label">Suggested split</div>
+          <div v-for="line in plan" :key="key(line.opportunity)" class="w-row" :class="$style.planGrid">
+            <span class="w-trunc">{{ line.qty }}× {{ label(line.opportunity) }}</span>
+            <WPrice :chaos="line.cost" :divine="snapshot?.divine" class="w-dim" />
+            <span class="w-num w-up text-right" title="Typical value at the end of the hold, in today's divines">≈ {{ fmtDiv(divOf(line.cost) * line.opportunity.median) }}</span>
           </div>
         </template>
-      </div>
-    </div>
+
+        <div class="w-group-label">Rose most reliably from day {{ day }} to day {{ (day ?? 0) + config.horizon }}</div>
+        <div class="w-row w-row--head" :class="$style.rankGrid">
+          <span>Item</span><span class="text-right">Now</span><span class="text-right">Median</span><span class="text-right">Leagues</span><span class="text-right">Up days</span>
+        </div>
+        <div v-for="r in rows" :key="key(r.opportunity)" class="w-row" :class="$style.rankGrid">
+          <span class="w-trunc" :title="r.opportunity.type">
+            {{ label(r.opportunity) }}<span class="w-faint text-xs ml-1">{{ r.opportunity.type }}</span>
+          </span>
+          <WPrice :chaos="r.chaos" :divine="snapshot?.divine" title="Price now" />
+          <span class="w-num w-up text-right" title="Median rise in divines across past leagues">×{{ r.opportunity.median.toFixed(r.opportunity.median >= 10 ? 0 : 1) }}</span>
+          <span class="w-num w-dim text-right" title="Leagues where it rose ≥10% / leagues with data">{{ hits(r.opportunity) }}/{{ r.opportunity.leagues.length }}</span>
+          <span class="w-num text-right" title="Share of days it went up">{{ Math.round(r.opportunity.upDays * 100) }}%</span>
+        </div>
+      </template>
+
+      <template #footer>
+        <span>Past patterns break when a patch changes drops. Prices are poe.ninja listings, not sales.</span>
+      </template>
+    </WPanel>
   </Widget>
 </template>
 
@@ -110,6 +99,7 @@ export default {
 import { inject, computed, shallowRef, watch } from 'vue'
 import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
+import { WPanel, WField, WSegmented, WChip, WButton, WPrice, WEmpty } from '../ui'
 import { useLeagues } from '@/web/background/Leagues'
 import { useMarketCollector } from '../market/collector'
 import { latestSnapshots } from '../market/db'
@@ -299,31 +289,34 @@ function fmt (chaos: number) { return formatChaos(chaos, snapshot.value?.divine 
 function fmtDiv (div: number) { return `${div.toFixed(div >= 10 ? 0 : 1)} div` }
 </script>
 
-<style lang="postcss" module>
-.tab {
-  @apply rounded px-2 text-sm text-gray-400 bg-gray-800;
-
-  &:hover {
-    @apply bg-gray-700 text-gray-100;
-  }
+<style module>
+.data {
+  padding: 4px var(--w-pad) 10px;
+  border-bottom: 1px solid var(--w-line);
 }
-
-.tabActive {
-  @apply bg-gray-600 text-gray-100;
+.dayInput {
+  width: 3rem;
+  height: 20px;
+  padding: 0 4px;
+  color: var(--w-fg);
+  background: var(--w-panel-2);
+  border: 1px solid var(--w-line);
+  border-radius: var(--w-radius-sm);
 }
-
-.btn {
-  @apply rounded px-2 bg-gray-700 text-gray-100;
-
-  &:hover {
-    @apply bg-gray-600;
-  }
+.hero {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  padding: 8px var(--w-pad);
+  border-bottom: 1px solid var(--w-line);
 }
-
-.row {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  @apply py-0.5 border-b border-gray-800;
+.k {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--w-faint);
 }
+.big { font-size: 17px; font-weight: 500; }
+.planGrid { grid-template-columns: minmax(0, 1fr) 76px 80px; }
+.rankGrid { grid-template-columns: minmax(0, 1fr) 72px 56px 56px 56px; }
 </style>
