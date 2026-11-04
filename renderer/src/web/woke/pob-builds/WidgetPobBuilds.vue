@@ -3,14 +3,24 @@
     <div class="flex gap-2 min-h-0 items-start">
       <WPanel :title="config.wmTitle || 'PoB builds'" width="20rem" max-height="70vh">
         <template #actions>
+          <button @click="importOpen = !importOpen" class="w-icon-btn" :class="{ 'w-icon-btn--on': importOpen }" title="Import a pobb.in / pastebin link or PoB code">
+            <i class="fas fa-file-import" />
+          </button>
           <button @click="refresh" class="w-icon-btn" title="Reload builds folder">
             <i class="fas fa-sync-alt" :class="{ 'fa-spin': loading }" />
           </button>
         </template>
         <template #toolbar>
-          <WField v-model="filter" icon="fas fa-search" placeholder="Filter by name, class, skill, folder…" class="grow" />
+          <div v-if="importOpen" class="flex gap-1 w-full">
+            <WField v-model="importText" icon="fas fa-link" placeholder="pobb.in link, pastebin link or PoB code" class="grow" @keydown.enter="doImport" />
+            <WButton size="sm" variant="primary" :disabled="importing || !importText.trim()" @click="doImport">{{ importing ? '…' : 'Import' }}</WButton>
+          </div>
+          <WField v-else v-model="filter" icon="fas fa-search" placeholder="Filter by name, class, skill, folder…" class="grow" />
         </template>
-        <template v-if="error" #meta><span class="w-down">{{ error }}</span></template>
+        <template v-if="error || importMsg" #meta>
+          <span v-if="error" class="w-down">{{ error }}</span>
+          <span v-else :class="importOk ? 'w-up' : 'w-down'">{{ importMsg }}</span>
+        </template>
 
         <WListItem v-for="b in shown" :key="b.relPath" :active="selected === b.relPath" :title="b.relPath" @select="select(b)">
           <i v-if="config.activeBuild === b.relPath" class="fas fa-check-circle w-up" title="Active build" />
@@ -64,6 +74,18 @@
                 </div>
               </div>
             </div>
+            <div v-if="gems.length" class="pb-2">
+              <div :class="$style.heading" class="flex">
+                <span>Gems by level</span>
+                <span class="ml-auto normal-case tracking-normal">{{ charLevel != null ? `you are level ${charLevel}` : 'level unknown (campaign tracker reads it)' }}</span>
+              </div>
+              <div v-for="g in gems" :key="g.name" class="flex gap-2 items-baseline py-0.5" :class="{ 'opacity-50': g.when === 'later' }">
+                <span class="w-num w-faint text-xs" style="width: 1.6rem; text-align: right;">{{ g.requiredLevel }}</span>
+                <span class="w-rarity-gem w-trunc">{{ g.name }}</span>
+                <span v-if="g.when === 'soon'" class="w-accent text-xs whitespace-nowrap">soon</span>
+                <span class="ml-auto w-dim text-xs w-trunc" style="max-width: 55%;" :title="g.source ?? 'Not sold in the campaign: buy or drop'">{{ g.source ?? 'trade / drop' }}</span>
+              </div>
+            </div>
             <div v-if="details.notes">
               <div :class="$style.heading">Notes</div>
               <div class="whitespace-pre-wrap w-dim">{{ details.notes }}</div>
@@ -95,6 +117,10 @@ import { inject, computed, shallowRef, watch } from 'vue'
 import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
 import { WPanel, WField, WButton, WEmpty, WListItem } from '../ui'
+import { AppConfig } from '@/web/Config'
+import { CAMPAIGN_TYPE } from '../campaign/widget'
+import type { CampaignWidget } from '../campaign/widget'
+import { nextGems } from './gems'
 import { buildMatches, describe, pobApi, sortBuilds } from './widget'
 import type { PobBuildEntry, PobDetails } from './widget'
 
@@ -123,6 +149,39 @@ const filter = shallowRef('')
 const selected = shallowRef<string | null>(null)
 const details = shallowRef<PobDetails | null>(null)
 const detailsError = shallowRef('')
+const importOpen = shallowRef(false)
+const importText = shallowRef('')
+const importing = shallowRef(false)
+const importMsg = shallowRef('')
+const importOk = shallowRef(false)
+
+// Character level and class from the campaign tracker's Client.txt reading.
+const campaign = computed(() => AppConfig<CampaignWidget>(CAMPAIGN_TYPE)?.state)
+const charLevel = computed(() => campaign.value?.level ?? null)
+const gems = computed(() => details.value
+  ? nextGems(details.value, charLevel.value, campaign.value?.className || details.value.className)
+  : [])
+
+async function doImport () {
+  const input = importText.value.trim()
+  if (!input || importing.value) return
+  importing.value = true
+  importMsg.value = ''
+  try {
+    const { relPath } = await pobApi.import(props.config, input)
+    importOk.value = true
+    importMsg.value = `Saved to ${relPath}`
+    importText.value = ''
+    importOpen.value = false
+    await refresh()
+    selected.value = relPath
+  } catch (err) {
+    importOk.value = false
+    importMsg.value = (err as Error).message
+  } finally {
+    importing.value = false
+  }
+}
 
 const shown = computed(() => sortBuilds(builds.value, props.config.pinned)
   .filter(b => buildMatches(b, filter.value)))
