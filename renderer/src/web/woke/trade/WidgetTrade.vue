@@ -262,6 +262,8 @@ function ping () {
     osc.connect(gain).connect(ctx.destination)
     osc.start()
     osc.stop(ctx.currentTime + 0.4)
+    // Each context holds an audio thread until it's closed.
+    osc.onended = () => { ctx.close().catch(() => {}) }
   } catch {}
 }
 
