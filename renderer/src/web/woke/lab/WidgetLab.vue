@@ -3,7 +3,7 @@
     <div class="flex gap-2 min-h-0 items-start">
       <WPanel :title="config.wmTitle || 'Labyrinth'" width="14rem">
         <template #meta>
-          <span title="Labs reset at 7 PM US Central"><i class="far fa-clock" /> resets in <span class="w-num">{{ resetIn }}</span></span>
+          <span title="Labs reset at midnight UTC"><i class="far fa-clock" /> resets in <span class="w-num">{{ resetIn }}</span></span>
         </template>
         <WListItem v-for="d in DIFFICULTIES" :key="d" :active="openDiff === d" @select="open(d, 'overlay')">
           <span class="w-trunc">{{ labLabel(d) }}</span>

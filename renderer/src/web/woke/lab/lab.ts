@@ -36,30 +36,11 @@ export function labLabel (d: LabDifficulty): string {
   return d === 'uber' ? 'Uber' : d[0].toUpperCase() + d.slice(1)
 }
 
-// Hour and minute of `ts` in the US Central time zone (handles DST).
-function centralParts (ts: number): { y: number, mo: number, d: number, h: number, mi: number } {
-  const parts = new Intl.DateTimeFormat('en-US', {
-    timeZone: 'America/Chicago',
-    year: 'numeric',
-    month: 'numeric',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: 'numeric',
-    hourCycle: 'h23'
-  }).formatToParts(new Date(ts))
-  const get = (type: string) => Number(parts.find(p => p.type === type)?.value)
-  return { y: get('year'), mo: get('month'), d: get('day'), h: get('hour'), mi: get('minute') }
-}
-
-// Labs reset at 7 PM US Central time. Returns ms until the next reset.
+// Lab layouts change daily at midnight UTC (7 PM US Central in summer,
+// 6 PM in winter). Returns ms until the next reset.
 export function msUntilLabReset (now: number): number {
-  const RESET_HOUR = 19
-  const p = centralParts(now)
-  const minutesNow = p.h * 60 + p.mi
-  let minutesLeft = RESET_HOUR * 60 - minutesNow
-  if (minutesLeft <= 0) minutesLeft += 24 * 60
-  const secondsIntoMinute = Math.floor((now % 60000) / 1000)
-  return minutesLeft * 60000 - secondsIntoMinute * 1000
+  const DAY = 24 * 60 * 60 * 1000
+  return DAY - (now % DAY)
 }
 
 export function formatDuration (ms: number): string {
