@@ -2,8 +2,10 @@
 //
 // Upstream files only call into this file (widget registry, settings window,
 // host shortcuts), so merging upstream changes stays a small, predictable diff.
-// To add a module: create `woke/<module>/`, then register its widget, settings
-// editor below, its hotkeys in `shortcuts.ts`, and its switch in `modules.ts`.
+// To add a module: create `woke/<module>/`, then register its widget below, its
+// settings editor in `editors.ts` and its page in `settings/pages.ts`, its
+// hotkeys in `shortcuts.ts` (and `settings/hotkey-fields.ts`), and its switch
+// in `modules.ts`.
 
 import './shared/perf'
 import './ui'

@@ -105,6 +105,10 @@ function mergeLive (next: Config) {
     w.wmZorder = l.wmZorder
     w.wmFlags = [...l.wmFlags]
   }
+  // Never drop a widget that appeared after we copied the config.
+  for (const l of live.widgets) {
+    if (!next.widgets.some(w => w.wmId === l.wmId)) next.widgets.push(JSON.parse(JSON.stringify(l)))
+  }
 }
 
 // Widgets created while the window is open (Add buttons) join our copy.
