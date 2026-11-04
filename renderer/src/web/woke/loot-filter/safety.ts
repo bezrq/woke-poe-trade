@@ -9,6 +9,8 @@ import type { StylePatch } from './edits'
 import { readStyle } from './edits'
 import type { EconomyGroup, PriceLookup } from './economy'
 import { ECONOMY_GROUPS } from './economy'
+import { evalCondition } from './match'
+import type { ItemFacts } from './item-facts'
 
 export const SAFETY_RULE_TYPE = 'woke->safety'
 
@@ -54,6 +56,18 @@ function stateOf (b: FilterBlock | null): ItemState {
   return (s.fontSize ?? 32) < SMALL_FONT && !s.sound ? 'small' : 'ok'
 }
 
+// Area level the net and the health list judge by: an end-game map.
+const MAP_AREA_LEVEL = 83
+
+// woke: a rule for stacks only (StackSize >= 6) or for the acts (AreaLevel
+// <= 67) says nothing about one item dropping in a map. Strict filters show
+// stacks of an orb they hide one at a time, and the audit used to take the
+// stack rule's word for it, so the net left the single drop hidden.
+function catchesSingleMapDrop (b: FilterBlock): boolean {
+  const single = { stackSize: 1, areaLevel: MAP_AREA_LEVEL } as ItemFacts
+  return b.conditions.every(c => (c.key !== 'StackSize' && c.key !== 'AreaLevel') || evalCondition(c, single) !== false)
+}
+
 // Every priced base of the price groups with where the filter puts it.
 // `safety` blocks are skipped, so the result says what NeverSink (plus your
 // edits) would do without the net.
@@ -64,6 +78,7 @@ export function auditBases (doc: FilterDoc, lookup: PriceLookup, minChaos: numbe
     for (const b of doc.blocks) {
       if (b.disabled || b.type == null || b.type === SAFETY_RULE_TYPE) continue
       if (b.type !== group.type && !b.type.startsWith(group.type + '->') && !b.type.startsWith('woke->')) continue
+      if (!catchesSingleMapDrop(b)) continue
       for (const c of b.conditions) {
         if (c.key !== 'BaseType' || c.op !== '==') continue
         for (const base of c.values) {
