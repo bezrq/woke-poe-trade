@@ -130,7 +130,7 @@ export function wokeShortcutsFor (widget: Widget, config: { woke?: { setupDone: 
       actions.push({ shortcut: lf.sampleHotkey, action: { type: 'copy-item', target: LOOT_FILTER_SAMPLE_TARGET, focusOverlay: true } })
     }
     if (lf.editorHotkey) {
-      actions.push({ shortcut: lf.editorHotkey, keepModKeys: true, action: { type: 'trigger-event', target: editorHotkeyTarget(widget.wmId) } })
+      actions.push({ shortcut: lf.editorHotkey, keepModKeys: true, action: { type: 'trigger-event', target: editorHotkeyTarget(widget.wmId), focusOverlay: true } })
     }
     // Strictness steps only mean something with NeverSink from GitHub.
     if (lf.neversink?.on) {

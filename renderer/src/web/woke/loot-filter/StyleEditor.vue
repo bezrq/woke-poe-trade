@@ -24,42 +24,63 @@
       </template>
 
       <span class="w-dim">Sound</span>
-      <span class="flex items-center gap-2">
-        <select :value="look.sound?.id ?? ''" :class="$style.select" aria-label="Alert sound"
+      <span class="flex flex-col gap-1" style="min-width: 0;">
+        <select :value="look.sound?.id ?? ''" :class="$style.select" style="width: 100%; min-width: 0;" aria-label="Alert sound"
           @change="setSound(($event.target as HTMLSelectElement).value, look.sound?.volume ?? 300)">
           <option value="">None</option>
-          <option v-for="id in SOUND_IDS" :key="id" :value="id">{{ id }}</option>
+          <optgroup label="NeverSink's sound pack (plays here)">
+            <option v-for="s in NEVERSINK_SOUNDS" :key="s.file" :value="s.file">{{ s.label }}</option>
+          </optgroup>
+          <optgroup v-if="ownSounds.length" label="Your sounds in the filter folder">
+            <option v-for="f in ownSounds" :key="f" :value="f">{{ f }}</option>
+          </optgroup>
+          <optgroup label="Game sounds (play only in game)">
+            <option v-for="id in SOUND_IDS" :key="id" :value="id">{{ id }}{{ uses.get(id)?.length ? ` · ${uses.get(id)!.slice(0, 3).join(', ')}` : '' }}</option>
+          </optgroup>
+          <option v-if="look.sound && !known(look.sound.id)" :value="look.sound.id">{{ soundLabel(look.sound.id) }}</option>
         </select>
-        <input v-if="look.sound" type="range" min="0" max="300" step="10" :value="look.sound.volume" class="grow" aria-label="Volume"
-          @change="setSound(look.sound!.id, Number(($event.target as HTMLInputElement).value))">
+        <span v-if="look.sound" class="flex items-center gap-2">
+          <button type="button" class="w-icon-btn" :disabled="!isCustomSound(look.sound.id)"
+            :title="isCustomSound(look.sound.id) ? 'Play' : 'The game\'s own sounds play only in game'" :aria-label="`Play ${soundLabel(look.sound.id)}`"
+            @click="play(look.sound!.id, look.sound!.volume)"><i class="fas fa-play" /></button>
+          <input type="range" min="0" max="300" step="10" :value="look.sound.volume" class="grow" style="min-width: 0;" aria-label="Volume"
+            :title="`Volume ${look.sound.volume}`"
+            @change="setSound(look.sound!.id, Number(($event.target as HTMLInputElement).value))">
+          <span class="w-num w-faint text-xs">{{ look.sound.volume }}</span>
+        </span>
       </span>
 
       <span class="w-dim">Beam</span>
-      <span class="flex items-center gap-2">
-        <select :value="look.effect?.color ?? ''" :class="$style.select" aria-label="Beam colour"
-          @change="setEffect(($event.target as HTMLSelectElement).value, look.effect?.temp ?? false)">
-          <option value="">None</option>
-          <option v-for="c in POE_COLOURS" :key="c" :value="c">{{ c }}</option>
-        </select>
-        <label v-if="look.effect" class="flex items-center gap-1 text-xs w-dim">
+      <span class="flex items-center gap-1 flex-wrap">
+        <button type="button" :class="[$style.dot, $style.none, { [$style.picked]: !look.effect }]" title="No beam" aria-label="No beam"
+          @click="setEffect('', false)"><i class="fas fa-ban" /></button>
+        <button v-for="c in POE_COLOURS" :key="c" type="button" :class="[$style.dot, { [$style.picked]: look.effect?.color === c }]" :title="c" :aria-label="`${c} beam`"
+          @click="setEffect(c, look.effect?.temp ?? false)">
+          <span :class="$style.beam" :style="{ background: `linear-gradient(to top, ${poeColour(c)}, transparent)` }" />
+        </button>
+        <label v-if="look.effect" class="flex items-center gap-1 text-xs w-dim" style="margin-left: 6px;" title="A temporary beam shows for a few seconds when the item drops">
           <input type="checkbox" :checked="look.effect.temp" @change="setEffect(look.effect!.color, ($event.target as HTMLInputElement).checked)"> only on drop
         </label>
       </span>
 
       <span class="w-dim">Map icon</span>
-      <span class="flex items-center gap-1 flex-wrap">
-        <select :value="look.icon ? String(look.icon.size) : ''" :class="$style.select" aria-label="Minimap icon size"
-          @change="setIcon({ size: ($event.target as HTMLSelectElement).value })">
-          <option value="">None</option>
-          <option v-for="s in ICON_SIZES" :key="s.value" :value="s.value">{{ s.label }}</option>
-        </select>
+      <span class="flex flex-col gap-1">
+        <span class="flex items-center gap-1">
+          <button type="button" :class="[$style.dot, $style.none, { [$style.picked]: !look.icon }]" title="No minimap icon" aria-label="No minimap icon"
+            @click="setIcon({ size: '' })"><i class="fas fa-ban" /></button>
+          <button v-for="sz in ICON_SIZES" :key="sz.value" type="button" :class="[$style.dot, $style.shape, { [$style.picked]: look.icon && String(look.icon.size) === sz.value }]"
+            :title="`${sz.label} icon`" :aria-label="`${sz.label} icon`" :style="{ color: look.icon ? poeColour(look.icon.color) : 'var(--w-dim)', fontSize: `${[15, 11, 8][Number(sz.value)]}px` }"
+            @click="setIcon({ size: sz.value })">{{ shapeGlyph(look.icon?.shape ?? 'Circle') }}</button>
+        </span>
         <template v-if="look.icon">
-          <select :value="look.icon.color" :class="$style.select" aria-label="Minimap icon colour" @change="setIcon({ color: ($event.target as HTMLSelectElement).value })">
-            <option v-for="c in POE_COLOURS" :key="c" :value="c">{{ c }}</option>
-          </select>
-          <select :value="look.icon.shape" :class="$style.select" aria-label="Minimap icon shape" @change="setIcon({ shape: ($event.target as HTMLSelectElement).value })">
-            <option v-for="s in ICON_SHAPES" :key="s" :value="s">{{ s }}</option>
-          </select>
+          <span class="flex items-center gap-1 flex-wrap">
+            <button v-for="c in POE_COLOURS" :key="c" type="button" :class="[$style.dot, { [$style.picked]: look.icon.color === c }]" :title="c" :aria-label="`${c} icon`"
+              @click="setIcon({ color: c })"><span :class="$style.fill" :style="{ background: poeColour(c) }" /></button>
+          </span>
+          <span class="flex items-center gap-1 flex-wrap">
+            <button v-for="sh in ICON_SHAPES" :key="sh" type="button" :class="[$style.dot, $style.shape, { [$style.picked]: look.icon.shape === sh }]" :title="sh" :aria-label="`${sh} icon`"
+              :style="{ color: poeColour(look.icon.color) }" @click="setIcon({ shape: sh })">{{ shapeGlyph(sh) }}</button>
+          </span>
         </template>
       </span>
     </div>
@@ -74,13 +95,15 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
-import { WSegmented } from '../ui'
+import { computed, onMounted, ref } from 'vue'
+import { WSegmented, toast } from '../ui'
 import LabelPreview from './LabelPreview.vue'
 import type { Visibility } from './parse'
 import { DEFAULT_BG, DEFAULT_FONT, DEFAULT_TEXT } from './edits'
 import type { Colour, StylePatch } from './edits'
-import { ICON_SHAPES, ICON_SIZES, POE_COLOURS, SOUND_IDS } from './colours'
+import { ICON_SHAPES, ICON_SIZES, POE_COLOURS, SOUND_IDS, poeColour, shapeGlyph } from './colours'
+import { useActiveFilter } from './active-filter'
+import { NEVERSINK_SOUNDS, installPackSounds, isCustomSound, isPackSound, listFolderSounds, playSound, soundLabel, soundUses } from './sounds'
 
 const props = withDefaults(defineProps<{
   look: StylePatch
@@ -118,8 +141,28 @@ function setColour (key: 'text' | 'border' | 'background', value: string) {
   emit('patch', { [key]: [rgb[0], rgb[1], rgb[2], prev?.[3] ?? 255] as Colour })
 }
 
+const active = useActiveFilter()
+const dir = computed(() => active.value?.config.folder ?? '')
+const uses = computed(() => soundUses(active.value?.doc.value ?? null))
+const ownSounds = ref<string[]>([])
+onMounted(async () => {
+  ownSounds.value = (await listFolderSounds(dir.value)).filter(f => !isPackSound(f))
+})
+
+function known (id: string): boolean {
+  return SOUND_IDS.includes(id) || isPackSound(id) || ownSounds.value.includes(id)
+}
+
+async function play (id: string, volume: number) {
+  if (!await playSound(id, volume, dir.value)) toast(`Couldn't play ${soundLabel(id)}`)
+}
+
 function setSound (id: string, volume: number) {
   emit('patch', { sound: id ? { id, volume } : null })
+  if (!id || !isCustomSound(id)) return
+  play(id, volume)
+  // The game plays pack sounds from the filter folder: put it there now.
+  if (isPackSound(id)) installPackSounds([id], dir.value).catch(() => toast('Couldn\'t copy the sound into your filter folder'))
 }
 
 function setEffect (color: string, temp: boolean) {
@@ -185,6 +228,37 @@ function copy (tier: string) {
   border: 1px solid var(--w-line-strong);
   background: none;
   cursor: pointer;
+}
+.dot {
+  position: relative;
+  width: 20px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--w-line);
+  border-radius: var(--w-r-sm);
+  background: #1b1a17;
+  cursor: pointer;
+  overflow: hidden;
+  padding: 0;
+}
+.dot:hover { border-color: var(--w-line-strong); }
+.picked { border-color: var(--w-accent); box-shadow: 0 0 0 1px var(--w-accent); }
+.none { color: var(--w-faint); font-size: var(--w-fs-xs); }
+.beam {
+  width: 4px;
+  height: 16px;
+  border-radius: 2px;
+}
+.fill {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+.shape {
+  font-size: 13px;
+  line-height: 1;
 }
 .select {
   background: var(--w-panel-2);

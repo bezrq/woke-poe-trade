@@ -109,3 +109,63 @@ export async function writeFilter (args: { dir?: string, name: string, text: str
 export async function showFilterFolder (args: { dir?: string }): Promise<void> {
   await shell.openPath(resolveDir(args?.dir))
 }
+
+// ---- sounds for CustomAlertSound (paths are relative to the filter folder) ----
+
+const SOUND_EXT = /\.(mp3|wav|ogg)$/i
+const MAX_SOUND_BYTES = 4 * 1024 * 1024
+
+function resolveSound (dir: unknown, name: unknown): string {
+  if (typeof name !== 'string' || !SOUND_EXT.test(name)) throw new Error('Not a sound file name')
+  // One subfolder at most ("sounds/ping.mp3"), never outside the folder.
+  const parts = name.split(/[\\/]/)
+  if (parts.length > 2 || parts.some(p => !p || p === '.' || p === '..' || p.startsWith('.'))) throw new Error('Not a sound file name')
+  return path.join(resolveDir(dir), ...parts)
+}
+
+// Sound files in the filter folder and its direct subfolders.
+export async function listSounds (args: { dir?: string }): Promise<{ files: Array<{ name: string, size: number }> }> {
+  const dir = resolveDir(args?.dir)
+  const out: Array<{ name: string, size: number }> = []
+  async function walk (rel: string, depth: number) {
+    let entries: import('fs').Dirent[]
+    try { entries = await fs.readdir(path.join(dir, rel), { withFileTypes: true }) } catch { return }
+    for (const e of entries) {
+      if (e.name.startsWith('.')) continue
+      const name = rel ? `${rel}/${e.name}` : e.name
+      if (e.isDirectory() && depth === 0 && e.name !== ONLINE_DIR) await walk(name, 1)
+      else if (e.isFile() && SOUND_EXT.test(e.name)) {
+        try { out.push({ name, size: (await fs.stat(path.join(dir, name))).size }) } catch {}
+      }
+      if (out.length >= 200) return
+    }
+  }
+  await walk('', 0)
+  return { files: out.sort((a, b) => a.name.localeCompare(b.name)) }
+}
+
+// A sound as base64 so the overlay can play it.
+export async function readSound (args: { dir?: string, name: string }): Promise<{ data: string, mime: string }> {
+  const full = resolveSound(args?.dir, args?.name)
+  const stat = await fs.stat(full)
+  if (stat.size > MAX_SOUND_BYTES) throw new Error('Sound file too large')
+  const ext = path.extname(full).slice(1).toLowerCase()
+  const mime = ext === 'wav' ? 'audio/wav' : ext === 'ogg' ? 'audio/ogg' : 'audio/mpeg'
+  return { data: (await fs.readFile(full)).toString('base64'), mime }
+}
+
+// Puts a sound the app ships (NeverSink's sound pack) into the filter folder.
+// An existing file of that name is kept: it may be the player's own.
+export async function installSound (args: { dir?: string, name: string, data: string }): Promise<{ written: boolean }> {
+  const full = resolveSound(args?.dir, args?.name)
+  if (args.name.includes('/') || args.name.includes('\\')) throw new Error('Sounds are installed at the top of the folder')
+  if (typeof args.data !== 'string' || !args.data) throw new Error('No sound data')
+  const buf = Buffer.from(args.data, 'base64')
+  if (!buf.length || buf.length > MAX_SOUND_BYTES) throw new Error('Bad sound data')
+  try {
+    await fs.access(full)
+    return { written: false }
+  } catch {}
+  await fs.writeFile(full, buf)
+  return { written: true }
+}

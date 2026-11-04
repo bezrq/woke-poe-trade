@@ -25,6 +25,8 @@ export interface ShortcutAction {
   } | {
     type: 'trigger-event'
     target: string
+    // Make the overlay interactive too (a panel you work in, not a glance).
+    focusOverlay?: boolean
   } | {
     type: 'stash-search'
     text: string
