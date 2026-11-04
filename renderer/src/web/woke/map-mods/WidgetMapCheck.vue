@@ -36,7 +36,7 @@ import Widget from '@/web/overlay/Widget.vue'
 import { WPanel, WEmpty, WButton } from '../ui'
 import MapVerdictCard from './MapVerdictCard.vue'
 import { MAP_MODS_TARGET } from './widget'
-import { checkMap, findMapModsConfig, isMapLike } from './check'
+import { checkMap, ensureMapModsConfig, findMapModsConfig, isMapLike } from './check'
 import type { MapCheckWidget } from './map-check'
 
 const props = defineProps<{
@@ -73,6 +73,7 @@ function place (position: { x: number, y: number }) {
 
 const handler = MainProcess.onEvent('MAIN->CLIENT::item-text', (e) => {
   if (e.target !== MAP_MODS_TARGET) return
+  ensureMapModsConfig()
   if (!props.config.moved) place(e.position)
   const parsed = parseClipboard(e.clipboard).unwrapOr(null)
   item.value = parsed && isMapLike(parsed) ? parsed : null

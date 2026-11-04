@@ -30,6 +30,9 @@ const handlers: Record<string, Handler> = {
 
 export function initWoke (server: ServerEvents, logger: Logger, poeWindow: GameWindow, gameLog: GameLogWatcher): void {
   handlers['game-log-tail'] = async (args) => await readGameLogTail(gameLog, args)
+  // Follow the running game's Client.txt (another drive, another Steam
+  // library) instead of a stale copy in a default folder.
+  poeWindow.onAttach(() => { gameLog.gameStarted().catch(() => {}) })
   for (const kind of [MAP_SCAN, ESSENCE_SCAN]) {
     const scanner = new ScreenScanner(server, logger, poeWindow, kind)
     handlers[`${kind.topic}-start`] = async () => await scanner.start()

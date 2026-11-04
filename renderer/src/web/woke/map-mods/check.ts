@@ -7,7 +7,7 @@ import { ModifierType } from '@/parser/modifiers'
 import { prepareMapStat } from '@/web/map-check/prepare-map-stats'
 import { juiceScore, rateMods } from './rules'
 import type { JuiceResult, MapVerdict } from './rules'
-import { MAP_MODS_TYPE, activeProfile } from './widget'
+import { MAP_MODS_TYPE, activeProfile, initMapModsWidget } from './widget'
 import type { MapModsWidget } from './widget'
 
 export function isMapLike (item: ParsedItem): boolean {
@@ -80,5 +80,28 @@ export function findMapModsConfig (): MapModsWidget | null {
   if (!isModuleOn(AppConfig(), 'map-mods')) return null
   const w = AppConfig().widgets.find(w => w.wmType === MAP_MODS_TYPE) as MapModsWidget | undefined
   if (!w || w.wmFlags[0] === 'uninitialized' || !Array.isArray(w.profiles)) return null
+  return w
+}
+
+// Alt+M works before the Map mods widget has been added (see
+// wokeGlobalShortcuts). The first check then sets the widget up with the
+// default profile, so ratings made from the verdict card are kept.
+export function ensureMapModsConfig (): MapModsWidget | null {
+  if (!isModuleOn(AppConfig(), 'map-mods')) return null
+  const widgets = AppConfig().widgets
+  let w = widgets.find(w => w.wmType === MAP_MODS_TYPE) as MapModsWidget | undefined
+  if (!w) {
+    w = {
+      wmId: Math.max(0, ...widgets.map(_ => _.wmId)) + 1,
+      wmType: MAP_MODS_TYPE,
+      wmTitle: '',
+      wmWants: 'hide',
+      wmZorder: null,
+      wmFlags: ['uninitialized']
+    } as unknown as MapModsWidget
+    widgets.push(w)
+    w = widgets[widgets.length - 1] as MapModsWidget
+  }
+  if (w.wmFlags[0] === 'uninitialized' || !Array.isArray(w.profiles)) initMapModsWidget(w)
   return w
 }

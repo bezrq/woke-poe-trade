@@ -17,10 +17,9 @@ const POSSIBLE_PATH =
     path.join(app.getPath('home'), 'Library/Caches/com.GGG.PathOfExile/Logs/Client.txt')
   ] : []
 
-const FIND_GAME_RETRY_MS = 15 * 1000
-
 // woke: the game can be installed anywhere (another Steam library, another
-// drive), so ask the running game where it is.
+// drive), so ask the running game where it is. Runs once at startup and once
+// each time the game window appears, never on a timer.
 function runningGameLog (): Promise<string | null> {
   if (process.platform !== 'win32') return Promise.resolve(null)
   return new Promise((resolve) => {
@@ -35,7 +34,6 @@ function runningGameLog (): Promise<string | null> {
 
 export class GameLogWatcher {
   private _wantedPath: string | null = null
-  private _findGameTimer: ReturnType<typeof setTimeout> | undefined
   get actualPath () { return this._state?.path ?? null }
   private _state: {
     offset: number
@@ -52,44 +50,51 @@ export class GameLogWatcher {
 
   // woke: stop tailing when no enabled module reads the log.
   async stop () {
-    clearTimeout(this._findGameTimer)
     this._wantedPath = null
-    if (this._state) {
-      unwatchFile(this._state.path)
-      const { file } = this._state
-      this._state = null
-      await file.close()
-    }
+    await this.close()
   }
 
   async restart (logFile: string) {
-    if (this._wantedPath !== logFile) {
-      clearTimeout(this._findGameTimer)
-      this._wantedPath = logFile
-      if (this._state) {
-        unwatchFile(this._state.path)
-        await this._state.file.close()
-        this._state = null
-      }
-    } else {
-      return
-    }
+    if (this._wantedPath === logFile) return
+    this._wantedPath = logFile
+    await this.close()
 
     if (!logFile.length) {
+      // woke: an old install's Client.txt in a default folder used to win
+      // for good when the app started before the game. Now the default
+      // folders are only a stand-in until the game starts (gameStarted).
       const guessedPath = await runningGameLog() ?? await guessFileLocation(POSSIBLE_PATH)
-      if (this._wantedPath !== logFile) return
-      if (guessedPath != null) {
-        logFile = guessedPath
-      } else {
-        // Game isn't running yet.
-        this._findGameTimer = setTimeout(() => {
-          this._wantedPath = null
-          this.restart('')
-        }, FIND_GAME_RETRY_MS)
-        return
-      }
+      if (this._wantedPath !== logFile || guessedPath == null) return
+      logFile = guessedPath
     }
+    await this.open(logFile)
+  }
 
+  // woke: the game window appeared. With the path left on auto, follow the
+  // running game's own Client.txt if it isn't the one being read.
+  async gameStarted () {
+    if (this._wantedPath !== '') return
+    const found = await runningGameLog()
+    if (!found || this._wantedPath !== '' || found === this.actualPath) return
+    try {
+      await fs.access(found)
+    } catch {
+      return
+    }
+    this.logger.write(`info [GameLogWatcher] Switching to the running game's log: ${found}`)
+    await this.close()
+    await this.open(found)
+  }
+
+  private async close () {
+    if (!this._state) return
+    unwatchFile(this._state.path)
+    const { file } = this._state
+    this._state = null
+    await file.close()
+  }
+
+  private async open (logFile: string) {
     try {
       const file = await fs.open(logFile, 'r')
       const stats = await file.stat()

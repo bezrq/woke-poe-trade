@@ -20,6 +20,12 @@
               <span :class="$style.k">Lv</span> <span class="w-num">{{ s.level }}</span>
               <span v-if="xp" :class="[$style.pill, $style['pill--' + xp.band]]">{{ xpLabel }}</span>
             </span>
+            <span v-if="s.charName" class="w-dim w-trunc" :class="$style.char" :title="`Following ${s.charName}'s level-ups`">{{ s.charName }}</span>
+            <button v-if="wm.active.value && otherChar" class="w-icon-btn" :class="$style.switch"
+              :title="`Follow ${otherChar.charName} (${otherChar.className}, level ${otherChar.level}) instead`"
+              @click="follow(otherChar)">
+              <i class="fas fa-exchange-alt text-xs" /> {{ otherChar.charName }}
+            </button>
           </template>
           <template v-if="timer">
             <span :class="$style.sep" />
@@ -97,11 +103,12 @@ export default {
 </script>
 
 <script setup lang="ts">
-import { inject, computed, shallowRef, watch, onUnmounted } from 'vue'
+import { inject, computed, reactive, shallowRef, watch, onUnmounted } from 'vue'
 import { Host, MainProcess } from '@/web/background/IPC'
 import { AppConfig, saveConfig } from '@/web/Config'
 import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
+import { useVisibleClock } from '../shared/visible-clock'
 import RouteParts from './RouteParts.vue'
 import { actFromAreaId, actLabel, parseLogLine, pickTreeForLevel } from './log-parse'
 import type { LogEvent } from './log-parse'
@@ -207,8 +214,8 @@ const note = computed(() => {
 // ---- run timer (shown in this strip when the timer widget is placed) ----
 
 const now = shallowRef(Date.now())
-const clock = setInterval(() => { now.value = Date.now() }, 1000)
-onUnmounted(() => { clearInterval(clock) })
+// Ticks only while the widget is on screen.
+useVisibleClock(props.config, () => { now.value = Date.now() }, 1000)
 
 const timerWidget = computed(() => {
   const cfg = AppConfig()
@@ -246,19 +253,53 @@ function apply (ev: LogEvent): boolean {
     state.areaLevel = ev.areaLevel
     const act = actFromAreaId(ev.areaId)
     if (act != null) state.act = act
-    // A new character: back to the start of the route.
-    if (ev.areaId === '1_1_1' && props.config.step > 3) props.config.step = 0
+    // A new character: back to the start of the route, and follow whoever
+    // levels next (unless a name is set in the settings).
+    if (ev.areaId === '1_1_1' && props.config.step > 3) {
+      props.config.step = 0
+      state.charName = ''
+      state.className = ''
+      state.level = null
+    }
     props.config.step = advanceOnEnter(route.value, props.config.step, ev.areaId, routeData)
   } else if (ev.kind === 'zone') {
     state.zone = ev.name
   } else if (ev.kind === 'level') {
-    const wanted = props.config.charName.trim()
-    if (wanted && wanted !== ev.charName) return false
+    // Party members' level-ups are logged too. Follow the character named
+    // in the settings, or else the first one seen, the way the run timer does.
+    const wanted = props.config.charName.trim() || state.charName
+    if (wanted && wanted !== ev.charName) {
+      others.set(ev.charName, { charName: ev.charName, className: ev.className, level: ev.level })
+      lastOther.value = ev.charName
+      return false
+    }
+    others.delete(ev.charName)
     state.charName = ev.charName
     state.className = ev.className
     state.level = ev.level
   }
   return true
+}
+
+// Other characters seen levelling (party members), for the one-click switch.
+interface SeenChar { charName: string, className: string, level: number }
+const others = reactive(new Map<string, SeenChar>())
+const lastOther = shallowRef('')
+const otherChar = computed(() => (lastOther.value ? others.get(lastOther.value) : undefined))
+
+function follow (c: SeenChar) {
+  const state = props.config.state
+  if (state.charName) {
+    others.set(state.charName, { charName: state.charName, className: state.className, level: state.level ?? 0 })
+  }
+  others.delete(c.charName)
+  // A name set in the settings is a pin; move the pin to the new character.
+  if (props.config.charName.trim()) props.config.charName = c.charName
+  state.charName = c.charName
+  state.className = c.className
+  state.level = c.level
+  lastOther.value = others.size ? [...others.keys()].pop()! : ''
+  saveConfig()
 }
 
 const logMissing = shallowRef(false)
@@ -350,6 +391,8 @@ function safeUrl (url: string) {
   max-width: 64rem;
 }
 .where { font-size: 14px; max-width: 18rem; }
+.char { max-width: 9rem; }
+.switch { width: auto; padding: 0 6px; gap: 4px; font-size: 12px; }
 .oneLine { max-width: 26rem; }
 .sep { width: 1px; align-self: stretch; background: var(--w-line); }
 .k {

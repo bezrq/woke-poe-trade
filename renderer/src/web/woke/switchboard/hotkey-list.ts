@@ -88,7 +88,15 @@ export function buildHotkeyList (config: ConfigLike, host: ShortcutAction[]): Ho
   }
   for (const a of wokeGlobalShortcuts(config)) {
     woke.add(sig(a))
-    rows.push({ key: a.shortcut, norm: normalizeKey(a.shortcut), label: 'Hide all toolkit panels', module: 'Toolkit', off: false, conflicts: [] })
+    const isMapCheck = a.action.type === 'copy-item'
+    rows.push({
+      key: a.shortcut,
+      norm: normalizeKey(a.shortcut),
+      label: isMapCheck ? 'Map check (default profile)' : 'Hide all toolkit panels',
+      module: isMapCheck ? moduleName('woke-map-mods') : 'Toolkit',
+      off: false,
+      conflicts: []
+    })
   }
   for (const a of host) {
     if (woke.has(sig(a))) continue
