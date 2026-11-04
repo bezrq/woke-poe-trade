@@ -18,16 +18,17 @@
         <WSkeleton v-if="side.loading" :rows="1" :value="false" style="width: 6rem;" />
       </div>
       <div :ref="el => setGround(side.key, el as HTMLElement | null)" :key="`${side.key}-${seed}-${area}`" :class="$style.ground" :style="{ height: `${side.height}px` }">
-        <template v-for="(d, i) in side.placed" :key="d.shown.drop.id">
+        <!-- Beams first, so every label sits on top of them. -->
+        <template v-for="(d, i) in side.placed" :key="'b' + d.shown.drop.id">
           <span v-if="d.shown.visibility !== 'Hide' && d.shown.look.effect" :class="[$style.beam, { [$style.temp]: d.shown.look.effect.temp }]"
             :style="{ left: `${d.rect.x + d.rect.w / 2 - 1}px`, height: `${d.rect.y + 2}px`, background: `linear-gradient(to bottom, transparent, ${poeColour(d.shown.look.effect.color)})`, animationDelay: `${i * 14}ms` }" />
-          <span :class="[$style.drop, { [$style.ghost]: d.shown.visibility === 'Hide', [$style.differs]: d.differs }]"
-            :style="{ left: `${d.rect.x}px`, top: `${d.rect.y}px`, animationDelay: `${i * 14}ms` }"
-            :title="describe(d.shown)" @click="clickDrop(d.shown)" @contextmenu="dropMenu($event, d.shown)">
-            <LabelPreview :text="d.shown.drop.label" :actions="[]" :style-override="d.shown.look" :visibility="d.shown.visibility" :extras="false"
-              :scale="SCALE" :default-text="defaultTextColour(d.shown.drop.facts)" />
-          </span>
         </template>
+        <span v-for="(d, i) in side.placed" :key="d.shown.drop.id" :class="[$style.drop, { [$style.ghost]: d.shown.visibility === 'Hide', [$style.differs]: d.differs }]"
+          :style="{ left: `${d.rect.x}px`, top: `${d.rect.y}px`, animationDelay: `${i * 14}ms` }"
+          :title="describe(d.shown)" @click="clickDrop(d.shown)" @contextmenu="dropMenu($event, d.shown)">
+          <LabelPreview :text="d.shown.drop.label" :actions="[]" :style-override="d.shown.look" :visibility="d.shown.visibility" :extras="false"
+            :scale="SCALE" :default-text="defaultTextColour(d.shown.drop.facts)" />
+        </span>
         <div :class="$style.minimap" aria-label="Minimap icons">
           <template v-for="d in side.placed" :key="'m' + d.shown.drop.id">
             <span v-if="d.shown.visibility !== 'Hide' && d.shown.look.icon" :class="$style.mapIcon"

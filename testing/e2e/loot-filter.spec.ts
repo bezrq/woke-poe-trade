@@ -3,9 +3,9 @@
 import fs from 'fs'
 import os from 'os'
 import path from 'path'
-import { test, expect } from './harness'
+import { test, expect, FIXTURES } from './harness'
 
-const FILTER = process.env.WOKE_FILTER_FIXTURE ?? path.join(__dirname, '..', 'fixtures', 'filters', 'neversink-sample.filter')
+const FILTER = process.env.WOKE_FILTER_FIXTURE ?? path.join(FIXTURES, 'filters', 'neversink-sample.filter')
 
 function filterFolder (): string {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'woke-filters-'))
