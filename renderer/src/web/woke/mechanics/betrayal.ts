@@ -1,6 +1,8 @@
-// Immortal Syndicate safehouse rewards, transcribed from the 3.24 cheat sheet
-// APT ships (renderer/public/images/syndicate.jpg). Users can override any
-// slot's text in the widget, so a patch change does not need a release.
+// Immortal Syndicate safehouse rewards for the current league, checked
+// against Exile-UI's betrayal data (data/english/Betrayal.json, July 2026).
+// The 3.24 sheet APT ships (renderer/public/images/syndicate.jpg) is out of
+// date. Users can override any slot's text in the widget, so a patch change
+// does not need a release.
 
 import type { PriceItem } from '../market/types'
 import { priceGroup } from './data'
@@ -17,23 +19,23 @@ export const MEMBERS = [
 
 // [Transportation, Fortification, Research, Intervention]
 export const REWARDS: Record<string, [string, string, string, string]> = {
-  'Aisling': ['Veiled weapons and jewellery', 'Veiled armour and jewellery', 'Beyond Scarabs', 'Torment Scarabs'],
-  'Cameria': ['League-specific uniques', 'Harbinger Orbs', 'Orb of Unmaking', 'Sulphite Scarabs'],
-  'Elreon': ['Unique weapon', 'Unique armour', 'Unique jewellery', 'Reliquary Scarabs'],
-  'Gravicius': ['Full stack of divination cards', 'Random divination cards', 'Swap a divination card', 'Divination Scarabs'],
-  'Guff': ['Crafting bench: currency spam', 'Crafting bench: essence spam', 'Crafting bench: annul/exalt spam', 'Incursion Scarabs'],
-  'Haku': ['Rare items', 'Random strongbox', 'Rare items with quality', 'Ambush Scarabs'],
-  'Hillock': ['Essence Scarabs', 'Scarabs (trapped stash)', 'Anarchy Scarabs', 'Abyss Scarabs'],
-  'It That Fled': ['Breach splinters', 'Enchanted maps (extra breach)', 'Map device option for Breachstones', 'Breach Scarabs'],
-  'Janus': ['Quality currency', 'Currency shards', 'Expedition currency', 'Expedition Scarabs'],
-  'Jorgin': ['Talismans', 'Items with Bestiary affixes', 'Ritual Scarabs', 'Bestiary Scarabs'],
-  'Korell': ['Essences', 'Map fragments', 'Fossils', 'Influencing Scarabs'],
-  'Leo': ['Catalysts', 'Random currency', 'Trapped stash (pick one)', 'Ultimatum Scarabs'],
-  'Riker': ['Take one currency', 'Take one unique', 'Take one currency, fossil, splinter or catalyst', 'Blight Scarabs'],
-  'Rin': ['Normal maps', 'Rare maps', 'Unique maps', 'Cartography Scarabs'],
-  'Tora': ['Take one gem', 'Gems with quality', 'Gem experience', 'Harbinger Scarabs'],
-  'Vagan': ['Legion splinters', 'Legion chests', 'Incubators', 'Legion Scarabs'],
-  'Vorici': ['Reforge colours, sockets or links (×50)', 'Socket currency', 'Harvest Scarabs', 'Delirium Scarabs']
+  'Aisling': ['Double-veiled items', 'Crafting bench: veiled exalt', 'Crafting bench: veiled chaos', 'Torment Scarabs'],
+  'Cameria': ['Abyss Scarabs', 'Trapped chest: jewels', 'Crafting bench: jewel', 'Delirium Scarabs'],
+  'Elreon': ['Map fragments', 'Trapped chest: Vaal gear', 'Crafting bench: tainted orbs', 'Beyond Scarabs'],
+  'Gravicius': ['Stack of divination cards', 'Trapped chest: divination cards', 'Swap a divination card for a random one', 'Divination Scarabs'],
+  'Guff': ['Miscellaneous currency', 'Trapped chest: rare gear', 'Crafting bench: reflecting mist', 'Blight Scarabs'],
+  'Haku': ['Unique strongbox', 'Domination Scarabs', 'Crafting bench: influence', 'Ambush Scarabs'],
+  'Hillock': ['Trapped chest: influenced gear', 'Crafting bench: influenced gear', 'Crafting bench: eldritch implicit', 'Influencing Scarabs'],
+  'It That Fled': ['Trapped chest: Foulborn uniques', 'Crafting bench: Breach ring', 'Crafting bench: tainted sockets', 'Breach Scarabs'],
+  'Janus': ['Gold piles', 'Kalguuran Scarabs', 'Unique vendor (gold prices)', 'Expedition Scarabs'],
+  'Jorgin': ['Sulphite Scarabs', 'Trapped chest: Delve gear', 'Crafting bench: talisman', 'Bestiary Scarabs'],
+  'Korell': ['Anarchy Scarabs', 'Crafting bench: essence gear', 'Crafting bench: essences', 'Essence Scarabs'],
+  'Leo': ['Incursion Scarabs', 'Trapped chest: Vaal unique', 'Crafting bench: Djinn Vaal Orb', 'Ultimatum Scarabs'],
+  'Riker': ['Unique items', 'Trapped chest: unique item', 'Crafting bench: Ancient Orb', 'Titanic Scarabs'],
+  'Rin': ['Originator maps', 'Trapped chest: unique map', 'Trapped chest: scarabs', 'Cartography Scarabs'],
+  'Tora': ['Quality gems or experience lens', 'Trapped chest: gem', 'Crafting bench: gem', 'Ritual Scarabs'],
+  'Vagan': ['Trarthan Scarabs', 'Trapped chest: Enshrouded uniques', 'Crafting bench: Chaos Orb and fracture', 'Legion Scarabs'],
+  'Vorici': ['Currency stack', "Crafting bench: jeweller's, chromatic or fusing", 'Crafting bench: chance and scour', 'Harvest Scarabs']
 }
 
 // How to price a reward: the best poe.ninja item that matches.
@@ -43,9 +45,7 @@ function pricing (reward: string): PriceGroup | null {
   switch (reward) {
     case 'Fossils': return { label: reward, types: ['Fossil'] }
     case 'Essences': return { label: reward, types: ['Essence'] }
-    case 'Incubators': return { label: reward, types: ['Incubator'] }
     case 'Catalysts': return { label: reward, types: ['Currency'], match: /Catalyst$/ }
-    case 'Harbinger Orbs': return { label: reward, types: ['Currency'], match: /^Harbinger's Orb$/ }
     case 'Orb of Unmaking': return { label: reward, types: ['Currency'], match: /^Orb of Unmaking$/ }
     case 'Breach splinters': return { label: reward, types: ['Fragment'], match: /^Splinter of / }
     case 'Legion splinters': return { label: reward, types: ['Fragment'], match: /^Timeless .*Splinter$/ }

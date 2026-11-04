@@ -17,6 +17,7 @@ import { evaluateBoss, priceResolver, observedRates, parseRunTime, formatRunTime
 import type { BossPrefs } from '@/web/woke/boss-runs/calc'
 import { DumpImporter } from '@/web/woke/league-invest/dumps'
 import { MECHANICS } from '@/web/woke/mechanics/data'
+import { REWARDS } from '@/web/woke/mechanics/betrayal'
 import { MECHANIC_ICONS } from '@/web/woke/ui/game-icons'
 import { mechanicOf } from '@/web/woke/atlas/tree'
 import type { AtlasNode } from '@/web/woke/atlas/tree'
@@ -136,6 +137,14 @@ describe('league mechanics', () => {
       }
     }
     expect(empty).toEqual([])
+  })
+
+  it('safehouse scarab rewards name scarabs that exist', () => {
+    const scarabs = [...names].filter(n => / Scarab\b/.test(n))
+    const missing = Object.values(REWARDS).flat()
+      .map(r => /^(.+) Scarabs$/.exec(r)?.[1])
+      .filter((family): family is string => !!family && !scarabs.some(n => n.startsWith(`${family} Scarab`)))
+    expect(missing).toEqual([])
   })
 
   it('mechanic icons show items that exist', () => {
