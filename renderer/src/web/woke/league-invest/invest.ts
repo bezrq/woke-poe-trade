@@ -139,15 +139,17 @@ export function rankOpportunities (histories: LeagueHistory[], opts: RankOptions
     })
   }
 
-  // Consistency first (rose in most leagues, on most days), then size.
+  // Guy's metric: consistent day-over-day rises first (share of days up,
+  // in steps of 5% so near-ties fall through), then the typical size of
+  // the rise, then how many leagues back it up.
   return out.sort((x, y) =>
-    (y.hitRate - x.hitRate) ||
-    (y.leagues.length - x.leagues.length) ||
-    (score(y) - score(x)))
+    (bucket(y.upDays) - bucket(x.upDays)) ||
+    (y.median - x.median) ||
+    (y.leagues.length - x.leagues.length))
 }
 
-function score (o: Opportunity): number {
-  return Math.log(o.median) * (0.5 + o.upDays)
+function bucket (share: number): number {
+  return Math.round(share * 20)
 }
 
 export interface PlanLine {
