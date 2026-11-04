@@ -11,17 +11,17 @@
     </div>
     <div>
       <div class="mb-1">Betrayal rewards</div>
-      <div class="text-gray-400 text-sm mb-1">Rewards come from the 3.24 sheet. If a patch changes one, type the new reward here; leave empty to keep the default.</div>
+      <div class="w-dim text-sm mb-1">Rewards come from the 3.24 sheet. If a patch changes one, type the new reward here; leave empty to keep the default.</div>
       <div class="grid gap-1 items-center" style="grid-template-columns: 6rem repeat(4, minmax(0, 1fr));">
         <span />
-        <span v-for="d in DIVISIONS" :key="d" class="text-gray-400 text-sm">{{ d }}</span>
+        <span v-for="d in DIVISIONS" :key="d" class="w-dim text-sm">{{ d }}</span>
         <template v-for="m in MEMBERS" :key="m">
-          <span class="text-gray-400">{{ m }}</span>
+          <span class="w-dim">{{ m }}</span>
           <input v-for="(_, di) in DIVISIONS" :key="di"
             :value="configWidget.betrayalOverrides[slotKey(m, di)] ?? ''"
             :placeholder="REWARDS[m][di]"
             @input="setOverride(m, di, $event)"
-            class="bg-gray-900 rounded px-1 leading-6 text-sm min-w-0">
+            class="w-input rounded px-1 leading-6 text-sm min-w-0">
         </template>
       </div>
     </div>

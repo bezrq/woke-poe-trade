@@ -1,5 +1,5 @@
 <template>
-  <button v-if="target" type="button" @click="save" class="bg-gray-700 text-gray-400 rounded px-2"
+  <button v-if="target" type="button" @click="save" class="w-btn-soft w-dim rounded px-2"
     :title="saved ? 'Saved to your trade searches' : 'Save this search to your trade searches'">
     <i :class="saved ? 'fas fa-check' : 'far fa-bookmark'" class="text-xs" />
   </button>

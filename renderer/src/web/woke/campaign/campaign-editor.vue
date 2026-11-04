@@ -1,7 +1,7 @@
 <template>
   <div class="max-w-xl p-2 flex flex-col gap-3">
-    <input class="bg-gray-900 rounded px-1 w-48" placeholder="Widget title" v-model="title" />
-    <div class="text-gray-400 text-sm">
+    <input class="w-input rounded px-1 w-48" placeholder="Widget title" v-model="title" />
+    <div class="w-dim text-sm">
       Follows the built-in levelling route from <a href="https://github.com/HeartofPhos/exile-leveling" target="_blank" class="underline">exile-leveling</a>
       (MIT). Steps move on by themselves as you enter each zone. It reads Client.txt, so check its path in the general settings.
     </div>
@@ -13,7 +13,7 @@
         <ui-checkbox v-model="library">Siosa's library gem stop in Act 3</ui-checkbox>
         <label class="flex items-center gap-2">
           <span>Bandits</span>
-          <select v-model="bandit" class="bg-gray-900 rounded px-1 leading-6 w-40">
+          <select v-model="bandit" class="w-input rounded px-1 leading-6 w-40">
             <option value="kill">Kill all</option>
             <option value="oak">Help Oak</option>
             <option value="kraityn">Help Kraityn</option>
@@ -21,7 +21,7 @@
           </select>
         </label>
         <div class="flex items-center gap-2">
-          <span class="text-gray-400">Step {{ Math.min(configWidget.step + 1, total) }} of {{ total }}</span>
+          <span class="w-dim">Step {{ Math.min(configWidget.step + 1, total) }} of {{ total }}</span>
           <button class="btn" @click="configWidget.step = 0">Restart route</button>
         </div>
       </div>
@@ -33,7 +33,7 @@
         <ui-checkbox v-model="cardOpen">Show the guide card (off: one line in the strip)</ui-checkbox>
         <label class="flex items-center gap-2">
           <span>Steps on the card</span>
-          <input v-model.number="cardSteps" type="number" min="1" max="8" class="bg-gray-900 rounded px-1 leading-6 w-16">
+          <input v-model.number="cardSteps" type="number" min="1" max="8" class="w-input rounded px-1 leading-6 w-16">
         </label>
         <ui-checkbox v-model="hideAfterCampaign">Hide in maps and hideouts once the campaign is done</ui-checkbox>
         <ui-checkbox v-model="showBuild">Show the active PoB build's tree and main gems on the card</ui-checkbox>
@@ -42,37 +42,37 @@
 
     <div class="grid gap-2 items-center" style="grid-template-columns: auto 1fr;">
       <span>Hotkey: show/hide guide</span>
-      <hotkey-input v-model="hotkeyCard" />
+      <w-hotkey-cell v-model="hotkeyCard" />
       <span>Hotkey: step done</span>
-      <hotkey-input v-model="hotkeyNext" />
+      <w-hotkey-cell v-model="hotkeyNext" />
       <span>Hotkey: step back</span>
-      <hotkey-input v-model="hotkeyPrev" />
+      <w-hotkey-cell v-model="hotkeyPrev" />
     </div>
 
     <label class="flex flex-col gap-1">
       <span>Character name (optional)</span>
-      <input v-model="charName" class="bg-gray-900 rounded px-1 leading-6 w-64"
+      <input v-model="charName" class="w-input rounded px-1 leading-6 w-64"
         placeholder="Only follow this character's level-ups">
     </label>
 
     <details>
       <summary class="cursor-pointer">Personal notes (optional)</summary>
-      <div class="text-gray-400 text-sm my-1">Extra reminders shown on the card under the route. You don't need these.</div>
+      <div class="w-dim text-sm my-1">Extra reminders shown on the card under the route. You don't need these.</div>
       <div class="flex flex-col gap-1">
         <label v-for="act in acts" :key="act" class="grid gap-1 items-start" style="grid-template-columns: 5rem 1fr;">
-          <span class="text-gray-400 pt-1">{{ actLabel(act) }}</span>
+          <span class="w-dim pt-1">{{ actLabel(act) }}</span>
           <textarea :value="configWidget.actNotes[String(act)] ?? ''" @input="setActNote(act, $event)"
-            rows="2" class="bg-gray-900 rounded px-1" placeholder="Note for the whole act" />
+            rows="2" class="w-input rounded px-1" placeholder="Note for the whole act" />
         </label>
       </div>
       <div class="mt-2 mb-1">Zone notes</div>
       <div class="flex flex-col gap-2">
         <div v-for="note in configWidget.zoneNotes" :key="note.id" class="grid gap-1" style="grid-template-columns: 1fr auto;">
-          <input v-model="note.zone" placeholder="Zone name, e.g. The Ledge" class="bg-gray-900 rounded px-1 leading-6">
-          <button class="leading-none rounded bg-gray-700 w-6 h-6" @click="removeZoneNote(note.id)">
-            <i class="fas fa-times text-gray-400" />
+          <input v-model="note.zone" placeholder="Zone name, e.g. The Ledge" class="w-input rounded px-1 leading-6">
+          <button class="leading-none rounded w-btn-soft w-6 h-6" @click="removeZoneNote(note.id)">
+            <i class="fas fa-times w-dim" />
           </button>
-          <textarea v-model="note.text" rows="2" placeholder="Reminder" class="bg-gray-900 rounded px-1 col-span-2" />
+          <textarea v-model="note.text" rows="2" placeholder="Reminder" class="w-input rounded px-1 col-span-2" />
         </div>
       </div>
       <button class="btn mt-2" @click="addZoneNote">Add zone note</button>
@@ -83,7 +83,7 @@
 <script lang="ts">
 import { defineComponent, computed } from 'vue'
 import UiCheckbox from '@/web/ui/UiCheckbox.vue'
-import HotkeyInput from '@/web/settings/HotkeyInput.vue'
+import WHotkeyCell from '../ui/WHotkeyCell.vue'
 import { configProp, configModelValue } from '@/web/settings/utils'
 import { nextId } from '../shared/library'
 import { actLabel } from './log-parse'
@@ -94,7 +94,7 @@ import type { RouteOptions } from './route-parse'
 
 export default defineComponent({
   name: 'Campaign tracker',
-  components: { UiCheckbox, HotkeyInput },
+  components: { UiCheckbox, WHotkeyCell },
   props: configProp<CampaignWidget>(),
   setup (props) {
     migrateCampaign(props.configWidget)

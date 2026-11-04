@@ -97,6 +97,7 @@ export function initSetup (appUpdater: AppUpdater) {
     }
     return prefsView()
   })
+  registerWokeHandler('setup-open', async () => { openSetupWindow(); return true })
   registerWokeHandler('setup-finish', async () => {
     setAppPrefs({ wizardShown: true })
     // Let the reply reach the page before it goes away.

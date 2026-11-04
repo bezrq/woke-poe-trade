@@ -2,9 +2,9 @@
   <div class="max-w-xl p-2 flex flex-col gap-3">
     <div class="grid gap-2 items-center" style="grid-template-columns: auto 1fr;">
       <span>Hotkey: turn scan mode on/off</span>
-      <hotkey-input v-model="hotkey" />
+      <w-hotkey-cell v-model="hotkey" />
       <span>Hotkey: read every essence on screen once</span>
-      <hotkey-input v-model="onceHotkey" />
+      <w-hotkey-cell v-model="onceHotkey" />
     </div>
     <div>
       <div class="mb-1">Corrupt when the monolith holds any of these</div>
@@ -18,7 +18,7 @@
     </div>
     <label class="flex items-center gap-2">
       <span>Also highlight a monolith worth at least</span>
-      <input v-model.number="valueAlertChaos" type="number" min="0" step="10" class="rounded bg-gray-900 px-1 block" style="width: 6rem;">
+      <input v-model.number="valueAlertChaos" type="number" min="0" step="10" class="rounded w-input px-1 block" style="width: 6rem;">
       <span>chaos (0 = off)</span>
     </label>
     <div class="text-sm" style="color: var(--w-dim);">
@@ -36,7 +36,7 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue'
-import HotkeyInput from '@/web/settings/HotkeyInput.vue'
+import WHotkeyCell from '../ui/WHotkeyCell.vue'
 import { WChip } from '../ui'
 import { configProp, configModelValue } from '@/web/settings/utils'
 import { ESSENCE_TYPES, MEDS } from './essences'
@@ -44,7 +44,7 @@ import type { EssenceScanWidget } from './widget'
 
 export default defineComponent({
   name: 'Essence scan',
-  components: { HotkeyInput, WChip },
+  components: { WHotkeyCell, WChip },
   props: configProp<EssenceScanWidget>(),
   setup (props) {
     const flagTypes = configModelValue(() => props.configWidget, 'flagTypes')
