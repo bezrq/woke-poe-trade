@@ -5,6 +5,8 @@ import type { BuildRuleSwitches } from './build-rules'
 import type { PriceMove, UniqueRule } from './economy'
 import { DEFAULT_SAFETY_NET } from './safety'
 import type { SafetyNet } from './safety'
+import { clampLevel, defaultStrictnessAuto } from './strictness'
+import type { StrictnessAuto } from './strictness'
 
 export const LOOT_FILTER_TYPE = 'woke-loot-filter'
 // copy-item target: sample the hovered item and open its rule card.
@@ -34,6 +36,30 @@ export interface SavePoint {
 }
 
 export const HISTORY_SIZE = 20
+
+// NeverSink straight from GitHub (all strictness levels, kept up to date)
+// instead of a file you downloaded yourself.
+export interface NeverSinkSource {
+  on: boolean
+  // Version in use (cached in the app's folder); null until first download.
+  version: string | null
+  // The version before the last update, for Undo.
+  prevVersion: string | null
+  // NeverSink style folder ('' = default look).
+  style: string
+  // Strictness in use, 0 (Soft) to 6 (Uber plus).
+  level: number
+  // Newest version seen on GitHub, and when we last looked.
+  latest: string | null
+  latestChanges: string
+  checkedAt: number | null
+}
+
+export function defaultNeverSink (): NeverSinkSource {
+  return { on: false, version: null, prevVersion: null, style: '', level: 1, latest: null, latestChanges: '', checkedAt: null }
+}
+
+export const NEVERSINK_OUTPUT = 'NeverSink (woke).filter'
 
 export interface LootFilterWidget extends Widget {
   anchor: Anchor
@@ -71,6 +97,11 @@ export interface LootFilterWidget extends Widget {
   safetyNet: SafetyNet
   // Changes as they were at each of the last saves, newest first.
   history: SavePoint[]
+  neversink: NeverSinkSource
+  strictAuto: StrictnessAuto
+  // One step stricter / looser (NeverSink from GitHub only).
+  stricterHotkey: string | null
+  looserHotkey: string | null
 }
 
 export function defaultPriceTiers (): PriceTiers {
@@ -97,6 +128,10 @@ export function initLootFilterWidget (w: LootFilterWidget) {
   w.priceTiers = defaultPriceTiers()
   w.safetyNet = { ...DEFAULT_SAFETY_NET }
   w.history = []
+  w.neversink = defaultNeverSink()
+  w.strictAuto = defaultStrictnessAuto()
+  w.stricterHotkey = 'Alt + BracketRight'
+  w.looserHotkey = 'Alt + BracketLeft'
 }
 
 export function normalizeLootFilterWidget (w: LootFilterWidget) {
@@ -135,6 +170,29 @@ export function normalizeLootFilterWidget (w: LootFilterWidget) {
   if (typeof w.safetyNet.on !== 'boolean') w.safetyNet.on = DEFAULT_SAFETY_NET.on
   if (typeof w.safetyNet.minChaos !== 'number' || !(w.safetyNet.minChaos > 0)) w.safetyNet.minChaos = DEFAULT_SAFETY_NET.minChaos
   if (!Array.isArray(w.history)) w.history = []
+  const ns = w.neversink as Partial<NeverSinkSource> | undefined
+  const dn = defaultNeverSink()
+  w.neversink = {
+    on: typeof ns?.on === 'boolean' ? ns.on : dn.on,
+    version: typeof ns?.version === 'string' ? ns.version : null,
+    prevVersion: typeof ns?.prevVersion === 'string' ? ns.prevVersion : null,
+    style: typeof ns?.style === 'string' ? ns.style : '',
+    level: typeof ns?.level === 'number' ? clampLevel(ns.level) : dn.level,
+    latest: typeof ns?.latest === 'string' ? ns.latest : null,
+    latestChanges: typeof ns?.latestChanges === 'string' ? ns.latestChanges : '',
+    checkedAt: typeof ns?.checkedAt === 'number' ? ns.checkedAt : null
+  }
+  const sa = w.strictAuto as Partial<StrictnessAuto> | undefined
+  const da = defaultStrictnessAuto()
+  w.strictAuto = {
+    on: typeof sa?.on === 'boolean' ? sa.on : da.on,
+    paused: typeof sa?.paused === 'boolean' ? sa.paused : false,
+    ladder: Array.isArray(sa?.ladder) && sa!.ladder.length && sa!.ladder.every(x => typeof x?.from === 'number' && typeof x?.level === 'number')
+      ? sa!.ladder.map(x => ({ from: x.from, level: clampLevel(x.level) }))
+      : da.ladder
+  }
+  if (w.stricterHotkey === undefined) w.stricterHotkey = 'Alt + BracketRight'
+  if (w.looserHotkey === undefined) w.looserHotkey = 'Alt + BracketLeft'
 }
 
 export function editorHotkeyTarget (wmId: number): string {
@@ -146,7 +204,17 @@ export function parseEditorHotkeyTarget (target: string): number | null {
   return m ? Number(m[1]) : null
 }
 
-export function outputName (w: Pick<LootFilterWidget, 'sourceName' | 'saveMode' | 'sourceOnline' | 'sourceTitle'>): string {
+export function strictnessHotkeyTarget (wmId: number, dir: 'stricter' | 'looser'): string {
+  return `woke-loot-filter:${wmId}:${dir}`
+}
+
+export function parseStrictnessTarget (target: string): { wmId: number, dir: 'stricter' | 'looser' } | null {
+  const m = /^woke-loot-filter:(\d+):(stricter|looser)$/.exec(target)
+  return m ? { wmId: Number(m[1]), dir: m[2] as 'stricter' | 'looser' } : null
+}
+
+export function outputName (w: Pick<LootFilterWidget, 'sourceName' | 'saveMode' | 'sourceOnline' | 'sourceTitle'> & { neversink?: { on: boolean } }): string {
+  if (w.neversink?.on) return NEVERSINK_OUTPUT
   if (w.sourceOnline) {
     const safe = (w.sourceTitle || w.sourceName).replace(/[<>:"/\\|?*]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 80)
     return `${safe || 'Online filter'} (woke).filter`

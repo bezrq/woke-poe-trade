@@ -1,6 +1,32 @@
 <template>
   <Widget :config="mode === 'card' ? { ...config, anchor: cardAnchor } : config"
     :move-handles="mode === 'card' ? 'none' : 'corners'" :inline-edit="false" :readonly="true">
+    <!-- Strictness and anything that needs you, behind one dock icon. -->
+    <DockItem ref="dockRef" id="loot-filter" :art="dockArt" icon="fas fa-filter" title="Loot filter" :show="dockShow"
+      :badge="dockBadge" :tone="dockTone" :wm-id="config.wmId" card-width="22rem">
+      <template #card>
+        <div :class="$style.dock">
+          <template v-if="config.neversink.on">
+            <div class="flex items-center gap-2">
+              <span>{{ LEVEL_NAMES[config.neversink.level] }}</span>
+              <span class="w-faint text-xs">{{ config.strictAuto.on ? (config.strictAuto.paused ? 'auto paused' : 'auto') : 'manual' }}</span>
+              <span class="grow" />
+              <span class="w-faint text-xs w-num">NeverSink {{ config.neversink.version }}</span>
+            </div>
+            <div v-if="config.strictAuto.on" :class="$style.ladder">
+              <div v-for="(step, i) in sortedLadder" :key="i" :class="{ [$style.stepOn]: step.level === config.neversink.level }">
+                <b>{{ stepLabel(config.strictAuto.ladder, i) }}</b><span>{{ LEVEL_NAMES[step.level] }}</span>
+              </div>
+            </div>
+            <div v-if="config.looserHotkey || config.stricterHotkey" class="flex items-center gap-1 text-xs w-dim">
+              <WKbd v-if="config.looserHotkey" :keys="config.looserHotkey" /><WKbd v-if="config.stricterHotkey" :keys="config.stricterHotkey" /> looser / stricter
+            </div>
+          </template>
+          <div v-for="n in dockNotes" :key="n.text" class="text-xs" :style="n.warn ? 'color: var(--w-warn)' : ''">{{ n.text }}</div>
+          <div v-if="config.editorHotkey" class="w-faint text-xs">Open the editor with <WKbd :keys="config.editorHotkey" /></div>
+        </div>
+      </template>
+    </DockItem>
     <template v-if="mode === 'card'">
       <SampleCard v-if="sample && match" :store="store" :config="config" :facts="sample" :match="match" :area-level="effectiveAreaLevel"
         @close="close" @open-editor="openEditorFromCard" @area-level="areaOverride = $event" />
@@ -39,14 +65,16 @@ import { MainProcess } from '@/web/background/IPC'
 import { parseClipboard } from '@/parser'
 import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
-import { WPanel, WEmpty, WButton, WBanner, WSkeleton } from '../ui'
+import { WPanel, WEmpty, WButton, WBanner, WSkeleton, WKbd, gameIcon } from '../ui'
+import DockItem from '../dock/DockItem.vue'
+import { LEVEL_NAMES, LEVEL_SHORT, stepLabel } from './strictness'
 import SampleCard from './SampleCard.vue'
 import FilterEditor from './FilterEditor.vue'
 import { useLootFilter } from './store'
 import { itemFacts } from './item-facts'
 import type { ItemFacts } from './item-facts'
 import { matchItem } from './match'
-import { LOOT_FILTER_SAMPLE_TARGET, initLootFilterWidget, normalizeLootFilterWidget, parseEditorHotkeyTarget } from './widget'
+import { LOOT_FILTER_SAMPLE_TARGET, initLootFilterWidget, normalizeLootFilterWidget, parseEditorHotkeyTarget, parseStrictnessTarget } from './widget'
 import type { LootFilterWidget } from './widget'
 
 const props = defineProps<{
@@ -103,6 +131,11 @@ const itemEvents = MainProcess.onEvent('MAIN->CLIENT::item-text', (e) => {
 })
 
 const hotkeys = MainProcess.onEvent('MAIN->CLIENT::widget-action', (e) => {
+  const step = parseStrictnessTarget(e.target)
+  if (step && step.wmId === props.config.wmId) {
+    store.stepLevel(step.dir === 'stricter' ? 1 : -1).catch(() => {})
+    return
+  }
   if (parseEditorHotkeyTarget(e.target) !== props.config.wmId) return
   if (props.config.wmWants === 'show' && mode.value === 'editor') {
     wm.hide(props.config.wmId)
@@ -128,6 +161,33 @@ function openEditorFromCard (at?: { type: string, tier: string }) {
   mode.value = 'editor'
 }
 
+// ---- dock icon ----
+
+const dockRef = shallowRef<InstanceType<typeof DockItem> | null>(null)
+const dockArt = computed(() => gameIcon('Orb of Scouring', 'ITEM'))
+const sortedLadder = computed(() => [...props.config.strictAuto.ladder].sort((a, b) => a.from - b.from))
+const dockNotes = computed(() => {
+  const out: Array<{ text: string, warn?: boolean }> = []
+  const ready = store.updateReady.value
+  if (ready) out.push({ text: `NeverSink ${ready.version} is ready: ${ready.ok} of ${ready.total} changes fit. Update in the editor.` })
+  const moves = store.plan.value?.moves.length ?? 0
+  if (moves) out.push({ text: `${moves} item${moves > 1 ? 's' : ''} would move to match today's prices.` })
+  if (store.safetyCount.value) out.push({ text: `Safety net shows ${store.safetyCount.value} valuable item${store.safetyCount.value > 1 ? 's' : ''} the filter hides.` })
+  if (store.gameFilter.value.loaded === false) out.push({ text: 'The game couldn\'t load your filter. Open the editor and save again.', warn: true })
+  else if (store.wrongFilterInGame.value) out.push({ text: `The game is using "${store.gameFilter.value.name}", not your saved copy.`, warn: true })
+  if (store.failed.value.length) out.push({ text: `${store.failed.value.length} change(s) need a new home after a NeverSink update.`, warn: true })
+  if (store.pendingReload.value) out.push({ text: 'Saved. Reloads when you\'re next in town or your hideout.' })
+  return out
+})
+const dockShow = computed(() => Boolean(store.doc.value) && (props.config.neversink.on || dockNotes.value.length > 0))
+const dockBadge = computed(() => props.config.neversink.on ? LEVEL_SHORT[props.config.neversink.level] : (dockNotes.value.length || null))
+const dockTone = computed(() => dockNotes.value.some(n => n.warn) ? 'warn' : (store.updateReady.value ? 'accent' : undefined))
+
+// Say it briefly when the strictness changes.
+watch(() => props.config.neversink.level, (l, old) => {
+  if (old != null && l !== old) dockRef.value?.peek(LEVEL_NAMES[l])
+})
+
 // The card is a one-off; showing the widget again from the menu opens the editor.
 watch(() => props.config.wmWants, (wants) => {
   if (wants === 'hide') mode.value = 'editor'
@@ -148,3 +208,30 @@ const cardAnchor = computed(() => {
   }
 })
 </script>
+
+<style module>
+.dock {
+  padding: 6px var(--w-pad) 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.ladder {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 3px;
+  font-size: var(--w-fs-xs);
+}
+.ladder div {
+  display: flex;
+  flex-direction: column;
+  border-top: 3px solid var(--w-line);
+  padding-top: 2px;
+  color: var(--w-dim);
+}
+.ladder b { font-weight: 600; }
+.stepOn {
+  border-color: var(--w-accent) !important;
+  color: var(--w-fg) !important;
+}
+</style>

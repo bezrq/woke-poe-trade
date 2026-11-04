@@ -18,6 +18,19 @@ type UiohookKeyT = keyof typeof UiohookKey
 const UiohookToName = Object.fromEntries(Object.entries(UiohookKey).map(([k, v]) => ([v, k])))
 
 export class Shortcuts {
+  // woke: last key press anywhere, for whenKeysIdle.
+  private lastKeyAt = 0
+
+  private whenKeysIdle (run: () => void, idleMs = 1500, maxWaitMs = 30000) {
+    const started = Date.now()
+    const tick = () => {
+      const idle = Date.now() - this.lastKeyAt
+      if (idle >= idleMs || Date.now() - started >= maxWaitMs) run()
+      else setTimeout(tick, Math.max(100, idleMs - idle))
+    }
+    tick()
+  }
+
   private actions: ShortcutAction[] = []
   private stashScroll = false
   private logKeys = false
@@ -64,11 +77,16 @@ export class Shortcuts {
       if (e.action === 'stash-search') {
         stashSearch(e.text, this.clipboard, this.overlay)
       } else if (e.action === 'paste-in-chat') {
-        this.overlay.assertGameActive()
-        typeInChat(e.text, true, this.clipboard)
+        // woke: wait for a pause in typing so the command never lands in the
+        // middle of a chat message or a key you're holding.
+        this.whenKeysIdle(() => {
+          this.overlay.assertGameActive()
+          typeInChat(e.text, true, this.clipboard)
+        })
       }
     })
 
+    uIOhook.on('keydown', () => { this.lastKeyAt = Date.now() })
     uIOhook.on('keydown', (e) => {
       if (!this.logKeys) return
       const pressed = eventToString(e)

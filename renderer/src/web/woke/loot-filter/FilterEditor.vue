@@ -15,8 +15,8 @@
       <WBanner v-if="store.error.value">{{ store.error.value }}
         <template #actions><WButton size="sm" @click="refresh">Retry</WButton></template>
       </WBanner>
-      <WBanner v-else tone="warn">{{ banner }}
-        <template #actions><WButton size="sm" variant="ghost" @click="tab = 'changes'">Review changes</WButton></template>
+      <WBanner v-else-if="banner" :tone="banner.tone">{{ banner.text }}
+        <template #actions><WButton v-for="a in banner.actions" :key="a.label" size="sm" :variant="a.primary ? 'primary' : 'ghost'" @click="a.run()">{{ a.label }}</WButton></template>
       </WBanner>
     </template>
 
@@ -109,6 +109,7 @@
     </div>
 
     <PricesTab v-else-if="tab === 'prices'" :store="store" :config="config" :anchor="panel?.el" />
+    <NeverSinkTab v-else-if="tab === 'neversink'" :store="store" :config="config" :anchor="panel?.el" />
 
     <!-- build rules -->
     <div v-else-if="tab === 'build'" :class="$style.changes" class="w-scroll">
@@ -189,6 +190,8 @@ import { computed, ref, watch } from 'vue'
 import { WPanel, WButton, WSelect, WField, WTabs, WListItem, WChip, WEmpty, WKbd, WBanner, WSkeleton, ago, openMenu, toast } from '../ui'
 import LabelPreview from './LabelPreview.vue'
 import PricesTab from './PricesTab.vue'
+import NeverSinkTab from './NeverSinkTab.vue'
+import { LEVEL_NAMES } from './strictness'
 import { describeProblem } from './validate'
 import StyleEditor from './StyleEditor.vue'
 import type { LootFilterStore } from './store'
@@ -214,7 +217,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{ (e: 'close'): void }>()
 
-const tab = ref<'rules' | 'prices' | 'build' | 'changes'>('rules')
+const tab = ref<'rules' | 'prices' | 'neversink' | 'build' | 'changes'>('rules')
 const search = ref('')
 const selType = ref<string | null>(null)
 const selTier = ref<string | null>(null)
@@ -232,6 +235,7 @@ const outName = computed(() => props.config.sourceName ? outputName(props.config
 const tabOptions = computed(() => [
   { value: 'rules', label: 'Rules' },
   { value: 'prices', label: 'Prices', count: props.store.plan.value?.moves.length || undefined },
+  { value: 'neversink', label: props.config.neversink.on ? `NeverSink · ${LEVEL_NAMES[props.config.neversink.level]}` : 'NeverSink', count: props.store.updateReady.value ? 1 : undefined },
   { value: 'build', label: 'Build', count: props.store.buildBlockCount.value || undefined },
   { value: 'changes', label: 'Changes', count: props.config.edits.length }
 ])
@@ -259,8 +263,8 @@ const buildRows = computed(() => {
   return rows.map(r => ({ ...r, block: props.config.buildRules[r.key] ? buildBlock(r.tier) : null }))
 })
 
-// Online filters are keyed "online:<id>" in the picker.
-const sourceKey = computed(() => props.config.sourceOnline ? `online:${props.config.sourceName}` : props.config.sourceName)
+// Online filters are keyed "online:<id>" in the picker; GitHub is "github".
+const sourceKey = computed(() => props.config.neversink.on ? 'github' : props.config.sourceOnline ? `online:${props.config.sourceName}` : props.config.sourceName)
 
 const fileOptions = computed(() => {
   const opts = props.store.files.value
@@ -268,24 +272,50 @@ const fileOptions = computed(() => {
     .map(f => f.online
       ? { value: `online:${f.name}`, label: `${f.title ?? f.name} (online, read only)` }
       : { value: f.name, label: f.name.replace(/\.filter$/i, '') })
-  if (props.config.sourceName && !opts.some(o => o.value === sourceKey.value)) {
+  opts.unshift({ value: 'github', label: 'NeverSink from GitHub (keeps itself up to date)' })
+  if (props.config.sourceName && !props.config.neversink.on && !opts.some(o => o.value === sourceKey.value)) {
     opts.unshift({ value: sourceKey.value, label: props.config.sourceOnline ? `${props.config.sourceTitle} (online)` : props.config.sourceName.replace(/\.filter$/i, '') })
   }
-  if (!opts.length) opts.push({ value: '', label: 'No .filter files found' })
+
   return opts
 })
 
-const banner = computed(() => {
+interface BannerAction { label: string, run: () => void, primary?: boolean }
+const banner = computed<{ text: string, tone: 'warn' | 'info', actions: BannerAction[] } | null>(() => {
   const s = props.store
   const failed = s.failed.value.length
+  const review = { label: 'Review changes', run: () => { tab.value = 'changes' } }
   if (s.updatedSinceSave.value) {
     const total = s.statuses.value.length
-    return `NeverSink ${s.baseVersion.value} found (you last saved against ${props.config.lastVersion}). ${total - failed} of ${total} changes reapplied${failed ? `, ${failed} need a new home under Changes` : ''}. Save to update the game's copy.`
+    return { tone: 'warn', actions: [review], text: `NeverSink ${s.baseVersion.value} found (you last saved against ${props.config.lastVersion}). ${total - failed} of ${total} changes reapplied${failed ? `, ${failed} need a new home under Changes` : ''}. Save to update the game's copy.` }
   }
-  if (failed) return `${failed} change${failed > 1 ? 's need' : ' needs'} a new home in this filter version. See Changes.`
-  if (s.problems.value.length) return 'The game would reject this filter as it is. See Changes for the rule to fix.'
+  if (failed) return { tone: 'warn', actions: [review], text: `${failed} change${failed > 1 ? 's need' : ' needs'} a new home in this filter version. See Changes.` }
+  if (s.problems.value.length) return { tone: 'warn', actions: [review], text: 'The game would reject this filter as it is. See Changes for the rule to fix.' }
+  const ready = s.updateReady.value
+  if (ready) {
+    return {
+      tone: 'info',
+      text: `NeverSink ${ready.version} is ready. ${ready.ok} of ${ready.total} of your changes fit.`,
+      actions: [{ label: 'What changed', run: () => { tab.value = 'neversink' } }, { label: 'Update', primary: true, run: updateNow }]
+    }
+  }
+  if (s.gameFilter.value.loaded === false) {
+    return { tone: 'warn', actions: [], text: 'The game couldn\'t load your filter last time it tried. Save again; the syntax check will name the rule if one is broken.' }
+  }
+  if (s.wrongFilterInGame.value && props.config.reloadViaChat) {
+    return {
+      tone: 'info',
+      text: `The game is using "${s.gameFilter.value.name}", not your saved copy "${outName.value.replace(/\.filter$/i, '')}".`,
+      actions: [{ label: 'Use mine in game', primary: true, run: () => s.reloadInGame(true) }]
+    }
+  }
   return null
 })
+
+async function updateNow () {
+  const undo = await props.store.updateNeverSink()
+  toast(`Updated to NeverSink ${props.config.neversink.version}`, { anchor: panel.value?.el, undo })
+}
 
 function homes (edit: FilterEdit): RehomeOption[] {
   return props.store.doc.value ? rehomeOptions(props.store.doc.value, edit).slice(0, 40) : []
@@ -420,6 +450,12 @@ function iconFor (kind: FilterEdit['kind']): string {
 
 async function pickSource (key: string) {
   if (!key || key === sourceKey.value) return
+  if (key === 'github') {
+    await props.store.useGitHub(true)
+    tab.value = 'neversink'
+    return
+  }
+  if (props.config.neversink.on) props.config.neversink.on = false
   const online = key.startsWith('online:')
   const name = online ? key.slice('online:'.length) : key
   props.config.sourceName = name
