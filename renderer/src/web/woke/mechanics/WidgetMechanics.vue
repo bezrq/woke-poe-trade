@@ -2,7 +2,7 @@
   <Widget :config="config" move-handles="corners" :inline-edit="false" :readonly="true">
     <div class="flex gap-2 min-h-0 items-start">
       <!-- Collapsed: a small see-through icon; hovering it shows the glance card. -->
-      <div v-if="!config.expanded" ref="glanceEl" :class="$style.glanceRoot">
+      <div v-if="!config.expanded" ref="glanceEl" :class="$style.glanceRoot" data-w-panel>
         <button v-if="!showGlance" type="button" :class="$style.icon" :title="`League mechanics: ${mech.label}`" @click="config.expanded = true">
           <i :class="mech.icon" />
         </button>
@@ -14,7 +14,7 @@
             <button class="w-icon-btn" title="Next mechanic" @click="step(1)"><i class="fas fa-chevron-right" /></button>
             <button class="w-icon-btn" title="Expand" @click="config.expanded = true"><i class="fas fa-expand-alt" /></button>
           </template>
-          <div v-if="!hasPrices" :class="$style.warn"><i class="fas fa-exclamation-triangle" /> Add the Market tracker widget for prices.</div>
+          <div v-if="!hasPrices" :class="$style.warn"><i class="fas fa-exclamation-triangle" /> Waiting for poe.ninja prices…</div>
           <template v-if="mech.id === 'betrayal' && goals.length">
             <div class="w-group-label">Goals · {{ goalsDone }} of {{ goals.length }} in place</div>
             <div v-for="g in goalRows.filter(r => !r.done)" :key="g.member" class="w-row" :class="$style.glanceBtr">
@@ -58,7 +58,7 @@
           </div>
 
           <div class="w-scroll" :class="$style.col">
-            <div v-if="!hasPrices" :class="$style.warn"><i class="fas fa-exclamation-triangle" /> Prices come from the Market tracker. Add that widget and wait for its first snapshot.</div>
+            <div v-if="!hasPrices" :class="$style.warn"><i class="fas fa-exclamation-triangle" /> Waiting for poe.ninja prices. They load on their own within a minute or two; no other widget is needed.</div>
             <template v-if="mech.id === 'betrayal'">
               <div :class="$style.toolbar">
                 <WSegmented v-model="division" :options="DIVISIONS.map((d, i) => ({ value: String(i), label: d.slice(0, 5) }))" />

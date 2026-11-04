@@ -23,7 +23,7 @@
     </label>
     <div class="text-sm" style="color: var(--w-dim);">
       Essence scan reads the label of the essence monolith under your mouse with on-screen text recognition,
-      prices its essences from poe.ninja (through the Market tracker) and says whether to corrupt it.
+      prices its essences from poe.ninja and says whether to corrupt it.
       It compares what the monolith is worth now with an estimate of its worth after corrupting (minus a Vaal Orb),
       and says CORRUPT only when the estimate is higher. The odds of each corrupt outcome aren't published, so the
       estimate treats them as equally likely. Without prices it falls back to the essences ticked here: Misery, Envy,

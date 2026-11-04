@@ -16,7 +16,7 @@
           <span>prices {{ ago(prices.snapshot.value.ts) }}</span>
           <template v-if="divine"><span class="w-faint">·</span><span>1 div = {{ Math.round(divine) }}c</span></template>
         </template>
-        <span v-else style="color: var(--w-warn);"><i class="fas fa-exclamation-triangle" /> Prices come from the Market tracker. Add that widget and wait for its first snapshot.</span>
+        <span v-else style="color: var(--w-warn);"><i class="fas fa-exclamation-triangle" /> Waiting for poe.ninja prices. They load on their own within a minute or two.</span>
       </template>
 
       <div :class="$style.layout">
@@ -157,7 +157,7 @@
                     <div v-if="sel.boss.source.note" style="color: var(--w-warn);">{{ sel.boss.source.note }}</div>
                   </div>
                   <div v-else class="w-dim">No public drop data for this boss. Add its drops below and type rates you trust, or log kills.</div>
-                  <div class="w-faint text-xs">Your typed rates win over community rates, which win over your kill log. Prices are poe.ninja via the Market tracker.</div>
+                  <div class="w-faint text-xs">Your typed rates win over community rates, which win over your kill log. Prices are from poe.ninja.</div>
                 </div>
                 <div class="w-row w-row--head" :class="$style.rateGrid"><span>Drop</span><span>Source</span><span class="text-right">Chance %</span><span /></div>
                 <div v-for="d in sel.drops" :key="d.name" class="w-row" :class="$style.rateGrid">

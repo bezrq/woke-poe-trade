@@ -41,6 +41,9 @@ export interface FarmingSession {
   otherMs?: number
   // Paused by the idle rule (resumes on the next zone change).
   autoPaused?: boolean
+  // Last map instance counted ("areaId:seed"), so going back into the same
+  // map through a portal doesn't count it again.
+  lastMapInstance?: string
 }
 
 export interface FarmingResult {
@@ -159,6 +162,17 @@ export function strategyStats (history: FarmingResult[]): Array<{ strategy: stri
     const profit = list.reduce((n, r) => n + r.lootChaos - r.costChaos, 0)
     return { strategy, sessions: list.length, maps, hours, perHour: hours ? profit / hours : 0, perMap: maps ? profit / maps : 0 }
   }).sort((a, b) => b.perHour - a.perHour)
+}
+
+// Whether entering this map is a new map (not the same instance again).
+// Records it as counted when it is.
+export function countNewMap (s: FarmingSession, areaId: string, seed: string | undefined): boolean {
+  // Without a seed (older clients) every entry counts, as before.
+  if (!seed) return true
+  const key = `${areaId}:${seed}`
+  if (s.lastMapInstance === key) return false
+  s.lastMapInstance = key
+  return true
 }
 
 // Books zone time and decides auto-pause/resume. Call on each zone change.

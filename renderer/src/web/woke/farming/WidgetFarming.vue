@@ -5,7 +5,7 @@
         <WTabs v-model="tab" :options="tabs.map(t => ({ value: t.id, label: t.label }))" />
       </template>
       <template v-if="!prices.snapshot.value" #meta>
-        <span style="color: var(--w-warn);"><i class="fas fa-exclamation-triangle" /> Prices come from the Market tracker. Add that widget and wait for its first snapshot.</span>
+        <span style="color: var(--w-warn);"><i class="fas fa-exclamation-triangle" /> Waiting for poe.ninja prices. They load on their own within a minute or two.</span>
       </template>
 
       <div class="flex flex-col gap-2 py-2" style="padding-left: var(--w-pad); padding-right: var(--w-pad);">
@@ -158,7 +158,7 @@ import type { PriceItem } from '../market/types'
 import { parseLogLine } from '../campaign/log-parse'
 import { ATLAS_TYPE } from '../atlas/widget'
 import type { AtlasWidget } from '../atlas/widget'
-import { FARMING_LOOT_TARGET, elapsed, formatHms, isMapArea, lineValue, maybeAutoPause, newSession, onZoneChange, sellPrice, sellRules, strategyStats, totals } from './farming'
+import { FARMING_LOOT_TARGET, countNewMap, elapsed, formatHms, isMapArea, lineValue, maybeAutoPause, newSession, onZoneChange, sellPrice, sellRules, strategyStats, totals } from './farming'
 import type { CostLine, LootLine, PricedRef } from './farming'
 
 const props = defineProps<{
@@ -325,7 +325,7 @@ const logListener = Host.onEvent('MAIN->CLIENT::game-log', (e) => {
     if (ev?.kind !== 'area') continue
     const inMap = isMapArea(ev.areaId)
     onZoneChange(sess, inMap, Date.now())
-    if (inMap && sess.runningSince != null && props.config.autoCountMaps) sess.maps++
+    if (inMap && sess.runningSince != null && props.config.autoCountMaps && countNewMap(sess, ev.areaId, ev.seed)) sess.maps++
     changed = true
   }
   // Config is otherwise saved only when the overlay loses focus.

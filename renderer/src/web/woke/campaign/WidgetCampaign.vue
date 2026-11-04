@@ -1,6 +1,6 @@
 <template>
   <Widget :config="config" move-handles="corners" :inline-edit="false" :readonly="true">
-    <div v-if="visible" class="flex flex-col items-start gap-1">
+    <div v-if="visible" class="flex flex-col items-start gap-1" data-w-panel>
       <!-- HUD strip -->
       <div :class="$style.strip">
         <template v-if="logMissing && !s.updatedAt">

@@ -43,6 +43,10 @@ export function useLootFilter (config: LootFilterWidget) {
   const inSafeZone = ref<boolean | null>(null)
   // A reload held until the next town/hideout visit.
   const pendingReload = ref(false)
+  // The area line is written while the loading screen is still up, when the
+  // game drops the keys we'd type; wait until the zone has loaded.
+  const RELOAD_AFTER_LOAD_MS = 4000
+  let reloadTimer: ReturnType<typeof setTimeout> | undefined
   const logListener = Host.onEvent('MAIN->CLIENT::game-log', (e) => {
     for (const line of e.lines) {
       const ev = parseLogLine(line)
@@ -50,13 +54,20 @@ export function useLootFilter (config: LootFilterWidget) {
       const safe = /hideout|town/i.test(ev.areaId)
       inSafeZone.value = safe
       if (!safe) areaLevel.value = ev.areaLevel
+      clearTimeout(reloadTimer)
       if (safe && pendingReload.value) {
-        pendingReload.value = false
-        sendReload()
+        reloadTimer = setTimeout(() => {
+          if (!pendingReload.value || inSafeZone.value !== true) return
+          pendingReload.value = false
+          sendReload()
+        }, RELOAD_AFTER_LOAD_MS)
       }
     }
   })
-  onUnmounted(() => { logListener.abort() })
+  onUnmounted(() => {
+    logListener.abort()
+    clearTimeout(reloadTimer)
+  })
 
   const dirty = computed(() => JSON.stringify(config.edits) !== savedEdits.value)
   const failed = computed(() => statuses.value.filter(s => !s.ok))
