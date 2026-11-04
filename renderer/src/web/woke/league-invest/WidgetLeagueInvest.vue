@@ -195,18 +195,25 @@ async function reloadHistories () {
 }
 reloadHistories()
 
+// A slow read for the previous league must not land after a newer one.
+let snapSeq = 0
 watch([league, collector.revision], async () => {
-  if (!league.value) { snapshot.value = null; return }
+  const seq = ++snapSeq
+  const id = league.value
+  if (!id) { snapshot.value = null; return }
   try {
-    const [snap] = await latestSnapshots(league.value, 1)
-    snapshot.value = snap ?? null
-  } catch { snapshot.value = null }
+    const [snap] = await latestSnapshots(id, 1)
+    if (seq === snapSeq) snapshot.value = snap ?? null
+  } catch { if (seq === snapSeq) snapshot.value = null }
 }, { immediate: true })
 
 watch(league, async (id) => {
   apiStart.value = null
   if (!id) return
-  try { apiStart.value = (await leagueStartDates()).get(id) ?? null } catch {}
+  try {
+    const startDate = (await leagueStartDates()).get(id) ?? null
+    if (league.value === id) apiStart.value = startDate
+  } catch {}
 }, { immediate: true })
 
 const start = computed(() => props.config.leagueStart || apiStart.value)
