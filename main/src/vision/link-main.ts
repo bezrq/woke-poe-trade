@@ -44,6 +44,13 @@ export class OcrWorker {
     }
   }
 
+  // Switches this worker to a model of our own; `lang` stays as it was, so
+  // a later updateOptions call with the same language won't undo it.
+  async loadModel (data: Uint8Array, name: string) {
+    await this.ready
+    await this.api.loadModel(data, name)
+  }
+
   async findHeistGems (image: ImageData) {
     await this.ready
     const result = await this.api.findHeistGems(

@@ -21,6 +21,12 @@ const WorkerBody = {
     _changeLangPromise = Bindings.changeLanguage(lang, binDir)
     await _changeLangPromise
   },
+  // woke scans: read with our own model (trained on the game's font)
+  async loadModel (data: Uint8Array, name: string) {
+    await _changeLangPromise
+    _changeLangPromise = Promise.resolve().then(() => { Bindings.loadModelData(data, name) })
+    await _changeLangPromise
+  },
   async findHeistGems (screenshot: ImageData) {
     await _changeLangPromise
     return _heistGems.ocrScreenshot(screenshot)

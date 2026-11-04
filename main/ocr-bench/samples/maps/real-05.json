@@ -1,0 +1,54 @@
+{
+ "kind": "map",
+ "source": "Guy, 2560x1440, PoE screenshot-0005",
+ "screenHeight": 1440,
+ "cursor": {
+  "x": 460,
+  "y": 880
+ },
+ "box": {
+  "x": 160,
+  "y": 160,
+  "width": 600,
+  "height": 690
+ },
+ "lines": [
+  "Forgotten Nexus",
+  "Map (Tier 16)",
+  "Monster Level: 83",
+  "Item Quantity: +84%",
+  "Item Rarity: +51%",
+  "Monster Pack Size: +32%",
+  "More Maps: +105%",
+  "Area is Influenced by the Originator's Memories",
+  "Players are Cursed with Vulnerability",
+  "23% increased Monster Damage",
+  "+50% Monster Physical Damage Reduction",
+  "Monsters have +1 to Maximum Frenzy Charges",
+  "Monsters gain a Frenzy Charge on Hit",
+  "Monsters have +1 to Maximum Power Charges",
+  "Monsters gain a Power Charge on Hit",
+  "+35% Monster Chaos Resistance",
+  "+55% Monster Elemental Resistances",
+  "60% less effect of Curses on Monsters"
+ ],
+ "modLines": [
+  "Area is Influenced by the Originator's Memories",
+  "Players are Cursed with Vulnerability",
+  "23% increased Monster Damage",
+  "+50% Monster Physical Damage Reduction",
+  "Monsters have +1 to Maximum Frenzy Charges",
+  "Monsters gain a Frenzy Charge on Hit",
+  "Monsters have +1 to Maximum Power Charges",
+  "Monsters gain a Power Charge on Hit",
+  "+35% Monster Chaos Resistance",
+  "+55% Monster Elemental Resistances",
+  "60% less effect of Curses on Monsters"
+ ],
+ "props": {
+  "quantity": 84,
+  "rarity": 51,
+  "packSize": 32,
+  "maps": 105
+ }
+}

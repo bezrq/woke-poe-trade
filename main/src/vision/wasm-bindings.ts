@@ -13,8 +13,10 @@ const langMap = new Map([
   // ['cmn-Hant', 'chi_tra'],
 ])
 
-export async function init (binDir: string) {
-  if (process.platform !== 'win32') {
+// `anyPlatform`: the OCR bench (ocr-bench/) runs this on Linux with images
+// it converts to BGRA itself.
+export async function init (binDir: string, anyPlatform = false) {
+  if (process.platform !== 'win32' && !anyPlatform) {
     // so far only tested on Windows with BGRA images
     throw new Error('Unsupported platform')
   }
@@ -38,6 +40,19 @@ export async function changeLanguage (lang: string, binDir: string) {
     throw new Error('Could not initialize tesseract.')
   }
   tessModule.FS.unlink(`${lang}.traineddata`)
+}
+
+// Loads a traineddata model of our own (not one of the languages above),
+// e.g. the one trained on the game's tooltip font.
+export function loadModelData (data: Uint8Array, name: string) {
+  tessModule.FS.writeFile(`${name}.traineddata`, data)
+  try {
+    if (tessApi.Init(null, name, tessModule.OEM_DEFAULT)) {
+      throw new Error(`Could not load OCR model ${name}.`)
+    }
+  } finally {
+    tessModule.FS.unlink(`${name}.traineddata`)
+  }
 }
 
 export function ocrSetImage (data: Uint8Array, width: number, height: number, bpp: number) {

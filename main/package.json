@@ -9,7 +9,9 @@
     "build": "tsc --noEmit && node build/script.mjs --prod",
     "package": "node build/fetch-ocr.mjs && electron-builder build",
     "postinstall": "patch-package --patch-dir build",
-    "fetch-ocr": "node build/fetch-ocr.mjs"
+    "fetch-ocr": "node build/fetch-ocr.mjs",
+    "ocr-bench": "esbuild ocr-bench/bench.ts --bundle --platform=node --outfile=dist/ocr-bench.js --log-level=warning && node dist/ocr-bench.js",
+    "ocr-train-lines": "esbuild ocr-bench/train-lines.ts --bundle --platform=node --outfile=dist/ocr-train-lines.js --log-level=warning && node dist/ocr-train-lines.js"
   },
   "author": {
     "name": "guybnd"

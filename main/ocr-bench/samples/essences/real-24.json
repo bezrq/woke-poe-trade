@@ -1,0 +1,21 @@
+{
+ "kind": "essence",
+ "source": "Guy, 2560x1440, PoE screenshot-0024",
+ "screenHeight": 1440,
+ "cursor": {
+  "x": 452,
+  "y": 510
+ },
+ "box": {
+  "x": 160,
+  "y": 160,
+  "width": 585,
+  "height": 325
+ },
+ "essences": [
+  "Screaming Essence of Suffering",
+  "Weeping Essence of Greed",
+  "Screaming Essence of Envy"
+ ],
+ "corrupted": false
+}
