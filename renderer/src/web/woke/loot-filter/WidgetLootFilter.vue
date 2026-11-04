@@ -61,7 +61,7 @@ if (props.config.wmFlags[0] === 'uninitialized') {
 }
 normalizeLootFilterWidget(props.config)
 
-const store = useLootFilter(props.config)
+const store = useLootFilter(() => props.config)
 const mode = ref<'card' | 'editor'>('editor')
 const sample = shallowRef<ItemFacts | null>(null)
 const samplePosition = shallowRef({ x: 1, y: 1 })

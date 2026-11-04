@@ -49,7 +49,7 @@ import { useActiveBuild } from '../pob-builds/active'
 import { actRewards, linkColours, linkGroups, orderedGems, pickStage, relevantGems, skillSetsOf, townBuys } from '../pob-builds/build-model'
 import { gemData, nextGems } from '../pob-builds/gems'
 import SocketDots from '../pob-builds/SocketDots.vue'
-import { isTown, pickTreeForLevel } from './log-parse'
+import { isTown } from './log-parse'
 import type { CampaignWidget } from './widget'
 
 const props = withDefaults(defineProps<{
@@ -64,7 +64,8 @@ const build = useActiveBuild()
 const s = computed(() => props.config.state)
 const level = computed(() => s.value.level)
 const details = computed(() => props.config.showBuild ? build.details.value : null)
-const tree = computed(() => details.value ? pickTreeForLevel(details.value.trees, s.value.level) : null)
+// Same stage rules as skill and item sets: "Act 3" is an act, not level 3.
+const tree = computed(() => details.value ? pickStage(details.value.trees, s.value.level, s.value.act)?.item ?? null : null)
 const got = computed(() => s.value.gemsGot ?? [])
 const campaignAct = computed(() => (s.value.act != null && s.value.act <= 10) ? s.value.act : null)
 

@@ -35,24 +35,6 @@ export function isTown (areaId: string): boolean {
   return /_town$/i.test(areaId)
 }
 
-// Picks the PoB tree spec meant for the current level, based on numbers in
-// spec titles ("Level 30", "lvl 55", "40-60"). Uses the highest level that
-// has been reached; falls back to the active spec.
-export function pickTreeForLevel<T extends { title: string, isActive: boolean }> (trees: T[], level: number | null): T | null {
-  if (!trees.length) return null
-  if (level != null) {
-    let best: { tree: T, at: number } | null = null
-    for (const tree of trees) {
-      const m = /(\d{1,3})/.exec(tree.title)
-      if (!m) continue
-      const at = Number(m[1])
-      if (at <= level && at <= 100 && (!best || at > best.at)) best = { tree, at }
-    }
-    if (best) return best.tree
-  }
-  return trees.find(t => t.isActive) ?? trees[0]
-}
-
 export function actLabel (act: number | null): string {
   if (act == null) return ''
   return act === 11 ? 'Epilogue' : `Act ${act}`

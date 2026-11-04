@@ -28,7 +28,9 @@ function stem (name: string): string {
   return name.replace(/\.filter$/i, '')
 }
 
-export function useLootFilter (config: LootFilterWidget) {
+// Takes a getter: Settings replaces the whole config object while the widget
+// stays mounted, so a captured object would go stale (edits lost on save).
+export function useLootFilter (cfg: () => LootFilterWidget) {
   const files = shallowRef<FilterFile[]>([])
   const folder = ref('')
   // The untouched NeverSink text the edits apply to.
@@ -44,11 +46,11 @@ export function useLootFilter (config: LootFilterWidget) {
   const error = ref<string | null>(null)
   // Rules from the active PoB build; part of what "unsaved" compares.
   const buildInput = useBuildRuleInput()
-  const buildSig = computed(() => JSON.stringify(buildInput.value ? [buildInput.value, config.buildRules] : null))
-  const signature = () => JSON.stringify([config.edits, hash(buildSig.value)])
+  const buildSig = computed(() => JSON.stringify(buildInput.value ? [buildInput.value, cfg().buildRules] : null))
+  const signature = () => JSON.stringify([cfg().edits, hash(buildSig.value)])
   // The build part is only known once the build file is read, so start from
   // what the last save used.
-  const savedEdits = ref(JSON.stringify([config.edits, config.savedBuildSig ?? hash(buildSig.value)]))
+  const savedEdits = ref(JSON.stringify([cfg().edits, cfg().savedBuildSig ?? hash(buildSig.value)]))
   const lastSaved = ref<number | null>(null)
   // Version of the base file when it was loaded, to flag NeverSink updates.
   const baseVersion = ref<string | null>(null)
@@ -88,7 +90,7 @@ export function useLootFilter (config: LootFilterWidget) {
   const dirty = computed(() => signature() !== savedEdits.value)
   const failed = computed(() => statuses.value.filter(s => !s.ok))
   const updatedSinceSave = computed(() =>
-    baseVersion.value != null && config.lastVersion != null && baseVersion.value !== config.lastVersion)
+    baseVersion.value != null && cfg().lastVersion != null && baseVersion.value !== cfg().lastVersion)
 
   function rebuild () {
     if (baseText.value == null) { doc.value = null; return }
@@ -97,17 +99,17 @@ export function useLootFilter (config: LootFilterWidget) {
     const input = buildInput.value
     buildBlockCount.value = 0
     if (input) {
-      const blocks = buildRuleBlocks(input, config.buildRules)
+      const blocks = buildRuleBlocks(input, cfg().buildRules)
       insertBuildBlocks(next, blocks)
       buildBlockCount.value = blocks.length
     }
-    statuses.value = applyEdits(next, config.edits)
+    statuses.value = applyEdits(next, cfg().edits)
     doc.value = next
   }
 
   async function listFiles () {
     try {
-      const res = await hostRequest<{ dir: string, files: FilterFile[] }>('filter-list', { dir: config.folder })
+      const res = await hostRequest<{ dir: string, files: FilterFile[] }>('filter-list', { dir: cfg().folder })
       folder.value = res.dir
       files.value = res.files
     } catch (e) {
@@ -116,42 +118,42 @@ export function useLootFilter (config: LootFilterWidget) {
   }
 
   async function load () {
-    if (!config.sourceName) {
+    if (!cfg().sourceName) {
       await listFiles()
       // Pick the most recently changed NeverSink file as a starting point.
       const ns = files.value.find(f => !f.online && /neversink/i.test(f.name) && !/\(woke\)/i.test(f.name)) ??
         files.value.find(f => f.online && /neversink/i.test(f.title ?? ''))
       if (!ns) return
-      config.sourceName = ns.name
-      config.sourceOnline = Boolean(ns.online)
-      config.sourceTitle = ns.title ?? ''
+      cfg().sourceName = ns.name
+      cfg().sourceOnline = Boolean(ns.online)
+      cfg().sourceTitle = ns.title ?? ''
     }
     loading.value = true
     error.value = null
     try {
-      let { text } = await hostRequest<{ text: string }>('filter-read', { dir: config.folder, name: config.sourceName, online: config.sourceOnline })
+      let { text } = await hostRequest<{ text: string }>('filter-read', { dir: cfg().folder, name: cfg().sourceName, online: cfg().sourceOnline })
       baseNeedsBackup.value = false
-      if (config.sourceOnline) {
+      if (cfg().sourceOnline) {
         // Read only; saves go to a local copy.
       } else if (text.startsWith(WOKE_MARK)) {
         // Our own output. Overwrite mode keeps the original in the .bak; a
         // copy-mode output names its source in the header instead.
         try {
-          text = (await hostRequest<{ text: string }>('filter-read', { dir: config.folder, name: config.sourceName + '.bak' })).text
+          text = (await hostRequest<{ text: string }>('filter-read', { dir: cfg().folder, name: cfg().sourceName + '.bak' })).text
         } catch (e) {
           const from = /^# Made from "([^"]+\.filter)"/m.exec(text)?.[1]
-          if (!from || from === config.sourceName) throw e
-          text = (await hostRequest<{ text: string }>('filter-read', { dir: config.folder, name: from })).text
-          config.sourceName = from
+          if (!from || from === cfg().sourceName) throw e
+          text = (await hostRequest<{ text: string }>('filter-read', { dir: cfg().folder, name: from })).text
+          cfg().sourceName = from
         }
-      } else if (config.saveMode === 'overwrite') {
+      } else if (cfg().saveMode === 'overwrite') {
         baseNeedsBackup.value = true
       }
       baseText.value = text
       rebuild()
       baseVersion.value = doc.value?.version ?? null
     } catch (e) {
-      error.value = `Can't open ${config.sourceName}: ${(e as Error).message}`
+      error.value = `Can't open ${cfg().sourceName}: ${(e as Error).message}`
       baseText.value = null
       doc.value = null
     } finally {
@@ -160,29 +162,29 @@ export function useLootFilter (config: LootFilterWidget) {
   }
 
   function edit (e: NewFilterEdit | FilterEdit) {
-    config.edits = addEdit(config.edits, { ...e, id: nextEditId() } as FilterEdit)
+    cfg().edits = addEdit(cfg().edits, { ...e, id: nextEditId() } as FilterEdit)
     rebuild()
   }
 
   // Points a failed edit at a new group/tier (after a NeverSink update).
   function replaceEdit (next: FilterEdit) {
-    config.edits = config.edits.map(e => e.id === next.id ? next : e)
+    cfg().edits = cfg().edits.map(e => e.id === next.id ? next : e)
     rebuild()
   }
 
   // Returns a function that puts the edit back (for the Undo toast).
   function removeEdit (id: number) {
-    const before = config.edits
-    config.edits = before.filter(e => e.id !== id)
+    const before = cfg().edits
+    cfg().edits = before.filter(e => e.id !== id)
     rebuild()
-    return () => { config.edits = before; rebuild() }
+    return () => { cfg().edits = before; rebuild() }
   }
 
   function header (): string[] {
     const d = doc.value!
     return [
       WOKE_MARK,
-      `# Made from "${config.sourceOnline ? `${config.sourceTitle} (online filter, this copy doesn't auto-update)` : config.sourceName}"${d.version ? ` (NeverSink ${d.version})` : ''} with ${config.edits.length} change(s)${buildBlockCount.value ? ` and ${buildBlockCount.value} build rule(s) for ${buildInput.value?.buildName ?? 'your build'}` : ''}.`,
+      `# Made from "${cfg().sourceOnline ? `${cfg().sourceTitle} (online filter, this copy doesn't auto-update)` : cfg().sourceName}"${d.version ? ` (NeverSink ${d.version})` : ''} with ${cfg().edits.length} change(s)${buildBlockCount.value ? ` and ${buildBlockCount.value} build rule(s) for ${buildInput.value?.buildName ?? 'your build'}` : ''}.`,
       '# This file is rewritten on every save from the loot filter editor; change it there.',
       ''
     ]
@@ -193,17 +195,17 @@ export function useLootFilter (config: LootFilterWidget) {
     saving.value = true
     error.value = null
     try {
-      const name = outputName(config)
-      if (!config.sourceOnline && config.saveMode === 'overwrite' && baseNeedsBackup.value) {
-        await hostRequest('filter-write', { dir: config.folder, name: config.sourceName + '.bak', text: baseText.value })
+      const name = outputName(cfg())
+      if (!cfg().sourceOnline && cfg().saveMode === 'overwrite' && baseNeedsBackup.value) {
+        await hostRequest('filter-write', { dir: cfg().folder, name: cfg().sourceName + '.bak', text: baseText.value })
         baseNeedsBackup.value = false
       }
-      await hostRequest('filter-write', { dir: config.folder, name, text: serializeFilter(doc.value, header()) })
+      await hostRequest('filter-write', { dir: cfg().folder, name, text: serializeFilter(doc.value, header()) })
       savedEdits.value = signature()
-      config.savedBuildSig = hash(buildSig.value)
-      config.lastVersion = doc.value.version
+      cfg().savedBuildSig = hash(buildSig.value)
+      cfg().lastVersion = doc.value.version
       lastSaved.value = Date.now()
-      if (config.reloadViaChat) reloadInGame()
+      if (cfg().reloadViaChat) reloadInGame()
       return true
     } catch (e) {
       error.value = `Couldn't save: ${(e as Error).message}`
@@ -216,7 +218,7 @@ export function useLootFilter (config: LootFilterWidget) {
   // One chat command, sent because the user pressed Save. With
   // reloadWhenSafe it waits until town/hideout, so it never lands mid-fight.
   function reloadInGame (force = false) {
-    if (!force && config.reloadWhenSafe && inSafeZone.value !== true) {
+    if (!force && cfg().reloadWhenSafe && inSafeZone.value !== true) {
       pendingReload.value = true
       return
     }
@@ -227,7 +229,7 @@ export function useLootFilter (config: LootFilterWidget) {
   function sendReload () {
     MainProcess.sendEvent({
       name: 'CLIENT->MAIN::user-action',
-      payload: { action: 'paste-in-chat', text: `/itemfilter ${stem(outputName(config))}` }
+      payload: { action: 'paste-in-chat', text: `/itemfilter ${stem(outputName(cfg()))}` }
     })
   }
 
