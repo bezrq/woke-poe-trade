@@ -1,49 +1,63 @@
-// Imported past-league histories, in the overlay's IndexedDB.
+// Imported past-league histories, as files in the app's user data folder
+// (woke-docs/invest-leagues). They used to live in the overlay's IndexedDB,
+// which looked empty whenever the overlay's port changed; the first load
+// brings them over and leaves the old database as a backup.
+import { hostRequest } from '../shared/host'
 import type { LeagueHistory } from './dumps'
 
-const DB_NAME = 'woke-invest'
-const DB_VERSION = 1
-
-let dbPromise: Promise<IDBDatabase> | null = null
-
-function openDb (): Promise<IDBDatabase> {
-  if (!dbPromise) {
-    dbPromise = new Promise((resolve, reject) => {
-      const req = indexedDB.open(DB_NAME, DB_VERSION)
-      req.onupgradeneeded = () => {
-        const db = req.result
-        if (!db.objectStoreNames.contains('leagues')) {
-          db.createObjectStore('leagues', { keyPath: 'league' })
-        }
-      }
-      req.onsuccess = () => resolve(req.result)
-      req.onerror = () => { dbPromise = null; reject(req.error) }
-    })
-  }
-  return dbPromise
-}
-
-function request<T> (req: IDBRequest<T>): Promise<T> {
-  return new Promise((resolve, reject) => {
-    req.onsuccess = () => resolve(req.result)
-    req.onerror = () => reject(req.error)
-  })
-}
+const COLLECTION = 'invest-leagues'
+const OLD_DB_NAME = 'woke-invest'
 
 export async function saveLeague (history: LeagueHistory): Promise<void> {
-  const db = await openDb()
-  await request(db.transaction('leagues', 'readwrite').objectStore('leagues').put(history))
+  await hostRequest('doc-put', { collection: COLLECTION, key: history.league, value: history })
 }
 
 export async function deleteLeague (league: string): Promise<void> {
-  const db = await openDb()
-  await request(db.transaction('leagues', 'readwrite').objectStore('leagues').delete(league))
+  await hostRequest('doc-delete', { collection: COLLECTION, key: league })
 }
 
+let imported: Promise<void> | null = null
+
 export async function loadLeagues (): Promise<LeagueHistory[]> {
-  const db = await openDb()
-  const all = await request(db.transaction('leagues').objectStore('leagues').getAll()) as LeagueHistory[]
-  return all.sort((a, b) => a.start.localeCompare(b.start))
+  if (!imported) {
+    imported = importOldDb()
+    imported.catch(() => { imported = null })
+  }
+  await imported
+  const all = await hostRequest<LeagueHistory[]>('doc-list', { collection: COLLECTION })
+  return all.filter(h => h && typeof h.league === 'string').sort((a, b) => a.start.localeCompare(b.start))
+}
+
+async function importOldDb (): Promise<void> {
+  if (await hostRequest('doc-get', { collection: 'migrations', key: COLLECTION })) return
+  const old = await readOldDb()
+  for (const h of old) await saveLeague(h)
+  await hostRequest('doc-put', { collection: 'migrations', key: COLLECTION, value: { at: Date.now(), count: old.length } })
+}
+
+// Everything in the old database, without creating it when it isn't there.
+async function readOldDb (): Promise<LeagueHistory[]> {
+  if (typeof indexedDB === 'undefined') return []
+  if (typeof indexedDB.databases === 'function') {
+    const list = await indexedDB.databases()
+    if (!list.some(d => d.name === OLD_DB_NAME)) return []
+  }
+  const db = await new Promise<IDBDatabase | null>((resolve) => {
+    const req = indexedDB.open(OLD_DB_NAME)
+    req.onupgradeneeded = () => { req.transaction?.abort() }
+    req.onsuccess = () => resolve(req.result)
+    req.onerror = () => resolve(null)
+  })
+  if (!db || !db.objectStoreNames.contains('leagues')) { db?.close(); return [] }
+  try {
+    return await new Promise<LeagueHistory[]>((resolve, reject) => {
+      const req = db.transaction('leagues').objectStore('leagues').getAll()
+      req.onsuccess = () => resolve(req.result as LeagueHistory[])
+      req.onerror = () => reject(req.error)
+    })
+  } finally {
+    db.close()
+  }
 }
 
 // Past leagues shipped with the app (built by scripts/build-invest-bundle.ts,

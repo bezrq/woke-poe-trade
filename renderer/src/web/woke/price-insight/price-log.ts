@@ -3,6 +3,7 @@
 // "My checks" history, for rares too (poe.ninja has no history for those).
 
 import { shallowRef } from 'vue'
+import { hostRequest } from '../shared/host'
 
 export interface PriceLogEntry {
   /** Same search, same key: league + the trade request. */
@@ -17,30 +18,54 @@ export interface PriceLogEntry {
   n: number
 }
 
-const STORAGE_KEY = 'woke.priceLog'
 const MAX_ENTRIES = 2000
 // A new check of the same search this soon replaces the last one, so
 // re-opening the same item a few times does not flood the history.
 const MERGE_MS = 10 * 60 * 1000
 
-function read (): PriceLogEntry[] {
-  try {
-    const v = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '[]')
-    if (Array.isArray(v)) return v.filter(e => e && typeof e.key === 'string' && typeof e.fair === 'number')
-  } catch {}
-  return []
+// Kept as a file in the app's user data folder (woke-docs/price-log). It used
+// to be in the overlay's localStorage, which belongs to the overlay's port;
+// that copy is brought over once.
+const DOC = { collection: 'price-log', key: 'checks' }
+const OLD_STORAGE_KEY = 'woke.priceLog'
+
+function valid (v: unknown): PriceLogEntry[] {
+  return Array.isArray(v) ? v.filter(e => e && typeof e.key === 'string' && typeof e.fair === 'number') : []
 }
 
-export const priceLog = shallowRef<PriceLogEntry[]>(read())
+export const priceLog = shallowRef<PriceLogEntry[]>([])
+
+let loaded = false
+let pendingWrite = false
+
+async function load () {
+  let list = valid(await hostRequest<unknown>('doc-get', DOC).catch(() => null))
+  try {
+    const old = localStorage.getItem(OLD_STORAGE_KEY)
+    if (old != null) {
+      const fromOld = valid(JSON.parse(old))
+      const have = new Set(list.map(e => `${e.key}|${e.ts}`))
+      list = [...list, ...fromOld.filter(e => !have.has(`${e.key}|${e.ts}`))].sort((a, b) => a.ts - b.ts).slice(-MAX_ENTRIES)
+      await hostRequest('doc-put', { ...DOC, value: list })
+      localStorage.removeItem(OLD_STORAGE_KEY)
+    }
+  } catch {}
+  loaded = true
+  // Checks made before the file came back go after it.
+  if (pendingWrite) {
+    for (const e of priceLog.value) list = addLogEntry(e, list)
+    write(list)
+  } else {
+    priceLog.value = list
+  }
+}
+load().catch(() => { loaded = true })
 
 function write (list: PriceLogEntry[]) {
   priceLog.value = list
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(list)) } catch {}
+  if (!loaded) { pendingWrite = true; return }
+  hostRequest('doc-put', { ...DOC, value: list }).catch(() => {})
 }
-
-window.addEventListener('storage', (e) => {
-  if (e.key === STORAGE_KEY) priceLog.value = read()
-})
 
 /** Short stable hash, so keys don't store whole trade requests. */
 export function hashKey (text: string): string {
