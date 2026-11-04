@@ -37,3 +37,13 @@ window.addEventListener('storage', (e) => {
     priceView.value = e.newValue
   }
 })
+
+// Price history chart under the verdict: opened from the sparkline, remembered.
+const HISTORY_KEY = 'woke.priceHistoryOpen'
+function readHistory (): boolean {
+  try { return localStorage.getItem(HISTORY_KEY) === '1' } catch { return false }
+}
+export const historyOpen = shallowRef(readHistory())
+watch(historyOpen, (v) => {
+  try { localStorage.setItem(HISTORY_KEY, v ? '1' : '0') } catch {}
+})

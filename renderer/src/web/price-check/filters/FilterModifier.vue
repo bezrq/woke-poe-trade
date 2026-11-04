@@ -35,6 +35,7 @@
             class="flex items-baseline gap-x-1 shrink-0 ml-auto">
             <div v-if="showQ20Notice"
               :class="$style.qualityLabel">{{ t('item.prop_quality', [calcQuality]) }}</div>
+            <woke-mod-worth-tag v-if="!filter.group" :stat-ref="filter.statRef" :item="item" />
             <img v-for="img of rollTags"
               :class="$style.rollTag" :src="img">
             <div class="flex gap-x-px">
@@ -101,6 +102,7 @@ import ItemModifierText from '../../ui/ItemModifierText.vue'
 import ModifierAnointment from './FilterModifierAnointment.vue'
 import FilterModifierOptions, { RollOption } from './FilterModifierOptions.vue'
 import FilterModifierTiers from './FilterModifierTiers.vue'
+import WokeModWorthTag from '@/web/woke/price-insight/ModWorthTag.vue'
 import { AppConfig } from '@/web/Config'
 import { ItemCategory, ItemRarity, ParsedItem } from '@/parser'
 import { getTradeMaxQuality } from '@/parser/calc-q20.js'
@@ -109,7 +111,7 @@ import SourceInfo from './SourceInfo.vue'
 import { SearchMode as MercSearchMode } from './pseudo/mercenary.js'
 
 export default defineComponent({
-  components: { ItemModifierText, ModifierAnointment, FilterModifierOptions, FilterModifierTiers, SourceInfo, StatRollSlider, UiPopover },
+  components: { WokeModWorthTag, ItemModifierText, ModifierAnointment, FilterModifierOptions, FilterModifierTiers, SourceInfo, StatRollSlider, UiPopover },
   emits: ['update:groupExpanded'],
   props: {
     filter: {

@@ -20,7 +20,9 @@
       :insight="insight"
       :divine="divine"
       :loading="!list || !slowdownReady"
-      :total="list ? list.total : null" />
+      :total="list ? list.total : null"
+      :log-key="logKey"
+      :league="filters.trade.league" />
     <price-drivers v-if="improved && list"
       :key="list.id"
       :item="item"
@@ -69,6 +71,7 @@
               :title="ignoredTitle(result.id)">
               <td class="px-2 whitespace-nowrap">
                 <span :class="{ 'line-through': result.priceCurrency === 'exalted' }">{{ result.priceAmount }} {{ result.priceCurrency }}</span>
+                <span v-if="improved && fixTag(result.id)" :class="$style.fixTag">{{ fixTag(result.id) }}</span>
                 <span v-if="result.listedTimes > 2" class="rounded px-1 text-gray-800 bg-gray-400 ml-1 -mr-2"><span class="font-sans">×</span> {{ result.listedTimes }}</span>
                 <span v-else-if="!result.hasFee" :class="$style.stashListing">
                   <img :class="$style.stashIcon" src="/images/stash.png">
@@ -125,7 +128,8 @@ import PriceDrivers from '@/web/woke/price-insight/PriceDrivers.vue'
 import PriceViewToggle from '@/web/woke/price-insight/PriceViewToggle.vue'
 import { priceView } from '@/web/woke/price-insight/view'
 import { useInsight } from '@/web/woke/price-insight/useInsight'
-import { DROP_LABEL } from '@/web/woke/price-insight/insight'
+import { DROP_LABEL, FIX_TAG } from '@/web/woke/price-insight/insight'
+import { useCheckLog } from '@/web/woke/price-insight/useCheckLog'
 
 const slowdown = artificialSlowdown(900)
 
@@ -259,6 +263,8 @@ export default defineComponent({
     // woke: improved view reads the same listings, nothing extra is requested
     const { insight, divine, options: insightOptions } = useInsight(groupedResults)
 
+    const logKey = useCheckLog(props, searchResult, insight, slowdown.isReady)
+
     const showBrowser = inject<(url: string) => void>('builtin-browser')!
 
     function makeTradeLink () {
@@ -276,6 +282,11 @@ export default defineComponent({
       insight,
       insightOptions,
       divine,
+      logKey,
+      fixTag (id: string) {
+        const reason = insight.value.dropped.get(id)
+        return reason ? FIX_TAG[reason] : undefined
+      },
       ignoredTitle (id: string) {
         const reason = priceView.value === 'improved' ? insight.value.dropped.get(id) : undefined
         return reason ? `Ignored by the verdict: ${DROP_LABEL[reason]}` : undefined
@@ -353,6 +364,19 @@ export default defineComponent({
 
 .ignored > td {
   opacity: 0.4;
+}
+
+/* woke: price-fixing tag on ignored rows (bait, wall, dump, ghost) */
+.fixTag {
+  margin-left: 0.25rem;
+  padding: 0 0.25rem;
+  border-radius: 3px;
+  border: 1px solid var(--w-down, #e0705c);
+  color: var(--w-down, #e0705c);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .legacyMessage {
