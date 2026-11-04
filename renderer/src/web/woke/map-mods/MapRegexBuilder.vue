@@ -14,7 +14,18 @@
         <WButton size="sm" variant="primary" :icon="copied ? 'fas fa-check' : 'far fa-copy'" :disabled="!regex.text" @click="copy">Copy</WButton>
         <WButton size="sm" icon="fas fa-search" :disabled="!regex.text" @click="paste" title="Type it into the open stash's search box">Stash</WButton>
       </div>
-      <div v-if="regex.tooLong" class="w-down text-xs w-full">Too long for the game's search box. Remove some mods or minimums.</div>
+      <div class="flex items-center gap-2 w-full text-xs">
+        <WChip clickable :active="!!profile.autoTrim" @click="profile.autoTrim = !profile.autoTrim"
+          title="When the search is too long, leave out wanted mods first, then avoided mods that aren't in a Quick preset, longest first">
+          <i class="fas fa-cut" /> Auto-trim to fit
+        </WChip>
+        <span v-if="regex.tooLong" class="w-down">
+          Too long by {{ regex.length - MAX_SEARCH_LENGTH }}. Biggest: {{ costliest }}
+        </span>
+        <span v-else-if="regex.dropped.length" class="w-warn" :title="regex.dropped.join('\n')">
+          Left out {{ regex.dropped.length }} to fit: {{ regex.dropped.slice(0, 3).join(', ') }}{{ regex.dropped.length > 3 ? '…' : '' }}
+        </span>
+      </div>
       <div v-if="regex.missing.length" class="w-warn text-xs w-full">No unique text found for: {{ regex.missing.join(', ') }}</div>
       <div class="flex flex-wrap gap-1 w-full">
         <span class="w-dim text-xs self-center mr-1">Quick:</span>
@@ -28,13 +39,26 @@
       </div>
     </template>
     <div v-for="m in visible" :key="m" :class="$style.row">
-      <span class="flex-1 min-w-0" :class="{ 'w-dim': !profile.ratings[m] }">{{ m }}</span>
+      <span class="flex-1 min-w-0" :class="{ 'w-dim': !profile.ratings[m] }">
+        {{ m }}<span v-if="t17.has(m)" :class="$style.t17">T17</span>
+      </span>
+      <span v-if="regex.tokens[m]" :class="$style.cost"
+        :title="`Shortened to &quot;${regex.tokens[m]}&quot;, costs ${tokenCost(regex.tokens[m])} characters`">
+        <code>{{ regex.tokens[m] }}</code> {{ tokenCost(regex.tokens[m]) }}
+      </span>
+      <span v-else-if="regex.dropped.includes(m)" class="w-warn text-xs" title="Left out by auto-trim">trimmed</span>
       <WSegmented :model-value="profile.ratings[m] ?? 'ok'" :options="RATING_OPTIONS"
         @update:model-value="setRating(m, $event as ModRating)" />
     </div>
     <WEmpty v-if="!visible.length" icon="fas fa-search">No mods match.</WEmpty>
     <div v-if="hiddenCount" class="w-dim text-xs p-2 text-center">{{ hiddenCount }} more. Search to narrow the list.</div>
     <template #footer>
+      <div class="flex items-center gap-2 text-xs w-full">
+        <span class="w-dim">A map needs</span>
+        <WSegmented :model-value="profile.minsAny ? 'any' : 'all'" :options="MINS_MODE_OPTIONS"
+          @update:model-value="profile.minsAny = $event === 'any'" />
+        <span class="w-dim">of these minimums</span>
+      </div>
       <div :class="$style.mins">
         <label v-for="key in MIN_KEYS" :key="key" class="flex flex-col gap-1">
           <span class="w-dim">Min {{ MIN_LABELS[key].toLowerCase() }}</span>
@@ -50,12 +74,12 @@
 import { computed, shallowRef, watch } from 'vue'
 import { MainProcess } from '@/web/background/IPC'
 import { pushHostConfig } from '@/web/Config'
-import { WPanel, WButton, WField, WSegmented, WSelect, WTabs, WEmpty } from '../ui'
+import { WPanel, WButton, WChip, WField, WSegmented, WSelect, WTabs, WEmpty } from '../ui'
 import { PRESETS, applyPreset, nextPresetRating, presetRating, withRating } from './rules'
 import type { MapModPreset, ModRating } from './rules'
-import { MAX_SEARCH_LENGTH, MIN_LABELS } from './regex'
+import { MAX_SEARCH_LENGTH, MIN_LABELS, tokenCost } from './regex'
 import type { MinStat } from './regex'
-import { allAreaMods, profileRegex } from './data'
+import { allAreaMods, profileRegex, tier17Mods } from './data'
 import { activeProfile } from './widget'
 import type { MapModsWidget } from './widget'
 
@@ -70,6 +94,10 @@ const RATING_OPTIONS = [
 const HIGHLIGHT_OPTIONS = [
   { value: 'good', label: 'Highlight good' },
   { value: 'bad', label: 'Highlight bad' }
+]
+const MINS_MODE_OPTIONS = [
+  { value: 'all', label: 'all' },
+  { value: 'any', label: 'any one' }
 ]
 const MIN_KEYS: MinStat[] = ['quantity', 'rarity', 'packSize', 'quality', 'currency', 'scarabs', 'maps', 'divCards']
 const MAX_ROWS = 200
@@ -96,8 +124,11 @@ const filterOptions = computed(() => [
   { value: 'all', label: 'All' },
   { value: 'picked', label: 'Picked', count: Object.keys(profile.value.ratings).length },
   { value: 'danger', label: 'Danger' },
-  { value: 'reward', label: 'Reward' }
+  { value: 'reward', label: 'Reward' },
+  { value: 't17', label: 'T17' }
 ])
+
+const t17 = computed(() => tier17Mods())
 
 const filtered = computed(() => {
   const q = search.value.trim().toLowerCase()
@@ -107,6 +138,7 @@ const filtered = computed(() => {
     if (filter.value === 'picked') return ratings[m] != null
     if (filter.value === 'danger') return isDanger(m)
     if (filter.value === 'reward') return !isDanger(m)
+    if (filter.value === 't17') return t17.value.has(m)
     return true
   })
 })
@@ -114,6 +146,13 @@ const visible = computed(() => filtered.value.slice(0, MAX_ROWS))
 const hiddenCount = computed(() => Math.max(0, filtered.value.length - MAX_ROWS))
 
 const regex = computed(() => profileRegex(profile.value))
+
+// The three picked mods that cost the most characters.
+const costliest = computed(() => Object.entries(regex.value.tokens)
+  .sort((a, b) => b[1].length - a[1].length)
+  .slice(0, 3)
+  .map(([m, t]) => `${m.replace(/#/g, 'N')} (${tokenCost(t)})`)
+  .join(', '))
 
 // Keep the stored text in sync so the paste hotkey uses the latest regex.
 let pushTimer: ReturnType<typeof setTimeout> | undefined
@@ -202,6 +241,20 @@ function paste () {
   font-size: 12.5px;
 }
 .row:nth-child(odd) { background: var(--w-panel-2); }
+.cost {
+  font-size: 11px;
+  color: var(--w-dim);
+  white-space: nowrap;
+  font-family: var(--w-num);
+}
+.t17 {
+  margin-left: 6px;
+  font-size: 10px;
+  padding: 0 4px;
+  border-radius: 3px;
+  color: var(--w-warn);
+  border: 1px solid color-mix(in srgb, var(--w-warn) 45%, transparent);
+}
 .mins {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));

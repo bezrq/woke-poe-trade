@@ -14,6 +14,8 @@ export interface MapRegexInput {
   mins: Partial<Record<MinStat, number>>
   // 'good' highlights maps you can run; 'bad' highlights maps with avoided mods.
   highlight: 'good' | 'bad'
+  // true: a map passes when it meets any one minimum instead of all of them.
+  minsAny?: boolean
 }
 
 export type MinStat = 'quantity' | 'rarity' | 'packSize' | 'quality' | 'currency' | 'scarabs' | 'maps' | 'divCards'
@@ -129,12 +131,21 @@ export interface MapRegexResult {
   tooLong: boolean
   // Mods we couldn't find a unique token for.
   missing: string[]
+  // Mod -> the text it was shortened to. Each costs its length plus one `|`.
+  tokens: Record<string, string>
+  // Mods left out by auto-trim to fit the search box.
+  dropped: string[]
+}
+
+export function tokenCost (token: string): number {
+  return token.length + 1
 }
 
 // `universe`: every map mod matcher string (all variants), used to make the
 // tokens unique. `extraText`: other text a map tooltip can show (map names).
 export function buildMapRegex (input: MapRegexInput, universe: string[], extraText: string[] = []): MapRegexResult {
   const missing: string[] = []
+  const tokens: Record<string, string> = {}
 
   function tokensFor (mods: string[], allowed: string[]): string[] {
     const allowedSet = new Set(allowed.map(m => m.toLowerCase()))
@@ -142,8 +153,10 @@ export function buildMapRegex (input: MapRegexInput, universe: string[], extraTe
     const out = new Set<string>()
     for (const m of mods) {
       const tok = uniqueToken(m, others)
-      if (tok) out.add(tok)
-      else missing.push(m)
+      if (tok) {
+        out.add(tok)
+        tokens[m] = tok
+      } else missing.push(m)
     }
     return [...out].sort()
   }
@@ -158,12 +171,40 @@ export function buildMapRegex (input: MapRegexInput, universe: string[], extraTe
     if (avoid.length) terms.push(`"!${avoid.join('|')}"`)
     const want = tokensFor(input.want, input.want)
     if (want.length) terms.push(`"${want.join('|')}"`)
+    const mins: string[] = []
     for (const key of Object.keys(MIN_PREFIX) as MinStat[]) {
       const v = input.mins[key]
-      if (v && v > 0) terms.push(`"${MIN_PREFIX[key]}${atLeast(v)}%"`)
+      if (v && v > 0) mins.push(`${MIN_PREFIX[key]}${atLeast(v)}%`)
     }
+    if (input.minsAny && mins.length > 1) terms.push(`"${mins.join('|')}"`)
+    else terms.push(...mins.map(m => `"${m}"`))
   }
 
   const text = terms.join(' ')
-  return { text, length: text.length, tooLong: text.length > MAX_SEARCH_LENGTH, missing }
+  return { text, length: text.length, tooLong: text.length > MAX_SEARCH_LENGTH, missing, tokens, dropped: [] }
+}
+
+// Drops mods until the search fits: wanted mods first, then avoided ones,
+// each time the one with the lowest `priority` (ties: longest token first).
+// Tokens are rebuilt after each drop, since a dropped mod can no longer
+// share text with the ones kept.
+export function buildTrimmedMapRegex (
+  input: MapRegexInput,
+  universe: string[],
+  extraText: string[],
+  priority: (mod: string) => number
+): MapRegexResult {
+  let cur = { ...input, avoid: [...input.avoid], want: [...input.want] }
+  let res = buildMapRegex(cur, universe, extraText)
+  const dropped: string[] = []
+  while (res.tooLong) {
+    const pool = cur.want.length && cur.highlight === 'good' ? cur.want : cur.avoid
+    if (!pool.length) break
+    const pick = [...pool].sort((a, b) =>
+      priority(a) - priority(b) || (res.tokens[b]?.length ?? 0) - (res.tokens[a]?.length ?? 0))[0]
+    dropped.push(pick)
+    cur = { ...cur, avoid: cur.avoid.filter(m => m !== pick), want: cur.want.filter(m => m !== pick) }
+    res = buildMapRegex(cur, universe, extraText)
+  }
+  return { ...res, dropped }
 }
