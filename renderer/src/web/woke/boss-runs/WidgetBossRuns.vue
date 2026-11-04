@@ -260,7 +260,7 @@ import { usePriceIndex } from '../market/price-index'
 import { useLeagues } from '@/web/background/Leagues'
 import { BOSSES } from './bosses'
 import DockItem from '../dock/DockItem.vue'
-import { BOSS_ARENAS, useZone } from '../shared/zone'
+import { arenaBosses as arenaBossIds, useZone } from '../shared/zone'
 import { evaluateBoss, formatRunTime, luck, parseRunTime, priceResolver, unidentifiedTradeUrl } from './calc'
 import type { BossResult, DropRow, KillRecord, PriceMode, RateSource } from './calc'
 import { OWN_RATE_KILLS } from './calc'
@@ -326,7 +326,7 @@ const ranked = computed(() => {
 // Bosses this arena can hold (shared/zone.ts), across every tier.
 const zone = useZone()
 const arenaBosses = computed(() => {
-  const ids = zone.kind === 'boss' ? BOSS_ARENAS[zone.name] ?? [] : []
+  const ids = zone.kind === 'boss' ? arenaBossIds(zone.areaId, zone.name) : []
   return BOSSES.filter(b => ids.includes(b.id)).map(b => evaluateBoss(b, props.config, px.value))
 })
 

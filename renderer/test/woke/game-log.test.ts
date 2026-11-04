@@ -10,6 +10,8 @@ import { advanceOnEnter, resyncTo, DEFAULT_ROUTE_OPTIONS, xpMultiplier } from '@
 import type { RouteOptions } from '@/web/woke/campaign/route-parse'
 import { countNewMap, isMapArea, newSession, onZoneChange, maybeAutoPause, AUTO_PAUSE_MS } from '@/web/woke/farming/farming'
 import { mechanicForSpeaker } from '@/web/woke/mechanics/zone'
+import { BOSS_AREAS, bossAreaIds } from '@/web/woke/shared/boss-areas'
+import { BOSSES } from '@/web/woke/boss-runs/bosses'
 import { mechanicForZone } from '@/web/woke/mechanics/data'
 import { difficultyForAreaLevel, isPlazaArea, msUntilLabReset, PLAZA_ZONE, staleLayoutDate } from '@/web/woke/lab/lab'
 
@@ -111,6 +113,17 @@ describe('farming', () => {
     expect(maps).toBe(2)
     expect(s.mapMs).toBeGreaterThan(0)
     expect(s.otherMs).toBeGreaterThan(0)
+  })
+
+  it('a pinnacle boss fight is not a map', () => {
+    expect(isMapArea('MapWorldsShapersRealm')).toBe(false)
+    expect(isMapArea('MapWorldsPrimordialBoss3')).toBe(false)
+    expect(isMapArea('MapWorldsElderArenaUber')).toBe(false)
+    expect(isMapArea('MapWorldsCemetery')).toBe(true)
+    expect(bossAreaIds('MapWorldsPrimordialBoss4')).toEqual(['eater', 'uber-eater'])
+    // Every boss named exists in the boss list.
+    const known = new Set(BOSSES.map(b => b.id))
+    expect(Object.values(BOSS_AREAS).flat().filter(id => !known.has(id))).toEqual([])
   })
 
   it('auto-pauses after idling, counting time only up to the limit', () => {
