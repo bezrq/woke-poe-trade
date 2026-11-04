@@ -12,8 +12,11 @@ import { MAP_MODS_TYPE, MAP_MODS_TARGET } from './map-mods/widget'
 import type { MapModsWidget } from './map-mods/widget'
 import { MAP_SCAN_TYPE, scanHotkeyTarget } from './map-mods/scan'
 import type { MapScanWidget } from './map-mods/scan'
+import { isWidgetTypeOn } from './modules'
 
-export function wokeShortcutsFor (widget: Widget): ShortcutAction[] {
+export function wokeShortcutsFor (widget: Widget, config: { woke?: { setupDone: boolean, off: string[] }, widgets: Widget[] }): ShortcutAction[] {
+  // Modules that are switched off register no hotkeys.
+  if (!isWidgetTypeOn(config, widget.wmType)) return []
   if (widget.wmType === REGEX_LIBRARY_TYPE) {
     const lib = widget as RegexLibraryWidget
     if (!lib.enableHotkeys) return []

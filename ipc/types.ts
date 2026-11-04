@@ -8,6 +8,8 @@ export interface HostConfig {
   logKeys: boolean
   windowTitle: string
   language: string
+  // woke: false when no enabled module needs Client.txt, so main stops tailing it
+  wokeGameLog?: boolean
 }
 
 export interface ShortcutAction {

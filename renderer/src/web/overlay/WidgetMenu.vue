@@ -44,6 +44,8 @@ import UiPopover from '@/web/ui/Popover.vue'
 import { Widget as IWidget, WidgetManager, WidgetMenu, WidgetSpec } from './interfaces'
 import { registry } from './widget-registry'
 import { Host } from '@/web/background/IPC'
+import { AppConfig } from '@/web/Config'
+import { isWidgetTypeOn } from '@/web/woke/modules'
 import Widget from './Widget.vue'
 import { useI18nNs } from '@/web/i18n'
 
@@ -81,6 +83,7 @@ export default defineComponent({
     const widgets = computed(() => {
       return wm.widgets.value.filter(widget =>
         !widget.wmFlags.includes('menu::skip') &&
+        isWidgetTypeOn(AppConfig(), widget.wmType) &&
         (props.config.alwaysShow || (widget.wmWants === 'hide'))
       ).map((widget) => {
         const regexMatch = widget.wmTitle
@@ -102,7 +105,7 @@ export default defineComponent({
       widgets,
       instantiableWidgets: computed(() => {
         return registry.widgets
-          .filter(({ widget }) => widget.instances === 'multi')
+          .filter(({ widget }) => widget.instances === 'multi' && isWidgetTypeOn(AppConfig(), widget.type))
           .map(({ widget }) => widget)
       }),
       createOfType (type: string) {

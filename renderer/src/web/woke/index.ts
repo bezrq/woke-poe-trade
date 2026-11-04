@@ -3,10 +3,12 @@
 // Upstream files only call into this file (widget registry, settings window,
 // host shortcuts), so merging upstream changes stays a small, predictable diff.
 // To add a module: create `woke/<module>/`, then register its widget, settings
-// editor below, and its hotkeys in `shortcuts.ts`.
+// editor below, its hotkeys in `shortcuts.ts`, and its switch in `modules.ts`.
 
 import './ui'
 import AppearanceSettings from './ui/AppearanceSettings.vue'
+import ModulesSettings from './switchboard/ModulesSettings.vue'
+import SetupOverlay from './switchboard/SetupOverlay.vue'
 import type { Component } from 'vue'
 import type { WidgetSpec } from '@/web/overlay/interfaces'
 
@@ -86,4 +88,7 @@ export function wokeSettingsFor (wmType: string | undefined): Component | undefi
 export { wokeShortcutsFor } from './shortcuts'
 
 // Extra pages for APT's main settings window (shown next to "General").
-export const wokeGeneralSettings: Component[] = [AppearanceSettings]
+export const wokeGeneralSettings: Component[] = [AppearanceSettings, ModulesSettings]
+
+// Mounted once inside APT's overlay window: first-run module setup.
+export const WokeOverlay = SetupOverlay
