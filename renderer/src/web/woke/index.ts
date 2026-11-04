@@ -30,6 +30,8 @@ import WidgetLab from './lab/WidgetLab.vue'
 import LabEditor from './lab/lab-editor.vue'
 import { LAB_TYPE } from './lab/lab'
 import WidgetFarming from './farming/WidgetFarming.vue'
+import WidgetLabGems from './lab-gems/WidgetLabGems.vue'
+import WidgetLeagueInvest from './league-invest/WidgetLeagueInvest.vue'
 
 type WidgetComponent = Component & { widget: WidgetSpec }
 
@@ -41,7 +43,9 @@ export const wokeWidgets: WidgetComponent[] = [
   WidgetCampaign as unknown as WidgetComponent,
   WidgetAtlas as unknown as WidgetComponent,
   WidgetLab as unknown as WidgetComponent,
-  WidgetFarming as unknown as WidgetComponent
+  WidgetFarming as unknown as WidgetComponent,
+  WidgetLabGems as unknown as WidgetComponent,
+  WidgetLeagueInvest as unknown as WidgetComponent
 ]
 
 const editors: Record<string, Component> = {
