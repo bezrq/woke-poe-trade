@@ -29,6 +29,9 @@ export class MapScanner {
   private lastReadSig: string | null = null
   private lastActive = Date.now()
   private failures = 0
+  // Bumped on every start/stop so a frame still in flight from an earlier
+  // run doesn't schedule a second loop.
+  private loopId = 0
 
   constructor (
     private readonly server: ServerEvents,
@@ -56,6 +59,7 @@ export class MapScanner {
       this.lastReadSig = null
       this.lastActive = Date.now()
       this.failures = 0
+      this.loopId++
       this.schedule()
       this.emitState()
     }
@@ -65,6 +69,7 @@ export class MapScanner {
   stop (reason?: string): { running: boolean } {
     if (this.running) {
       this.running = false
+      this.loopId++
       clearTimeout(this.timer)
       this.emitState(reason)
     }
@@ -78,7 +83,10 @@ export class MapScanner {
   }
 
   private schedule () {
-    this.timer = setTimeout(() => { this.frame().finally(() => { if (this.running) this.schedule() }) }, FRAME_MS)
+    const id = this.loopId
+    this.timer = setTimeout(() => {
+      this.frame().finally(() => { if (this.running && id === this.loopId) this.schedule() })
+    }, FRAME_MS)
   }
 
   private async frame () {
