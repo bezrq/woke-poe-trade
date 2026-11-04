@@ -3,7 +3,10 @@
     <span ref="iconEl" :class="[$style.icon, { [$style.peek]: peekText, [$style.hot]: showCard }]"
       :title="wm.active.value ? `${host.props.title}${host.props.wmId != null ? ' · click to open' : ''}` : undefined"
       @click="click">
-      <span :class="$style.glyph"><i :class="host.props.icon" /></span>
+      <span :class="$style.glyph">
+        <img v-if="host.props.art && !artFailed" :src="host.props.art" alt="" draggable="false" :class="$style.art" @error="artFailed = true">
+        <i v-else :class="host.props.icon" />
+      </span>
       <span v-if="peekText" :class="$style.peekText">{{ peekText }}</span>
       <span v-if="badge != null && badge !== ''" :class="[$style.badge, $style['tone-' + (host.props.tone ?? 'accent')]]">{{ badge }}</span>
       <span v-if="host.props.led" :class="[$style.led, $style['led-' + host.props.led]]" />
@@ -46,6 +49,10 @@ const iconEl = shallowRef<HTMLElement | null>(null)
 const cardEl = shallowRef<HTMLElement | null>(null)
 
 const badge = computed(() => props.host.props.badge)
+
+// Game art, with the Font Awesome icon as fallback if it doesn't load.
+const artFailed = shallowRef(false)
+watch(() => props.host.props.art, () => { artFailed.value = false })
 
 // The peek line, while it lasts.
 const now = shallowRef(Date.now())
@@ -140,6 +147,7 @@ const styles = useCssModule()
 .hot { box-shadow: 0 0 0 2px color-mix(in srgb, var(--w-accent) 35%, transparent); }
 .peek { background: var(--w-panel); padding-right: 10px; }
 .glyph { width: 28px; display: grid; place-items: center; font-size: 13px; }
+.art { width: 20px; height: 20px; object-fit: contain; }
 .peekText { font-size: 12px; color: var(--w-fg); white-space: nowrap; max-width: 30rem; overflow: hidden; text-overflow: ellipsis; }
 .badge {
   position: absolute;

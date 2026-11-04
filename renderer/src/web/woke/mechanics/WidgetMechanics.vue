@@ -3,7 +3,7 @@
     <div class="flex gap-2 min-h-0 items-start">
       <!-- While you play: an icon in the dock, only in a zone with a mechanic;
            resting the mouse on it shows the glance card. -->
-      <DockItem id="mechanics" :icon="mech.icon" :title="mech.label" :show="dockShow" :wm-id="config.wmId"
+      <DockItem id="mechanics" :art="mechanicIcon(mech.id).src" :icon="mech.icon" :title="mech.label" :show="dockShow" :wm-id="config.wmId"
         card-width="19rem" @activate="config.expanded = true">
         <template #card>
           <div v-if="wm.active.value" class="flex justify-end gap-1" style="padding: 2px 6px 0;">
@@ -170,6 +170,7 @@ import Widget from '@/web/overlay/Widget.vue'
 import { WPanel, WSegmented, WButton, WPrice, WChip, WField, WSelect } from '../ui'
 import { usePriceIndex } from '../market/price-index'
 import DockItem from '../dock/DockItem.vue'
+import { mechanicIcon } from '../ui/game-icons'
 import { hideWhilePlaying } from '../dock/dock'
 import MechanicPrices from './MechanicPrices.vue'
 import { MECHANICS, mechanicById, priceScarabs } from './data'

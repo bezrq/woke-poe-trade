@@ -14,6 +14,7 @@ import type { DockLed, DockTone } from './dock'
 const props = withDefaults(defineProps<{
   id: string
   icon: string
+  art?: string | null
   title: string
   show: boolean
   badge?: string | number | null
@@ -23,6 +24,7 @@ const props = withDefaults(defineProps<{
   wmId?: number
   cardWidth?: string
 }>(), {
+  art: null,
   badge: null,
   tone: 'accent',
   led: null,
