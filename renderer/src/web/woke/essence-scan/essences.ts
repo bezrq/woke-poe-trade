@@ -13,7 +13,10 @@ export const ESSENCE_TYPES = [
 // Only come from corrupting a monolith, and have no tier.
 export const CORRUPTION_ONLY = ['Insanity', 'Horror', 'Delirium', 'Hysteria'] as const
 
-// The usual "always corrupt" set.
+// The usual "always corrupt" set: corrupting a monolith that holds any of
+// these (at any tier) can turn them into the corruption-only essences above,
+// which are the valuable ones. It's one of several random outcomes, so it's a
+// chance, not a sure thing.
 export const MEDS = ['Misery', 'Envy', 'Dread', 'Scorn']
 
 export interface Essence {
@@ -80,42 +83,35 @@ export function parseMonolith (lines: string[]): ScannedMonolith | null {
   return { essences, corrupted }
 }
 
-export function nextTierName (e: Essence): string | null {
-  if (!e.tier) return null
-  const i = ESSENCE_TIERS.indexOf(e.tier as typeof ESSENCE_TIERS[number])
-  if (i < 0 || i === ESSENCE_TIERS.length - 1) return null
-  return `${ESSENCE_TIERS[i + 1]} Essence of ${e.type}`
-}
-
 export type EssenceVerdict = 'corrupt' | 'open' | 'done'
 
 export interface PricedMonolith {
   verdict: EssenceVerdict
   // Flagged essence types found, e.g. ['Misery'].
   flagged: string[]
-  rows: Array<{ essence: Essence, chaos: number | null, flagged: boolean, nextName: string | null, nextChaos: number | null }>
+  rows: Array<{ essence: Essence, chaos: number | null, flagged: boolean }>
   totalChaos: number
+  // What a corrupt can turn flagged essences into, priced, best first.
+  specials: Array<{ name: string, chaos: number | null }>
 }
 
-// Corrupt when any flagged type is present and the monolith isn't corrupted
-// yet. `price` looks up an essence's chaos price by full name.
+// Corrupt when any flagged type (at any tier) is present and the monolith
+// isn't corrupted yet. `price` looks up an essence's chaos price by full name.
 export function rateMonolith (m: ScannedMonolith, flagTypes: string[], price: (name: string) => number | null): PricedMonolith {
   const flagSet = new Set(flagTypes.map(t => t.toLowerCase()))
-  const rows = m.essences.map(essence => {
-    const nextName = nextTierName(essence)
-    const flagged = flagSet.has(essence.type.toLowerCase())
-    return {
-      essence,
-      chaos: price(essence.name),
-      flagged,
-      nextName,
-      nextChaos: flagged && nextName ? price(nextName) : null
-    }
-  })
+  const rows = m.essences.map(essence => ({
+    essence,
+    chaos: price(essence.name),
+    flagged: flagSet.has(essence.type.toLowerCase())
+  }))
   const flagged = [...new Set(rows.filter(r => r.flagged).map(r => r.essence.type))]
   const totalChaos = rows.reduce((sum, r) => sum + (r.chaos ?? 0), 0)
   const verdict: EssenceVerdict = m.corrupted ? 'done' : flagged.length ? 'corrupt' : 'open'
-  return { verdict, flagged, rows, totalChaos }
+  const specials = verdict === 'corrupt'
+    ? CORRUPTION_ONLY.map(t => ({ name: `Essence of ${t}`, chaos: price(`Essence of ${t}`) }))
+        .sort((a, b) => (b.chaos ?? -1) - (a.chaos ?? -1))
+    : []
+  return { verdict, flagged, rows, totalChaos, specials }
 }
 
 export function shortEssenceName (e: Essence): string {

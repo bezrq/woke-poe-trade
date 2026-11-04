@@ -34,9 +34,13 @@
           <span :class="{ [$style.flagged]: r.flagged }">{{ shortEssenceName(r.essence) }}</span>
           <WPrice :chaos="r.chaos" :divine="divine" :class="{ 'w-dim': !r.flagged }" />
         </div>
-        <div v-for="r in upgrades(current)" :key="r.nextName!" class="w-faint" style="font-size: 10.5px;">
-          {{ r.nextName }} now <WPrice :chaos="r.nextChaos" :divine="divine" />
-        </div>
+        <template v-if="current.rated.specials.length">
+          <div class="w-faint" style="font-size: 10.5px; margin-top: 3px;">Corrupting can turn {{ current.rated.flagged.join(', ') }} into:</div>
+          <div v-for="sp in current.rated.specials" :key="sp.name" :class="$style.erow" style="font-size: 11.5px;">
+            <span :class="$style.flagged">{{ sp.name.replace('Essence of ', '') }}</span>
+            <WPrice :chaos="sp.chaos" :divine="divine" />
+          </div>
+        </template>
         <div v-if="!hasPrices" class="w-faint" style="font-size: 10.5px;">No prices yet: open the Market tracker once to load them.</div>
       </div>
     </div>
@@ -116,11 +120,6 @@ function headline (e: Entry) {
   if (e.rated.flagged.length) return `has ${e.rated.flagged.join(', ')}`
   if (e.bigValue) return 'worth opening'
   return `${e.rated.rows.length} essence${e.rated.rows.length === 1 ? '' : 's'}`
-}
-
-function upgrades (e: Entry) {
-  if (e.rated.verdict !== 'corrupt') return []
-  return e.rated.rows.filter(r => r.flagged && r.nextName && r.nextChaos != null)
 }
 
 const cardStyle = computed(() => {

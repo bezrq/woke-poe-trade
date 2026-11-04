@@ -22,6 +22,8 @@
     <div class="text-sm" style="color: var(--w-dim);">
       Essence scan reads the label of the essence monolith under your mouse with on-screen text recognition,
       prices its essences from poe.ninja (through the Market tracker) and says whether to corrupt it.
+      A monolith with Misery, Envy, Dread or Scorn (any tier) is worth corrupting because the corrupt can turn them
+      into Horror, Hysteria, Insanity or Delirium, which only come from corrupting.
       It only reads the screen; you still use the Remnant of Corruption yourself.
       It needs Windows and the OCR files used by APT's heist gem reader.
     </div>
