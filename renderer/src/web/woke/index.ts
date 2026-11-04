@@ -5,8 +5,10 @@
 // To add a module: create `woke/<module>/`, then register its widget, settings
 // editor below, and its hotkeys in `shortcuts.ts`.
 
+import './shared/perf'
 import './ui'
 import AppearanceSettings from './ui/AppearanceSettings.vue'
+import PerfSettings from './ui/PerfSettings.vue'
 import type { Component } from 'vue'
 import type { WidgetSpec } from '@/web/overlay/interfaces'
 
@@ -42,6 +44,9 @@ import { MAP_MODS_TYPE } from './map-mods/widget'
 import WidgetMapScan from './map-mods/WidgetMapScan.vue'
 import MapScanEditor from './map-mods/map-scan-editor.vue'
 import { MAP_SCAN_TYPE } from './map-mods/scan'
+import WidgetEssenceScan from './essence-scan/WidgetEssenceScan.vue'
+import EssenceScanEditor from './essence-scan/essence-scan-editor.vue'
+import { ESSENCE_SCAN_TYPE } from './essence-scan/widget'
 import WidgetLabGems from './lab-gems/WidgetLabGems.vue'
 import WidgetLeagueInvest from './league-invest/WidgetLeagueInvest.vue'
 import WidgetBossRuns from './boss-runs/WidgetBossRuns.vue'
@@ -64,6 +69,7 @@ export const wokeWidgets: WidgetComponent[] = [
   WidgetMechanics as unknown as WidgetComponent,
   WidgetMapMods as unknown as WidgetComponent,
   WidgetMapScan as unknown as WidgetComponent,
+  WidgetEssenceScan as unknown as WidgetComponent,
   WidgetLabGems as unknown as WidgetComponent,
   WidgetLeagueInvest as unknown as WidgetComponent,
   WidgetBossRuns as unknown as WidgetComponent,
@@ -80,6 +86,7 @@ const editors: Record<string, Component> = {
   [LAB_TYPE]: LabEditor,
   [MAP_MODS_TYPE]: MapModsEditor,
   [MAP_SCAN_TYPE]: MapScanEditor,
+  [ESSENCE_SCAN_TYPE]: EssenceScanEditor,
   [MECHANICS_TYPE]: MechanicsEditor,
   [LOOT_FILTER_TYPE]: LootFilterEditor
 }
@@ -91,4 +98,4 @@ export function wokeSettingsFor (wmType: string | undefined): Component | undefi
 export { wokeShortcutsFor } from './shortcuts'
 
 // Extra pages for APT's main settings window (shown next to "General").
-export const wokeGeneralSettings: Component[] = [AppearanceSettings]
+export const wokeGeneralSettings: Component[] = [AppearanceSettings, PerfSettings]

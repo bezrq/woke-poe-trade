@@ -6,6 +6,7 @@ import { findDivinePrice, parseDenseChunks } from './parse'
 import { saveSnapshot } from './db'
 import { utcDate } from './types'
 import type { DailyRow, Snapshot } from './types'
+import { perfTime, perfTimeAsync, whenIdle } from '../shared/perf'
 
 // APT only refreshes poe.ninja prices (about every 31 min) while something
 // shows interest in them. Poking it on this interval keeps refreshes going
@@ -21,15 +22,21 @@ export const useMarketCollector = createGlobalState(() => {
   const revision = shallowRef(0)
 
   onWokePricesLoaded((league, chunks) => {
-    const items = parseDenseChunks(chunks)
-    if (!items.length) return
     const ts = Date.now()
+    // Parsing and saving a few thousand rows takes a while; wait for a quiet
+    // moment so it never delays a price check.
+    whenIdle(() => { collect(league, chunks, ts) })
+  })
+
+  function collect (league: string, chunks: Parameters<typeof parseDenseChunks>[0], ts: number) {
+    const items = perfTime('Prices: read poe.ninja data', () => parseDenseChunks(chunks))
+    if (!items.length) return
     const divine = findDivinePrice(items)
     const snapshot: Snapshot = { league, ts, divine, items }
     const date = utcDate(ts)
     const daily: DailyRow[] = items.map(item => ({ league, date, divine, ts, ...item }))
 
-    saveSnapshot(snapshot, daily)
+    perfTimeAsync('Prices: save to history', saveSnapshot(snapshot, daily))
       .then(() => {
         lastSnapshot.value = { league, ts, count: items.length, divine }
         lastError.value = null
@@ -38,7 +45,7 @@ export const useMarketCollector = createGlobalState(() => {
       .catch((err: unknown) => {
         lastError.value = String(err)
       })
-  })
+  }
 
   poeninja.queuePricesFetch()
   setInterval(() => { poeninja.queuePricesFetch() }, KEEPALIVE_MS)

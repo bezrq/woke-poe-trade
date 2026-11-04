@@ -219,7 +219,7 @@ import type { BossRunsWidget } from './widget'
 export default {
   widget: {
     type: BOSS_RUNS_TYPE,
-    instances: 'single',
+    instances: 'multi',
     trNameKey: 'Boss runs'
   } satisfies WidgetSpec
 }

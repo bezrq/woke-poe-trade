@@ -45,7 +45,12 @@ function request<T> (req: IDBRequest<T>): Promise<T> {
   })
 }
 
+// Several widgets ask for the newest snapshot after every save; it's a few
+// thousand items, so read it from disk once and share it.
+const latestCache = new Map<string, Promise<Snapshot | null>>()
+
 export async function saveSnapshot (snapshot: Snapshot, daily: DailyRow[]): Promise<void> {
+  latestCache.delete(snapshot.league)
   const db = await openDb()
   const tx = db.transaction(['snapshots', 'daily'], 'readwrite')
   tx.objectStore('snapshots').put(snapshot)
@@ -55,9 +60,25 @@ export async function saveSnapshot (snapshot: Snapshot, daily: DailyRow[]): Prom
   tx.objectStore('snapshots').delete(
     IDBKeyRange.bound([snapshot.league, 0], [snapshot.league, snapshot.ts - SNAPSHOT_RETENTION_MS]))
   await done(tx)
+  latestCache.set(snapshot.league, Promise.resolve(snapshot))
 }
 
 export async function latestSnapshots (league: string, count: number): Promise<Snapshot[]> {
+  if (count === 1) {
+    let cached = latestCache.get(league)
+    if (!cached) {
+      cached = readLatest(league, 1).then(list => list[0] ?? null)
+      latestCache.set(league, cached)
+      const mine = cached
+      mine.catch(() => { if (latestCache.get(league) === mine) latestCache.delete(league) })
+    }
+    const snap = await cached
+    return snap ? [snap] : []
+  }
+  return await readLatest(league, count)
+}
+
+async function readLatest (league: string, count: number): Promise<Snapshot[]> {
   const db = await openDb()
   const store = db.transaction('snapshots').objectStore('snapshots')
   const out: Snapshot[] = []
