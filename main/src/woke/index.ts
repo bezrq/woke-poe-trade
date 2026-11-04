@@ -4,6 +4,7 @@ import type { ServerEvents } from '../server'
 import type { Logger } from '../RemoteLogger'
 import type { GameWindow } from '../windowing/GameWindow'
 import { listBuilds, openBuild, readBuild, showBuild } from './pob-builds'
+import { listFilters, readFilter, writeFilter, showFilterFolder } from './loot-filter'
 import { MapScanner } from './map-scan'
 import { WokeHoverTracker } from './hover'
 import type { OverlayWindow } from '../windowing/OverlayWindow'
@@ -14,7 +15,11 @@ const handlers: Record<string, Handler> = {
   'pob-list': listBuilds,
   'pob-read': readBuild,
   'pob-open': openBuild,
-  'pob-show': showBuild
+  'pob-show': showBuild,
+  'filter-list': listFilters,
+  'filter-read': readFilter,
+  'filter-write': writeFilter,
+  'filter-folder': showFilterFolder
 }
 
 export function initWoke (server: ServerEvents, logger: Logger, poeWindow: GameWindow): void {

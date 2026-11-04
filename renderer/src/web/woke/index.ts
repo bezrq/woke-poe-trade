@@ -45,6 +45,9 @@ import { MAP_SCAN_TYPE } from './map-mods/scan'
 import WidgetLabGems from './lab-gems/WidgetLabGems.vue'
 import WidgetLeagueInvest from './league-invest/WidgetLeagueInvest.vue'
 import WidgetBossRuns from './boss-runs/WidgetBossRuns.vue'
+import WidgetLootFilter from './loot-filter/WidgetLootFilter.vue'
+import LootFilterEditor from './loot-filter/loot-filter-editor.vue'
+import { LOOT_FILTER_TYPE } from './loot-filter/widget'
 
 type WidgetComponent = Component & { widget: WidgetSpec }
 
@@ -63,7 +66,8 @@ export const wokeWidgets: WidgetComponent[] = [
   WidgetMapScan as unknown as WidgetComponent,
   WidgetLabGems as unknown as WidgetComponent,
   WidgetLeagueInvest as unknown as WidgetComponent,
-  WidgetBossRuns as unknown as WidgetComponent
+  WidgetBossRuns as unknown as WidgetComponent,
+  WidgetLootFilter as unknown as WidgetComponent
 ]
 
 const editors: Record<string, Component> = {
@@ -76,7 +80,8 @@ const editors: Record<string, Component> = {
   [LAB_TYPE]: LabEditor,
   [MAP_MODS_TYPE]: MapModsEditor,
   [MAP_SCAN_TYPE]: MapScanEditor,
-  [MECHANICS_TYPE]: MechanicsEditor
+  [MECHANICS_TYPE]: MechanicsEditor,
+  [LOOT_FILTER_TYPE]: LootFilterEditor
 }
 
 export function wokeSettingsFor (wmType: string | undefined): Component | undefined {

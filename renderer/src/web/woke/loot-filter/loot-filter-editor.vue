@@ -1,0 +1,61 @@
+<template>
+  <div class="max-w-xl p-2 flex flex-col gap-3">
+    <div class="grid gap-2 items-center" style="grid-template-columns: auto 1fr;">
+      <span>Hotkey: show the rule for the hovered item</span>
+      <hotkey-input v-model="sampleHotkey" />
+      <span>Hotkey: open the editor</span>
+      <hotkey-input v-model="editorHotkey" />
+      <span>Filter folder</span>
+      <input v-model="folder" class="rounded bg-gray-900 px-1 block w-full font-sans" placeholder="Documents\My Games\Path of Exile">
+      <span>Area level when unknown</span>
+      <input v-model.number="fallbackAreaLevel" type="number" min="1" max="86" class="rounded bg-gray-900 px-1 block w-24 font-sans">
+    </div>
+
+    <div class="flex flex-col gap-1">
+      <span>Where saves go</span>
+      <label class="flex items-start gap-2">
+        <input v-model="saveMode" type="radio" value="copy" class="mt-1">
+        <span>A separate copy, "&lt;filter&gt; (woke).filter" (recommended). The NeverSink file stays untouched, so downloading a new version never fights your edits. Pick the (woke) filter in game once.</span>
+      </label>
+      <label class="flex items-start gap-2">
+        <input v-model="saveMode" type="radio" value="overwrite" class="mt-1">
+        <span>Overwrite the NeverSink file. Keeps your in-game filter choice. The original is kept as "&lt;filter&gt;.filter.bak"; after downloading a new NeverSink version, open the editor and save to put your edits back.</span>
+      </label>
+    </div>
+
+    <label class="flex items-center gap-2">
+      <input v-model="reloadViaChat" type="checkbox">
+      <span>After saving, type <code>/itemfilter &lt;name&gt;</code> in chat so the game reloads the filter</span>
+    </label>
+
+    <div class="text-sm" style="color: var(--w-dim);">
+      Edits are stored as a list of changes (moves, restyles, hidden tiers, your own item rules) keyed by NeverSink's
+      $type and $tier tags, and are reapplied every time the filter is opened. When NeverSink updates, changes that
+      no longer fit (an item left the group, a tier was renamed) are flagged under Changes. If the chat command doesn't
+      pick up the change, use the refresh button next to the filter in Options › Game.
+    </div>
+  </div>
+</template>
+
+<script lang="ts">
+import { defineComponent } from 'vue'
+import HotkeyInput from '@/web/settings/HotkeyInput.vue'
+import { configProp, configModelValue } from '@/web/settings/utils'
+import type { LootFilterWidget } from './widget'
+
+export default defineComponent({
+  name: 'Loot filter',
+  components: { HotkeyInput },
+  props: configProp<LootFilterWidget>(),
+  setup (props) {
+    return {
+      sampleHotkey: configModelValue(() => props.configWidget, 'sampleHotkey'),
+      editorHotkey: configModelValue(() => props.configWidget, 'editorHotkey'),
+      folder: configModelValue(() => props.configWidget, 'folder'),
+      fallbackAreaLevel: configModelValue(() => props.configWidget, 'fallbackAreaLevel'),
+      saveMode: configModelValue(() => props.configWidget, 'saveMode'),
+      reloadViaChat: configModelValue(() => props.configWidget, 'reloadViaChat')
+    }
+  }
+})
+</script>

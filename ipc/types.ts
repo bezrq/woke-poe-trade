@@ -180,6 +180,10 @@ type IpcUserAction =
   } | {
     action: 'stash-search'
     text: string
+  } | {
+    // woke: loot filter editor reloads the saved filter with /itemfilter.
+    action: 'paste-in-chat'
+    text: string
   }>
 
 interface Event<TName extends string, TPayload = undefined> {
