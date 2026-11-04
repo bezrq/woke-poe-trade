@@ -31,7 +31,8 @@ export function parseEssenceHotkeyTarget (target: string): { id: number, once: b
 
 export function initEssenceScanWidget (w: EssenceScanWidget) {
   w.wmTitle = 'Essence scan'
-  w.wmFlags = []
+  // The panel shows with the overlay open; while you play, its dock icon does.
+  w.wmFlags = ['invisible-on-blur']
   w.anchor = { pos: 'tr', x: 98, y: 30 }
   w.hotkey = 'Alt + E'
   w.onceHotkey = null

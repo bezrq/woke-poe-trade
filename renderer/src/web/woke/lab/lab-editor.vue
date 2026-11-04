@@ -11,7 +11,7 @@
       </select>
     </div>
     <div class="text-gray-400 text-sm">Pressing the overlay hotkey again closes the layout.</div>
-    <ui-checkbox v-model="autoOpen">Open the layout when I enter Aspirant's Plaza (difficulty from the area level)</ui-checkbox>
+    <ui-checkbox v-model="autoOpen">Load the layout into the lab icon when I enter Aspirant's Plaza (difficulty from the area level)</ui-checkbox>
     <label class="flex flex-col gap-1">
       <span>Lab notes</span>
       <textarea v-model="notes" rows="4" class="bg-gray-900 rounded px-1"

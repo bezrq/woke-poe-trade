@@ -1,5 +1,18 @@
 <template>
   <Widget :config="config" move-handles="corners" :inline-edit="false">
+    <!-- Town and hideout: your hotkeyed strings at a glance. -->
+    <DockItem id="regex-library" icon="fas fa-search" title="Regex library" :show="dockShow" :wm-id="config.wmId" card-width="20rem">
+      <template #card>
+        <div style="padding: 4px 0 6px;">
+          <button v-for="e in glance" :key="e.id" type="button" class="w-row w-full text-left" style="grid-template-columns: minmax(0, 1fr) auto;"
+            :disabled="!wm.active.value" :title="effectiveText(e)" @click="stashSearch(effectiveText(e))">
+            <span class="w-trunc">{{ e.name || effectiveText(e) }}</span>
+            <WKbd v-if="e.hotkey && config.enableHotkeys" :keys="e.hotkey" />
+          </button>
+          <div class="w-faint text-xs" style="padding: 2px var(--w-pad);">{{ wm.active.value ? 'Click to search your stash' : 'Open the overlay to click one' }}</div>
+        </div>
+      </template>
+    </DockItem>
     <WPanel :title="config.wmTitle || 'Regex library'" width="22rem" max-height="70vh">
       <template #actions>
         <WChip v-if="hasHotkeys" clickable :active="config.enableHotkeys" title="Use each entry's hotkey"
@@ -71,6 +84,8 @@ import Widget from '@/web/overlay/Widget.vue'
 import { WPanel, WField, WChip, WKbd, WEmpty, WListItem } from '../ui'
 import { MAX_SEARCH_LENGTH, canNegate, effectiveText, groupByCategory, matchesFilter } from './widget'
 import type { RegexEntry } from './widget'
+import DockItem from '../dock/DockItem.vue'
+import { useZone } from '../shared/zone'
 
 const props = defineProps<{
   config: RegexLibraryWidget
@@ -92,6 +107,13 @@ const copiedId = shallowRef<number | null>(null)
 
 const groups = computed(() => groupByCategory(
   props.config.entries.filter(e => matchesFilter(e, filter.value))))
+
+const zone = useZone()
+const dockShow = computed(() => props.config.entries.length > 0 && (zone.kind === 'town' || zone.kind === 'hideout'))
+// Strings with a hotkey first, then the rest, six at most.
+const glance = computed(() => [...props.config.entries]
+  .sort((a, b) => Number(b.hotkey != null) - Number(a.hotkey != null))
+  .slice(0, 6))
 
 const hasHotkeys = computed(() => props.config.entries.some(e => e.hotkey != null))
 

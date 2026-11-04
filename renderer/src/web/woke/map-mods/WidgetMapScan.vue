@@ -1,5 +1,25 @@
 <template>
   <Widget :config="config" move-handles="corners" :inline-edit="false">
+    <DockItem id="map-scan" icon="fas fa-crosshairs" title="Map scan" :show="running || paused || !!message"
+      :led="message ? 'error' : paused ? 'warn' : running ? 'on' : null" :badge="rolling ? rolls.length : null"
+      :wm-id="config.wmId" card-width="18rem">
+      <template #card>
+        <div v-if="message" class="w-warn text-xs px-3 pt-2">{{ message }}</div>
+        <div v-else-if="paused" class="w-dim text-xs px-3 pt-2">Paused while the essence scan runs. It resumes when that stops.</div>
+        <div v-if="rolling" class="w-dim text-xs px-3 pt-2"><i class="fas fa-dice" /> Rolling · {{ rolls.length }} rerolls</div>
+        <div :class="$style.tally">
+          <div><span class="w-num w-up">{{ tally.run }}</span><span class="w-dim">run</span></div>
+          <div><span class="w-num" style="color: var(--w-warn);">{{ tally.careful }}</span><span class="w-dim">careful</span></div>
+          <div><span class="w-num w-down">{{ tally.skip }}</span><span class="w-dim">skip</span></div>
+        </div>
+        <div v-for="e in recent.slice(0, 5)" :key="e.id" :class="[$style.entry, $style[e.verdict]]">
+          <span :class="$style.tag">{{ VERDICT_LABEL[e.verdict] }}</span>
+          <span class="flex-1 w-trunc">{{ e.label }}</span>
+          <span class="w-num w-accent">{{ e.juice }}</span>
+        </div>
+        <div v-if="config.hotkey" class="w-faint text-xs px-3 py-1"><WKbd :keys="config.hotkey" /> to stop</div>
+      </template>
+    </DockItem>
     <WPanel :title="config.wmTitle || 'Map scan'" width="19rem">
       <template #actions>
         <span :class="[$style.led, { [$style.on]: running }]" />
@@ -99,6 +119,8 @@ import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
 import { WPanel, WButton, WEmpty, WKbd } from '../ui'
 import { hostRequest } from '../shared/host'
+import DockItem from '../dock/DockItem.vue'
+import { hideWhilePlaying } from '../dock/dock'
 import { DEFAULT_JUICE_WEIGHTS, defaultProfile, juiceScore, rateMods, shortLabel } from './rules'
 import type { ModRating, Verdict } from './rules'
 import { TooltipMatcher } from './tooltip-parse'
@@ -115,6 +137,7 @@ if (props.config.wmFlags[0] === 'uninitialized') {
   wm.show(props.config.wmId)
 }
 normalizeMapScanWidget(props.config)
+hideWhilePlaying(props.config)
 
 // 'unsure': would be a run, but some lines were read with low confidence.
 type ShownVerdict = Verdict | 'unsure'
