@@ -50,7 +50,7 @@
         </WEmpty>
       </WPanel>
 
-      <WPanel v-if="selected" :title="selected.name || 'Untitled'" width="26rem">
+      <WPanel v-if="selected" size-key="detail" :title="selected.name || 'Untitled'" width="26rem">
         <template v-if="treeLink || selected.regex" #toolbar>
           <WButton v-if="treeLink" :href="treeLink" size="sm" variant="primary" icon="fas fa-external-link-alt">Open atlas tree</WButton>
           <WButton v-if="selected.regex" size="sm" :icon="copied ? 'fas fa-check' : 'far fa-copy'" @click="copy(selected.regex)">{{ copied ? 'Copied' : 'Copy map regex' }}</WButton>

@@ -1,5 +1,5 @@
 <template>
-  <WPanel :title="entry.name" width="25rem" max-height="70vh">
+  <WPanel :title="entry.name" size-key="detail" width="25rem" max-height="70vh">
     <template #actions>
       <button @click="emit('close')" class="w-icon-btn" title="Close"><i class="fas fa-times" /></button>
     </template>

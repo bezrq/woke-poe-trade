@@ -33,7 +33,7 @@
         <div v-if="config.notes.trim()" class="whitespace-pre-wrap w-dim py-2" style="padding-left: var(--w-pad); padding-right: var(--w-pad);">{{ config.notes }}</div>
         <template #footer><span>Layouts from poelab.com</span></template>
       </WPanel>
-      <WPanel v-if="openDiff" :title="`${labLabel(openDiff)} Labyrinth`" :scroll="false" max-height="none"
+      <WPanel v-if="openDiff" size-key="layout" :title="`${labLabel(openDiff)} Labyrinth`" :scroll="false" max-height="none"
         style="width: 60vw; height: 80vh;">
         <template v-if="staleDate" #meta>
           <span style="color: var(--w-warn);"><i class="fas fa-exclamation-triangle" /> Today's layout isn't posted yet. This one is from {{ staleDate }}.</span>

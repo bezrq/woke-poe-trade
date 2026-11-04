@@ -1,7 +1,8 @@
 <template>
-  <div ref="root" class="w-surface w-enter" :class="$style.panel" :style="{ width, maxHeight }" data-w-panel
+  <div ref="root" class="w-surface w-enter" :class="$style.panel" :style="boxStyle" data-w-panel
     @keydown="onKey">
-    <div v-if="title || $slots.title || $slots.actions || icon" :class="$style.head" data-widget-drag>
+    <div v-if="title || $slots.title || $slots.actions || icon" :class="$style.head" data-widget-drag
+      :title="canResize && saved ? 'Double-click to reset the size' : undefined" @dblclick="resetSize">
       <WIcon v-if="icon" v-bind="iconProps" size="md" :class="$style.icon" />
       <span :class="$style.title" class="w-trunc">
         <slot name="title">{{ title }}</slot>
@@ -21,6 +22,12 @@
     <div v-if="$slots.meta" :class="$style.meta"><slot name="meta" /></div>
     <div :class="[$style.body, { 'w-scroll': scroll, 'w-stale': stale }]"><slot /></div>
     <div v-if="$slots.footer" :class="$style.footer"><slot name="footer" /></div>
+    <template v-if="canResize">
+      <span :class="[$style.edgeX, hSide === 'left' ? $style.onLeft : $style.onRight]" @mousedown="startResize($event, true, false)" />
+      <span :class="[$style.edgeY, vSide === 'top' ? $style.onTop : $style.onBottom]" @mousedown="startResize($event, false, true)" />
+      <span :class="[$style.grip, hSide === 'left' ? $style.onLeft : $style.onRight, vSide === 'top' ? $style.onTop : $style.onBottom]"
+        title="Drag to resize · double-click the title to reset" @mousedown="startResize($event, true, true)" />
+    </template>
   </div>
 </template>
 
@@ -29,7 +36,8 @@
 // the hotkey that opens it, then optional banner/tabs/toolbar/meta, a
 // scrolling body and a footer. Keyboard (P8): arrow keys move between rows,
 // "/" jumps to the first search field, Esc leaves a field.
-import { computed, ref } from 'vue'
+import { computed, inject, ref } from 'vue'
+import { snapEdge, clearGuides } from './snap'
 import WIcon from './WIcon.vue'
 import WKbd from './WKbd.vue'
 import { ago, freshness } from './format'
@@ -52,6 +60,10 @@ const props = withDefaults(defineProps<{
   busy?: boolean
   // Rows are old data shown under an error banner: dims the body.
   stale?: boolean
+  // Edge resize (pick R2), remembered in the widget config under sizeKey.
+  // Give secondary panels in the same widget their own key.
+  resizable?: boolean
+  sizeKey?: string
 }>(), {
   title: undefined,
   width: undefined,
@@ -63,10 +75,76 @@ const props = withDefaults(defineProps<{
   staleMin: 120,
   hotkey: undefined,
   busy: false,
-  stale: false
+  stale: false,
+  resizable: true,
+  sizeKey: 'main'
 })
 
 const root = ref<HTMLElement | null>(null)
+
+// ---- Size (P10, P17) ----
+interface SizedConfig { anchor?: { pos: string }, wokeSizes?: Record<string, { w?: number, h?: number }> }
+const cfg = inject<SizedConfig | null>('wokeWidgetConfig', null)
+const canResize = computed(() => props.resizable && !!cfg?.anchor)
+const saved = computed(() => cfg?.wokeSizes?.[props.sizeKey])
+// Handles sit on the sides away from the widget's anchor, so the panel grows
+// toward the mouse.
+const hSide = computed(() => cfg?.anchor?.pos[1] === 'r' ? 'left' : 'right')
+const vSide = computed(() => cfg?.anchor?.pos[0] === 'b' ? 'top' : 'bottom')
+
+const boxStyle = computed(() => {
+  const s = saved.value
+  return {
+    width: s?.w ? `${s.w}px` : props.width,
+    height: s?.h ? `${s.h}px` : undefined,
+    maxHeight: s?.h ? 'none' : props.maxHeight
+  }
+})
+
+function uiScale () {
+  return parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--w-ui-scale')) || 1
+}
+
+function startResize (e: MouseEvent, x: boolean, y: boolean) {
+  const el = root.value
+  if (!el || !cfg || e.button !== 0) return
+  e.preventDefault()
+  e.stopPropagation()
+  const r = el.getBoundingClientRect()
+  const scale = uiScale()
+  const pos = cfg.anchor?.pos ?? 'tl'
+  const xGrow = (pos[1] === 'c' ? 2 : 1) * (hSide.value === 'left' ? -1 : 1)
+  const yGrow = (pos[0] === 'c' ? 2 : 1) * (vSide.value === 'top' ? -1 : 1)
+  const xEdge = hSide.value === 'left' ? r.left : r.right
+  const yEdge = vSide.value === 'top' ? r.top : r.bottom
+
+  function onMove (ev: MouseEvent) {
+    const next = { ...(cfg!.wokeSizes?.[props.sizeKey] ?? {}) }
+    if (x) {
+      const edge = snapEdge('x', xEdge + ev.clientX - e.clientX, el, ev.altKey)
+      const w = (r.width + (edge - xEdge) * xGrow) / scale
+      next.w = Math.round(Math.min(Math.max(w, 200), (window.innerWidth - 16) / scale))
+    }
+    if (y) {
+      const edge = snapEdge('y', yEdge + ev.clientY - e.clientY, el, ev.altKey)
+      const h = (r.height + (edge - yEdge) * yGrow) / scale
+      next.h = Math.round(Math.min(Math.max(h, 120), (window.innerHeight - 16) / scale))
+    }
+    cfg!.wokeSizes = { ...(cfg!.wokeSizes ?? {}), [props.sizeKey]: next }
+  }
+  function onUp () {
+    document.removeEventListener('mousemove', onMove)
+    document.removeEventListener('mouseup', onUp)
+    clearGuides()
+  }
+  document.addEventListener('mousemove', onMove)
+  document.addEventListener('mouseup', onUp)
+}
+
+function resetSize (e: MouseEvent) {
+  if (!cfg?.wokeSizes?.[props.sizeKey] || (e.target as Element).closest('button, a, input')) return
+  cfg.wokeSizes = Object.fromEntries(Object.entries(cfg.wokeSizes).filter(([k]) => k !== props.sizeKey))
+}
 
 const iconProps = computed(() => {
   const i = props.icon!
@@ -114,6 +192,7 @@ defineExpose({ el: root })
 
 <style module>
 .panel {
+  position: relative;
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -187,6 +266,21 @@ defineExpose({ el: root })
 }
 .toolbar + .meta { padding-top: 0; }
 .body { min-height: 0; flex: 1; }
+
+/* Resize handles: invisible edges, a small grip shows on hover. */
+.edgeX, .edgeY, .grip { position: absolute; z-index: 2; }
+.edgeX { top: 8px; bottom: 8px; width: 6px; cursor: ew-resize; }
+.edgeY { left: 8px; right: 8px; height: 6px; cursor: ns-resize; }
+.edgeX.onRight { right: -3px; }
+.edgeX.onLeft { left: -3px; }
+.edgeY.onBottom { bottom: -3px; }
+.edgeY.onTop { top: -3px; }
+.grip { width: 12px; height: 12px; opacity: 0; transition: opacity var(--w-dur-in); }
+.grip.onRight.onBottom { right: 1px; bottom: 1px; cursor: nwse-resize; background: linear-gradient(135deg, transparent 0 50%, var(--w-line-strong) 50% 60%, transparent 60% 72%, var(--w-line-strong) 72% 82%, transparent 82%); }
+.grip.onLeft.onBottom { left: 1px; bottom: 1px; cursor: nesw-resize; background: linear-gradient(225deg, transparent 0 50%, var(--w-line-strong) 50% 60%, transparent 60% 72%, var(--w-line-strong) 72% 82%, transparent 82%); }
+.grip.onRight.onTop { right: 1px; top: 1px; cursor: nesw-resize; background: linear-gradient(45deg, transparent 0 50%, var(--w-line-strong) 50% 60%, transparent 60% 72%, var(--w-line-strong) 72% 82%, transparent 82%); }
+.grip.onLeft.onTop { left: 1px; top: 1px; cursor: nwse-resize; background: linear-gradient(315deg, transparent 0 50%, var(--w-line-strong) 50% 60%, transparent 60% 72%, var(--w-line-strong) 72% 82%, transparent 82%); }
+.panel:hover > .grip { opacity: 1; }
 .footer {
   display: flex;
   align-items: center;

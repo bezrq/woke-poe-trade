@@ -39,7 +39,7 @@
       </WPanel>
 
       <BuildDetail v-if="selectedBuild" :config="config" :entry="selectedBuild" :details="details" @close="selected = null" />
-      <WPanel v-if="selectedBuild && detailsError" title="Couldn't read the build" width="20rem">
+      <WPanel v-if="selectedBuild && detailsError" size-key="detail" title="Couldn't read the build" width="20rem">
         <div class="w-down" style="padding: var(--w-pad);">{{ detailsError }}</div>
       </WPanel>
     </div>

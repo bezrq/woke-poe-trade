@@ -53,7 +53,7 @@
         </template>
       </WPanel>
 
-      <WPanel v-if="openEntry" :title="openEntry.name || openEntry.url" :scroll="false" max-height="none"
+      <WPanel v-if="openEntry" size-key="browser" :title="openEntry.name || openEntry.url" :scroll="false" max-height="none"
         :class="{ [$style.flash]: flashing }" style="width: 60vw; height: 75vh;">
         <template #actions>
           <WChip v-if="isLiveSearch(openEntry.url)" clickable :active="!!config.liveAlert" class="mr-1"
