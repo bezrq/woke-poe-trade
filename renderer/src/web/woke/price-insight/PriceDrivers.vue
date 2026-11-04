@@ -1,5 +1,5 @@
 <template>
-  <div v-if="candidates.length" :class="$style.box">
+  <div v-if="candidates.length && verdictExpanded" :class="$style.box">
     <div :class="$style.head">
       <span :class="$style.title">What drives the price</span>
       <span class="flex-1" />
@@ -13,14 +13,16 @@
         <span v-for="c in candidates" :key="c.statRef" :class="$style.cand" class="w-trunc">{{ c.text }}</span>
       </div>
       <div :class="$style.actions">
-        <button type="button" :class="$style.btn" :disabled="busy || baseFair == null" @click="measure"
-          :title="baseFair == null ? 'Needs a price from the main search first' : 'Searches again with each mod removed to see how much the price drops'">
-          Measure ({{ candidates.length }} {{ candidates.length === 1 ? 'search' : 'searches' }})
+        <button type="button" :class="$style.btn" :disabled="busy || baseFair == null || measureWait > 0" @click="measure"
+          :title="baseFair == null ? 'Needs a price from the main search first' : measureWait > 0 ? `Would hit the trade site's rate limit. Ready in ${measureWait}s.` : 'Searches again with each mod removed to see how much the price drops'">
+          <template v-if="measureWait > 0">Measure (ready in {{ measureWait }}s)</template>
+          <template v-else>Measure ({{ candidates.length }} {{ candidates.length === 1 ? 'search' : 'searches' }})</template>
         </button>
-        <button v-if="fewListings && !ladder.length" type="button" :class="$style.btn" :disabled="busy" @click="widen"
-          title="Too few listings: search again with only the key mods, then with lower rolls">
-          Widen search
+        <button v-if="fewListings && !ladder.length" type="button" :class="$style.btn" :disabled="busy || ladderWait > 0" @click="widen"
+          :title="ladderWait > 0 ? `Would hit the trade site's rate limit. Ready in ${ladderWait}s.` : 'Too few listings: search again with only the key mods, then with lower rolls (up to 2 searches)'">
+          Widen search<template v-if="ladderWait > 0"> ({{ ladderWait }}s)</template>
         </button>
+        <span class="w-faint text-xs" title="Searches you can make right now without hitting the trade site's rate limit">{{ budget.left }} searches free</span>
       </div>
     </template>
 
@@ -49,12 +51,13 @@
 </template>
 
 <script setup lang="ts">
-import { computed, shallowRef } from 'vue'
+import { computed, shallowRef, onUnmounted } from 'vue'
 import { ItemRarity, ParsedItem } from '@/parser'
 import type { ItemFilters, FilterOrGroup } from '@/web/price-check/filters/interfaces'
 import { WPrice } from '../ui'
 import type { Insight, InsightOptions } from './insight'
-import { driverSeed, pickCandidates, measureDrivers, runLadder, LADDER_LABEL } from './drivers'
+import { driverSeed, pickCandidates, measureDrivers, runLadder, LADDER_LABEL, searchBudget, searchKey, cachedDrivers, cacheDrivers, cachedLadder, cacheLadder } from './drivers'
+import { verdictExpanded } from './view'
 import type { DriverResult, LadderResult } from './drivers'
 
 const props = defineProps<{
@@ -83,6 +86,18 @@ const busy = computed(() => busyDrivers.value || busyLadder.value)
 const waiting = shallowRef<number | null>(null)
 const error = shallowRef<string | null>(null)
 
+// Rate-limit budget, refreshed every second while the panel is open.
+const tick = shallowRef(0)
+const ticker = setInterval(() => { tick.value++ }, 1000)
+onUnmounted(() => { clearInterval(ticker) })
+const budget = computed(() => searchBudget(candidates.value.length, tick.value))
+const measureWait = computed(() => Math.ceil(budget.value.waitMs / 1000))
+const ladderWait = computed(() => Math.ceil(searchBudget(2, tick.value).waitMs / 1000))
+
+const driverKey = computed(() => searchKey(props.filters, props.stats, candidates.value.map(c => c.statRef)))
+drivers.value = cachedDrivers(driverKey.value) ?? []
+ladder.value = cachedLadder(driverKey.value) ?? []
+
 // While measuring, show finished results plus placeholders for the rest.
 const shownDrivers = computed<DriverResult[]>(() => {
   if (!busyDrivers.value) return drivers.value
@@ -110,6 +125,7 @@ async function measure () {
   try {
     drivers.value = await measureDrivers(props.filters, props.stats, baseFair.value, candidates.value, props.options,
       (done, wait) => { drivers.value = done; waiting.value = wait })
+    cacheDrivers(driverKey.value, drivers.value)
   } catch (err) {
     error.value = (err as Error).message
   } finally {
@@ -124,6 +140,7 @@ async function widen () {
   try {
     ladder.value = await runLadder(props.filters, props.stats, candidates.value, props.options,
       (steps, wait) => { ladder.value = steps; waiting.value = wait })
+    cacheLadder(driverKey.value, ladder.value)
   } catch (err) {
     error.value = (err as Error).message
   } finally {
