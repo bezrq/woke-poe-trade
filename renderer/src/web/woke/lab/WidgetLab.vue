@@ -76,7 +76,7 @@ import { AppConfig } from '@/web/Config'
 import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
 import { WPanel, WKbd, WListItem, WBanner } from '../ui'
-import { DEFAULT_LAB_URLS, DIFFICULTIES, FIND_LAYOUT_JS, dateInUrl, difficultyForAreaLevel, formatDuration, isPlazaArea, labLabel, msUntilLabReset, parseHotkeyTarget } from './lab'
+import { DEFAULT_LAB_URLS, DIFFICULTIES, FIND_LAYOUT_JS, difficultyForAreaLevel, formatDuration, isPlazaArea, labLabel, msUntilLabReset, parseHotkeyTarget, staleLayoutDate } from './lab'
 import { useZone } from '../shared/zone'
 import { hostRequest } from '../shared/host'
 import DockItem from '../dock/DockItem.vue'
@@ -107,11 +107,7 @@ const webviewEl = shallowRef<HTMLElement & { src: string, executeJavaScript?: (c
 const layoutImg = shallowRef<string | null>(null)
 const zoomed = shallowRef(false)
 const showImage = computed(() => !!layoutImg.value && !props.config.fullPage)
-const staleDate = computed(() => {
-  const d = layoutImg.value ? dateInUrl(layoutImg.value) : null
-  const today = new Date(now.value).toISOString().slice(0, 10)
-  return d && d < today ? d : null
-})
+const staleDate = computed(() => staleLayoutDate(layoutImg.value, now.value))
 
 // Once poelab's page has loaded, look for the layout image in it.
 function onPageLoaded () {
@@ -157,10 +153,10 @@ watch(() => [zone.areaId, zone.enteredAt, labDiff.value] as const, async ([areaI
     if (peekDiff.value === d) peekError.value = err instanceof Error ? err.message : String(err)
   }
 })
+// Reads the real clock too: `now` only ticks while the panel is on screen,
+// and in the lab only the dock icon is.
 function staleOf (url: string) {
-  const d = dateInUrl(url)
-  const today = new Date(now.value).toISOString().slice(0, 10)
-  return d && d < today ? d : null
+  return staleLayoutDate(url, Math.max(now.value, Date.now()))
 }
 const overlayKey = computed(() => AppConfig().overlayKey)
 

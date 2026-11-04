@@ -11,7 +11,7 @@ import type { RouteOptions } from '@/web/woke/campaign/route-parse'
 import { countNewMap, isMapArea, newSession, onZoneChange, maybeAutoPause, AUTO_PAUSE_MS } from '@/web/woke/farming/farming'
 import { mechanicForSpeaker } from '@/web/woke/mechanics/zone'
 import { mechanicForZone } from '@/web/woke/mechanics/data'
-import { difficultyForAreaLevel, isPlazaArea, msUntilLabReset, PLAZA_ZONE } from '@/web/woke/lab/lab'
+import { difficultyForAreaLevel, isPlazaArea, msUntilLabReset, PLAZA_ZONE, staleLayoutDate } from '@/web/woke/lab/lab'
 
 function logLines (name: string): string[] {
   return fixture(`client-logs/${name}`).split('\n').filter(l => l && !l.startsWith('#'))
@@ -171,5 +171,12 @@ describe('lab', () => {
 
   it('counts down to the daily reset (midnight UTC)', () => {
     expect(msUntilLabReset(Date.UTC(2026, 10, 4, 23, 0, 0))).toBe(3_600_000)
+  })
+
+  it("knows yesterday's layout by the lab day (UTC)", () => {
+    const url = 'https://www.poelab.com/wp-content/labfiles/2026-11-04_uber.jpg'
+    expect(staleLayoutDate(url, Date.UTC(2026, 10, 4, 23, 59))).toBeNull()
+    expect(staleLayoutDate(url, Date.UTC(2026, 10, 5, 0, 1))).toBe('2026-11-04')
+    expect(staleLayoutDate(null, Date.UTC(2026, 10, 5))).toBeNull()
   })
 })
