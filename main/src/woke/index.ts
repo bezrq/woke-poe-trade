@@ -5,6 +5,8 @@ import type { Logger } from '../RemoteLogger'
 import type { GameWindow } from '../windowing/GameWindow'
 import { listBuilds, openBuild, readBuild, showBuild } from './pob-builds'
 import { MapScanner } from './map-scan'
+import { WokeHoverTracker } from './hover'
+import type { OverlayWindow } from '../windowing/OverlayWindow'
 
 type Handler = (args: any) => Promise<unknown> // eslint-disable-line @typescript-eslint/no-explicit-any
 
@@ -38,4 +40,9 @@ export function initWoke (server: ServerEvents, logger: Logger, poeWindow: GameW
         reply({ ok: false, error: err instanceof Error ? err.message : String(err) })
       })
   })
+}
+
+// Needs the overlay window, which main.ts creates later than initWoke runs.
+export function initWokeOverlay (server: ServerEvents, overlay: OverlayWindow): void {
+  new WokeHoverTracker(server, overlay) // eslint-disable-line no-new
 }
