@@ -1,7 +1,7 @@
 <template>
   <Widget :config="config" move-handles="corners" :inline-edit="false">
     <!-- Town and hideout: your hotkeyed strings at a glance. -->
-    <DockItem id="regex-library" icon="fas fa-search" title="Regex library" :show="dockShow" :wm-id="config.wmId" card-width="20rem">
+    <DockItem id="regex-library" :art="mechanicIcon('stash').src" icon="fas fa-search" title="Regex library" :show="dockShow" :wm-id="config.wmId" card-width="20rem">
       <template #card>
         <div style="padding: 4px 0 6px;">
           <button v-for="e in glance" :key="e.id" type="button" class="w-row w-full text-left" style="grid-template-columns: minmax(0, 1fr) auto;"
@@ -85,6 +85,7 @@ import { WPanel, WField, WChip, WKbd, WEmpty, WListItem } from '../ui'
 import { MAX_SEARCH_LENGTH, canNegate, effectiveText, groupByCategory, matchesFilter } from './widget'
 import type { RegexEntry } from './widget'
 import DockItem from '../dock/DockItem.vue'
+import { mechanicIcon } from '../ui/game-icons'
 import { useZone } from '../shared/zone'
 
 const props = defineProps<{
