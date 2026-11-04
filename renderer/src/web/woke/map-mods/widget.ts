@@ -1,4 +1,7 @@
 import type { Widget, Anchor } from '@/web/overlay/widgets'
+import { AppConfig } from '@/web/Config'
+import type { MapCheckConfig } from '@/web/map-check/common'
+import { importAptMapRatings } from './apt-import'
 import { DEFAULT_JUICE_WEIGHTS, defaultProfile } from './rules'
 import type { JuiceWeights, MapModProfile } from './rules'
 
@@ -18,6 +21,8 @@ export interface MapModsWidget extends Widget {
   activeProfile: number
   profiles: MapModProfile[]
   weights: JuiceWeights
+  // APT's map check ratings were brought over (once).
+  aptImported?: boolean
 }
 
 export function initMapModsWidget (w: MapModsWidget) {
@@ -31,6 +36,17 @@ export function initMapModsWidget (w: MapModsWidget) {
   w.activeProfile = 1
   w.profiles = [defaultProfile()]
   w.weights = { ...DEFAULT_JUICE_WEIGHTS }
+  importAptOnce(w)
+}
+
+// APT's item info map check is replaced by this module: bring its ratings over.
+function importAptOnce (w: MapModsWidget) {
+  if (w.aptImported) return
+  w.aptImported = true
+  try {
+    const itemCheck = AppConfig().widgets.find(_ => _.wmType === 'item-check') as { maps?: MapCheckConfig } | undefined
+    importAptMapRatings(w.profiles, itemCheck?.maps)
+  } catch {}
 }
 
 // Fills fields missing from configs saved by older versions.
@@ -48,6 +64,7 @@ export function normalizeMapModsWidget (w: MapModsWidget) {
     if (p.highlight !== 'bad') p.highlight = 'good'
     if (!p.ratings || typeof p.ratings !== 'object') p.ratings = {}
   }
+  importAptOnce(w)
 }
 
 export function activeProfile (w: MapModsWidget): MapModProfile {

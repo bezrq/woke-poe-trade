@@ -186,3 +186,27 @@ describe('rules', () => {
     expect(high).toBeGreaterThan(low)
   })
 })
+
+describe('APT map check ratings brought into Map mods', () => {
+  it('fills matching profiles, keeps existing ratings, makes missing ones', async () => {
+    const { importAptMapRatings } = await import('@/web/woke/map-mods/apt-import')
+    const { defaultProfile } = await import('@/web/woke/map-mods/rules')
+    const profiles = [defaultProfile()]
+    const added = importAptMapRatings(profiles, {
+      profile: 1,
+      showNewStats: false,
+      selectedStats: [
+        { matcher: 'Monsters cannot be Leeched from', decision: 'd-w' },
+        // Already rated in our default profile: stays deadly.
+        { matcher: 'Monsters reflect #% of Physical Damage', decision: 'g--' },
+        { matcher: 'Area has patches of Burning Ground', decision: 's--' }
+      ]
+    })
+    expect(added).toBe(2)
+    expect(profiles.map(p => p.id)).toEqual([1, 3])
+    expect(profiles[0].ratings['Monsters cannot be Leeched from']).toBe('deadly')
+    expect(profiles[0].ratings['Monsters reflect #% of Physical Damage']).toBe('deadly')
+    expect(profiles[0].ratings['Area has patches of Burning Ground']).toBeUndefined()
+    expect(profiles[1].ratings).toEqual({ 'Monsters cannot be Leeched from': 'warn' })
+  })
+})
