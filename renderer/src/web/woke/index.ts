@@ -15,13 +15,17 @@ import WidgetTradeSearches from './trade-searches/WidgetTradeSearches.vue'
 import TradeSearchesEditor from './trade-searches/trade-searches-editor.vue'
 import { TRADE_SEARCHES_TYPE } from './trade-searches/widget'
 import WidgetMarketTracker from './market/WidgetMarketTracker.vue'
+import WidgetLabGems from './lab-gems/WidgetLabGems.vue'
+import WidgetLeagueInvest from './league-invest/WidgetLeagueInvest.vue'
 
 type WidgetComponent = Component & { widget: WidgetSpec }
 
 export const wokeWidgets: WidgetComponent[] = [
   WidgetRegexLibrary as unknown as WidgetComponent,
   WidgetTradeSearches as unknown as WidgetComponent,
-  WidgetMarketTracker as unknown as WidgetComponent
+  WidgetMarketTracker as unknown as WidgetComponent,
+  WidgetLabGems as unknown as WidgetComponent,
+  WidgetLeagueInvest as unknown as WidgetComponent
 ]
 
 const editors: Record<string, Component> = {
