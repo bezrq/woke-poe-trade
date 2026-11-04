@@ -45,7 +45,7 @@
             :title="`${earnings.get(s.name)!.hours.toFixed(1)} h farmed`">{{ fmt(earnings.get(s.name)!.perHour) }}/h</span>
           <template #sub>{{ [s.league, ...s.tags].filter(Boolean).join(' · ') }}</template>
         </WListItem>
-        <WEmpty v-if="!config.strategies.length" icon="fas fa-map">
+        <WEmpty v-if="!config.strategies.length" :art="{ mechanic: 'map' }">
           No strategies yet. Paste one from a guide with the button above, or add them in settings.
         </WEmpty>
       </WPanel>
@@ -71,7 +71,7 @@
               </div>
             </template>
             <div v-else class="whitespace-pre-wrap">{{ selected.scarabs }}</div>
-            <WButton v-if="farmingWidget && pricedScarabs.some(p => p.item)" size="sm" icon="fas fa-coins" class="mt-1" @click="useInFarming">
+            <WButton v-if="farmingWidget && pricedScarabs.some(p => p.item)" size="sm" class="mt-1" @click="useInFarming">
               {{ usedInFarming ? 'Set in Farming profit' : 'Use in Farming profit' }}
             </WButton>
           </div>

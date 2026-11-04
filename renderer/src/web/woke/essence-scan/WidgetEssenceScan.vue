@@ -29,7 +29,7 @@
         <span class="flex-1 w-trunc">{{ entryLabel(e) }}</span>
         <WPrice :chaos="e.rated.totalChaos || null" :divine="divine" />
       </div>
-      <WEmpty v-if="!entries.length" icon="fas fa-flask">
+      <WEmpty v-if="!entries.length" :art="{ mechanic: 'essence' }">
         <template v-if="running">Hover an essence monolith. Its essences get priced, and ones holding {{ flagText }} say CORRUPT.</template>
         <template v-else-if="config.hotkey">Press <WKbd :keys="config.hotkey" /> in game to start scanning.</template>
         <template v-else>Start scanning, then hover essence monoliths.</template>

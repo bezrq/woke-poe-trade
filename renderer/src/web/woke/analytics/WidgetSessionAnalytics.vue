@@ -29,7 +29,7 @@
               <button v-for="row in rows" :key="row.key" class="w-row px-0 w-full text-left" :class="[$style.stratGrid, row.key === selectedRow?.key ? $style.sel : '']"
                 @click="selectedKey = row.key">
                 <span class="w-trunc">
-                  <i v-if="row.kind === 'boss'" class="fas fa-skull w-faint text-xs mr-1" />{{ row.strategy }}
+                  <WIcon v-if="row.kind === 'boss'" mechanic="maven" title="Boss run" class="mr-1" />{{ row.strategy }}
                 </span>
                 <span class="text-right w-num w-dim">{{ row.kind === 'boss' ? row.units.length : row.maps }}<span v-if="row.kind === 'boss'" class="w-faint text-xs"> k</span></span>
                 <span class="text-right w-num w-dim">{{ row.hours.toFixed(1) }}</span>
@@ -172,7 +172,7 @@
 
         <!-- ===== Maps ===== -->
         <template v-else>
-          <WEmpty v-if="!tiles.length" icon="fas fa-map">Maps show up here once sessions record them one by one.</WEmpty>
+          <WEmpty v-if="!tiles.length" :art="{ mechanic: 'map' }">Maps show up here once sessions record them one by one.</WEmpty>
           <div v-else>
             <div class="w-row w-row--head px-0" :class="$style.tileGrid">
               <span>Map</span><span class="text-right">Runs</span><span class="text-right">Avg</span><span class="text-right" title="Median map">Typical</span><span class="text-right">Best</span><span class="text-right">Time</span>
@@ -212,7 +212,7 @@ import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
 import { AppConfig } from '@/web/Config'
 import { useLeagues } from '@/web/background/Leagues'
-import { WPanel, WTabs, WSegmented, WButton, WEmpty, WChip, WSpark } from '../ui'
+import { WPanel, WTabs, WSegmented, WButton, WEmpty, WChip, WSpark, WIcon } from '../ui'
 import { usePriceIndex } from '../market/price-index'
 import { hostRequest } from '../shared/host'
 import { BOSSES } from '../boss-runs/bosses'

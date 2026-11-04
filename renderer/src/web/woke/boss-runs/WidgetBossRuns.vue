@@ -1,7 +1,7 @@
 <template>
   <Widget :config="config" move-handles="corners" :inline-edit="false" :readonly="true">
     <!-- In a pinnacle arena: what this fight costs and pays. -->
-    <DockItem id="boss-runs" icon="fas fa-skull" title="Boss runs" :show="arenaBosses.length > 0"
+    <DockItem id="boss-runs" :art="mechanicIcon('maven').src ?? undefined" icon="fas fa-skull" title="Boss runs" :show="arenaBosses.length > 0"
       :badge="arenaBosses.length === 1 && arenaBosses[0].kills ? arenaBosses[0].kills : null" :wm-id="config.wmId" card-width="20rem">
       <template #card>
         <div style="padding: 4px var(--w-pad) 6px;" class="flex flex-col gap-2">
@@ -91,7 +91,7 @@
             <div class="grow min-w-0 w-scroll">
               <!-- drops -->
               <template v-if="tab === 'drops'">
-                <WEmpty v-if="!sel.drops.length" icon="fas fa-skull">No drop list for this boss yet. Log a kill or add drops under Rates &amp; sources.</WEmpty>
+                <WEmpty v-if="!sel.drops.length" :art="{ mechanic: 'maven' }">No drop list for this boss yet. Log a kill or add drops under Rates &amp; sources.</WEmpty>
                 <template v-else>
                   <div class="w-row w-row--head" :class="$style.dropGrid"><span title="Count this drop in the loot">On</span><span>Drop</span><span class="text-right">Chance</span><span class="text-right">Price</span><span class="text-right">Per run</span><span>Share</span></div>
                   <div v-for="d in sel.drops" :key="d.name" class="w-row" :class="[$style.dropGrid, { [$style.off]: !d.included }]">
@@ -149,7 +149,7 @@
                     <WButton variant="ghost" @click="logging = null">Cancel</WButton>
                   </div>
                 </div>
-                <WEmpty v-else-if="!sel.kills" icon="fas fa-skull">Log each kill's drops. Bosses without public rates use your own kill rates.</WEmpty>
+                <WEmpty v-else-if="!sel.kills" :art="{ mechanic: 'maven' }">Log each kill's drops. Bosses without public rates use your own kill rates.</WEmpty>
                 <template v-else>
                   <div class="flex gap-4" style="padding: 8px var(--w-pad);">
                     <span class="w-dim">My average loot <WPrice :chaos="sel.myLoot" :divine="divine" class="w-accent" /></span>
@@ -250,7 +250,7 @@ import { inject, computed, shallowRef, watch } from 'vue'
 import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
 import UiCheckbox from '@/web/ui/UiCheckbox.vue'
-import { WPanel, WTabs, WSegmented, WField, WButton, WEmpty, WPrice, WChip, WListItem } from '../ui'
+import { WPanel, WTabs, WSegmented, WField, WButton, WEmpty, WPrice, WChip, WListItem, mechanicIcon } from '../ui'
 import { usePriceIndex } from '../market/price-index'
 import { BOSSES } from './bosses'
 import DockItem from '../dock/DockItem.vue'
