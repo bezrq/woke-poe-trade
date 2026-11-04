@@ -58,6 +58,7 @@ import HotkeyInput from '@/web/settings/HotkeyInput.vue'
 import { configProp, configModelValue } from '@/web/settings/utils'
 import { MAX_SEARCH_LENGTH, emptyEntry, exportEntries, parseImport } from './widget'
 import type { RegexEntry, RegexLibraryWidget } from './widget'
+import { parseTags } from '../shared/library'
 
 export default defineComponent({
   name: 'Regex library',
@@ -82,8 +83,7 @@ export default defineComponent({
         props.configWidget.entries.push(emptyEntry(props.configWidget.entries))
       },
       setTags (entry: RegexEntry, e: Event) {
-        entry.tags = (e.target as HTMLInputElement).value
-          .split(',').map(t => t.trim()).filter(Boolean)
+        entry.tags = parseTags((e.target as HTMLInputElement).value)
       },
       openExport () {
         ioMode.value = 'export'
