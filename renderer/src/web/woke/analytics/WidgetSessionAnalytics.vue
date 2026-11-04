@@ -1,6 +1,11 @@
 <template>
   <Widget :config="config" move-handles="corners" :inline-edit="false" :readonly="true">
-    <WPanel :title="config.wmTitle || 'Session analytics'" icon="divine" width="34rem">
+    <WPanel ref="panel" :title="config.wmTitle || 'Session analytics'" icon="divine" width="34rem" :busy="busy">
+      <template v-if="store.error.value" #banner>
+        <WBanner>Couldn't read your saved sessions: {{ store.error.value }}
+          <template #actions><WButton size="sm" @click="reload">Retry</WButton></template>
+        </WBanner>
+      </template>
       <template #tabs>
         <WTabs v-model="tab" :options="tabOptions" />
       </template>
@@ -14,11 +19,11 @@
       </template>
 
       <div class="flex flex-col gap-2 py-2" style="padding-left: var(--w-pad); padding-right: var(--w-pad);">
-        <div v-if="store.error.value" class="text-xs" style="color: var(--w-warn);"><i class="fas fa-exclamation-triangle" /> Could not read saved sessions: {{ store.error.value }}</div>
+        <WSkeleton v-if="!store.loaded.value && !store.error.value" :rows="5" />
 
         <!-- ===== Strategies (A1) ===== -->
-        <template v-if="tab === 'strategies'">
-          <WEmpty v-if="!rows.length" icon="fas fa-chart-bar">
+        <template v-else-if="tab === 'strategies'">
+          <WEmpty v-if="!rows.length" :art="{ mechanic: 'map' }">
             Start and end a session in Farming profit, and every map you run shows up here.
           </WEmpty>
           <template v-else>
@@ -27,7 +32,7 @@
                 <span>Strategy</span><span class="text-right">Maps</span><span class="text-right">Hours</span><span>{{ unitLabel }} / hour</span><span class="text-right">Trend</span>
               </div>
               <button v-for="row in rows" :key="row.key" class="w-row px-0 w-full text-left" :class="[$style.stratGrid, row.key === selectedRow?.key ? $style.sel : '']"
-                @click="selectedKey = row.key">
+                @click="selectedKey = row.key" @contextmenu="strategyMenu($event, row)">
                 <span class="w-trunc">
                   <WIcon v-if="row.kind === 'boss'" mechanic="maven" title="Boss run" class="mr-1" />{{ row.strategy }}
                 </span>
@@ -91,12 +96,15 @@
             <div v-if="strategyFilter" class="flex items-center gap-1 text-xs">
               <WChip active clickable @click="strategyFilter = ''">{{ strategyFilter }} <i class="fas fa-times" /></WChip>
             </div>
-            <WEmpty v-if="!sessionList.length" icon="fas fa-history">No sessions in this range.</WEmpty>
+            <WEmpty v-if="!sessionList.length" icon="fas fa-history">No sessions in this range.
+              <template v-if="config.range !== 'all'" #actions><WButton size="sm" variant="ghost" @click="config.range = 'all'">Show all time</WButton></template>
+            </WEmpty>
             <div v-else>
               <div class="w-row w-row--head px-0" :class="$style.sessGrid">
                 <span>When</span><span>Strategy</span><span class="text-right">Maps</span><span class="text-right">Time</span><span class="text-right">{{ unitLabel }}</span><span class="text-right">/ hour</span>
               </div>
-              <button v-for="sum in sessionList" :key="sum.s.id" class="w-row px-0 w-full text-left" :class="$style.sessGrid" @click="openId = sum.s.id">
+              <button v-for="sum in sessionList" :key="sum.s.id" class="w-row px-0 w-full text-left w-focusable" :class="$style.sessGrid" @click="openId = sum.s.id"
+                @contextmenu="sessionMenu($event, sum.s)" @keydown.delete.prevent="deleteSession(sum.s)">
                 <span class="w-trunc w-dim">{{ formatSessionDate(sum.s.startedAt) }}</span>
                 <span class="w-trunc">{{ sum.s.strategy || 'Unnamed' }}<i v-if="sum.s.imported" class="fas fa-box-archive w-faint text-xs ml-1" title="From Farming profit's old history: totals only" /></span>
                 <span class="text-right w-num">{{ sum.s.maps }}</span>
@@ -141,7 +149,7 @@
                   <div v-if="r.loot.length" class="flex flex-wrap gap-1">
                     <button v-for="(l, j) in r.loot" :key="j" :style="{ color: lootColour(l.type) }" :class="[$style.loot, moving && moving.run === i && moving.line === j ? $style.moving : '']"
                       :title="`${l.chaos != null ? num(l.chaos * l.qty / (rate(openSession) ?? 1)) + ' ' + unitLabel : 'no price'}. Click to move to another map.`"
-                      @click="pickLoot(i, j)">{{ l.name }}<template v-if="l.qty > 1"> ×{{ l.qty }}</template></button>
+                      @click="pickLoot(i, j)"><WIcon :src="lootArt(l.type, l.name)" fallback="fas fa-coins" class="mr-1" />{{ l.name }}<template v-if="l.qty > 1"> ×{{ l.qty }}</template></button>
                   </div>
                 </div>
                 <div class="flex flex-col items-end gap-1">
@@ -164,8 +172,7 @@
               </datalist>
               <WButton size="sm" :disabled="renameTo.trim() === openSession.strategy" @click="rename">Rename</WButton>
               <span class="grow" />
-              <WButton v-if="!confirmDelete" size="sm" variant="ghost" icon="fas fa-trash" @click="confirmDelete = true">Delete</WButton>
-              <WButton v-else size="sm" variant="danger" @click="deleteOpen">Delete this session</WButton>
+              <WButton size="sm" variant="ghost" icon="fas fa-trash" title="Undo in the note" @click="deleteSession(openSession)">Delete</WButton>
             </div>
           </template>
         </template>
@@ -178,7 +185,7 @@
               <span>Map</span><span class="text-right">Runs</span><span class="text-right">Avg</span><span class="text-right" title="Median map">Typical</span><span class="text-right">Best</span><span class="text-right">Time</span>
             </div>
             <div v-for="t in tiles" :key="t.name" class="w-row px-0" :class="$style.tileGrid">
-              <span class="w-trunc">{{ t.name }}</span>
+              <span class="w-trunc flex items-center gap-1"><WIcon mechanic="map" />{{ t.name }}</span>
               <span class="text-right w-num w-dim">{{ t.runs }}</span>
               <span class="text-right w-num" :class="t.perMap >= 0 ? 'w-up' : 'w-down'">{{ num(t.perMap) }}</span>
               <span class="text-right w-num">{{ num(t.typical) }}</span>
@@ -212,7 +219,8 @@ import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
 import { AppConfig } from '@/web/Config'
 import { useLeagues } from '@/web/background/Leagues'
-import { WPanel, WTabs, WSegmented, WButton, WEmpty, WChip, WSpark, WIcon } from '../ui'
+import { WPanel, WTabs, WSegmented, WButton, WEmpty, WChip, WSpark, WIcon, WBanner, WSkeleton, openMenu, toast } from '../ui'
+import { ninjaIcon } from '../ui/game-icons'
 import { usePriceIndex } from '../market/price-index'
 import { hostRequest } from '../shared/host'
 import { BOSSES } from '../boss-runs/bosses'
@@ -394,10 +402,8 @@ function lootColour (type: string): string {
 }
 
 const renameTo = shallowRef('')
-const confirmDelete = shallowRef(false)
 watch(openSession, (s) => {
   renameTo.value = s?.strategy ?? ''
-  confirmDelete.value = false
   moving.value = null
 })
 const strategyNames = computed(() => [...new Set(store.sessions.value.map(s => s.strategy.trim()).filter(Boolean))])
@@ -417,11 +423,43 @@ function rename () {
   const name = renameTo.value.trim()
   saveOpen(s => { s.strategy = name })
 }
-function deleteOpen () {
-  const id = openId.value
-  if (!id) return
-  openId.value = null
-  store.remove(id).catch(() => {})
+const panel = shallowRef<InstanceType<typeof WPanel> | null>(null)
+const busy = shallowRef(false)
+async function reload () {
+  busy.value = true
+  try { await store.load(true) } finally { busy.value = false }
+}
+
+// No "are you sure": delete now, offer Undo (P9).
+function deleteSession (s: SessionRecord) {
+  const copy = JSON.parse(JSON.stringify(s)) as SessionRecord
+  if (openId.value === s.id) openId.value = null
+  store.remove(s.id).catch(() => {})
+  toast(`Deleted the ${formatSessionDate(s.startedAt)} session`, {
+    anchor: panel.value?.el,
+    undo: () => { store.save(copy).catch(() => {}) }
+  })
+}
+
+function sessionMenu (e: MouseEvent, s: SessionRecord) {
+  const name = s.strategy.trim() || 'Unnamed'
+  openMenu(e, [
+    { label: 'Open', icon: 'fas fa-list', keys: 'Enter', action: () => { openId.value = s.id } },
+    ...(strategyFilter.value ? [] : [{ label: `Only "${name}"`, icon: 'fas fa-filter', action: () => { strategyFilter.value = name } }]),
+    { separator: true },
+    { label: 'Delete', icon: 'fas fa-trash', keys: 'Del', danger: true, action: () => deleteSession(s) }
+  ])
+}
+
+function strategyMenu (e: MouseEvent, row: StrategyRow) {
+  openMenu(e, [
+    ...(row.kind === 'maps' ? [{ label: 'Sessions', icon: 'fas fa-history', action: () => openSessionsFor(row.strategy) }] : []),
+    { label: 'Copy name', icon: 'far fa-copy', action: () => { navigator.clipboard.writeText(row.strategy).catch(() => {}) } }
+  ])
+}
+
+function lootArt (type: string, name: string) {
+  return ninjaIcon(type, name) ?? undefined
 }
 
 // Move a loot line to another map: click the chip, then "Move here".
