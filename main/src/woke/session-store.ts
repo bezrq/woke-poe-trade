@@ -93,9 +93,10 @@ export const sessionHandlers: Record<string, (args: Args) => Promise<unknown>> =
     return await queued(async () => {
       const all = await loadAll()
       const old = all.get(s.id)
-      // The league can change when a session is edited; drop the old file.
-      if (old && sessionFile(old) !== sessionFile(s)) await fs.rm(sessionFile(old), { force: true })
       await writeAtomic(sessionFile(s), JSON.stringify(s))
+      // The league can change when a session is edited; drop the old file,
+      // once the new one is written (a failed write keeps the session).
+      if (old && sessionFile(old) !== sessionFile(s)) await fs.rm(sessionFile(old), { force: true })
       all.set(s.id, s)
       return true
     })
