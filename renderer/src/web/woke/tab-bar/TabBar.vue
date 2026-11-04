@@ -1,5 +1,5 @@
 <template>
-  <div :class="$style.bar" class="w-surface">
+  <div :class="$style.bar" class="w-surface" :style="barStyle">
     <template v-for="(tab, i) in pinnedTabs" :key="tab.wmId">
       <span v-if="i > 0 && !tab.iconOnly && pinnedTabs[i - 1].iconOnly" :class="$style.sep" />
       <button
@@ -9,7 +9,7 @@
         <i class="fas" :class="tab.icon" />
         <span v-if="!tab.iconOnly">{{ tab.name }}</span>
         <span v-if="tab.copies > 1" :class="$style.dup" title="Several copies of this tool">×{{ tab.copies }}</span>
-        <span v-if="!tab.iconOnly" :class="$style.x" title="Close" @click.stop="close(tab)"><i class="fas fa-times" /></span>
+        <span v-if="!tab.iconOnly" :class="$style.x" title="Remove from bar" @click.stop="dismiss(tab)"><i class="fas fa-times" /></span>
       </button>
     </template>
     <span v-if="pinnedTabs.length" :class="$style.sep" />
@@ -19,7 +19,7 @@
       <i class="fas" :class="tab.icon" />
       <span>{{ tab.name }}</span>
       <span v-if="tab.copies > 1" :class="$style.dup">×{{ tab.copies }}</span>
-      <span :class="$style.x" title="Close" @click.stop="close(tab)"><i class="fas fa-times" /></span>
+      <span :class="$style.x" title="Remove from bar" @click.stop="dismiss(tab)"><i class="fas fa-times" /></span>
     </button>
     <button v-if="closedUnpinned.length" :class="$style.more" @click="openPopup('more', $event)">
       More <span :class="$style.count">{{ closedUnpinned.length }}</span> <i class="fas fa-chevron-down" />
@@ -35,8 +35,11 @@
       <div v-if="popup?.kind === 'menu' && menuTab" :class="$style.menu" :style="popupStyle" @contextmenu.prevent>
         <div :class="$style.head">{{ menuTab.name }}</div>
         <button :class="$style.item" @click="toggle(menuTab); closePopup()">
-          <i class="fas" :class="menuTab.open ? 'fa-eye-slash' : 'fa-eye'" />{{ menuTab.open ? 'Close' : 'Open' }}
-          <span :class="$style.hint">Middle click</span>
+          <i class="fas" :class="menuTab.open ? 'fa-eye-slash' : 'fa-eye'" />{{ menuTab.open ? 'Close window' : 'Open' }}
+        </button>
+        <button v-if="!menuTab.iconOnly" :class="$style.item" @click="dismiss(menuTab); closePopup()">
+          <i class="fas fa-times" />Remove from bar
+          <span :class="$style.hint">×, middle click</span>
         </button>
         <button :class="$style.item" @click="togglePin(menuTab); closePopup()">
           <i class="fas fa-thumbtack" />{{ menuTab.pinned ? 'Unpin from bar' : 'Pin to bar' }}
@@ -92,7 +95,14 @@
               <span :class="[$style.state, { [$style.stateOn]: stateOf(spec.type) === 'Pinned' }]">{{ stateOf(spec.type) }}</span>
             </button>
           </template>
-          <div v-if="!addGroups.length" :class="$style.foot">No tool matches "{{ query }}"</div>
+          <template v-if="removedTabs.length">
+            <div :class="$style.head">Removed from bar</div>
+            <button v-for="tab in removedTabs" :key="tab.wmId" :class="$style.item" @click="restore(tab)">
+              <i class="fas" :class="tab.icon" />{{ tab.name }}
+              <span :class="$style.state">Put back</span>
+            </button>
+          </template>
+          <div v-if="!addGroups.length && !removedTabs.length" :class="$style.foot">No tool matches "{{ query }}"</div>
         </div>
       </div>
     </Teleport>
@@ -165,12 +175,28 @@ const tabs = computed<Tab[]>(() => {
   })
 })
 
+// Keep the bar on screen: it wraps onto a second row instead of running past
+// the right edge, leaving room for the widget's Move button beside it.
+const barStyle = computed(() => {
+  const { pos, x } = props.config.anchor
+  const room = pos.endsWith('l') ? 100 - x : pos.endsWith('r') ? x : 2 * Math.min(x, 100 - x)
+  return { maxWidth: `calc(${room}vw - 96px)` }
+})
+
 const pinnedTabs = computed(() => {
   const byId = new Map(tabs.value.map(tab => [tab.wmId, tab]))
   return (props.config.pinned ?? []).map(id => byId.get(id)).filter((x): x is Tab => !!x)
 })
+// Removed with ×: off the bar until put back from the add list. A removed
+// tool that gets opened another way (e.g. its hotkey) still shows while open.
+const isDismissed = (wmId: number) => (props.config.dismissed ?? []).includes(wmId)
 const openUnpinned = computed(() => tabs.value.filter(tab => !tab.pinned && tab.open))
-const closedUnpinned = computed(() => tabs.value.filter(tab => !tab.pinned && !tab.open))
+const closedUnpinned = computed(() => tabs.value.filter(tab => !tab.pinned && !tab.open && !isDismissed(tab.wmId)))
+const removedTabs = computed(() => {
+  const q = query.value.trim().toLowerCase()
+  return tabs.value.filter(tab => !tab.pinned && !tab.open && isDismissed(tab.wmId) &&
+    (!q || tab.name.toLowerCase().includes(q)))
+})
 
 function show (tab: Pick<Tab, 'wmId'>) { wm.show(tab.wmId) }
 function close (tab: Pick<Tab, 'wmId'>) { wm.hide(tab.wmId) }
@@ -178,10 +204,22 @@ function toggle (tab: Tab) {
   if (tab.open) close(tab)
   else show(tab)
 }
-function onAux (tab: Tab, e: MouseEvent) { if (e.button === 1) close(tab) }
+function onAux (tab: Tab, e: MouseEvent) { if (e.button === 1 && !tab.iconOnly) dismiss(tab) }
+function dismiss (tab: Pick<Tab, 'wmId'>) {
+  close(tab)
+  props.config.pinned = (props.config.pinned ?? []).filter(id => id !== tab.wmId)
+  if (!isDismissed(tab.wmId)) props.config.dismissed = [...(props.config.dismissed ?? []), tab.wmId]
+}
+function restore (tab: Pick<Tab, 'wmId'>) {
+  props.config.dismissed = (props.config.dismissed ?? []).filter(id => id !== tab.wmId)
+  if (!(props.config.pinned ?? []).includes(tab.wmId)) props.config.pinned = [...(props.config.pinned ?? []), tab.wmId]
+  show(tab)
+  closePopup()
+}
 
 function togglePin (tab: Tab) {
   const pinned = props.config.pinned ?? []
+  props.config.dismissed = (props.config.dismissed ?? []).filter(id => id !== tab.wmId)
   props.config.pinned = tab.pinned ? pinned.filter(id => id !== tab.wmId) : [...pinned, tab.wmId]
 }
 function canShift (tab: Tab, dir: -1 | 1) {
@@ -204,6 +242,7 @@ function resetPosition (tab: Tab) {
 
 function forget (wmId: number) {
   props.config.pinned = (props.config.pinned ?? []).filter(id => id !== wmId)
+  props.config.dismissed = (props.config.dismissed ?? []).filter(id => id !== wmId)
   setLabel(wmId, '')
   wm.remove(wmId)
 }
@@ -282,15 +321,14 @@ const addGroups = computed(() => {
 })
 function stateOf (wmType: string): string {
   const mine = tabs.value.filter(tab => tab.wmType === wmType)
-  if (!mine.length) return 'Add'
-  if (allowsCopies(wmType)) return `${mine.length} placed · Add another`
+  if (allowsCopies(wmType)) return mine.length ? `${mine.length} placed · Add another` : 'Add'
+  if (!mine.length || mine.every(tab => isDismissed(tab.wmId) && !tab.open)) return 'Add'
   return mine.some(tab => tab.pinned) ? 'Pinned' : 'In bar'
 }
 function add (wmType: string) {
   const existing = tabs.value.find(tab => tab.wmType === wmType)
   if (existing && !allowsCopies(wmType)) {
-    show(existing)
-    closePopup()
+    restore(existing)
     return
   }
   wm.create(wmType)
@@ -313,6 +351,7 @@ function addFirstMatch () {
   gap: 2px;
   padding: 3px;
   border-radius: var(--w-radius);
+  flex-wrap: wrap;
   white-space: nowrap;
   font-family: var(--w-body);
   font-size: var(--w-text);
