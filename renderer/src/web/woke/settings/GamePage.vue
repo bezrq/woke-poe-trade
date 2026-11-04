@@ -78,6 +78,7 @@ const LANGUAGES = [
 const REALMS = [{ value: 'pc-ggg', label: 'International' }, { value: 'pc-garena', label: 'Garena (Taiwan)' }]
 
 const leagues = useLeagues()
+if (!leagues.list.value.length && !leagues.isLoading.value) leagues.load()
 const leagueOptions = computed(() => {
   const list = leagues.list.value.map(l => ({ value: l.id, label: l.id }))
   const cur = props.config.leagueId

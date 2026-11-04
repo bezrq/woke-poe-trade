@@ -3,7 +3,7 @@
     <div class="flex items-center gap-2">
       <span :class="[$style.dot, $style[health.level]]" />
       <div class="flex-1">{{ health.text }}</div>
-      <label class="flex items-center gap-1 text-sm text-gray-500">
+      <label class="flex items-center gap-1 text-sm w-dim">
         <input v-model="advanced" type="checkbox"> Advanced
       </label>
     </div>
@@ -12,7 +12,7 @@
 
     <template v-if="advanced">
     <div class="flex items-center gap-2">
-      <div class="flex-1 text-gray-500 text-sm">
+      <div class="flex-1 w-dim text-sm">
         Timings from this session. Updates every few seconds while this page is open.
         Use "Copy report" and paste it in the project chat to share the numbers.
       </div>
@@ -21,7 +21,7 @@
 
     <section>
       <div class="mb-1">Startup</div>
-      <div class="text-gray-500 text-sm mb-1">Milliseconds after the app was launched.</div>
+      <div class="w-dim text-sm mb-1">Milliseconds after the app was launched.</div>
       <table :class="$style.table">
         <tr v-for="row in startupRows" :key="row.where + row.name">
           <td>{{ row.name }}</td>
@@ -33,7 +33,7 @@
 
     <section>
       <div class="mb-1">Timings</div>
-      <div class="text-gray-500 text-sm mb-1">Milliseconds. "p95" is the slowest of the usual cases (95th percentile of the last 50).</div>
+      <div class="w-dim text-sm mb-1">Milliseconds. "p95" is the slowest of the usual cases (95th percentile of the last 50).</div>
       <table :class="$style.table">
         <tr :class="$style.head">
           <td>What</td><td :class="$style.num">times</td><td :class="$style.num">last</td>
@@ -47,13 +47,13 @@
           <td :class="$style.num">{{ fmt(row.p95) }}</td>
           <td :class="$style.num">{{ fmt(row.max) }}</td>
         </tr>
-        <tr v-if="!timingRows.length"><td class="text-gray-500">Nothing measured yet. Price check an item or use a tool, then come back.</td></tr>
+        <tr v-if="!timingRows.length"><td class="w-dim">Nothing measured yet. Price check an item or use a tool, then come back.</td></tr>
       </table>
     </section>
 
     <section>
       <div class="mb-1">Overlay hiccups</div>
-      <div class="text-gray-500 text-sm mb-1">Moments the overlay was busy for 50 ms or more (it can't react during them).</div>
+      <div class="w-dim text-sm mb-1">Moments the overlay was busy for 50 ms or more (it can't react during them).</div>
       <div class="text-sm">
         {{ renderer.freezes.count }} this session<template v-if="renderer.freezes.recent.length">; latest:
           <span v-for="f in renderer.freezes.recent.slice(-6).reverse()" :key="f.at" :class="$style.chip">{{ f.ms }} ms, {{ ago(f.at) }}</span>
@@ -63,10 +63,10 @@
 
     <section>
       <div class="mb-1">CPU and memory</div>
-      <div class="text-gray-500 text-sm mb-1">
+      <div class="w-dim text-sm mb-1">
         Sampled every 15 seconds. CPU is percent of one core, summed over the app's processes.
       </div>
-      <div v-if="!main?.processes.length" class="text-sm text-gray-500">First sample comes 15 seconds after launch.</div>
+      <div v-if="!main?.processes.length" class="text-sm w-dim">First sample comes 15 seconds after launch.</div>
       <template v-else>
         <div class="text-sm mb-1">
           While playing (game focused): <b>{{ cpuWhilePlaying ?? '–' }}</b>% CPU on average over the last {{ minutesSampled }} min.

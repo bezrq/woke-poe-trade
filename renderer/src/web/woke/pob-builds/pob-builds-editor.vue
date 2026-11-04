@@ -1,16 +1,16 @@
 <template>
   <div class="max-w-xl p-2 flex flex-col gap-3">
-    <input class="bg-gray-900 rounded px-1 w-48" placeholder="Widget title" v-model="title" />
+    <input class="w-input rounded px-1 w-48" placeholder="Widget title" v-model="title" />
     <label class="flex flex-col gap-1">
       <span>Builds folder</span>
-      <input v-model="buildsDir" class="bg-gray-900 rounded px-1 leading-6"
+      <input v-model="buildsDir" class="w-input rounded px-1 leading-6"
         placeholder="Leave empty for Documents\Path of Building\Builds">
     </label>
     <label class="flex flex-col gap-1">
       <span>Path of Building executable (optional)</span>
-      <input v-model="pobExe" class="bg-gray-900 rounded px-1 leading-6"
+      <input v-model="pobExe" class="w-input rounded px-1 leading-6"
         placeholder="e.g. C:\Users\you\AppData\Roaming\Path of Building Community\Path of Building.exe">
-      <span class="text-gray-400 text-sm">
+      <span class="w-dim text-sm">
         "Open in PoB" starts this program with the build file. When it's empty, the file opens with whatever app is set for .xml files.
       </span>
     </label>

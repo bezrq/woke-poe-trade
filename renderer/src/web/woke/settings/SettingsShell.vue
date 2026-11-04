@@ -89,6 +89,8 @@ const clone = shallowRef<Config | null>(null)
 let lastApplied = ''
 let timer: ReturnType<typeof setTimeout> | null = null
 let restoring = false
+// Pages fill in missing defaults when they open; that isn't the user's change.
+let quietUntil = 0
 const winEl = shallowRef<HTMLElement | null>(null)
 
 function snapshot (): string { return JSON.stringify(clone.value) }
@@ -130,7 +132,7 @@ function apply (silent = false) {
   const prev = lastApplied
   lastApplied = snap
   commit(snap)
-  if (!silent && !restoring) toast('Change saved', { undo: () => restore(prev), anchor: winEl.value })
+  if (!silent && !restoring && Date.now() > quietUntil) toast('Change saved', { undo: () => restore(prev), anchor: winEl.value })
 }
 
 function restore (snap: string) {
@@ -152,6 +154,7 @@ watch(() => props.widget.wmWants, (wants) => {
     clone.value = reactive(JSON.parse(JSON.stringify(AppConfig()))) as Config
     ensureWokeConfig(clone.value)
     lastApplied = snapshot()
+    quietUntil = Date.now() + 800
     nextTick(() => searchEl.value?.focus())
   } else if (clone.value) {
     apply(true)
@@ -209,7 +212,10 @@ function setPageOn (ids: string[], on: boolean) {
 
 function open (id: string) {
   query.value = ''
-  if (id.startsWith('widget:') || PAGE_BY_ID.has(id)) pageId.value = id
+  if (id.startsWith('widget:') || PAGE_BY_ID.has(id)) {
+    if (pageId.value !== id) quietUntil = Date.now() + 800
+    pageId.value = id
+  }
   mainEl.value?.scrollTo({ top: 0 })
 }
 

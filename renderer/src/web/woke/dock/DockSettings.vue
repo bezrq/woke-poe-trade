@@ -39,7 +39,7 @@ import { ensureWokeConfig } from '../modules'
 import { DEFAULT_DOCK, DOCK_NAMES, DOCK_ORDER } from './dock'
 import type { DockConfig } from './dock'
 
-// `config` is the settings window's working copy; Save applies it.
+// `config` is the settings window's working copy; changes apply as you make them.
 const props = defineProps<{ config: Config }>()
 
 function ensureDock (): DockConfig {
