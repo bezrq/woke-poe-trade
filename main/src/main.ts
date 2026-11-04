@@ -37,7 +37,7 @@ app.on('ready', async () => {
   const poeWindow = new GameWindow()
   const appUpdater = new AppUpdater(eventPipe)
   const _httpProxy = new HttpProxy(server, logger)
-  initWoke(eventPipe, logger, poeWindow)
+  initWoke(eventPipe, logger, poeWindow, gameLogWatcher)
 
   setTimeout(
     async () => {

@@ -17,6 +17,10 @@ import { ESSENCE_SCAN_TYPE, essenceHotkeyTarget } from './essence-scan/widget'
 import type { EssenceScanWidget } from './essence-scan/widget'
 import { LOOT_FILTER_TYPE, LOOT_FILTER_SAMPLE_TARGET, editorHotkeyTarget } from './loot-filter/widget'
 import type { LootFilterWidget } from './loot-filter/widget'
+import { CAMPAIGN_TYPE, hotkeyTarget as campaignHotkeyTarget } from './campaign/widget'
+import type { CampaignWidget } from './campaign/widget'
+import { RUN_TIMER_TYPE, hotkeyTarget as timerHotkeyTarget } from './campaign/run-timer'
+import type { RunTimerWidget } from './campaign/run-timer'
 
 export function wokeShortcutsFor (widget: Widget, config: { woke?: { setupDone: boolean, off: string[] }, widgets: Widget[] }): ShortcutAction[] {
   // Modules that are switched off register no hotkeys.
@@ -94,6 +98,22 @@ export function wokeShortcutsFor (widget: Widget, config: { woke?: { setupDone: 
     }
     if (lf.editorHotkey) {
       actions.push({ shortcut: lf.editorHotkey, keepModKeys: true, action: { type: 'trigger-event', target: editorHotkeyTarget(widget.wmId) } })
+    }
+    return actions
+  }
+  if (widget.wmType === CAMPAIGN_TYPE) {
+    const c = widget as CampaignWidget
+    const actions: ShortcutAction[] = []
+    for (const [key, action] of [[c.hotkeyCard, 'card'], [c.hotkeyNext, 'next'], [c.hotkeyPrev, 'prev']] as const) {
+      if (key) actions.push({ shortcut: key, keepModKeys: true, action: { type: 'trigger-event', target: campaignHotkeyTarget(widget.wmId, action) } })
+    }
+    return actions
+  }
+  if (widget.wmType === RUN_TIMER_TYPE) {
+    const t = widget as RunTimerWidget
+    const actions: ShortcutAction[] = []
+    for (const [key, action] of [[t.hotkeyPause, 'pause'], [t.hotkeySplits, 'splits']] as const) {
+      if (key) actions.push({ shortcut: key, keepModKeys: true, action: { type: 'trigger-event', target: timerHotkeyTarget(widget.wmId, action) } })
     }
     return actions
   }

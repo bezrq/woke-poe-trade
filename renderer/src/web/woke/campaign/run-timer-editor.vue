@@ -7,6 +7,14 @@
       active) to start, pause or end a run by hand.
     </div>
     <ui-checkbox v-model="autoStart">Start a new run when a character enters The Twilight Strand</ui-checkbox>
+    <ui-checkbox v-model="subSplits">Sub-splits for key bosses (Brutus, Merveil, Dominus, Kitava…), timed when you enter their area</ui-checkbox>
+    <div class="grid gap-2 items-center" style="grid-template-columns: auto 1fr;">
+      <span>Hotkey: pause/resume</span>
+      <hotkey-input v-model="hotkeyPause" />
+      <span>Hotkey: show/hide splits</span>
+      <hotkey-input v-model="hotkeySplits" />
+    </div>
+    <div class="text-gray-400 text-sm">With the campaign tracker placed, the run time shows in the tracker's strip and this widget only shows the splits panel.</div>
     <label class="flex flex-col gap-1">
       <span>Character name (optional)</span>
       <input v-model="charName" class="bg-gray-900 rounded px-1 leading-6 w-64"
@@ -27,19 +35,25 @@
 <script lang="ts">
 import { defineComponent, shallowRef } from 'vue'
 import UiCheckbox from '@/web/ui/UiCheckbox.vue'
+import HotkeyInput from '@/web/settings/HotkeyInput.vue'
 import { configProp, configModelValue } from '@/web/settings/utils'
+import { migrateRunTimer } from './run-timer'
 import type { RunTimerWidget } from './run-timer'
 
 export default defineComponent({
   name: 'Campaign run timer',
-  components: { UiCheckbox },
+  components: { UiCheckbox, HotkeyInput },
   props: configProp<RunTimerWidget>(),
   setup (props) {
+    migrateRunTimer(props.configWidget)
     const confirmClear = shallowRef(false)
     return {
       confirmClear,
       title: configModelValue(() => props.configWidget, 'wmTitle'),
       autoStart: configModelValue(() => props.configWidget, 'autoStart'),
+      subSplits: configModelValue(() => props.configWidget, 'subSplits'),
+      hotkeyPause: configModelValue(() => props.configWidget, 'hotkeyPause'),
+      hotkeySplits: configModelValue(() => props.configWidget, 'hotkeySplits'),
       charName: configModelValue(() => props.configWidget, 'charName'),
       clearHistory () {
         props.configWidget.history = []

@@ -1,44 +1,91 @@
 <template>
-  <Widget :config="config" move-handles="corners" :inline-edit="false">
-    <WPanel width="22rem" max-height="60vh">
-      <template #title>
-        <template v-if="s.zone">{{ actLabel(s.act) }}<template v-if="s.act"> · </template>{{ s.zone }}</template>
-        <template v-else>Waiting for a zone change…</template>
-      </template>
-      <template #meta>
-        <span v-if="s.areaLevel != null">Area <span class="w-num">{{ s.areaLevel }}</span></span>
-        <span v-if="s.level != null">
-          {{ s.charName || 'You' }} <span class="w-num">{{ s.level }}</span>
-          <span v-if="levelDiff != null" :class="levelClass" class="w-num">({{ levelDiff > 0 ? '+' : '' }}{{ levelDiff }})</span>
+  <Widget :config="config" move-handles="corners" :inline-edit="false" :readonly="true">
+    <div v-if="visible" class="flex flex-col items-start gap-1">
+      <!-- HUD strip -->
+      <div :class="$style.strip">
+        <template v-if="logMissing && !s.updatedAt">
+          <span class="w-down"><i class="fas fa-exclamation-triangle text-xs" /> Client.txt not found.</span>
+          <span class="w-dim">Set its path in Settings → General.</span>
+        </template>
+        <template v-else-if="!s.zone">
+          <span class="w-dim">Campaign tracker · waiting for a zone change…</span>
+        </template>
+        <template v-else>
+          <span :class="$style.where" class="w-head-font w-accent w-trunc">
+            <template v-if="s.act">{{ actShort(s.act) }} · </template>{{ s.zone }}
+          </span>
+          <template v-if="s.level != null">
+            <span :class="$style.sep" />
+            <span class="flex items-center gap-1.5" :title="xpTitle">
+              <span :class="$style.k">Lv</span> <span class="w-num">{{ s.level }}</span>
+              <span v-if="xp" :class="[$style.pill, $style['pill--' + xp.band]]">{{ xpLabel }}</span>
+            </span>
+          </template>
+          <template v-if="timer">
+            <span :class="$style.sep" />
+            <span><span :class="$style.k">Run</span> <span class="w-num">{{ formatRunTime(timer.total) }}</span></span>
+            <span v-if="timer.delta != null" class="w-num" :class="timer.delta <= 0 ? 'w-up' : 'w-down'">{{ formatDelta(timer.delta) }}</span>
+            <span v-if="timer.paused" class="w-num" style="color: var(--w-warn);">paused</span>
+          </template>
+          <template v-if="!config.cardOpen && current">
+            <span :class="$style.sep" />
+            <span class="w-trunc" :class="$style.oneLine"><span class="w-accent">›</span> <RouteParts :parts="current.parts" /></span>
+          </template>
+        </template>
+
+        <span v-if="wm.active.value" class="flex items-center gap-0.5">
+          <span :class="$style.sep" />
+          <button class="w-icon-btn" title="Back one step" @click="move(-1)"><i class="fas fa-chevron-left text-xs" /></button>
+          <button class="w-icon-btn" title="Mark step done" @click="move(1)"><i class="fas fa-chevron-right text-xs" /></button>
+          <button class="w-icon-btn" :class="{ 'w-icon-btn--on': config.cardOpen }" title="Show or hide the guide" @click="config.cardOpen = !config.cardOpen">
+            <i class="fas fa-route text-xs" />
+          </button>
+          <button v-if="timerWidget" class="w-icon-btn" :class="{ 'w-icon-btn--on': timerWidget.expanded }" title="Splits and past runs" @click="timerWidget.expanded = !timerWidget.expanded">
+            <i class="fas fa-stopwatch text-xs" />
+          </button>
         </span>
-        <span v-if="!s.updatedAt" class="w-faint">Updates on your next zone change (reads Client.txt)</span>
-      </template>
+      </div>
 
-      <div class="flex flex-col gap-2 pb-2" style="padding-left: var(--w-pad); padding-right: var(--w-pad);">
-        <div v-if="zoneNote" :class="$style.callout" class="whitespace-pre-wrap">{{ zoneNote }}</div>
-        <div v-if="actNote" class="whitespace-pre-wrap w-dim">{{ actNote }}</div>
+      <!-- Guide card -->
+      <div v-if="config.cardOpen && (s.zone || wm.active.value)" :class="$style.card">
+        <div :class="$style.cardHead">
+          <span class="w-head-font">{{ current ? actLabel(current.act) : 'Campaign' }}</span>
+          <span v-if="current" class="w-faint ml-auto">{{ left }} step{{ left === 1 ? '' : 's' }} left in act</span>
+        </div>
+        <div v-if="!current" class="w-dim" :class="$style.body">Route finished. Good luck in maps.</div>
+        <div v-else :class="$style.body">
+          <div v-for="(st, i) in shown" :key="st.index" :class="i === 0 ? $style.now : $style.next">
+            <div class="flex gap-1.5">
+              <span :class="i === 0 ? 'w-accent' : 'w-faint'">{{ i === 0 ? '›' : '·' }}</span>
+              <span class="min-w-0">
+                <RouteParts :parts="st.parts" />
+                <span v-if="st.recommendedLevel != null" class="w-num" :class="lowFor(st) ? 'w-down' : 'w-faint'"> · lv {{ st.recommendedLevel }}</span>
+              </span>
+            </div>
+            <div v-for="(sub, j) in (i === 0 ? st.subs : [])" :key="j" :class="$style.sub" class="w-dim">
+              <RouteParts :parts="sub" />
+            </div>
+          </div>
+          <div v-if="note" :class="$style.callout" class="whitespace-pre-wrap">{{ note }}</div>
 
-        <div v-if="config.showBuild && activeBuild" :class="$style.build">
-          <div class="w-group-label px-0">Build · {{ activeBuild }}</div>
-          <div v-if="buildError" class="w-down">{{ buildError }}</div>
-          <template v-else-if="details">
+          <div v-if="config.showBuild && activeBuild && (tree || mainGroups.length)" :class="$style.build">
             <a v-if="tree && safeUrl(tree.url)" :href="safeUrl(tree.url)" target="_blank" class="block w-trunc w-accent hover:underline">
               <i class="fas fa-external-link-alt text-xs" /> Tree: {{ tree.title }}
             </a>
             <div v-for="(g, i) in mainGroups" :key="i" class="w-trunc w-rarity-gem" :title="g.gems.map(x => x.name).join(', ')">
               {{ g.gems.filter(x => x.enabled).map(x => x.name.replace(/ Support$/, '')).join(' · ') }}
             </div>
-          </template>
+          </div>
         </div>
       </div>
-    </WPanel>
+    </div>
+    <div v-else-if="wm.active.value" :class="$style.strip" class="w-faint">Campaign tracker · hidden after the campaign</div>
   </Widget>
 </template>
 
 <script lang="ts">
 import type { WidgetSpec } from '@/web/overlay/interfaces'
 import { CAMPAIGN_TYPE } from './widget'
-import type { CampaignWidget } from './widget'
 
 export default {
   widget: {
@@ -51,13 +98,24 @@ export default {
 
 <script setup lang="ts">
 import { inject, computed, shallowRef, watch, onUnmounted } from 'vue'
-import { Host } from '@/web/background/IPC'
+import { Host, MainProcess } from '@/web/background/IPC'
 import { AppConfig, saveConfig } from '@/web/Config'
 import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
-import { WPanel } from '../ui'
+import RouteParts from './RouteParts.vue'
 import { actFromAreaId, actLabel, parseLogLine, pickTreeForLevel } from './log-parse'
-import { emptyState, safeLevelRange } from './widget'
+import type { LogEvent } from './log-parse'
+import { emptyState, migrateCampaign, parseHotkeyTarget } from './widget'
+import type { CampaignWidget } from './widget'
+import { advanceOnEnter, resyncTo, stepsLeftInAct, upcoming, xpState } from './route-parse'
+import type { RouteStep } from './route-parse'
+import { bundledRoute, routeData } from './route-data'
+import { logTail, linesAfter } from './log-tail'
+import {
+  RUN_TIMER_TYPE, comparisonRun, formatDelta, formatRunTime, headlineDelta, runElapsed, splitRows
+} from './run-timer'
+import type { RunTimerWidget } from './run-timer'
+import { isWidgetTypeOn } from '../modules'
 import { POB_BUILDS_TYPE, pobApi } from '../pob-builds/widget'
 import type { PobBuildsWidget, PobDetails } from '../pob-builds/widget'
 
@@ -70,7 +128,7 @@ const wm = inject<WidgetManager>('wm')!
 if (props.config.wmFlags[0] === 'uninitialized') {
   props.config.wmFlags = []
   props.config.wmTitle = 'Campaign tracker'
-  props.config.anchor = { pos: 'tl', x: 70, y: 10 }
+  props.config.anchor = { pos: 'tc', x: 50, y: 1 }
   props.config.charName = ''
   props.config.actNotes = {}
   props.config.zoneNotes = []
@@ -78,71 +136,189 @@ if (props.config.wmFlags[0] === 'uninitialized') {
   props.config.state = emptyState()
   wm.show(props.config.wmId)
 }
+migrateCampaign(props.config)
 
 const s = computed(() => props.config.state)
 
-const levelDiff = computed(() => {
-  if (s.value.level == null || s.value.areaLevel == null) return null
-  return s.value.level - s.value.areaLevel
-})
-const levelClass = computed(() => {
-  if (levelDiff.value == null || s.value.level == null) return ''
-  return Math.abs(levelDiff.value) <= safeLevelRange(s.value.level) ? 'w-up' : 'w-down'
+// ---- route ----
+
+const route = computed(() => bundledRoute(props.config.route))
+// Options changed: the step list is different, so find our place again.
+watch(() => `${props.config.route.leagueStart}|${props.config.route.library}|${props.config.route.bandit}`, () => {
+  if (props.config.state.areaId) props.config.step = resyncTo(route.value, props.config.state.areaId)
 })
 
-const zoneNote = computed(() => {
-  const zone = s.value.zone.toLowerCase()
-  if (!zone) return ''
-  return props.config.zoneNotes
-    .filter(n => n.zone.trim().toLowerCase() === zone && n.text.trim())
-    .map(n => n.text).join('\n\n')
+const current = computed<RouteStep | undefined>(() => route.value.steps[props.config.step])
+const shown = computed(() => upcoming(route.value, props.config.step, Math.max(1, props.config.cardSteps)))
+const left = computed(() => stepsLeftInAct(route.value, props.config.step))
+
+function move (by: number) {
+  props.config.step = Math.min(route.value.steps.length, Math.max(0, props.config.step + by))
+  saveConfig()
+}
+
+function lowFor (st: RouteStep) {
+  return s.value.level != null && st.recommendedLevel != null && s.value.level < st.recommendedLevel
+}
+
+function actShort (act: number) {
+  return act === 11 ? 'Epilogue' : `A${act}`
+}
+
+// ---- XP band ----
+
+const xp = computed(() => (s.value.level != null && s.value.areaLevel != null && actFromAreaId(s.value.areaId) != null)
+  ? xpState(s.value.level, s.value.areaLevel)
+  : null)
+const xpLabel = computed(() => {
+  const x = xp.value
+  if (!x) return ''
+  const sign = x.diff > 0 ? '+' : x.diff < 0 ? '−' : '±'
+  const gap = `${sign}${Math.abs(x.diff)}`
+  if (x.band === 'penalty') return `${gap} · ${Math.round(x.multiplier * 100)}% XP`
+  if (x.band === 'edge') return `${gap} · edge`
+  return `${gap} · full XP`
 })
-const actNote = computed(() => s.value.act != null ? (props.config.actNotes[String(s.value.act)] ?? '').trim() : '')
+const xpTitle = computed(() => {
+  const x = xp.value
+  if (!x) return ''
+  const where = x.diff > 0 ? 'over-levelled for' : x.diff < 0 ? 'under-levelled for' : 'level with'
+  return `You are ${where} this area (area level ${s.value.areaLevel}). No XP penalty within ±${x.safeRange} levels.` +
+    (x.band === 'penalty' ? ` You get ${Math.round(x.multiplier * 100)}% XP here.` : '')
+})
+
+// ---- personal notes (optional) ----
+
+const note = computed(() => {
+  const zone = s.value.zone.toLowerCase()
+  const parts: string[] = []
+  if (zone) {
+    for (const n of props.config.zoneNotes) {
+      if (n.zone.trim().toLowerCase() === zone && n.text.trim()) parts.push(n.text)
+    }
+  }
+  if (s.value.act != null) {
+    const a = (props.config.actNotes[String(s.value.act)] ?? '').trim()
+    if (a) parts.push(a)
+  }
+  return parts.join('\n\n')
+})
+
+// ---- run timer (shown in this strip when the timer widget is placed) ----
+
+const now = shallowRef(Date.now())
+const clock = setInterval(() => { now.value = Date.now() }, 1000)
+onUnmounted(() => { clearInterval(clock) })
+
+const timerWidget = computed(() => {
+  const cfg = AppConfig()
+  if (!isWidgetTypeOn(cfg, RUN_TIMER_TYPE)) return undefined
+  return cfg.widgets.find(w => w.wmType === RUN_TIMER_TYPE && w.wmWants === 'show') as RunTimerWidget | undefined
+})
+const timer = computed(() => {
+  const w = timerWidget.value
+  const run = w?.run
+  if (!w || !run) return null
+  const rows = splitRows(run, comparisonRun(w), w.history, now.value)
+  return {
+    total: runElapsed(run, now.value),
+    delta: headlineDelta(rows),
+    paused: !run.finished && run.runningSince == null
+  }
+})
+
+// ---- visibility ----
+
+const campaignDone = computed(() => props.config.step >= route.value.steps.length || s.value.act === 11 ||
+  (timerWidget.value?.run?.finished ?? false))
+const visible = computed(() => {
+  if (!props.config.hideAfterCampaign || !campaignDone.value) return true
+  // Still show in campaign zones (e.g. the Epilogue), hide in maps and hideouts.
+  return actFromAreaId(s.value.areaId) != null
+})
+
+// ---- Client.txt ----
+
+function apply (ev: LogEvent): boolean {
+  const state = props.config.state
+  if (ev.kind === 'area') {
+    state.areaId = ev.areaId
+    state.areaLevel = ev.areaLevel
+    const act = actFromAreaId(ev.areaId)
+    if (act != null) state.act = act
+    // A new character: back to the start of the route.
+    if (ev.areaId === '1_1_1' && props.config.step > 3) props.config.step = 0
+    props.config.step = advanceOnEnter(route.value, props.config.step, ev.areaId, routeData)
+  } else if (ev.kind === 'zone') {
+    state.zone = ev.name
+  } else if (ev.kind === 'level') {
+    const wanted = props.config.charName.trim()
+    if (wanted && wanted !== ev.charName) return false
+    state.charName = ev.charName
+    state.className = ev.className
+    state.level = ev.level
+  }
+  return true
+}
+
+const logMissing = shallowRef(false)
+let caughtUp = false
+const queued: string[][] = []
+
+function applyLines (lines: string[], at: number) {
+  let changed = false
+  for (const line of lines) {
+    const ev = parseLogLine(line)
+    if (ev && apply(ev)) changed = true
+  }
+  if (changed) {
+    props.config.state.updatedAt = at
+    // Log events arrive while the game has focus, when APT doesn't save config.
+    saveConfig()
+  }
+}
 
 const logListener = Host.onEvent('MAIN->CLIENT::game-log', (e) => {
-  const state = props.config.state
-  let changed = false
-  for (const line of e.lines) {
-    const ev = parseLogLine(line)
-    if (!ev) continue
-    if (ev.kind === 'area') {
-      state.areaId = ev.areaId
-      state.areaLevel = ev.areaLevel
-      const act = actFromAreaId(ev.areaId)
-      if (act != null) state.act = act
-    } else if (ev.kind === 'zone') {
-      state.zone = ev.name
-    } else if (ev.kind === 'level') {
-      const wanted = props.config.charName.trim()
-      if (wanted && wanted !== ev.charName) continue
-      state.charName = ev.charName
-      state.className = ev.className
-      state.level = ev.level
-    }
-    state.updatedAt = Date.now()
-    changed = true
-  }
-  // APT saves config when the overlay loses focus; log events arrive while
-  // the game has focus, so save here to keep progress across restarts.
-  if (changed) saveConfig()
+  if (!caughtUp) { queued.push(e.lines); return }
+  applyLines(e.lines, Date.now())
 })
-onUnmounted(() => { logListener.abort() })
 
-// Active build from the PoB builds widget, if one is set.
+// Catch up on what happened while the app was closed, then go live.
+logTail().then(tail => {
+  logMissing.value = tail.path == null
+  for (const { line, at } of linesAfter(tail, props.config.state.updatedAt)) applyLines([line], at)
+}).finally(() => {
+  caughtUp = true
+  for (const lines of queued.splice(0)) applyLines(lines, Date.now())
+})
+
+const hotkeys = MainProcess.onEvent('MAIN->CLIENT::widget-action', (e) => {
+  const parsed = parseHotkeyTarget(e.target)
+  if (!parsed || parsed.wmId !== props.config.wmId) return
+  if (parsed.action === 'card') props.config.cardOpen = !props.config.cardOpen
+  else move(parsed.action === 'next' ? 1 : -1)
+  saveConfig()
+})
+
+onUnmounted(() => {
+  logListener.abort()
+  hotkeys.abort()
+})
+
+// ---- build (optional, from the PoB builds widget) ----
+
 const pobWidget = computed(() => AppConfig().widgets
   .find(w => w.wmType === POB_BUILDS_TYPE && (w as PobBuildsWidget).activeBuild) as PobBuildsWidget | undefined)
 const activeBuild = computed(() => pobWidget.value?.activeBuild ?? null)
 const details = shallowRef<PobDetails | null>(null)
-const buildError = shallowRef('')
 
 watch([activeBuild, () => props.config.showBuild], async ([relPath, show]) => {
   details.value = null
-  buildError.value = ''
   if (!relPath || !show || !pobWidget.value) return
   try {
     details.value = await pobApi.read(pobWidget.value, relPath)
-  } catch (err) {
-    buildError.value = (err as Error).message
+  } catch {
+    // The build moved or was deleted; the guide works without it.
   }
 }, { immediate: true })
 
@@ -159,13 +335,83 @@ function safeUrl (url: string) {
 </script>
 
 <style module>
+.strip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 12px;
+  background: var(--w-panel);
+  border: 1px solid var(--w-line);
+  border-radius: var(--w-radius);
+  box-shadow: var(--w-shadow);
+  font-size: 12.5px;
+  white-space: nowrap;
+  color: var(--w-fg);
+  max-width: 64rem;
+}
+.where { font-size: 14px; max-width: 18rem; }
+.oneLine { max-width: 26rem; }
+.sep { width: 1px; align-self: stretch; background: var(--w-line); }
+.k {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--w-faint);
+}
+.pill {
+  font-family: var(--w-num);
+  font-size: 10.5px;
+  padding: 0 7px;
+  border-radius: 99px;
+  line-height: 17px;
+}
+.pill--safe { color: var(--w-up); background: color-mix(in srgb, var(--w-up) 15%, transparent); }
+.pill--edge { color: var(--w-warn); background: color-mix(in srgb, var(--w-warn) 15%, transparent); }
+.pill--penalty { color: var(--w-down); background: color-mix(in srgb, var(--w-down) 16%, transparent); }
+.card {
+  width: 24rem;
+  background: var(--w-panel);
+  border: 1px solid var(--w-line);
+  border-radius: var(--w-radius);
+  box-shadow: var(--w-shadow);
+  color: var(--w-fg);
+  font-size: 12.5px;
+  overflow: hidden;
+}
+.cardHead {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 4px var(--w-pad);
+  background: var(--w-header-bg);
+  border-bottom: 1px solid var(--w-line);
+  color: var(--w-accent);
+  font-size: 13px;
+}
+.cardHead :global(.w-faint) { font-size: 11px; }
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 6px var(--w-pad) 8px;
+}
+.now {
+  margin: 0 calc(-1 * var(--w-pad));
+  padding: 3px var(--w-pad);
+  background: var(--w-accent-soft);
+  box-shadow: inset 2px 0 0 var(--w-accent);
+}
+.next { color: var(--w-dim); }
+.sub { padding-left: 14px; font-size: 11.5px; }
 .callout {
-  padding: 6px 8px;
+  margin-top: 4px;
+  padding: 4px 8px;
   background: var(--w-accent-soft);
   border-left: 2px solid var(--w-accent);
   border-radius: var(--w-radius-sm);
 }
 .build {
+  margin-top: 4px;
   border-top: 1px solid var(--w-line);
   padding-top: 4px;
 }
