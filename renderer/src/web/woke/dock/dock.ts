@@ -14,6 +14,8 @@ export interface DockItemProps {
   id: string
   // Font Awesome class, e.g. "fas fa-route".
   icon: string
+  // Game art (image URL); `icon` is the fallback when it's missing or fails.
+  art?: string | null
   title: string
   show: boolean
   badge?: string | number | null
