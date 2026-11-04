@@ -1,0 +1,174 @@
+<template>
+  <div v-if="candidates.length" :class="$style.box">
+    <div :class="$style.head">
+      <span :class="$style.title">What drives the price</span>
+      <span class="flex-1" />
+      <span v-if="waiting" class="w-dim text-xs">rate limit, waiting {{ waiting }}s…</span>
+      <span v-else-if="busy" class="w-dim text-xs">searching…</span>
+    </div>
+
+    <template v-if="!drivers.length && !busyDrivers">
+      <div :class="$style.cands">
+        <span class="w-dim text-xs">Will test:</span>
+        <span v-for="c in candidates" :key="c.statRef" :class="$style.cand" class="w-trunc">{{ c.text }}</span>
+      </div>
+      <div :class="$style.actions">
+        <button type="button" :class="$style.btn" :disabled="busy || baseFair == null" @click="measure"
+          :title="baseFair == null ? 'Needs a price from the main search first' : 'Searches again with each mod removed to see how much the price drops'">
+          Measure ({{ candidates.length }} {{ candidates.length === 1 ? 'search' : 'searches' }})
+        </button>
+        <button v-if="fewListings && !ladder.length" type="button" :class="$style.btn" :disabled="busy" @click="widen"
+          title="Too few listings: search again with only the key mods, then with lower rolls">
+          Widen search
+        </button>
+      </div>
+    </template>
+
+    <div v-for="d in shownDrivers" :key="d.statRef" :class="$style.driver">
+      <span class="w-trunc" :class="{ 'w-dim': d.adds == null || (d.share ?? 0) < 0.1 }">{{ d.text }}</span>
+      <span :class="$style.bar"><span :style="{ width: Math.round((d.share ?? 0) * 100) + '%' }" /></span>
+      <span v-if="d.adds == null" class="w-faint text-xs" title="Nothing listed without this mod">—</span>
+      <span v-else class="text-xs w-num" :title="'Fair price without it: ' + Math.round(d.without ?? 0) + 'c'">
+        +<w-price :chaos="d.adds" :divine="divine" />
+      </span>
+    </div>
+    <div v-if="drivers.length && !busyDrivers" class="w-dim text-xs">
+      {{ driverSummary }}
+    </div>
+
+    <div v-for="s in ladder" :key="s.step" :class="$style.step">
+      <span class="w-dim">{{ LADDER_LABEL[s.step] }}</span>
+      <span class="flex-1" />
+      <span class="w-dim text-xs">{{ s.insight.kept.length }} of {{ s.total }}</span>
+      <w-price v-if="s.insight.range" :chaos="s.insight.range.fair" :divine="divine" />
+      <span v-else class="w-faint">none</span>
+    </div>
+
+    <div v-if="error" class="w-down text-xs">{{ error }}</div>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { computed, shallowRef } from 'vue'
+import { ItemRarity, ParsedItem } from '@/parser'
+import type { ItemFilters, FilterOrGroup } from '@/web/price-check/filters/interfaces'
+import { WPrice } from '../ui'
+import type { Insight, InsightOptions } from './insight'
+import { driverSeed, pickCandidates, measureDrivers, runLadder, LADDER_LABEL } from './drivers'
+import type { DriverResult, LadderResult } from './drivers'
+
+const props = defineProps<{
+  item: ParsedItem
+  filters: ItemFilters
+  stats: FilterOrGroup[]
+  insight: Insight
+  options: InsightOptions
+  divine: number | undefined
+  /** True once the main search has finished loading listings. */
+  ready: boolean
+}>()
+
+const candidates = computed(() => props.item.rarity === ItemRarity.Rare
+  ? pickCandidates(props.stats, driverSeed.value)
+  : [])
+
+const baseFair = computed(() => props.insight.range?.fair ?? null)
+const fewListings = computed(() => props.ready && props.insight.kept.length < 5)
+
+const drivers = shallowRef<DriverResult[]>([])
+const ladder = shallowRef<LadderResult[]>([])
+const busyDrivers = shallowRef(false)
+const busyLadder = shallowRef(false)
+const busy = computed(() => busyDrivers.value || busyLadder.value)
+const waiting = shallowRef<number | null>(null)
+const error = shallowRef<string | null>(null)
+
+// While measuring, show finished results plus placeholders for the rest.
+const shownDrivers = computed<DriverResult[]>(() => {
+  if (!busyDrivers.value) return drivers.value
+  const done = new Set(drivers.value.map(d => d.statRef))
+  return [
+    ...drivers.value,
+    ...candidates.value.filter(c => !done.has(c.statRef))
+      .map(c => ({ statRef: c.statRef, text: c.text, without: null, adds: null, share: null }))
+  ]
+})
+
+const driverSummary = computed(() => {
+  const top = drivers.value[0]
+  if (!top || top.adds == null || (top.share ?? 0) < 0.25) {
+    return 'No single mod carries the price: it comes from the combination.'
+  }
+  return `Most of the value comes from ${top.text}.`
+})
+
+async function measure () {
+  if (baseFair.value == null) return
+  busyDrivers.value = true
+  error.value = null
+  drivers.value = []
+  try {
+    drivers.value = await measureDrivers(props.filters, props.stats, baseFair.value, candidates.value, props.options,
+      (done, wait) => { drivers.value = done; waiting.value = wait })
+  } catch (err) {
+    error.value = (err as Error).message
+  } finally {
+    busyDrivers.value = false
+    waiting.value = null
+  }
+}
+
+async function widen () {
+  busyLadder.value = true
+  error.value = null
+  try {
+    ladder.value = await runLadder(props.filters, props.stats, candidates.value, props.options,
+      (steps, wait) => { ladder.value = steps; waiting.value = wait })
+  } catch (err) {
+    error.value = (err as Error).message
+  } finally {
+    busyLadder.value = false
+    waiting.value = null
+  }
+}
+</script>
+
+<style module>
+.box {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 7px 9px;
+  margin: 0 0 8px;
+  border-radius: var(--w-radius);
+  border: 1px solid var(--w-line);
+  background: var(--w-panel);
+  color: var(--w-fg);
+  font-family: var(--w-body);
+  font-size: var(--w-text);
+}
+.head { display: flex; align-items: center; gap: 6px; }
+.title { font-family: var(--w-head); font-size: var(--w-head-size); letter-spacing: var(--w-head-track); color: var(--w-accent); }
+.cands { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.cand {
+  max-width: 100%;
+  font-size: 11.5px;
+  padding: 0 6px;
+  border-radius: var(--w-radius-sm);
+  background: var(--w-panel-3);
+}
+.actions { display: flex; gap: 6px; }
+.btn {
+  padding: 2px 10px;
+  border-radius: var(--w-radius-sm);
+  border: 1px solid var(--w-line-strong);
+  background: var(--w-panel-2);
+  font-size: 12px;
+}
+.btn:hover:not(:disabled) { background: var(--w-accent-soft); }
+.btn:disabled { opacity: 0.5; }
+.driver { display: grid; grid-template-columns: minmax(0, 1fr) 60px auto; align-items: center; gap: 8px; }
+.step { display: flex; align-items: center; gap: 6px; }
+.bar { height: 5px; border-radius: 3px; background: var(--w-panel-3); overflow: hidden; }
+.bar > span { display: block; height: 100%; background: var(--w-accent); }
+</style>

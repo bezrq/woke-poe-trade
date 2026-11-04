@@ -122,7 +122,7 @@ import type { RunTimerWidget } from './run-timer'
 export default {
   widget: {
     type: RUN_TIMER_TYPE,
-    instances: 'single',
+    instances: 'multi',
     trNameKey: 'Campaign run timer'
   } satisfies WidgetSpec
 }
