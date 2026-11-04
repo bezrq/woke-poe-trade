@@ -119,21 +119,6 @@ export function hotkeyFields (config: Config): HotkeyField[] {
       set: (v) => { cmd.hotkey = v }
     })
   })
-  for (const ss of many('stash-search')) {
-    const entries = (ss.entries as Array<{ id: number, name: string, text: string, hotkey: string | null }>) ?? []
-    for (const e of entries) {
-      out.push({
-        id: `ss-${ss.wmId}-${e.id}`,
-        label: `Stash search: ${e.name || e.text}`,
-        group: 'Stash search',
-        page: `widget:${ss.wmId}`,
-        off: ss.enableHotkeys === false,
-        get: () => e.hotkey,
-        set: (v) => { e.hotkey = v }
-      })
-    }
-  }
-
   for (const w of widgets) {
     const spec = WOKE_KEYS[w.wmType]
     const off = !isWidgetTypeOn(config, w.wmType)

@@ -16,6 +16,8 @@
             <span class="w-dim">Map regex</span>
             <code class="w-trunc" style="font-family: var(--w-num);">{{ selected.regex }}</code>
             <button v-if="wm.active.value" class="w-icon-btn" title="Copy" @click="copy(selected.regex)"><i :class="copied === selected.regex ? 'fas fa-check' : 'far fa-copy'" /></button>
+            <button v-if="wm.active.value" class="w-icon-btn" title="Save to the Regex library"
+              @click="toast(SAVE_MESSAGE[saveToRegexLibrary({ name: selected.name, text: selected.regex, category: 'Atlas' })])"><i class="far fa-bookmark" /></button>
           </div>
         </div>
       </template>
@@ -161,6 +163,7 @@ import { MainProcess } from '@/web/background/IPC'
 import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
 import { WPanel, WField, WButton, WEmpty, WListItem, WIcon, WBanner, WSkeleton, openMenu, toast, useCopy } from '../ui'
+import { SAVE_MESSAGE, saveToRegexLibrary } from '../regex-library/save'
 import { ninjaIcon } from '../ui/game-icons'
 import type { AtlasStrategy } from './widget'
 import { AppConfig } from '@/web/Config'

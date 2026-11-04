@@ -70,6 +70,8 @@
           <div v-if="regex" class="flex items-center gap-2 pt-1">
             <code :class="$style.rx" :title="regex.exact ? 'Exact colour orders' : 'Only these colours or white'">{{ regex.regex }}</code>
             <WButton size="sm" variant="primary" :icon="copied ? 'fas fa-check' : 'fas fa-copy'" @click="copyRegex">{{ copied ? 'Copied' : 'Copy regex' }}</WButton>
+            <WButton size="sm" variant="ghost" icon="far fa-bookmark" title="Keep this search in the Regex library"
+              @click="toast(SAVE_MESSAGE[saveToRegexLibrary({ name: `${entry.name}: link colours`, text: regex.regex, category: 'Builds' })])">Save</WButton>
           </div>
           <div v-if="regex" class="w-faint text-xs pt-0.5">
             Paste into a vendor's or your stash's search box: highlights {{ regex.size }}-links in these colours{{ regex.exact ? '' : ' (or white)' }}.
@@ -152,7 +154,8 @@
 
 <script setup lang="ts">
 import { computed, shallowRef, watch } from 'vue'
-import { WPanel, WButton, WEmpty, WTabs, WChip, WKbd } from '../ui'
+import { WPanel, WButton, WEmpty, WTabs, WChip, WKbd, toast } from '../ui'
+import { SAVE_MESSAGE, saveToRegexLibrary } from '../regex-library/save'
 import { AppConfig, saveConfig } from '@/web/Config'
 import { useLeagues } from '@/web/background/Leagues'
 import { CAMPAIGN_TYPE } from '../campaign/widget'

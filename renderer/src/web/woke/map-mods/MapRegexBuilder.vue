@@ -13,6 +13,7 @@
         <span class="w-num text-xs" :class="regex.tooLong ? 'w-down' : 'w-up'">{{ regex.length }}/{{ MAX_SEARCH_LENGTH }}</span>
         <WButton size="sm" variant="primary" :icon="copied ? 'fas fa-check' : 'far fa-copy'" :disabled="!regex.text" @click="copy">Copy</WButton>
         <WButton size="sm" icon="fas fa-search" :disabled="!regex.text" @click="paste" title="Type it into the open stash's search box">Stash</WButton>
+        <WButton size="sm" variant="ghost" icon="far fa-bookmark" :disabled="!regex.text" @click="saveToLibrary" title="Keep this search in the Regex library">Save</WButton>
       </div>
       <div class="flex items-center gap-2 w-full text-xs">
         <WChip clickable :active="!!profile.autoTrim" @click="profile.autoTrim = !profile.autoTrim"
@@ -90,7 +91,8 @@
 import { computed, shallowRef, watch } from 'vue'
 import { MainProcess } from '@/web/background/IPC'
 import { pushHostConfig } from '@/web/Config'
-import { WPanel, WButton, WChip, WField, WSegmented, WSelect, WTabs, WEmpty } from '../ui'
+import { WPanel, WButton, WChip, WField, WSegmented, WSelect, WTabs, WEmpty, toast } from '../ui'
+import { SAVE_MESSAGE, saveToRegexLibrary } from '../regex-library/save'
 import { PRESETS, applyPreset, nextPresetRating, presetRating, shortLabel, withRating } from './rules'
 import type { MapModPreset, ModRating } from './rules'
 import { MAX_SEARCH_LENGTH, MIN_LABELS, tokenCost } from './regex'
@@ -235,6 +237,11 @@ async function copy () {
     copied.value = true
     setTimeout(() => { copied.value = false }, 1200)
   } catch {}
+}
+
+function saveToLibrary () {
+  const res = saveToRegexLibrary({ name: `Maps: ${profile.value.name}`, text: regex.value.text, category: 'Maps' })
+  toast(SAVE_MESSAGE[res])
 }
 
 function paste () {

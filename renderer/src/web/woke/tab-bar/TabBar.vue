@@ -353,7 +353,7 @@ watch(() => wm.active.value, active => { if (!active) closePopup() })
 const query = ref('')
 const searchInput = ref<HTMLInputElement>()
 const addable = computed(() => registry.widgets
-  .filter(({ widget }) => widget.instances === 'multi' && isWidgetTypeOn(AppConfig(), widget.type))
+  .filter(({ widget }) => widget.instances === 'multi' && widget.type !== 'stash-search' && isWidgetTypeOn(AppConfig(), widget.type))
   .map(({ widget }) => ({ type: widget.type, name: typeName(widget.type) })))
 const addGroups = computed(() => {
   const q = query.value.trim().toLowerCase()
