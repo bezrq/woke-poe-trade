@@ -1,47 +1,52 @@
 <template>
   <Widget :config="config" move-handles="corners" :inline-edit="false">
-    <div class="widget-default-style p-1 flex min-h-0 gap-x-1">
-      <div class="flex flex-col min-h-0" style="width: 18rem; max-height: 70vh;">
-        <div class="text-gray-100 p-1 flex items-center justify-between gap-2">
-          <span class="truncate">{{ config.wmTitle || 'Trade searches' }}</span>
-          <ui-toggle v-if="hasHotkeys" v-model="config.enableHotkeys">Keys</ui-toggle>
-        </div>
-        <input v-model="filter" placeholder="Filter by name, tag, category…"
-          class="bg-gray-900 rounded px-1 mx-1 mb-1 leading-6 text-gray-100" />
-        <div class="flex flex-col gap-y-1 overflow-y-auto min-h-0 px-1">
-          <template v-for="group in groups" :key="group.category">
-            <div class="text-gray-500 text-xs uppercase pt-1">{{ group.category }}</div>
-            <div v-for="entry in group.entries" :key="entry.id" class="flex gap-x-1">
-              <button @click="open(entry, 'overlay')" :class="[$style.entryBtn, { [$style.active]: openId === entry.id }]"
-                :title="tooltip(entry)">
-                <i v-if="isLiveSearch(entry.url)" class="fas fa-bolt text-yellow-500" title="Live search" />
-                <span class="truncate">{{ entry.name || entry.url }}</span>
-                <span v-if="config.enableHotkeys && entry.hotkeyOverlay" :class="$style.hotkey">{{ entry.hotkeyOverlay }}</span>
-              </button>
-              <button @click="open(entry, 'external')" :class="$style.iconBtn" title="Open in your browser">
+    <div class="flex gap-2 min-h-0 items-start">
+      <WPanel :title="config.wmTitle || 'Trade searches'" width="19rem" max-height="70vh">
+        <template #actions>
+          <WChip v-if="hasHotkeys" clickable :active="config.enableHotkeys" title="Use each search's hotkey"
+            @click="config.enableHotkeys = !config.enableHotkeys"><i class="fas fa-keyboard" /> Hotkeys</WChip>
+        </template>
+        <template #toolbar>
+          <WField v-model="filter" icon="fas fa-search" placeholder="Filter by name, tag, category…" class="grow" />
+        </template>
+
+        <template v-for="group in groups" :key="group.category">
+          <div class="w-group-label">{{ group.category }}</div>
+          <WListItem v-for="entry in group.entries" :key="entry.id" :active="openId === entry.id"
+            :title="tooltip(entry)" @select="open(entry, 'overlay')">
+            <i v-if="isLiveSearch(entry.url)" class="fas fa-bolt w-accent" title="Live search" />
+            <span class="w-trunc">{{ entry.name || entry.url }}</span>
+            <WKbd v-if="config.enableHotkeys && entry.hotkeyOverlay" :keys="entry.hotkeyOverlay" class="ml-auto" />
+            <template #actions>
+              <button @click="open(entry, 'external')" class="w-icon-btn" title="Open in your browser">
                 <i class="fas fa-external-link-alt" />
               </button>
-            </div>
-          </template>
-          <div v-if="!groups.length" class="text-gray-500 p-2 text-center">
-            {{ config.entries.length ? 'No matches' : 'No saved searches yet. Open settings to add some.' }}
-          </div>
-        </div>
-      </div>
-      <div v-if="openEntry" class="flex flex-col" style="width: 60vw; height: 75vh;">
-        <div class="flex items-center gap-x-2 px-1 pb-1 text-gray-100">
-          <span class="truncate grow">{{ openEntry.name || openEntry.url }}</span>
-          <span class="text-gray-500 text-xs whitespace-nowrap">{{ overlayKey }} to interact</span>
-          <button @click="open(openEntry, 'external')" :class="$style.iconBtn" title="Open in your browser">
+            </template>
+          </WListItem>
+        </template>
+        <WEmpty v-if="!groups.length" icon="fas fa-search">
+          {{ config.entries.length ? 'No matches' : 'No saved searches yet. Open settings to add some.' }}
+        </WEmpty>
+
+        <template #footer>
+          <span>Opens the official trade site</span>
+        </template>
+      </WPanel>
+
+      <WPanel v-if="openEntry" :title="openEntry.name || openEntry.url" :scroll="false" max-height="none"
+        style="width: 60vw; height: 75vh;">
+        <template #actions>
+          <span class="w-faint text-xs whitespace-nowrap mr-1">{{ overlayKey }} to interact</span>
+          <button @click="open(openEntry, 'external')" class="w-icon-btn" title="Open in your browser">
             <i class="fas fa-external-link-alt" />
           </button>
-          <button @click="closeBrowser" :class="$style.iconBtn" title="Close">
+          <button @click="closeBrowser" class="w-icon-btn" title="Close">
             <i class="fas fa-times" />
           </button>
-        </div>
-        <webview ref="webviewEl" class="pointer-events-auto flex-1"
+        </template>
+        <webview ref="webviewEl" class="pointer-events-auto w-full h-full flex"
           width="100%" height="100%" />
-      </div>
+      </WPanel>
     </div>
   </Widget>
 </template>
@@ -66,7 +71,7 @@ import { Host, MainProcess } from '@/web/background/IPC'
 import { AppConfig, pushHostConfig } from '@/web/Config'
 import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
-import UiToggle from '@/web/ui/UiToggle.vue'
+import { WPanel, WField, WChip, WKbd, WEmpty, WListItem } from '../ui'
 import { groupByCategory, isLiveSearch, isValidUrl, matchesFilter, parseHotkeyTarget } from './widget'
 import type { OpenTarget, TradeSearchEntry } from './widget'
 
@@ -134,40 +139,3 @@ function tooltip (entry: TradeSearchEntry) {
     .filter(Boolean).join('\n')
 }
 </script>
-
-<style lang="postcss" module>
-.entryBtn {
-  flex: 1 1 auto;
-  min-width: 0;
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-  @apply rounded p-2 leading-4;
-  @apply text-gray-100 bg-gray-800;
-  text-align: left;
-
-  &:hover {
-    @apply bg-gray-700;
-  }
-}
-
-.active {
-  @apply bg-gray-600;
-}
-
-.iconBtn {
-  flex-shrink: 0;
-  @apply rounded px-2;
-  @apply text-gray-400 bg-gray-800;
-
-  &:hover {
-    @apply bg-gray-700 text-gray-100;
-  }
-}
-
-.hotkey {
-  margin-left: auto;
-  flex-shrink: 0;
-  @apply text-black bg-gray-400 rounded px-1;
-}
-</style>

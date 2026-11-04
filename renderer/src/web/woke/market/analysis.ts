@@ -40,10 +40,12 @@ export function computeMovers (
 }
 
 export function formatChaos (chaos: number, divine: number | null): string {
-  if (divine && chaos >= divine) {
-    return `${(chaos / divine).toFixed(chaos >= divine * 10 ? 0 : 1)} div`
+  const sign = chaos < 0 ? '-' : ''
+  const a = Math.abs(chaos)
+  if (divine && a >= divine) {
+    return `${sign}${(a / divine).toFixed(a >= divine * 10 ? 0 : 1)} div`
   }
-  return `${chaos >= 10 ? Math.round(chaos) : chaos.toFixed(1)} c`
+  return `${sign}${a >= 10 ? Math.round(a) : a.toFixed(1)} c`
 }
 
 export function formatChange (change: number): string {

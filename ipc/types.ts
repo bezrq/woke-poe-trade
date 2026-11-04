@@ -77,7 +77,10 @@ export type IpcEvent =
   IpcItemText |
   IpcOcrText |
   IpcConfigChanged |
-  IpcUserAction
+  IpcUserAction |
+  // woke modules (see main/src/woke, renderer/src/web/woke)
+  IpcWokeRequest |
+  IpcWokeResponse
 
 export type IpcEventPayload<Name extends IpcEvent['name'], T extends IpcEvent = IpcEvent> =
   T extends { name: Name, payload: infer P } ? P : never
@@ -180,3 +183,20 @@ interface Event<TName extends string, TPayload = undefined> {
   name: TName
   payload: TPayload
 }
+
+// Generic request/response channel for woke modules, so new modules don't
+// need new event types. `op` names the handler in main/src/woke.
+type IpcWokeRequest =
+  Event<'CLIENT->MAIN::woke-request', {
+    id: number
+    op: string
+    args: unknown
+  }>
+
+type IpcWokeResponse =
+  Event<'MAIN->CLIENT::woke-response', {
+    id: number
+    ok: boolean
+    data?: unknown
+    error?: string
+  }>
