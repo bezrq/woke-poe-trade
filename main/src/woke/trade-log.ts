@@ -27,13 +27,26 @@ async function writeAtomic (file: string, data: string) {
   await fs.rename(tmp, file)
 }
 
+// A league's trades. Only a missing file means "no trades yet": a file that
+// can't be read right now (locked by antivirus or a sync tool) throws, so the
+// read-change-write below never replaces a league of trades with one. A file
+// that isn't valid JSON is moved aside, kept for the player, and starts over.
 async function readFile (file: string): Promise<TradeRecord[]> {
+  let text: string
   try {
-    const list = JSON.parse(await fs.readFile(file, 'utf8')) as unknown
-    return Array.isArray(list) ? list.filter((t): t is TradeRecord => t && typeof t.id === 'string') : []
+    text = await fs.readFile(file, 'utf8')
+  } catch (e) {
+    if ((e as NodeJS.ErrnoException).code === 'ENOENT') return []
+    throw e
+  }
+  let list: unknown
+  try {
+    list = JSON.parse(text)
   } catch {
+    await fs.rename(file, `${file}.broken-${Date.now()}`)
     return []
   }
+  return Array.isArray(list) ? list.filter((t): t is TradeRecord => t && typeof t.id === 'string') : []
 }
 
 // Writes go one at a time so two saves never interleave.
@@ -52,7 +65,9 @@ export const tradeLogHandlers: Record<string, (args: Args) => Promise<unknown>> 
     try { names = await fs.readdir(root()) } catch {}
     const out: TradeRecord[] = []
     for (const name of names) {
-      if (name.endsWith('.json')) out.push(...await readFile(path.join(root(), name)))
+      if (!name.endsWith('.json')) continue
+      // One unreadable league doesn't hide the others.
+      try { out.push(...await readFile(path.join(root(), name))) } catch {}
     }
     return out
   },
