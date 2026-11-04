@@ -3,7 +3,8 @@
 // testing/fixtures/client-logs.
 import { describe, it, expect } from 'vitest'
 import { fixture } from '../helpers/game-data'
-import { parseLogLine, actFromAreaId, isTown, pickTreeForLevel } from '@/web/woke/campaign/log-parse'
+import { parseLogLine, actFromAreaId, isTown } from '@/web/woke/campaign/log-parse'
+import { pickStage } from '@/web/woke/pob-builds/build-model'
 import { bundledRoute, routeData } from '@/web/woke/campaign/route-data'
 import { advanceOnEnter, resyncTo, DEFAULT_ROUTE_OPTIONS, xpMultiplier } from '@/web/woke/campaign/route-parse'
 import type { RouteOptions } from '@/web/woke/campaign/route-parse'
@@ -35,7 +36,7 @@ describe('Client.txt lines', () => {
     expect(actFromAreaId('2_6_town')).toBe(6)
     expect(actFromAreaId('MapWorldsStrand')).toBeNull()
     expect(isTown('1_1_town')).toBe(true)
-    expect(pickTreeForLevel([{ title: 'Level 12', isActive: false }, { title: 'Level 30', isActive: true }], 20)?.title).toBe('Level 12')
+    expect(pickStage([{ title: 'Level 12', isActive: false }, { title: 'Level 30', isActive: true }], 20, null)?.item.title).toBe('Level 12')
   })
 })
 
