@@ -20,16 +20,37 @@ export interface ScannedMap {
   weak: string[]
 }
 
-const PROP_PATTERNS: Array<[keyof ScannedMap['props'], RegExp]> = [
-  ['quantity', /quant\w*\W+(\d+)/i],
-  ['rarity', /item\s*rar\w*\W+(\d+)/i],
-  ['packSize', /pack\s*s\w*\W+(\d+)/i],
-  ['quality', /^qual\w*\W+(\d+)/i],
-  ['currency', /more\s*curr\w*\W+(\d+)/i],
-  ['scarabs', /more\s*scar\w*\W+(\d+)/i],
-  ['maps', /more\s*maps\W+(\d+)/i],
-  ['divCards', /more\s*div\w*(?:\s*cards)?\W+(\d+)/i]
+// Property lines ("Item Quantity: +87%") by their label. OCR often misreads
+// a letter or two of the game font (Q as O, M as NM), so labels are matched
+// by similarity, not exactly.
+const PROP_LABELS: Array<[keyof ScannedMap['props'] | 'tier', string]> = [
+  ['tier', 'map tier'],
+  ['quantity', 'item quantity'],
+  ['rarity', 'item rarity'],
+  ['packSize', 'monster pack size'],
+  ['quality', 'quality'],
+  ['currency', 'more currency'],
+  ['scarabs', 'more scarabs'],
+  ['maps', 'more maps'],
+  ['divCards', 'more divination cards']
 ]
+// Other "Label: value" lines on map tooltips; known, so not mistaken for an
+// unreadable mod.
+const OTHER_LABELS = ['monster level', 'item level', 'map area', 'reward', 'conqueror map', 'unique map', 'scarab', 'stack size', 'limit']
+const PROP_LINE = /^\s*([a-z][a-z .']*?)\s*[:;.,]?\s*\+?\s*(\d+)\s*%?\s*(\(.*\))?\s*$/i
+
+export function parsePropLine (line: string): { key: keyof ScannedMap['props'] | 'tier' | 'other', value: number } | null {
+  const m = PROP_LINE.exec(line)
+  if (!m) return null
+  const label = m[1].toLowerCase().replace(/[^a-z ]/g, '').replace(/\s+/g, ' ').trim()
+  if (OTHER_LABELS.some(o => similarity(label, o) >= 0.75)) return { key: 'other', value: Number(m[2]) }
+  let best: { key: keyof ScannedMap['props'] | 'tier', score: number } | null = null
+  for (const [key, name] of PROP_LABELS) {
+    const score = similarity(label, name)
+    if (score >= 0.7 && (!best || score > best.score)) best = { key, score }
+  }
+  return best ? { key: best.key, value: Number(m[2]) } : null
+}
 
 export function normalize (s: string): string {
   return s
@@ -159,22 +180,20 @@ export class TooltipMatcher {
     let isMap = false
     const seen = new Set<string>()
     for (const line of lines) {
-      const tier = /map\s*tier\W+(\d+)/i.exec(line)
-      if (tier) {
-        out.tier = Number(tier[1])
+      // Header line of magic maps (read when it's blue): "Map (Tier 16)".
+      const header = /\bmap\s*\(\s*tier\s*(\d+)\s*\)/i.exec(line)
+      if (header) {
+        out.tier = Number(header[1])
         isMap = true
         continue
       }
-      let isProp = false
-      for (const [key, re] of PROP_PATTERNS) {
-        const m = re.exec(line)
-        if (m) {
-          out.props[key] = Number(m[1])
-          isProp = true
-          break
-        }
+      const prop = parsePropLine(line)
+      if (prop) {
+        if (prop.key === 'tier') out.tier = prop.value
+        else if (prop.key !== 'other') out.props[prop.key] = prop.value
+        isMap = true
+        continue
       }
-      if (isProp) continue
       const mod = this.matchLine(line)
       if (mod && !seen.has(mod.matcher)) {
         seen.add(mod.matcher)

@@ -12,6 +12,13 @@ import type { ImageData } from '../vision/utils'
 // Magic-blue modifier text (#8888FF), with room for anti-aliasing.
 const BLUE_MIN = hsvToU8(222, 25, 55)
 const BLUE_MAX = hsvToU8(258, 72, 100)
+// Light blue (#B8DAF1) implicit lines such as "Area contains a Blight
+// Encounter"; read like mods.
+const PALE_MIN = hsvToU8(195, 14, 60)
+const PALE_MAX = hsvToU8(220, 40, 100)
+// Red "Corrupted" (#D20000).
+const RED_MIN = hsvToU8(0, 70, 45)
+const RED_MAX = hsvToU8(10, 100, 100)
 // Grey/white property text ("Item Quantity: ", "Map Tier: ").
 const GREY_MIN = hsvToU8(0, 0, 42)
 const GREY_MAX = hsvToU8(360, 14, 100)
@@ -44,6 +51,8 @@ export interface ScanResult {
   lines?: string[]
   // Map scan: the tooltip's text lines, for main to OCR in parallel.
   lineImages?: LineImage[]
+  // Where each line image was cut from (image pixels), for the OCR bench.
+  lineRects?: Array<{ x: number, y: number, width: number, height: number }>
   rect?: { x: number, y: number, width: number, height: number }
   elapsed: number
 }
@@ -54,15 +63,33 @@ function scalarMat (values: number[]) {
   return m
 }
 
-let blueMin: any, blueMax: any, greyMin: any, greyMax: any // eslint-disable-line @typescript-eslint/no-explicit-any
+let blueMin: any, blueMax: any, paleMin: any, paleMax: any, greyMin: any, greyMax: any, redMin: any, redMax: any // eslint-disable-line @typescript-eslint/no-explicit-any
 
-export function scanTooltip (img: ImageData, opts: ScanOptions): ScanResult {
-  if (!blueMin) {
-    blueMin = scalarMat(BLUE_MIN)
-    blueMax = scalarMat(BLUE_MAX)
-    greyMin = scalarMat(GREY_MIN)
-    greyMax = scalarMat(GREY_MAX)
-  }
+function initRanges () {
+  if (blueMin) return
+  blueMin = scalarMat(BLUE_MIN)
+  blueMax = scalarMat(BLUE_MAX)
+  paleMin = scalarMat(PALE_MIN)
+  paleMax = scalarMat(PALE_MAX)
+  greyMin = scalarMat(GREY_MIN)
+  greyMax = scalarMat(GREY_MAX)
+  redMin = scalarMat(RED_MIN)
+  redMax = scalarMat(RED_MAX)
+}
+
+// Blue mod text (plus the pale blue of some implicit lines).
+function blueMask (hsv: any, blue: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
+  cv.inRange(hsv, blueMin, blueMax, blue)
+  const pale = new cv.Mat()
+  cv.inRange(hsv, paleMin, paleMax, pale)
+  cv.bitwise_or(blue, pale, blue)
+  pale.delete()
+}
+
+// `kind` 'essence': an essence monster's label, whose essence lines are blue
+// like map mods; a red "Corrupted" line under them is read too.
+export function scanTooltip (img: ImageData, opts: ScanOptions, kind: 'map' | 'essence' = 'map'): ScanResult {
+  initRanges()
   let elapsed = 0
   const H = img.height
   const W = img.width
@@ -79,7 +106,7 @@ export function scanTooltip (img: ImageData, opts: ScanOptions): ScanResult {
   const blue = new cv.Mat()
   elapsed += timeIt(() => {
     cv.cvtColor(area, hsv, cv.COLOR_BGR2HSV_FULL)
-    cv.inRange(hsv, blueMin, blueMax, blue)
+    blueMask(hsv, blue)
   })
 
   const minPixels = Math.round((refH / 1080) * (refH / 1080) * 400)
@@ -89,17 +116,29 @@ export function scanTooltip (img: ImageData, opts: ScanOptions): ScanResult {
     return { sig: null, elapsed }
   }
 
-  const box = maskBounds(blue.data as Uint8Array, blue.cols, blue.rows)
-  // Include the property lines above the mods (tier, quantity, pack size...).
   const lineH = Math.round(refH * 0.0185)
-  const top = Math.max(0, box.y - lineH * 12)
-  const left = Math.max(0, box.x - lineH)
-  const right = Math.min(blue.cols, box.x + box.width + lineH)
-  const rect = new cv.Rect(left, top, right - left, box.y + box.height + Math.round(lineH / 2) - top)
-  rect.height = Math.min(rect.height, blue.rows - top)
+  const grey = new cv.Mat()
+  const red = kind === 'essence' ? new cv.Mat() : null
+  let found: TooltipLayout | null = null
+  elapsed += timeIt(() => {
+    cv.inRange(hsv, greyMin, greyMax, grey)
+    if (red) cv.inRange(hsv, redMin, redMax, red)
+    const cursor = { x: opts.cursor.x - x0, y: opts.cursor.y }
+    found = findTooltip(blue.data as Uint8Array, grey.data as Uint8Array, blue.cols, blue.rows, lineH, cursor,
+      red ? red.data as Uint8Array : undefined)
+    // Line images take any text colour.
+    if (red) cv.bitwise_or(grey, red, grey)
+  })
+  red?.delete()
+  if (!found) {
+    grey.delete(); hsv.delete(); blue.delete(); area.delete(); full.delete()
+    return { sig: null, elapsed }
+  }
+  const tip: TooltipLayout = found
 
-  // Signature: coarse picture of the blue text, so a reroll (new mods)
+  // Signature: coarse picture of the mod text, so a reroll (new mods)
   // changes it but cursor jitter doesn't.
+  const box = new cv.Rect(tip.mods.x0, tip.mods.y0, tip.mods.x1 - tip.mods.x0 + 1, tip.mods.y1 - tip.mods.y0 + 1)
   const small = new cv.Mat()
   const blueBox = blue.roi(box)
   cv.resize(blueBox, small, new cv.Size(48, 24), 0, 0, cv.INTER_AREA)
@@ -112,27 +151,58 @@ export function scanTooltip (img: ImageData, opts: ScanOptions): ScanResult {
   const result: ScanResult = {
     sig,
     elapsed,
-    rect: { x: x0 + rect.x, y: rect.y, width: rect.width, height: rect.height }
+    rect: { x: x0 + tip.x0, y: tip.y0, width: tip.x1 - tip.x0 + 1, height: tip.y1 - tip.y0 + 1 }
   }
 
   if (sig === opts.stableSig && sig !== opts.lastReadSig) {
     elapsed += timeIt(() => {
-      const roiHsv = hsv.roi(rect)
-      const hsvData = roiHsv.clone()
-      const maskBlue = new cv.Mat()
-      const maskGrey = new cv.Mat()
-      cv.inRange(roiHsv, blueMin, blueMax, maskBlue)
-      cv.inRange(roiHsv, greyMin, greyMax, maskGrey)
-      result.lineImages = cutLines(
-        maskBlue.data as Uint8Array, maskGrey.data as Uint8Array, hsvData.data as Uint8Array,
-        rect.width, rect.height, lineH)
-      maskBlue.delete(); maskGrey.delete(); hsvData.delete(); roiHsv.delete()
+      const lines = tip.lines.slice(0, MAX_LINES)
+      result.lineImages = lines.map(l => cutLine(blue.data as Uint8Array, grey.data as Uint8Array, hsv.data as Uint8Array, blue.cols, l, lineH))
+      result.lineRects = lines.map(l => ({ x: x0 + l.x0, y: l.y0, width: l.x1 - l.x0 + 1, height: l.y1 - l.y0 + 1 }))
     })
     result.elapsed = elapsed
   }
 
+  grey.delete()
   hsv.delete(); blue.delete(); area.delete(); full.delete()
   return result
+}
+
+// Essence scan's one-shot: reads every essence label on screen. Each label
+// is found like a map tooltip (a centred stack of blue lines) and read line
+// by line.
+const MAX_LABELS = 12
+export function scanAllTooltips (img: ImageData, readLine: (l: LineImage) => string):
+{ labels: Array<{ lines: string[], at: { x: number, y: number } }>, elapsed: number } {
+  initRanges()
+  let elapsed = 0
+  const lineH = Math.round(img.height * 0.0185)
+  const full = Bindings.cvMatFromImage(img)
+  const hsv = new cv.Mat()
+  const blue = new cv.Mat()
+  const grey = new cv.Mat()
+  const red = new cv.Mat()
+  let tips: TooltipLayout[] = []
+  elapsed += timeIt(() => {
+    cv.cvtColor(full, hsv, cv.COLOR_BGR2HSV_FULL)
+    blueMask(hsv, blue)
+    cv.inRange(hsv, greyMin, greyMax, grey)
+    cv.inRange(hsv, redMin, redMax, red)
+    tips = findAllTooltips(blue.data as Uint8Array, grey.data as Uint8Array, blue.cols, blue.rows, lineH, MAX_LABELS, red.data as Uint8Array)
+    cv.bitwise_or(grey, red, grey)
+  })
+  const labels: Array<{ lines: string[], at: { x: number, y: number } }> = []
+  for (const t of tips) {
+    let lines: string[] = []
+    elapsed += timeIt(() => {
+      lines = t.lines.slice(0, MAX_LINES)
+        .map(l => readLine(cutLine(blue.data as Uint8Array, grey.data as Uint8Array, hsv.data as Uint8Array, blue.cols, l, lineH)))
+        .filter(l => l.length > 2)
+    })
+    if (lines.length) labels.push({ lines, at: { x: (t.x0 + t.x1) / 2, y: (t.y0 + t.y1) / 2 } })
+  }
+  red.delete(); grey.delete(); blue.delete(); hsv.delete(); full.delete()
+  return { labels, elapsed }
 }
 
 // Line images are scaled so text is about this tall: Tesseract reads text
@@ -140,97 +210,281 @@ export function scanTooltip (img: ImageData, opts: ScanOptions): ScanResult {
 const LINE_TARGET_H = 34
 const MAX_LINES = 24
 
-// Splits the tooltip into text lines by rows of text pixels. Lines with blue
-// (mods, and property values like "+45%") are kept; grey-only lines only when
-// they're line-sized (Map Tier), so background showing through the
-// translucent tooltip isn't read.
-export function cutLines (blue: Uint8Array, grey: Uint8Array, hsv: Uint8Array, cols: number, rows: number, lineH: number): LineImage[] {
-  const rowBlue = new Int32Array(rows)
-  const rowGrey = new Int32Array(rows)
-  for (let y = 0; y < rows; y++) {
-    let b = 0
-    let g = 0
-    const off = y * cols
-    for (let x = 0; x < cols; x++) {
-      if (blue[off + x]) b++
-      else if (grey[off + x]) g++
-    }
-    rowBlue[y] = b
-    rowGrey[y] = g
-  }
-  const runs: Array<{ y0: number, y1: number }> = []
-  let start = -1
-  let gap = 0
-  for (let y = 0; y <= rows; y++) {
-    const ink = y < rows && (rowBlue[y] > 0 || rowGrey[y] >= 2)
-    if (ink) {
-      if (start < 0) start = y
-      gap = 0
-    } else if (start >= 0 && (++gap > 1 || y === rows)) {
-      runs.push({ y0: start, y1: y - gap })
-      start = -1
-      gap = 0
-    }
-  }
+interface Span { x0: number, x1: number, y0: number, y1: number }
 
-  const out: LineImage[] = []
-  for (const run of runs) {
-    // Text lines that touch (no blank row between) are split evenly.
-    const h = run.y1 - run.y0 + 1
-    const parts = Math.max(1, Math.round(h / (lineH * 1.05)))
-    for (let p = 0; p < parts && out.length < MAX_LINES; p++) {
-      const y0 = run.y0 + Math.floor((h * p) / parts)
-      const y1 = run.y0 + Math.floor((h * (p + 1)) / parts) - 1
-      const img = cutLine(blue, grey, hsv, cols, rows, y0, y1, lineH, rowBlue, rowGrey)
-      if (img) out.push(img)
-    }
-  }
-  return out
+export interface TooltipLayout {
+  // The tooltip's text, in reading order: property lines, then mods.
+  lines: Span[]
+  // The block of mod lines (for the signature).
+  mods: Span
+  // Everything read.
+  x0: number, x1: number, y0: number, y1: number
 }
 
-function cutLine (
-  blue: Uint8Array, grey: Uint8Array, hsv: Uint8Array, cols: number, rows: number,
-  y0: number, y1: number, lineH: number, rowBlue: Int32Array, rowGrey: Int32Array
-): LineImage | null {
-  const h = y1 - y0 + 1
-  let nBlue = 0
-  let nGrey = 0
-  for (let y = y0; y <= y1; y++) { nBlue += rowBlue[y]; nGrey += rowGrey[y] }
-  const hasBlue = nBlue >= 4
-  if (hasBlue ? h < lineH * 0.3 : (h < lineH * 0.4 || h > lineH * 1.2 || nGrey < lineH * 2)) return null
+// Finds the hovered map's tooltip in the masks of the area around the
+// cursor (blue = mod text, grey = grey/white text, 1 byte per pixel).
+//
+// Tooltip text is centred, so the mods are a stack of blue text lines that
+// share one centre. That stack is found first (blue elsewhere on screen, from
+// item art, the stash or the game world, doesn't line up like that), then the
+// property lines above it that share its centre. Exported for tests.
+export function findTooltip (blue: Uint8Array, grey: Uint8Array, cols: number, rows: number, lineH: number,
+  cursor: { x: number, y: number }, red?: Uint8Array): TooltipLayout | null {
+  let best: Span[] | null = null
+  let bestScore = -Infinity
+  for (const s of textStacks(blue, cols, rows, lineH)) {
+    const b = spanOf(s)
+    const dx = cursor.x < b.x0 ? b.x0 - cursor.x : cursor.x > b.x1 ? cursor.x - b.x1 : 0
+    const dy = cursor.y < b.y0 ? b.y0 - cursor.y : cursor.y > b.y1 ? cursor.y - b.y1 : 0
+    // Tooltips open beside or above the hovered item, not far from it.
+    if (dx > lineH * 25 || dy > lineH * 30) continue
+    const score = s.length - Math.hypot(dx, dy) / (lineH * 4)
+    if (score > bestScore) { best = s; bestScore = score }
+  }
+  return best ? stackLayout(best, blue, grey, cols, rows, lineH, red) : null
+}
 
-  // Horizontal extent of the text: grow from the blue (or densest) column
-  // across word gaps, stopping at a wide gap, so stray background pixels
-  // further along the row aren't included.
-  const colInk = new Int32Array(cols)
-  const colBlue = new Int32Array(cols)
-  for (let y = y0; y <= y1; y++) {
+// Every tooltip-like block in the masks (essence scan's whole-screen pass),
+// top to bottom.
+export function findAllTooltips (blue: Uint8Array, grey: Uint8Array, cols: number, rows: number, lineH: number,
+  max: number, red?: Uint8Array): TooltipLayout[] {
+  const out: TooltipLayout[] = []
+  const stacks = textStacks(blue, cols, rows, lineH).sort((a, b) => b.length - a.length)
+  for (const s of stacks) {
+    if (out.length >= max) break
+    const t = stackLayout(s, blue, grey, cols, rows, lineH, red)
+    if (!t || out.some(o => t.x0 <= o.x1 && t.x1 >= o.x0 && t.y0 <= o.y1 && t.y1 >= o.y0)) continue
+    out.push(t)
+  }
+  return out.sort((a, b) => a.y0 - b.y0)
+}
+
+function spanOf (lines: Span[]): Span {
+  return {
+    x0: Math.min(...lines.map(l => l.x0)),
+    x1: Math.max(...lines.map(l => l.x1)),
+    y0: lines[0].y0,
+    y1: lines[lines.length - 1].y1
+  }
+}
+
+// Stacks of blue text lines sharing a centre.
+export function textStacks (blue: Uint8Array, cols: number, rows: number, lineH: number): Span[][] {
+  const lines = textBlobs(blue, cols, rows, lineH).filter(b => {
+    const h = b.y1 - b.y0 + 1
+    const w = b.x1 - b.x0 + 1
+    return h >= lineH * 0.3 && h <= lineH * 1.4 && w >= lineH * 1.5 && b.n >= w * h * 0.06
+  }).sort((a, b) => a.y0 - b.y0)
+  // The gap allows a separator, or one line hidden (e.g. by a health bar).
+  const tol = Math.max(3, lineH * 0.6)
+  const stacks: Span[][] = []
+  for (const l of lines) {
+    const c = (l.x0 + l.x1) / 2
+    const stack = stacks.find(s => {
+      const last = s[s.length - 1]
+      const gap = l.y0 - last.y1
+      return gap >= 0 && gap <= lineH * 2.5 && Math.abs((last.x0 + last.x1) / 2 - c) <= tol
+    })
+    if (stack) stack.push(l)
+    else stacks.push([l])
+  }
+  return stacks
+}
+
+// The tooltip around a stack of mod lines: the centred lines above it, and
+// with `red`, a red line just below it ("Corrupted").
+function stackLayout (stack: Span[], blue: Uint8Array, grey: Uint8Array, cols: number, rows: number, lineH: number,
+  red?: Uint8Array): TooltipLayout | null {
+  const mods = spanOf(stack)
+  const cx = Math.round(mods.x0 + mods.x1) / 2
+  // Lines can be wider than the mods (long property names, short mods).
+  const half = Math.max((mods.x1 - mods.x0) / 2, lineH * 9) + lineH
+  const wx0 = Math.max(0, Math.floor(cx - half))
+  const wx1 = Math.min(cols - 1, Math.ceil(cx + half))
+
+  // Text rows within that window, above and through the mods.
+  const top = Math.max(0, Math.round(mods.y0 - lineH * 14))
+  const bottom = Math.min(rows - 1, mods.y1 + 1)
+  const ink = (i: number) => blue[i] || grey[i]
+  const rowInk = new Int32Array(bottom - top + 1)
+  for (let y = top; y <= bottom; y++) {
+    let n = 0
     const off = y * cols
-    for (let x = 0; x < cols; x++) {
-      if (blue[off + x]) { colBlue[x]++; colInk[x]++ } else if (grey[off + x]) colInk[x]++
+    for (let x = wx0; x <= wx1; x++) if (ink(off + x)) n++
+    rowInk[y - top] = n
+  }
+  const bands: Span[] = []
+  let start = -1
+  for (let y = top; y <= bottom + 1; y++) {
+    const on = y <= bottom && rowInk[y - top] >= 2
+    if (on && start < 0) start = y
+    if (!on && start >= 0) {
+      const h = y - start
+      // Lines with no blank row between them are split evenly.
+      const parts = Math.max(1, Math.round(h / (lineH * 1.05)))
+      for (let p = 0; p < parts; p++) {
+        bands.push({
+          x0: 0,
+          x1: 0,
+          y0: start + Math.floor((h * p) / parts),
+          y1: start + Math.floor((h * (p + 1)) / parts) - 1
+        })
+      }
+      start = -1
     }
   }
-  let seed = 0
-  for (let x = 1; x < cols; x++) {
-    if ((hasBlue ? colBlue[x] - colBlue[seed] : colInk[x] - colInk[seed]) > 0) seed = x
+
+  // Keep centred lines, walking up from the mods; stop at the first big gap.
+  const out: Span[] = []
+  let prevTop = mods.y1 + 1
+  for (let i = bands.length - 1; i >= 0; i--) {
+    const b = bands[i]
+    const h = b.y1 - b.y0 + 1
+    if (b.y1 < mods.y0 && prevTop - b.y1 > lineH * 3) break
+    if (h < lineH * 0.3 || h > lineH * 1.4) continue
+    const ext = centredExtent(blue, grey, cols, b, cx, wx0, wx1, lineH)
+    if (!ext) continue
+    out.push({ ...b, x0: ext.x0, x1: ext.x1 })
+    prevTop = b.y0
+  }
+  // One lone line is as likely to be something else on screen.
+  if (out.length < 2) return null
+  out.reverse()
+  if (red) {
+    const below = redLineBelow(red, cols, rows, mods, cx, wx0, wx1, lineH)
+    if (below) out.push(below)
+  }
+  return {
+    lines: out,
+    mods,
+    x0: Math.min(mods.x0, ...out.map(l => l.x0)),
+    x1: Math.max(mods.x1, ...out.map(l => l.x1)),
+    y0: Math.min(mods.y0, out[0].y0),
+    y1: Math.max(mods.y1, out[out.length - 1].y1)
+  }
+}
+
+function redLineBelow (red: Uint8Array, cols: number, rows: number, mods: Span, cx: number,
+  wx0: number, wx1: number, lineH: number): Span | null {
+  const none = new Uint8Array(red.length)
+  let start = -1
+  const end = Math.min(rows - 1, mods.y1 + Math.round(lineH * 6))
+  for (let y = mods.y1 + 1; y <= end + 1; y++) {
+    let n = 0
+    if (y <= end) for (let x = wx0, off = y * cols; x <= wx1; x++) if (red[off + x]) n++
+    if (n >= 2 && start < 0) start = y
+    if (n < 2 && start >= 0) {
+      const b = { x0: 0, x1: 0, y0: start, y1: y - 1 }
+      const h = b.y1 - b.y0 + 1
+      if (h >= lineH * 0.3 && h <= lineH * 1.4) {
+        const ext = centredExtent(red, none, cols, b, cx, wx0, wx1, lineH)
+        if (ext) return { ...b, ...ext }
+      }
+      start = -1
+    }
+  }
+  return null
+}
+
+// The text's horizontal extent in a band, grown from the tooltip's centre
+// across word gaps. Null unless the text is centred on it (so not stray
+// background) and long enough to be a line.
+function centredExtent (blue: Uint8Array, grey: Uint8Array, cols: number, b: Span, cx: number,
+  wx0: number, wx1: number, lineH: number): { x0: number, x1: number } | null {
+  const colInk = new Uint8Array(wx1 - wx0 + 1)
+  for (let y = b.y0; y <= b.y1; y++) {
+    const off = y * cols
+    for (let x = wx0; x <= wx1; x++) if (blue[off + x] || grey[off + x]) colInk[x - wx0] = 1
   }
   const maxGap = Math.round(lineH * 0.9)
-  let x0 = seed
-  for (let x = seed, gap = 0; x >= 0 && gap <= maxGap; x--) {
-    if (colInk[x]) { x0 = x; gap = 0 } else gap++
+  const c = Math.round(cx) - wx0
+  let x0 = -1
+  let x1 = -1
+  for (let x = c, gap = 0; x >= 0 && gap <= maxGap; x--) {
+    if (colInk[x]) { x0 = x; gap = 0; if (x1 < 0) x1 = x } else gap++
   }
-  let x1 = seed
-  for (let x = seed, gap = 0; x < cols && gap <= maxGap; x++) {
-    if (colInk[x]) { x1 = x; gap = 0 } else gap++
+  for (let x = c, gap = 0; x < colInk.length && gap <= maxGap; x++) {
+    if (colInk[x]) { x1 = Math.max(x1, x); gap = 0; if (x0 < 0) x0 = x } else gap++
   }
-  if (x1 - x0 < lineH) return null
+  if (x0 < 0 || x1 - x0 < lineH * 1.5) return null
+  if (Math.abs((x0 + x1) / 2 - (c)) > Math.max(lineH * 0.8, 4)) return null
+  return { x0: x0 + wx0, x1: x1 + wx0 }
+}
 
+interface Blob extends Span { n: number }
+
+// Connected groups of mask pixels, with letters and words of a line joined:
+// runs closer than half a line height count as touching.
+function textBlobs (mask: Uint8Array, cols: number, rows: number, lineH: number): Blob[] {
+  const join = Math.max(2, Math.round(lineH * 0.5))
+  const parent: number[] = []
+  const find = (i: number): number => {
+    while (parent[i] !== i) { parent[i] = parent[parent[i]]; i = parent[i] }
+    return i
+  }
+  const blobs: Blob[] = []
+  let prev: Array<{ x0: number, x1: number, id: number }> = []
+  for (let y = 0; y < rows; y++) {
+    const off = y * cols
+    const runs: Array<{ x0: number, x1: number, id: number, n: number }> = []
+    let x = 0
+    while (x < cols) {
+      if (!mask[off + x]) { x++; continue }
+      const r = { x0: x, x1: x, id: -1, n: 0 }
+      let gap = 0
+      while (x < cols && gap <= join) {
+        if (mask[off + x]) { r.x1 = x; r.n++; gap = 0 } else gap++
+        x++
+      }
+      runs.push(r)
+    }
+    for (const r of runs) {
+      for (const p of prev) {
+        if (p.x1 < r.x0 || p.x0 > r.x1) continue
+        const a = find(p.id)
+        if (r.id < 0) r.id = a
+        else {
+          const b = find(r.id)
+          if (a !== b) parent[b] = a
+        }
+      }
+      if (r.id < 0) {
+        r.id = parent.length
+        parent.push(r.id)
+        blobs.push({ x0: r.x0, x1: r.x1, y0: y, y1: y, n: 0 })
+      }
+      const b = blobs[r.id]
+      // Stats are summed per run's first id and merged below.
+      if (r.x0 < b.x0) b.x0 = r.x0
+      if (r.x1 > b.x1) b.x1 = r.x1
+      if (y > b.y1) b.y1 = y
+      b.n += r.n
+    }
+    prev = runs
+  }
+  const merged = new Map<number, Blob>()
+  blobs.forEach((b, i) => {
+    const root = find(i)
+    const m = merged.get(root)
+    if (!m) merged.set(root, { ...b })
+    else {
+      m.x0 = Math.min(m.x0, b.x0); m.x1 = Math.max(m.x1, b.x1)
+      m.y0 = Math.min(m.y0, b.y0); m.y1 = Math.max(m.y1, b.y1)
+      m.n += b.n
+    }
+  })
+  return [...merged.values()]
+}
+
+function cutLine (blue: Uint8Array, grey: Uint8Array, hsv: Uint8Array, cols: number, l: Span, lineH: number): LineImage {
   // Dark text on white, keeping the glyphs' brightness for smooth edges.
   const pad = Math.max(2, Math.round(lineH / 4))
-  const ox = Math.max(0, x0 - pad)
-  const oy = Math.max(0, y0 - 2)
-  const w = Math.min(cols, x1 + pad + 1) - ox
-  const hh = Math.min(rows, y1 + 3) - oy
+  const rows = hsv.length / 3 / cols
+  const ox = Math.max(0, l.x0 - pad)
+  const oy = Math.max(0, l.y0 - 2)
+  const w = Math.min(cols, l.x1 + pad + 1) - ox
+  const hh = Math.min(rows, l.y1 + 3) - oy
+  const h = l.y1 - l.y0 + 1
   const src = new cv.Mat(hh, w, cv.CV_8U)
   const d = src.data as Uint8Array
   for (let y = 0; y < hh; y++) {
@@ -260,27 +514,6 @@ export function ocrLine (img: LineImage): string {
   // The worker's tesseract is shared with other readers.
   tessApi.SetVariable('tessedit_char_whitelist', '')
   return text.replace(/\s+/g, ' ').trim()
-}
-
-// Smallest rect holding every set pixel. APT's OCR files ship a reduced opencv
-// without cv.boundingRect. The mask must have at least one set pixel.
-function maskBounds (data: Uint8Array, cols: number, rows: number) {
-  let x0 = cols
-  let x1 = -1
-  let y0 = rows
-  let y1 = -1
-  for (let y = 0; y < rows; y++) {
-    const off = y * cols
-    for (let x = 0; x < cols; x++) {
-      if (data[off + x]) {
-        if (x < x0) x0 = x
-        if (x > x1) x1 = x
-        if (y < y0) y0 = y
-        y1 = y
-      }
-    }
-  }
-  return new cv.Rect(x0, y0, x1 - x0 + 1, y1 - y0 + 1)
 }
 
 function hashBits (s: string): string {

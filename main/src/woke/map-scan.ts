@@ -7,6 +7,7 @@ import { uIOhook } from 'uiohook-napi'
 import { screen } from 'electron'
 import fs from 'fs'
 import os from 'os'
+import path from 'path'
 import type { ServerEvents } from '../server'
 import type { Logger } from '../RemoteLogger'
 import type { GameWindow } from '../windowing/GameWindow'
@@ -97,7 +98,35 @@ export const ESSENCE_SCAN: ScannerKind = {
   name: 'Essence scan mode',
   frameMs: 200,
   cropHalfWidth: 0.3,
+  pooledLines: true,
   read: async (worker, image, opts) => await worker.scanEssenceLabel(image, opts)
+}
+
+// Tesseract model trained on the game's tooltip font (Fontin SmallCaps), see
+// ocr-bench/README.md. Much better than stock English at "+", small caps
+// and digits. Ships with the renderer's static data; stock English is used
+// if it's missing.
+const SCAN_MODEL = 'poe'
+let scanModel: Uint8Array | null | undefined
+
+function readScanModel (): Uint8Array | null {
+  if (scanModel !== undefined) return scanModel
+  const candidates = [
+    path.join(__dirname, 'data/ocr', `${SCAN_MODEL}.traineddata`),
+    path.join(__dirname, '../../renderer/public/data/ocr', `${SCAN_MODEL}.traineddata`)
+  ]
+  scanModel = null
+  for (const file of candidates) {
+    try { scanModel = new Uint8Array(fs.readFileSync(file)); break } catch {}
+  }
+  return scanModel
+}
+
+async function useScanModel (w: OcrWorker) {
+  const data = readScanModel()
+  if (!data) return
+  // Each worker gets its own copy (it's transferred to the worker's heap).
+  try { await w.loadModel(data.slice(), SCAN_MODEL) } catch {}
 }
 
 // One OCR worker shared by all scan modes (each would load tesseract + opencv).
@@ -111,6 +140,7 @@ async function getWorker (): Promise<OcrWorker> {
   clearTimeout(idleTimer)
   sharedWorker ??= OcrWorker.create().then(async (w) => {
     await w.updateOptions('en')
+    await useScanModel(w)
     return w
   })
   return await sharedWorker
@@ -126,7 +156,7 @@ function warmLinePool () {
   if (linePool.length) return
   for (let i = 0; i < POOL_SIZE; i++) {
     linePool.push(OcrWorker.create()
-      .then(async (w) => { await w.updateOptions('en'); return w })
+      .then(async (w) => { await w.updateOptions('en'); await useScanModel(w); return w })
       .catch(() => null))
   }
 }
