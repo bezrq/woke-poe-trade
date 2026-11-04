@@ -199,6 +199,7 @@ export class Shortcuts {
             name: 'MAIN->CLIENT::widget-action',
             payload: { target: entry.action.target }
           })
+          if (entry.action.focusOverlay) this.overlay.assertOverlayActive()
         } else if (entry.action.type === 'stash-search') {
           stashSearch(entry.action.text, this.clipboard, this.overlay)
         } else if (entry.action.type === 'copy-item') {

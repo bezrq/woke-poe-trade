@@ -70,7 +70,7 @@
           <button v-for="t in group.tiers" :key="t.tier" class="w-focusable" :class="[$style.tierRow, { [$style.active]: t.tier === selTier, [$style.off]: t.disabled }]"
             @click="selTier = t.tier; movingBase = null" @contextmenu="tierMenu($event, t)">
             <span :class="$style.tierName" :title="t.tier">{{ t.tier.startsWith('#') ? 'rule' : t.tier }}</span>
-            <LabelPreview :text="t.bases[0] ?? previewName(t)" :actions="firstLive(t).actions" :visibility="t.disabled ? 'Hide' : t.visibility" />
+            <LabelPreview :text="t.bases[0] ?? previewName(t)" :actions="firstLive(t).actions" :visibility="t.disabled ? 'Hide' : t.visibility" style="max-width: 100%; overflow: hidden;" />
             <span :class="$style.bases" class="w-trunc">
               <template v-if="t.bases.length">{{ t.bases.slice(0, 5).join(' · ') }}<span v-if="t.bases.length > 5" class="w-faint"> · +{{ t.bases.length - 5 }}</span></template>
               <span v-else class="w-faint">{{ conditionSummary(t) }}</span>
@@ -108,6 +108,7 @@
       </div>
     </div>
 
+    <PreviewTab v-else-if="tab === 'preview'" :store="store" :config="config" :anchor="panel?.el" @open-rule="openRule" />
     <PricesTab v-else-if="tab === 'prices'" :store="store" :config="config" :anchor="panel?.el" />
     <NeverSinkTab v-else-if="tab === 'neversink'" :store="store" :config="config" :anchor="panel?.el" />
 
@@ -190,6 +191,7 @@ import { computed, ref, watch } from 'vue'
 import { WPanel, WButton, WSelect, WField, WTabs, WListItem, WChip, WEmpty, WKbd, WBanner, WSkeleton, ago, openMenu, toast } from '../ui'
 import LabelPreview from './LabelPreview.vue'
 import PricesTab from './PricesTab.vue'
+import PreviewTab from './PreviewTab.vue'
 import NeverSinkTab from './NeverSinkTab.vue'
 import { LEVEL_NAMES } from './strictness'
 import { describeProblem } from './validate'
@@ -217,7 +219,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{ (e: 'close'): void }>()
 
-const tab = ref<'rules' | 'prices' | 'neversink' | 'build' | 'changes'>('rules')
+const tab = ref<'rules' | 'preview' | 'prices' | 'neversink' | 'build' | 'changes'>('rules')
 const search = ref('')
 const selType = ref<string | null>(null)
 const selTier = ref<string | null>(null)
@@ -234,6 +236,7 @@ const outName = computed(() => props.config.sourceName ? outputName(props.config
 
 const tabOptions = computed(() => [
   { value: 'rules', label: 'Rules' },
+  { value: 'preview', label: 'Preview' },
   { value: 'prices', label: 'Prices', count: props.store.plan.value?.moves.length || undefined },
   { value: 'neversink', label: props.config.neversink.on ? `NeverSink · ${LEVEL_NAMES[props.config.neversink.level]}` : 'NeverSink', count: props.store.updateReady.value ? 1 : undefined },
   { value: 'build', label: 'Build', count: props.store.buildBlockCount.value || undefined },
@@ -347,6 +350,11 @@ function selectGroup (type: string) {
   selType.value = type
   selTier.value = group.value?.tiers[0]?.tier ?? null
   movingBase.value = null
+}
+
+function openRule (rule: { type: string, tier: string | null }) {
+  if (rule.tier) jumpTo(rule.type, rule.tier)
+  else { search.value = ''; tab.value = 'rules'; selectGroup(rule.type) }
 }
 
 function jumpTo (type: string, t: string, base?: string) {
@@ -507,7 +515,7 @@ function openFolder () {
 }
 .tierRow {
   display: grid;
-  grid-template-columns: 6rem 12rem minmax(0, 1fr);
+  grid-template-columns: 6rem 14rem minmax(0, 1fr);
   gap: 10px;
   align-items: center;
   padding: 6px 8px;
