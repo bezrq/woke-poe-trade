@@ -23,9 +23,16 @@ export interface GemData {
 
 export function gemData (name: string): GemData | null {
   const key = DATA[name] ? name : DATA[`${name} Support`] ? `${name} Support` : null
-  if (!key) return null
-  const d = DATA[key]
-  return { name: key, requiredLevel: d.l, colour: d.a ?? 'w', sources: d.s }
+  if (key) {
+    const d = DATA[key]
+    return { name: key, requiredLevel: d.l, colour: d.a ?? 'w', sources: d.s }
+  }
+  // Transfigured gems ("Kinetic Blast of Clustering") aren't in the campaign
+  // data: they share their base gem's colour and level, and no quest or
+  // vendor hands them out.
+  const i = name.lastIndexOf(' of ')
+  const base = i > 0 ? DATA[name.slice(0, i)] : undefined
+  return base ? { name, requiredLevel: base.l, colour: base.a ?? 'w', sources: [] } : null
 }
 
 export const CLASS_NAMES = ['Duelist', 'Marauder', 'Ranger', 'Scion', 'Shadow', 'Templar', 'Witch']
