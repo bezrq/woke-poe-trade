@@ -1,6 +1,13 @@
+# woke: our own app id, name and update feed, so an install never mixes with
+# (or updates itself back to) the original Awakened PoE Trade.
+appId: "io.github.guybnd.woke-poe-trade"
+productName: "Woke PoE Trade"
 publish:
-  - "github"
-productName: "Awakened PoE Trade"
+  - provider: "github"
+    owner: "guybnd"
+    repo: "woke-poe-trade"
+    # Releases are created as drafts; players only see them once published.
+    releaseType: "draft"
 npmRebuild: false
 toolsets:
   appimage: 1.0.3
@@ -14,9 +21,22 @@ files:
     to: "."
 extraMetadata:
   main: "main.js"
+# OCR data (opencv + tesseract) for map scan, essence scan and heist gems,
+# fetched by build/fetch-ocr.mjs.
+extraResources:
+  - from: "build/cv-ocr"
+    to: "cv-ocr"
 nsis:
-  oneClick: false
-  allowToChangeInstallationDirectory: true
+  # One click, per user: no admin prompt, installs to %LOCALAPPDATA%.
+  oneClick: true
+  perMachine: false
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: "Woke PoE Trade"
+  artifactName: "Woke-PoE-Trade-Setup-${version}.${ext}"
+  deleteAppDataOnUninstall: false
+portable:
+  artifactName: "Woke-PoE-Trade-${version}-portable.${ext}"
 win:
   target:
   - "nsis"

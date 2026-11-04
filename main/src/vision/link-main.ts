@@ -4,12 +4,12 @@ import nodeEndpoint from 'comlink/dist/umd/node-adapter'
 import type { WorkerAPI } from './link-worker'
 import type { ImageData } from './utils'
 import type { ScanOptions, LineImage } from '../woke/map-scan-vision'
-import { app } from 'electron'
-import path from 'path'
+import { ocrDir } from '../woke/ocr-dir'
 import { perfTime } from '../woke/perf'
 
 export class OcrWorker {
-  private binDir = path.join(app.getPath('userData'), 'apt-data/cv-ocr')
+  // woke: the installer ships the OCR files; the config folder copy still wins.
+  private binDir = ocrDir()
   private api: Comlink.Remote<WorkerAPI>
   private lang = ''
   private worker: Worker

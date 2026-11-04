@@ -2,11 +2,13 @@
   <div class="p-2 flex flex-col h-full items-center">
     <div class="flex flex-col items-center p-2 mb-4">
       <img class="w-12 h-12" src="/images/TransferOrb.png">
-      <p class="text-base">Awakened PoE Trade</p>
+      <p class="text-base">Woke PoE Trade</p>
       <p class="">{{ t('app.version', [version]) }}</p>
+      <p class="text-gray-500">Built on <a class="border-b" href="https://github.com/SnosMe/awakened-poe-trade" target="_blank">Awakened PoE Trade</a> by SnosMe</p>
       <div class="flex gap-2">
-        <a class="border-b" href="https://github.com/SnosMe/awakened-poe-trade/releases" target="_blank">{{ t('app.release_notes') }}</a>
-        <a class="border-b" href="https://github.com/SnosMe/awakened-poe-trade/issues" target="_blank">{{ t('app.report_bug') }}</a>
+        <a class="border-b" href="https://github.com/guybnd/woke-poe-trade/releases" target="_blank">{{ t('app.release_notes') }}</a>
+        <a class="border-b" href="#" @click.prevent="reportProblem()">{{ t('app.report_bug') }}</a>
+        <a class="border-b" href="#" @click.prevent="openCrashFolder()">Crash reports folder</a>
       </div>
     </div>
     <div class="border border-gray-600 rounded p-2 whitespace-nowrap min-w-min w-72">
@@ -30,6 +32,7 @@ import { defineComponent, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Host } from '@/web/background/IPC'
 import { DateTime } from 'luxon'
+import { reportProblem, openCrashFolder } from '@/web/woke/app/report'
 
 function checkForUpdates () {
   Host.sendEvent({
@@ -39,7 +42,7 @@ function checkForUpdates () {
 }
 
 function openDownloadPage () {
-  window.open('https://snosme.github.io/awakened-poe-trade/download')
+  window.open('https://github.com/guybnd/woke-poe-trade/releases/latest')
 }
 
 function quitAndInstall () {
@@ -82,7 +85,9 @@ export default defineComponent({
     return {
       t,
       info,
-      version: Host.version
+      version: Host.version,
+      reportProblem,
+      openCrashFolder
     }
   }
 })

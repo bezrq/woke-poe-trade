@@ -36,6 +36,11 @@ const handlers: Record<string, Handler> = {
   ...sessionHandlers
 }
 
+// For main-process parts set up outside initWoke (setup window, crash reports).
+export function registerWokeHandler (op: string, handler: Handler): void {
+  handlers[op] = handler
+}
+
 export function initWoke (server: ServerEvents, logger: Logger, poeWindow: GameWindow, gameLog: GameLogWatcher): void {
   handlers['game-log-tail'] = async (args) => await readGameLogTail(gameLog, args)
   // Follow the running game's Client.txt (another drive, another Steam

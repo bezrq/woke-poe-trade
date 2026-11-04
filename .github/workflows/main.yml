@@ -45,10 +45,16 @@ jobs:
       working-directory: ./main
     - run: npm run build
       working-directory: ./main
-    - run: npm run package "--" -p onTagOrDraft
+    # woke: never publish from here; releases come from release.yml (tags).
+    - run: npm run package "--" -p never
       working-directory: ./main
-      env:
-        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    - name: Test build
+      if: ${{ startsWith(matrix.os, 'windows') }}
+      uses: actions/upload-artifact@v7
+      with:
+        name: windows-test-build
+        path: main/dist/*.exe
+        retention-days: 7
     - name: Hash
       if: ${{ startsWith(matrix.os, 'windows') }}
       run: type .\main\dist\latest.yml

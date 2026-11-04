@@ -1,0 +1,51 @@
+name: Release
+
+# Push a tag like v0.1.0 (it must match main/package.json "version") to build
+# the Windows installer and attach it to a DRAFT release. Players and the
+# auto-updater only see it after someone presses Publish on GitHub.
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-2022
+    steps:
+    - uses: actions/checkout@v6
+    - uses: actions/setup-node@v6
+      with:
+        node-version: 22
+    - name: Check tag matches version
+      if: ${{ startsWith(github.ref, 'refs/tags/') }}
+      shell: bash
+      run: |
+        version=$(node -p "require('./main/package.json').version")
+        if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+          echo "Tag $GITHUB_REF_NAME does not match main/package.json version $version"
+          exit 1
+        fi
+    - run: npm ci
+      working-directory: ./renderer
+    - run: npm run build
+      working-directory: ./renderer
+    - run: npm ci
+      working-directory: ./main
+    - run: npm run build
+      working-directory: ./main
+    # releaseType: draft in electron-builder.yml keeps the release unpublished.
+    - run: npm run package -- --win -p always
+      working-directory: ./main
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    - uses: actions/upload-artifact@v7
+      with:
+        name: windows-installer
+        path: |
+          main/dist/*.exe
+          main/dist/latest.yml
+        retention-days: 14

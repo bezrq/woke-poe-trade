@@ -18,7 +18,8 @@ class HostTransport {
     })
     await new Promise((resolve) => {
       const protocol = (window.location.protocol === 'https:') ? 'wss:' : 'ws:'
-      this.socket = new Sockette(`${protocol}//${window.location.host}/events`, {
+      const role = window.location.hash === '#setup' ? '?role=setup' : ''
+      this.socket = new Sockette(`${protocol}//${window.location.host}/events${role}`, {
         onmessage: (e) => {
           this.selfDispatch(JSON.parse(e.data))
         },

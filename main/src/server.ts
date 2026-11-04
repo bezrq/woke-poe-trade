@@ -67,7 +67,7 @@ export const eventPipe = {
 }
 
 server.on('upgrade', (req, socket, head) => {
-  if (req.url !== '/events') {
+  if (req.url !== '/events' && req.url !== '/events?role=setup') {
     return req.destroy()
   }
   websocketServer.handleUpgrade(req, socket, head, (ws) => {
@@ -81,8 +81,10 @@ export async function startServer (
 ): Promise<number> {
   const configStore = new ConfigStore(eventPipe)
 
-  websocketServer.on('connection', (socket) => {
-    lastActiveClient = socket
+  websocketServer.on('connection', (socket, req) => {
+    // woke: the setup window is never where item checks should go.
+    const isSetupWindow = Boolean((req as { url?: string } | undefined)?.url?.includes('role=setup'))
+    if (!isSetupWindow || !lastActiveClient) lastActiveClient = socket
     socket.on('message', (bytes) => {
       const event = JSON.parse(bytes.toString('utf-8')) as IpcEvent
       if (event.name === 'CLIENT->MAIN::used-recently') {
@@ -97,10 +99,10 @@ export async function startServer (
         evBus.emit('CLIENT->MAIN::used-recently', { isOverlay: true })
       }
     })
-    sendEventTo('last-active', {
+    socket.send(JSON.stringify({
       name: 'MAIN->CLIENT::log-entry',
       payload: { message: logger.history }
-    })
+    } satisfies IpcEvent))
   })
 
   server.addListener('request', async (req, res) => {

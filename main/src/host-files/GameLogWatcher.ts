@@ -6,7 +6,7 @@ import { guessFileLocation } from './utils'
 import { ServerEvents } from '../server'
 import { Logger } from '../RemoteLogger'
 
-const POSSIBLE_PATH =
+export const POSSIBLE_PATH =
   (process.platform === 'win32') ? [
     'C:\\Program Files (x86)\\Grinding Gear Games\\Path of Exile\\logs\\Client.txt',
     'C:\\Program Files (x86)\\Steam\\steamapps\\common\\Path of Exile\\logs\\Client.txt'
@@ -20,7 +20,7 @@ const POSSIBLE_PATH =
 // woke: the game can be installed anywhere (another Steam library, another
 // drive), so ask the running game where it is. Runs once at startup and once
 // each time the game window appears, never on a timer.
-function runningGameLog (): Promise<string | null> {
+export function runningGameLog (): Promise<string | null> {
   if (process.platform !== 'win32') return Promise.resolve(null)
   return new Promise((resolve) => {
     execFile('powershell', ['-NoProfile', '-NonInteractive', '-Command',

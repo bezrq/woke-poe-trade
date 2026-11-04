@@ -1,4 +1,6 @@
 import fs from 'fs/promises'
+import path from 'path'
+import { pathToFileURL } from 'url'
 import type { ImageData } from './utils'
 
 let tessModule: any
@@ -17,11 +19,11 @@ export async function init (binDir: string) {
     throw new Error('Unsupported platform')
   }
 
-  const tessInstantiate = (await import('file://' + binDir + '/tesseract-core-simd.js')).default
+  const tessInstantiate = (await import(pathToFileURL(path.join(binDir, 'tesseract-core-simd.js')).href)).default
   tessModule = await tessInstantiate()
   tessApi = new tessModule.TessBaseAPI()
 
-  const cvPromise = (await import('file://' + binDir + '/opencv.js')).default
+  const cvPromise = (await import(pathToFileURL(path.join(binDir, 'opencv.js')).href)).default
   cv = await cvPromise
 }
 

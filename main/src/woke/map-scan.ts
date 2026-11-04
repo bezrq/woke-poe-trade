@@ -4,9 +4,8 @@
 // whenever it changes, so rerolling the same map gives a new reading.
 // Used by map scan (map tooltips) and essence scan (essence monolith labels).
 import { uIOhook } from 'uiohook-napi'
-import { app, screen } from 'electron'
+import { screen } from 'electron'
 import fs from 'fs'
-import path from 'path'
 import os from 'os'
 import type { ServerEvents } from '../server'
 import type { Logger } from '../RemoteLogger'
@@ -14,6 +13,7 @@ import type { GameWindow } from '../windowing/GameWindow'
 import { OcrWorker } from '../vision/link-main'
 import type { ScanOptions, ScanResult, LineImage } from './map-scan-vision'
 import { perfRecord } from './perf'
+import { ocrDir, USER_OCR_DIR } from './ocr-dir'
 
 // Stop after this long without the game focused, so it can't run forever.
 const IDLE_STOP_MS = 30 * 60 * 1000
@@ -22,7 +22,6 @@ const REST_MS = 150
 
 // Files the OCR worker loads (the same ones APT's heist gem reader uses).
 // The worker swallows load errors, so they're checked up front instead.
-export const OCR_DIR = () => path.join(app.getPath('userData'), 'apt-data/cv-ocr')
 const OCR_FILES = ['tesseract-core-simd.js', 'opencv.js', 'eng.traineddata']
 
 export interface OcrCheck {
@@ -35,7 +34,7 @@ export interface OcrCheck {
 
 export function checkOcr (): OcrCheck {
   const windows = process.platform === 'win32'
-  const dir = OCR_DIR()
+  const dir = ocrDir()
   let missing: string[] = []
   try {
     const have = new Set(fs.readdirSync(dir))
@@ -47,7 +46,7 @@ export function checkOcr (): OcrCheck {
   if (!windows) {
     message = 'Scanning needs Windows (it uses the game screenshot API).'
   } else if (missing.length) {
-    message = `OCR files missing: ${missing.join(', ')}. Download cv-ocr from the Awakened PoE Trade releases page and unzip it into ${dir}`
+    message = `OCR files missing: ${missing.join(', ')}. Reinstall the app, or download cv-ocr from the Awakened PoE Trade releases page and unzip it into ${USER_OCR_DIR()}`
   }
   return { ok: !message, windows, dir, missing, message }
 }

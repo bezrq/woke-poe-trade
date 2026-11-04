@@ -26,3 +26,6 @@ yarn-error.log*
 # vitepress
 docs/.vitepress/dist
 docs/.vitepress/cache
+
+# woke: OCR data fetched for packaging (main/build/fetch-ocr.mjs)
+main/build/cv-ocr
