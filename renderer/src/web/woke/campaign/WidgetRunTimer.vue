@@ -57,7 +57,7 @@
 
       <!-- Splits panel -->
       <div v-if="docked && !config.expanded && wm.active.value" :class="$style.strip" class="w-faint">Run timer · shown in the campaign tracker strip</div>
-      <WPanel v-if="config.expanded" width="21rem" max-height="60vh" :style="docked ? 'margin-top: 2.4rem' : ''">
+      <WPanel v-if="config.expanded" ref="panel" width="21rem" max-height="60vh" :style="docked ? 'margin-top: 2.4rem' : ''">
         <template #title>
           <template v-if="run">Run<template v-if="run.charName"> · {{ run.charName }}<span class="w-dim"> ({{ run.className }})</span></template></template>
           <template v-else>Campaign runs</template>
@@ -136,7 +136,7 @@
               </span>
               <span class="text-right w-num" :class="!isComplete(r) && 'w-faint'">{{ formatRunTime(runTotal(r) ?? lastSplit(r)) }}</span>
               <span class="text-right w-num w-dim">{{ formatDate(r.startedAt) }}</span>
-              <button class="w-icon-btn" title="Delete run" @click.stop="removeRun(r.id)"><i class="fas fa-times text-xs" /></button>
+              <button class="w-icon-btn" title="Delete run (Undo in the note)" @click.stop="removeRun(r.id)"><i class="fas fa-times text-xs" /></button>
             </div>
           </template>
         </template>
@@ -174,7 +174,7 @@ import { AppConfig, saveConfig } from '@/web/Config'
 import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
 import { useVisibleClock } from '../shared/visible-clock'
-import { WPanel, WTabs, WChip, WEmpty } from '../ui'
+import { WPanel, WTabs, WChip, WEmpty, toast } from '../ui'
 import DockItem from '../dock/DockItem.vue'
 import { hideWhilePlaying, tickWhile } from '../dock/dock'
 import { actLabel, parseLogLine } from './log-parse'
@@ -255,9 +255,14 @@ function pickCompare (r: CampaignRun) {
   if (!isComplete(r)) return
   props.config.compareTo = r.id === pb.value?.id ? null : r.id
 }
+const panel = shallowRef<InstanceType<typeof WPanel> | null>(null)
+// No "are you sure": delete now, offer Undo (P9).
 function removeRun (id: number) {
-  props.config.history = props.config.history.filter(r => r.id !== id)
+  const before = props.config.history
+  const compareBefore = props.config.compareTo
+  props.config.history = before.filter(r => r.id !== id)
   if (props.config.compareTo === id) props.config.compareTo = null
+  toast('Run deleted', { anchor: panel.value?.el, undo: () => { props.config.history = before; props.config.compareTo = compareBefore } })
 }
 function lastSplit (r: CampaignRun) {
   return r.splits.length ? r.splits[r.splits.length - 1].totalMs : r.elapsedMs

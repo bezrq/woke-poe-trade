@@ -142,11 +142,13 @@ function copy (tier: string) {
   const src = props.copyFrom.find(t => t.tier === tier)
   if (!src) return
   const s = src.look
+  // A look the source tier leaves at the game default is copied as that
+  // default, not skipped (which kept this tier's own size/colours).
   emit('patch', {
-    fontSize: s.fontSize,
-    text: s.text,
+    fontSize: s.fontSize ?? DEFAULT_FONT,
+    text: s.text ?? DEFAULT_TEXT,
     border: s.border ?? null,
-    background: s.background,
+    background: s.background ?? DEFAULT_BG,
     sound: s.sound ?? null,
     effect: s.effect ?? null,
     icon: s.icon ?? null

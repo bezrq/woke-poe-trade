@@ -11,6 +11,8 @@ export interface KillDrop {
 export interface KillRecord {
   ts: number
   drops: KillDrop[]
+  // League the kill was logged in (missing on kills logged before it was kept).
+  league?: string
 }
 
 // Player settings the calculation depends on.

@@ -2,7 +2,7 @@
   <span :class="$style.wrap">
     <i v-if="icon" :class="[icon, $style.icon]" />
     <input :class="[$style.field, { [$style.withIcon]: icon }]" :type="type" :value="modelValue" :placeholder="placeholder"
-      @input="onInput" @keydown.esc="clearOnEsc && emit('update:modelValue', type === 'number' ? 0 : '')">
+      @input="onInput" @keydown.esc="clearOnEsc && type !== 'number' && emit('update:modelValue', '')">
     <span v-if="suffix" :class="$style.suffix">{{ suffix }}</span>
   </span>
 </template>
@@ -14,6 +14,8 @@ const props = withDefaults(defineProps<{
   placeholder?: string
   icon?: string
   suffix?: string
+  // Esc empties a text field. Never a number field: those are settings, and
+  // Esc (to leave the overlay) used to reset them to 0.
   clearOnEsc?: boolean
 }>(), { type: 'text', placeholder: undefined, icon: undefined, suffix: undefined, clearOnEsc: true })
 const emit = defineEmits<{ (e: 'update:modelValue', v: string | number): void }>()

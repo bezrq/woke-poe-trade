@@ -170,9 +170,12 @@ export function useLootFilter (config: LootFilterWidget) {
     rebuild()
   }
 
+  // Returns a function that puts the edit back (for the Undo toast).
   function removeEdit (id: number) {
-    config.edits = config.edits.filter(e => e.id !== id)
+    const before = config.edits
+    config.edits = before.filter(e => e.id !== id)
     rebuild()
+    return () => { config.edits = before; rebuild() }
   }
 
   function header (): string[] {

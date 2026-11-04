@@ -186,7 +186,8 @@ export function buildInsight (listings: InsightListing[], opts: InsightOptions):
     prices,
     range,
     suggest: {
-      fast: Math.max(range.low * 0.97, 1),
+      // At least 1c, except for items whose cheapest listing is under 1c.
+      fast: range.low >= 1 ? Math.max(range.low * 0.97, 1) : range.low,
       patient: Math.max(range.fair, range.low)
     },
     confidence,

@@ -7,10 +7,11 @@
     </div>
     <template v-for="g in shownGroups" :key="g.label">
       <div class="w-group-label">{{ g.label }}</div>
-      <div v-if="!g.rows.length" class="w-faint text-xs" style="padding: 2px var(--w-pad) 6px;">No poe.ninja prices for these yet.</div>
+      <WSkeleton v-if="!items.length" :rows="Math.min(top ?? 4, 4)" />
+      <div v-else-if="!g.rows.length" class="w-faint text-xs" style="padding: 2px var(--w-pad) 6px;">poe.ninja has no prices for these.</div>
       <div v-for="(row, i) in g.rows" :key="row.item.name" class="w-row" :class="$style.priceGrid">
-        <span class="w-trunc">
-          {{ row.item.name }}<span v-if="row.tag" class="w-faint ml-1 text-xs">{{ row.tag }}</span>
+        <span class="w-trunc flex items-center gap-1">
+          <WIcon :src="ninjaIcon(row.item.type, row.item.name) ?? undefined" fallback="fas fa-coins" />{{ row.item.name }}<span v-if="row.tag" class="w-faint ml-1 text-xs">{{ row.tag }}</span>
           <span v-if="i === 0" class="w-up ml-1" :class="$style.best">best</span>
         </span>
         <span :class="$style.bar"><i :style="{ width: barWidth(row.chaos, g.max) }" /></span>
@@ -22,7 +23,8 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { WPrice } from '../ui'
+import { WPrice, WIcon, WSkeleton } from '../ui'
+import { ninjaIcon } from '../ui/game-icons'
 import { priceGroup, verdict } from './data'
 import type { Mechanic } from './data'
 import type { PriceItem } from '../market/types'

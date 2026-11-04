@@ -17,7 +17,7 @@
         </div>
       </template>
     </DockItem>
-    <WPanel :title="config.wmTitle || 'Boss runs'" icon="maven" :updated="prices.snapshot.value?.ts ?? null" :fresh-min="40" :stale-min="180" width="62rem" max-height="80vh" :scroll="false">
+    <WPanel ref="panel" :title="config.wmTitle || 'Boss runs'" icon="maven" :updated="prices.snapshot.value?.ts ?? null" :fresh-min="40" :stale-min="180" width="62rem" max-height="80vh" :scroll="false">
       <template #toolbar>
         <WSegmented v-model="config.tier" :options="tierOptions" />
         <WSegmented v-model="config.sort" :options="sortOptions" />
@@ -27,21 +27,22 @@
         </label>
         <ui-checkbox v-model="config.ownEntry" class="text-sm">I own the entry items</ui-checkbox>
       </template>
-      <template #meta>
-        <template v-if="prices.snapshot.value">
-          <span>{{ prices.snapshot.value.league }}</span>
-          <template v-if="divine"><span class="w-faint">·</span><span>1 div = {{ Math.round(divine) }}c</span></template>
-        </template>
-        <span v-else style="color: var(--w-warn);"><i class="fas fa-exclamation-triangle" /> Waiting for poe.ninja prices. They load on their own within a minute or two.</span>
+      <template v-if="!prices.snapshot.value" #banner>
+        <WBanner tone="info">Waiting for poe.ninja prices. They load on their own within a minute or two.</WBanner>
+      </template>
+      <template v-else #meta>
+        <span>{{ prices.snapshot.value?.league }}</span>
+        <template v-if="divine"><span class="w-faint">·</span><span class="flex items-center gap-1">1 <WIcon currency="divine" title="Divine Orb" /> = {{ Math.round(divine) }}c</span></template>
       </template>
 
       <div :class="$style.layout">
         <!-- ranked list -->
-        <div :class="$style.list" class="w-scroll">
+        <div v-if="!prices.snapshot.value" :class="$style.list"><WSkeleton :rows="9" /></div>
+        <div v-else :class="$style.list" class="w-scroll">
           <div class="w-group-label">Profitable now</div>
-          <WListItem v-for="r in ranked.good" :key="r.boss.id" :active="r.boss.id === sel?.boss.id" @select="config.selected = r.boss.id">
+          <WListItem v-for="r in ranked.good" :key="r.boss.id" :active="r.boss.id === sel?.boss.id" @select="config.selected = r.boss.id" @contextmenu="bossMenu($event, r)">
             <span class="flex justify-between gap-2 w-full min-w-0">
-              <span class="w-trunc">{{ r.boss.name }}</span>
+              <span class="flex items-center gap-2 min-w-0"><WIcon :src="art(r.boss.entry[0]?.name)" fallback="fas fa-skull" /><span class="w-trunc">{{ r.boss.name }}</span></span>
               <span :class="r.profit >= 0 ? 'w-up' : 'w-down'"><WPrice :chaos="config.sort === 'run' ? r.profit : r.perHour" :divine="divine" />{{ config.sort === 'run' ? '' : '/h' }}</span>
             </span>
             <template #sub>{{ subline(r) }}</template>
@@ -49,18 +50,18 @@
           <div v-if="!ranked.good.length" class="w-faint text-xs" style="padding: 4px var(--w-pad);">Nothing in profit at these prices.</div>
           <template v-if="ranked.losing.length">
             <div class="w-group-label">Losing money</div>
-            <WListItem v-for="r in ranked.losing" :key="r.boss.id" :active="r.boss.id === sel?.boss.id" @select="config.selected = r.boss.id">
+            <WListItem v-for="r in ranked.losing" :key="r.boss.id" :active="r.boss.id === sel?.boss.id" @select="config.selected = r.boss.id" @contextmenu="bossMenu($event, r)">
               <span class="flex justify-between gap-2 w-full min-w-0">
-                <span class="w-trunc">{{ r.boss.name }}</span>
+                <span class="flex items-center gap-2 min-w-0"><WIcon :src="art(r.boss.entry[0]?.name)" fallback="fas fa-skull" /><span class="w-trunc">{{ r.boss.name }}</span></span>
                 <span class="w-down"><WPrice :chaos="config.sort === 'run' ? r.profit : r.perHour" :divine="divine" />{{ config.sort === 'run' ? '' : '/h' }}</span>
               </span>
               <template #sub>{{ subline(r) }}</template>
             </WListItem>
           </template>
           <div v-if="ranked.noData.length" class="w-group-label">Needs data</div>
-          <WListItem v-for="r in ranked.noData" :key="r.boss.id" :active="r.boss.id === sel?.boss.id" @select="config.selected = r.boss.id">
+          <WListItem v-for="r in ranked.noData" :key="r.boss.id" :active="r.boss.id === sel?.boss.id" @select="config.selected = r.boss.id" @contextmenu="bossMenu($event, r)">
             <span class="flex justify-between gap-2 w-full min-w-0">
-              <span class="w-trunc w-dim">{{ r.boss.name }}</span>
+              <span class="flex items-center gap-2 min-w-0"><WIcon :src="art(r.boss.entry[0]?.name)" fallback="fas fa-skull" /><span class="w-trunc w-dim">{{ r.boss.name }}</span></span>
               <span class="w-faint text-xs flex items-center gap-1">entry <WPrice :chaos="r.entryMissing.length ? null : r.entry" :divine="divine" /></span>
             </span>
           </WListItem>
@@ -97,7 +98,7 @@
                   <div v-for="d in sel.drops" :key="d.name" class="w-row" :class="[$style.dropGrid, { [$style.off]: !d.included }]">
                     <input type="checkbox" :checked="d.included" :aria-label="`Count ${d.name}`" @change="toggleDrop(sel.boss.id, d.name, ($event.target as HTMLInputElement).checked, d.tooRare)">
                     <span class="w-trunc flex items-center gap-1" :title="d.name">
-                      <span class="w-trunc">{{ d.name }}</span><span v-if="d.qty > 1" class="w-dim">×{{ d.qty }}</span>
+                      <WIcon :src="art(d.name)" fallback="fas fa-gem" /><span class="w-trunc">{{ d.name }}</span><span v-if="d.qty > 1" class="w-dim">×{{ d.qty }}</span>
                       <WChip v-if="d.tooRare" :title="`Rarer than 1 in ${config.plannedRuns} runs`">rare</WChip>
                       <WChip v-if="d.priceMode" clickable :active="d.priceMode === 'custom'" :title="spreadTitle(d)" @click="editing = editing === d.name ? null : d.name">{{ modeLabel(d.priceMode) }}</WChip>
                     </span>
@@ -155,11 +156,12 @@
                     <span class="w-dim">My average loot <WPrice :chaos="sel.myLoot" :divine="divine" class="w-accent" /></span>
                     <span v-if="sel.hasRates" class="w-dim">Expected <WPrice :chaos="sel.loot" :divine="divine" /></span>
                   </div>
-                  <div v-for="(kill, i) in killsOf(sel.boss.id).slice().reverse()" :key="kill.ts" class="w-row" :class="$style.killGrid">
+                  <div v-for="(kill, i) in killsOf(sel.boss.id).slice().reverse()" :key="kill.ts" class="w-row" :class="$style.killGrid"
+                    @contextmenu="killMenu($event, sel.boss.id, killsOf(sel.boss.id).length - 1 - i)">
                     <span class="w-dim w-num text-xs">{{ new Date(kill.ts).toLocaleDateString() }}</span>
                     <span class="w-trunc">{{ kill.drops.map(d => d.qty > 1 ? `${d.name} ×${d.qty}` : d.name).join(', ') || 'nothing of note' }}</span>
                     <WPrice :chaos="killValue(kill)" :divine="divine" />
-                    <button class="w-icon-btn" title="Delete" @click="deleteKill(sel.boss.id, killsOf(sel.boss.id).length - 1 - i)"><i class="fas fa-times" /></button>
+                    <button class="w-icon-btn" title="Delete (Undo in the note)" @click="deleteKill(sel.boss.id, killsOf(sel.boss.id).length - 1 - i)"><i class="fas fa-times" /></button>
                   </div>
                 </template>
               </template>
@@ -182,8 +184,10 @@
                   <input type="number" min="0" max="100" step="0.01" :class="$style.input" class="text-right"
                     :value="d.chance == null ? '' : +(d.chance * 100).toFixed(3)" placeholder="?"
                     @change="setRate(sel.boss.id, d.name, ($event.target as HTMLInputElement).value)">
-                  <button v-if="d.rateSource === 'custom'" class="w-icon-btn" title="Remove my rate" @click="setRate(sel.boss.id, d.name, '')"><i class="fas fa-undo" /></button>
-                  <span v-else />
+                  <span class="flex">
+                    <button v-if="d.rateSource === 'custom'" class="w-icon-btn" title="Remove my rate" @click="setRate(sel.boss.id, d.name, '')"><i class="fas fa-undo" /></button>
+                    <button v-if="isExtraDrop(sel.boss.id, d.name)" class="w-icon-btn" title="Remove this drop (Undo in the note)" @click="removeDrop(sel.boss.id, d.name)"><i class="fas fa-trash" /></button>
+                  </span>
                 </div>
                 <div class="relative" style="padding: 8px var(--w-pad);">
                   <WField v-model="dropQuery" icon="fas fa-plus" placeholder="Add a drop to this boss…" class="w-full" />
@@ -216,7 +220,7 @@
                 <div :class="$style.k">Entry</div>
                 <div :class="$style.kv">
                   <template v-for="e in sel.boss.entry" :key="e.name">
-                    <span class="w-trunc">{{ e.qty > 1 ? `${e.qty}× ` : '' }}{{ e.name }}</span>
+                    <span class="flex items-center gap-1 min-w-0"><WIcon :src="art(e.name)" fallback="fas fa-puzzle-piece" /><span class="w-trunc">{{ e.qty > 1 ? `${e.qty}× ` : '' }}{{ e.name }}</span></span>
                     <WPrice :chaos="entryPrice(e.name, e.qty)" :divine="divine" />
                   </template>
                 </div>
@@ -246,12 +250,14 @@ export default {
 </script>
 
 <script setup lang="ts">
-import { inject, computed, shallowRef, watch } from 'vue'
+import { inject, computed, nextTick, shallowRef, watch } from 'vue'
 import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
 import UiCheckbox from '@/web/ui/UiCheckbox.vue'
-import { WPanel, WTabs, WSegmented, WField, WButton, WEmpty, WPrice, WChip, WListItem, mechanicIcon } from '../ui'
+import { WPanel, WTabs, WSegmented, WField, WButton, WEmpty, WPrice, WChip, WListItem, WIcon, WBanner, WSkeleton, mechanicIcon, openMenu, toast } from '../ui'
+import { ninjaIcon } from '../ui/game-icons'
 import { usePriceIndex } from '../market/price-index'
+import { useLeagues } from '@/web/background/Leagues'
 import { BOSSES } from './bosses'
 import DockItem from '../dock/DockItem.vue'
 import { BOSS_ARENAS, useZone } from '../shared/zone'
@@ -424,18 +430,59 @@ function toggleLogged (name: string, variant?: string) {
   if (!logging.value[name]) next[name] = { variant, qty: 1 }
   logging.value = next
 }
+const leagues = useLeagues()
 function saveKill () {
   if (!logging.value || !sel.value) return
   const id = sel.value.boss.id
   const list = props.config.kills[id] ?? (props.config.kills[id] = [])
-  list.push({ ts: Date.now(), drops: Object.entries(logging.value).map(([name, d]) => ({ name, variant: d.variant, qty: d.qty })) })
+  list.push({
+    ts: Date.now(),
+    drops: Object.entries(logging.value).map(([name, d]) => ({ name, variant: d.variant, qty: d.qty })),
+    league: leagues.selectedId.value ?? undefined
+  })
   logging.value = null
 }
 function killsOf (id: string): KillRecord[] {
   return props.config.kills[id] ?? []
 }
+const panel = shallowRef<InstanceType<typeof WPanel> | null>(null)
+
+// Item art by name, using poe.ninja's category to pick the right namespace.
+const typeByName = computed(() => new Map((prices.snapshot.value?.items ?? []).map(i => [i.name, i.type])))
+function art (name?: string) {
+  if (!name) return undefined
+  return ninjaIcon(typeByName.value.get(name) ?? 'Currency', name) ?? undefined
+}
+
+// No "are you sure": delete now, offer Undo (P9).
 function deleteKill (id: string, index: number) {
-  props.config.kills[id]?.splice(index, 1)
+  const before = [...(props.config.kills[id] ?? [])]
+  props.config.kills[id] = before.filter((_k, i) => i !== index)
+  toast('Kill deleted', { anchor: panel.value?.el, undo: () => { props.config.kills[id] = before } })
+}
+
+function isExtraDrop (id: string, name: string) {
+  return props.config.extraDrops[id]?.some(d => d.name === name) ?? false
+}
+function removeDrop (id: string, name: string) {
+  const before = [...(props.config.extraDrops[id] ?? [])]
+  props.config.extraDrops[id] = before.filter(d => d.name !== name)
+  toast(`Removed ${name}`, { anchor: panel.value?.el, undo: () => { props.config.extraDrops[id] = before } })
+}
+
+function bossMenu (e: MouseEvent, r: BossResult) {
+  const open = (t: typeof tab.value) => () => { props.config.selected = r.boss.id; tab.value = t }
+  openMenu(e, [
+    { label: 'Log a kill', icon: 'fas fa-plus', action: () => { props.config.selected = r.boss.id; nextTick(startLog).catch(() => {}) } },
+    { label: 'Drops', icon: 'fas fa-gem', action: open('drops') },
+    { label: 'My kills', icon: 'fas fa-skull', action: open('kills') },
+    { label: 'Rates & sources', icon: 'fas fa-percent', action: open('rates') },
+    ...(r.boss.source ? [{ label: 'Open drop-rate source', icon: 'fas fa-external-link-alt', action: () => { window.open(r.boss.source!.url) } }] : [])
+  ])
+}
+
+function killMenu (e: MouseEvent, id: string, index: number) {
+  openMenu(e, [{ label: 'Delete kill', icon: 'fas fa-trash', danger: true, action: () => deleteKill(id, index) }])
 }
 function killValue (kill: KillRecord) {
   return kill.drops.reduce((n, d) => n + (px.value.price(d.name, d.variant) ?? 0) * d.qty, 0)

@@ -11,7 +11,7 @@
             <button class="w-icon-btn" title="Next mechanic" @click="step(1)"><i class="fas fa-chevron-right" /></button>
             <button class="w-icon-btn" title="Expand" @click="config.expanded = true"><i class="fas fa-expand-alt" /></button>
           </div>
-          <div v-if="!hasPrices" :class="$style.warn"><i class="fas fa-exclamation-triangle" /> Waiting for poe.ninja prices…</div>
+          <WBanner v-if="!hasPrices" tone="info">Waiting for poe.ninja prices…</WBanner>
           <template v-if="mech.id === 'betrayal' && goals.length">
             <div class="w-group-label">Goals · {{ goalsDone }} of {{ goals.length }} in place</div>
             <div v-for="g in goalRows.filter(r => !r.done)" :key="g.member" class="w-row" :class="$style.glanceBtr">
@@ -37,7 +37,7 @@
       </DockItem>
 
       <!-- Expanded: rail of mechanics, prices, then scarabs and tips. -->
-      <WPanel v-if="config.expanded" :title="config.wmTitle || 'League mechanics'" width="40rem" max-height="70vh" :scroll="false">
+      <WPanel v-if="config.expanded" :icon="mech.id" :title="config.wmTitle || 'League mechanics'" :updated="prices.snapshot.value?.ts ?? null" :fresh-min="40" :stale-min="180" width="40rem" max-height="70vh" :scroll="false">
         <template #actions>
           <button class="w-icon-btn" :class="{ 'w-icon-btn--on': config.autoSwitch }" @click="config.autoSwitch = !config.autoSwitch"
             :title="config.autoSwitch ? 'Switches mechanic when you enter its zone. Click to turn off.' : 'Click to switch mechanic when you enter its zone'">
@@ -49,13 +49,13 @@
           <div :class="$style.rail" class="w-scroll" role="tablist">
             <button v-for="m in visible" :key="m.id" type="button" role="tab" :aria-selected="m.id === mech.id"
               :class="[$style.railBtn, { [$style.railOn]: m.id === mech.id }]" :title="m.label" @click="config.tab = m.id">
-              <i :class="m.icon" /><span>{{ m.short }}</span>
+              <WIcon :mechanic="m.id" :fallback="m.icon" size="md" /><span>{{ m.short }}</span>
               <i v-if="m.id === zoneMech" :class="$style.dot" title="Your current zone" />
             </button>
           </div>
 
           <div class="w-scroll" :class="$style.col">
-            <div v-if="!hasPrices" :class="$style.warn"><i class="fas fa-exclamation-triangle" /> Waiting for poe.ninja prices. They load on their own within a minute or two; no other widget is needed.</div>
+            <WBanner v-if="!hasPrices" tone="info">Waiting for poe.ninja prices. They load on their own within a minute or two.</WBanner>
             <template v-if="mech.id === 'betrayal'">
               <div :class="$style.toolbar">
                 <WSegmented v-model="division" :options="DIVISIONS.map((d, i) => ({ value: String(i), label: d.slice(0, 5) }))" />
@@ -116,7 +116,6 @@
         </div>
         <template #footer>
           <span>Prices from poe.ninja</span>
-          <span v-if="snapshotAge" class="w-faint">· {{ snapshotAge }}</span>
         </template>
       </WPanel>
 
@@ -167,7 +166,7 @@ export default {
 import { inject, computed, shallowRef } from 'vue'
 import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
-import { WPanel, WSegmented, WButton, WPrice, WChip, WField, WSelect } from '../ui'
+import { WPanel, WSegmented, WButton, WPrice, WChip, WField, WSelect, WBanner, WIcon } from '../ui'
 import { usePriceIndex } from '../market/price-index'
 import DockItem from '../dock/DockItem.vue'
 import { mechanicIcon } from '../ui/game-icons'
@@ -246,13 +245,6 @@ function shortScarab (name: string) {
   return name.replace(/ Scarab( of)?/, ':').replace(/:$/, '')
 }
 
-const snapshotAge = computed(() => {
-  const ts = prices.snapshot.value?.ts
-  if (!ts) return ''
-  const min = Math.round((Date.now() - ts) / 60000)
-  return min < 60 ? `${min}m ago` : `${Math.round(min / 60)}h ago`
-})
-
 // ---- Betrayal ----
 const division = shallowRef('2')
 const showBoard = shallowRef(false)
@@ -320,7 +312,6 @@ function boardMatch (member: string, div: string, reward: string) {
 </script>
 
 <style module>
-.warn { color: var(--w-warn); padding: 6px var(--w-pad); font-size: var(--w-fs-md); }
 .glanceBtr { grid-template-columns: minmax(0, 1fr) 64px; }
 .pad { padding: 4px var(--w-pad) 8px; }
 .goal { display: flex; align-items: center; gap: 6px; padding: 3px var(--w-pad); font-size: var(--w-fs-md); }

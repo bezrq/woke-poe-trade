@@ -1,5 +1,6 @@
 <template>
-  <WPanel :title="config.wmTitle || 'Loot filter'" icon="wisdom" width="68rem" max-height="85vh" :scroll="false">
+  <WPanel ref="panel" :title="config.wmTitle || 'Loot filter'" icon="wisdom" width="68rem" max-height="85vh" :scroll="false"
+    :busy="store.loading.value && !!store.doc.value" :hotkey="config.editorHotkey ?? undefined">
     <template #actions>
       <button class="w-icon-btn" title="Close" @click="emit('close')"><i class="fas fa-times" /></button>
     </template>
@@ -10,14 +11,24 @@
       <span class="grow" />
       <WTabs v-model="tab" :options="tabOptions" />
     </template>
-    <template v-if="banner" #meta>
-      <span style="color: var(--w-warn);"><i class="fas fa-info-circle" /> {{ banner }}</span>
+    <template v-if="store.error.value || banner" #banner>
+      <WBanner v-if="store.error.value">{{ store.error.value }}
+        <template #actions><WButton size="sm" @click="refresh">Retry</WButton></template>
+      </WBanner>
+      <WBanner v-else tone="warn">{{ banner }}
+        <template #actions><WButton size="sm" variant="ghost" @click="tab = 'changes'">Review changes</WButton></template>
+      </WBanner>
     </template>
 
-    <WEmpty v-if="!store.doc.value" :icon="store.loading.value ? 'fas fa-spinner fa-spin' : 'fas fa-filter'">
-      <template v-if="store.loading.value">Reading the filter…</template>
-      <template v-else-if="store.error.value">{{ store.error.value }}</template>
-      <template v-else>Pick a NeverSink filter from your filter folder above. Download one from FilterBlade or NeverSink's GitHub first if the list is empty.</template>
+    <div v-if="!store.doc.value && store.loading.value" :class="$style.layout" aria-busy="true">
+      <WSkeleton :rows="10" :value="true" />
+      <WSkeleton :rows="8" :value="false" />
+      <WSkeleton :rows="5" :value="false" />
+    </div>
+    <WEmpty v-else-if="!store.doc.value" :art="{ item: 'Orb of Scouring' }">
+      <template v-if="store.error.value">The filter couldn't be read. Pick another one above, or fix the file and press Retry.</template>
+      <template v-else>Pick a NeverSink filter from your filter folder above. If the list is empty, download one from FilterBlade or NeverSink's GitHub first.</template>
+      <template #actions><WButton size="sm" icon="fas fa-folder-open" @click="openFolder">Open filter folder</WButton></template>
     </WEmpty>
 
     <div v-else-if="tab === 'rules'" :class="$style.layout">
@@ -25,10 +36,11 @@
       <div :class="$style.tree" class="w-scroll">
         <template v-for="sec in tree" :key="sec.title">
           <div class="w-group-label w-trunc" :title="sec.title">{{ sec.title }}</div>
-          <WListItem v-for="g in sec.groups" :key="g.type" :active="g.type === selType" @select="selectGroup(g.type)">
+          <WListItem v-for="g in sec.groups" :key="g.type" :active="g.type === selType" @select="selectGroup(g.type)"
+            @contextmenu="groupMenu($event, g.type)">
             <span class="flex justify-between gap-2 w-full min-w-0" :class="{ [$style.off]: g.hidden }">
               <span class="w-trunc">{{ shortName(g) }}</span>
-              <span class="w-faint text-xs">{{ g.tiers.length }}</span>
+              <span class="w-faint text-xs w-num">{{ g.tiers.length }}</span>
             </span>
           </WListItem>
         </template>
@@ -55,7 +67,8 @@
             <span class="grow" />
             <WButton v-if="!isOwnGroup" size="sm" variant="ghost" @click="toggleGroup">{{ groupHiddenByMe ? 'Show group again' : 'Hide whole group' }}</WButton>
           </div>
-          <button v-for="t in group.tiers" :key="t.tier" :class="[$style.tierRow, { [$style.active]: t.tier === selTier, [$style.off]: t.disabled }]" @click="selTier = t.tier; movingBase = null">
+          <button v-for="t in group.tiers" :key="t.tier" class="w-focusable" :class="[$style.tierRow, { [$style.active]: t.tier === selTier, [$style.off]: t.disabled }]"
+            @click="selTier = t.tier; movingBase = null" @contextmenu="tierMenu($event, t)">
             <span :class="$style.tierName" :title="t.tier">{{ t.tier.startsWith('#') ? 'rule' : t.tier }}</span>
             <LabelPreview :text="t.bases[0] ?? previewName(t)" :actions="firstLive(t).actions" :visibility="t.disabled ? 'Hide' : t.visibility" />
             <span :class="$style.bases" class="w-trunc">
@@ -89,7 +102,7 @@
               </select>
             </div>
           </template>
-          <WButton v-if="isOwnGroup && ownEditFor(tier)" size="sm" variant="ghost" icon="fas fa-undo" @click="store.removeEdit(ownEditFor(tier)!.id)">Remove this own rule</WButton>
+          <WButton v-if="isOwnGroup && ownEditFor(tier)" size="sm" variant="ghost" icon="fas fa-trash" @click="removeEdit(ownEditFor(tier)!)">Remove this own rule</WButton>
         </template>
         <WEmpty v-else icon="fas fa-layer-group">Pick a tier to restyle it or move its items.</WEmpty>
       </div>
@@ -131,7 +144,7 @@
         <WSelect v-if="!s.ok && homes(s.edit).length" :model-value="''" style="max-width: 16rem;"
           :options="[{ value: '', label: 'Give it a new home…' }, ...homes(s.edit).map((o, i) => ({ value: String(i), label: o.label }))]"
           @update:model-value="v => v !== '' && store.replaceEdit(rehome(s.edit, homes(s.edit)[Number(v)]))" />
-        <WButton size="sm" variant="ghost" @click="store.removeEdit(s.edit.id)">Undo</WButton>
+        <WButton size="sm" variant="ghost" icon="fas fa-undo" title="Drop this change (you can bring it back from the note)" @click="removeEdit(s.edit)">Drop</WButton>
       </div>
     </div>
 
@@ -156,7 +169,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { WPanel, WButton, WSelect, WField, WTabs, WListItem, WChip, WEmpty, WKbd } from '../ui'
+import { WPanel, WButton, WSelect, WField, WTabs, WListItem, WChip, WEmpty, WKbd, WBanner, WSkeleton, openMenu, toast } from '../ui'
 import LabelPreview from './LabelPreview.vue'
 import StyleEditor from './StyleEditor.vue'
 import type { LootFilterStore } from './store'
@@ -339,6 +352,34 @@ const groupHiddenByMe = computed(() => props.config.edits.some(e => e.kind === '
 function toggleGroup () {
   if (!selType.value) return
   props.store.edit({ kind: 'group', type: selType.value, hidden: !groupHiddenByMe.value })
+}
+
+const panel = ref<InstanceType<typeof WPanel> | null>(null)
+
+// No "are you sure": drop now, offer Undo (P9).
+function removeEdit (e: FilterEdit) {
+  const undo = props.store.removeEdit(e.id)
+  toast(`Dropped: ${describeEdit(e)}`, { anchor: panel.value?.el, undo })
+}
+
+function groupMenu (ev: MouseEvent, type: string) {
+  const hidden = props.config.edits.some(e => e.kind === 'group' && e.type === type)
+  openMenu(ev, [
+    { label: 'Open', icon: 'fas fa-layer-group', keys: 'Enter', action: () => selectGroup(type) },
+    ...(type === OWN_RULE_TYPE
+      ? []
+      : [{ label: hidden ? 'Show group again' : 'Hide whole group', icon: hidden ? 'fas fa-eye' : 'fas fa-eye-slash', action: () => props.store.edit({ kind: 'group', type, hidden: !hidden }) }])
+  ])
+}
+
+function tierMenu (ev: MouseEvent, t: TierNode) {
+  if (!selType.value || t.tier.startsWith('#')) return
+  const type = selType.value
+  const shown = firstLive(t).visibility !== 'Hide' && !t.disabled
+  openMenu(ev, [
+    { label: shown ? 'Hide this tier' : 'Show this tier', icon: shown ? 'fas fa-eye-slash' : 'fas fa-eye', action: () => props.store.edit({ kind: 'visibility', type, tier: t.tier, visibility: shown ? 'Hide' : 'Show' }) },
+    ...(t.bases.length ? [{ label: 'Copy item names', icon: 'far fa-copy', action: () => { navigator.clipboard.writeText(t.bases.join('\n')).catch(() => {}) } }] : [])
+  ])
 }
 
 function iconFor (kind: FilterEdit['kind']): string {
