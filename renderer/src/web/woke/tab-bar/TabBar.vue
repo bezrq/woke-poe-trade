@@ -242,9 +242,15 @@ function canShift (tab: Tab, dir: -1 | 1) {
 }
 function shift (tab: Tab, dir: -1 | 1) {
   if (!canShift(tab, dir)) return
-  const ids = pinnedTabs.value.map(x => x.wmId)
-  const i = ids.indexOf(tab.wmId)
-  ;[ids[i], ids[i + dir]] = [ids[i + dir], ids[i]]
+  // Swap with the neighbour shown on the bar, inside the full pinned list:
+  // pins of switched-off modules (not shown) must survive the move.
+  const shown = pinnedTabs.value.map(x => x.wmId)
+  const other = shown[shown.indexOf(tab.wmId) + dir]
+  const ids = [...(props.config.pinned ?? [])]
+  const a = ids.indexOf(tab.wmId)
+  const b = ids.indexOf(other)
+  if (a < 0 || b < 0) return
+  ;[ids[a], ids[b]] = [ids[b], ids[a]]
   props.config.pinned = ids
 }
 

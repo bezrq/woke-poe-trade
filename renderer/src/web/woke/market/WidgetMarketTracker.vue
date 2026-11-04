@@ -207,17 +207,23 @@ function rarityClass (type: string) {
   return 'w-rarity-currency'
 }
 
+let latestSeq = 0
 async function loadLatest () {
+  const seq = ++latestSeq
   if (!league.value) { latest.value = null; return }
+  let snap: Snapshot | null = null
   try {
-    const [snap] = await latestSnapshots(league.value, 1)
-    latest.value = snap ?? null
-  } catch {
-    latest.value = null
-  }
+    snap = (await latestSnapshots(league.value, 1))[0] ?? null
+  } catch {}
+  if (seq === latestSeq) latest.value = snap
 }
 
+// Each load gets a number; an older load finishing late is dropped.
+let moversSeq = 0
+let watchSeq = 0
+
 async function loadMovers () {
+  const seq = ++moversSeq
   const snap = latest.value
   if (!snap) { movers.value = []; moversNote.value = ''; return }
   const from = snap.ts - PERIOD_MS[props.config.period]
@@ -229,9 +235,13 @@ async function loadMovers () {
     divThen = rows.find(r => r.divine)?.divine ?? null
   } else {
     const prev = await snapshotAtOrBefore(snap.league, from)
-    then = prev?.items ?? []
-    divThen = prev?.divine ?? null
+    // With the app closed for a while the nearest snapshot can be days older
+    // than the period; that isn't a 6h/24h move.
+    const fresh = prev && from - prev.ts <= PERIOD_MS[props.config.period] / 4
+    then = fresh ? prev.items : []
+    divThen = fresh ? prev.divine : null
   }
+  if (seq !== moversSeq) return
   if (!then.length && props.config.period !== '6h') {
     then = trendThen(snap.items, props.config.period)
   }
@@ -256,10 +266,11 @@ async function loadMovers () {
 
 async function loadWatchlist () {
   const snap = latest.value
-  if (!snap || !props.config.watchlist.length) { watchRows.value = []; return }
+  if (!snap || !props.config.watchlist.length) { watchSeq++; watchRows.value = []; return }
   const current = new Map(snap.items.map(i => [itemKey(i), i]))
   const yesterday = utcDate(snap.ts - PERIOD_MS['24h'])
-  watchRows.value = await Promise.all(props.config.watchlist.map(async item => {
+  const seq = ++watchSeq
+  const rows = await Promise.all(props.config.watchlist.map(async item => {
     const history = (await dailyHistory(snap.league, item)).slice(-14)
     const live = current.get(itemKey(item))
     const nowPrice = live?.chaos ?? null
@@ -273,6 +284,7 @@ async function loadWatchlist () {
       gaps: live?.gaps
     }
   }))
+  if (seq === watchSeq) watchRows.value = rows
 }
 
 // Fires a desktop notification once per threshold crossing.

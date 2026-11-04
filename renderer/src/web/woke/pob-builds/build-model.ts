@@ -20,9 +20,13 @@ export function stageOf (title: string): Stage | null {
     const n = Number(act[1])
     if (n >= 1 && n <= 10) return { kind: 'act', at: n }
   }
-  const lvl = /(\d{1,3})/.exec(title)
-  if (lvl && Number(lvl[1]) >= 1 && Number(lvl[1]) <= 100) return { kind: 'level', at: Number(lvl[1]) }
+  const inRange = (n: number) => n >= 1 && n <= 100
+  const named = /\b(?:level|lvl|lv)\.?\s*(\d{1,3})/i.exec(title)
+  if (named && inRange(Number(named[1]))) return { kind: 'level', at: Number(named[1]) }
   if (/end\s*game|maps?\b|mapping|final|late/i.test(title)) return { kind: 'level', at: 70 }
+  // A bare number, but not "6L"/"5 link", "T16" or "20%": those aren't levels.
+  const bare = /(?<![\w.])(\d{1,3})(?!\s*(?:l\b|links?\b|-?link|%|\.\d))/i.exec(title)
+  if (bare && !/\bt(?:ier)?\s*$/i.test(title.slice(0, bare.index)) && inRange(Number(bare[1]))) return { kind: 'level', at: Number(bare[1]) }
   return null
 }
 
@@ -30,9 +34,14 @@ function stageLevel (s: Stage): number {
   return s.kind === 'act' ? ACT_START_LEVEL[s.at] : s.at
 }
 
+// With only one of level/act known, compare through the act start levels.
 function reached (s: Stage, level: number | null, act: number | null): boolean {
-  if (s.kind === 'act') return act != null ? s.at <= act : s.at === 1
-  return level != null ? s.at <= level : s.at <= 1
+  if (s.kind === 'act') {
+    if (act != null) return s.at <= act
+    return level != null ? stageLevel(s) <= level : s.at === 1
+  }
+  if (level != null) return s.at <= level
+  return act != null ? s.at <= ACT_START_LEVEL[act] : s.at <= 1
 }
 
 export interface Picked<T> {
