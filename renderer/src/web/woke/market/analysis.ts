@@ -39,6 +39,16 @@ export function computeMovers (
   return out.slice(0, opts.limit)
 }
 
+// Past prices from poe.ninja's trend, for when local history doesn't reach back far enough.
+export function trendThen (items: PriceItem[], period: '24h' | '7d'): PriceItem[] {
+  const out: PriceItem[] = []
+  for (const item of items) {
+    const chaos = period === '24h' ? item.d1 : item.d7
+    if (chaos != null) out.push({ ...item, chaos })
+  }
+  return out
+}
+
 export function formatChaos (chaos: number, divine: number | null): string {
   const sign = chaos < 0 ? '-' : ''
   const a = Math.abs(chaos)

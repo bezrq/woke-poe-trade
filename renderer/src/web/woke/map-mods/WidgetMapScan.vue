@@ -27,26 +27,26 @@
         <button v-if="entries.length" type="button" class="w-icon-btn" title="Clear" @click="clear"><i class="fas fa-eraser" /></button>
       </template>
     </WPanel>
-  </Widget>
-  <Teleport to="body">
-    <div v-if="running" :class="$style.layer">
-      <span v-for="e in entries" :key="e.id" :class="[$style.marker, $style[e.verdict]]"
-        :style="{ left: `${e.at.x * 100}%`, top: `${e.at.y * 100}%` }" />
-      <div v-if="current" :class="[$style.badge, $style[current.verdict], { [$style.flash]: current.flash }]"
-        :style="badgeStyle">
-        <div class="flex items-center gap-2">
-          <span :class="$style.tag">{{ VERDICT_LABEL[current.verdict] }}</span>
-          <span class="flex-1" />
-          <span class="w-dim text-xs">Juice</span>
-          <span class="w-num w-accent font-semibold">{{ current.juice }}</span>
-        </div>
-        <div v-if="current.flash" class="w-up text-xs font-semibold">This reroll passes. Stop here.</div>
-        <div v-for="m in current.flagged" :key="m.matcher" class="flex items-center gap-1 text-xs">
-          <span :class="[$style.dot, $style[m.rating]]" /><span>{{ m.label }}</span>
+    <Teleport to="body">
+      <div v-if="running" :class="$style.layer">
+        <span v-for="e in entries" :key="e.id" :class="[$style.marker, $style[e.verdict]]"
+          :style="{ left: `${e.at.x * 100}%`, top: `${e.at.y * 100}%` }" />
+        <div v-if="current" :class="[$style.badge, $style[current.verdict], { [$style.flash]: current.flash }]"
+          :style="badgeStyle">
+          <div class="flex items-center gap-2">
+            <span :class="$style.tag">{{ VERDICT_LABEL[current.verdict] }}</span>
+            <span class="flex-1" />
+            <span class="w-dim text-xs">Juice</span>
+            <span class="w-num w-accent font-semibold">{{ current.juice }}</span>
+          </div>
+          <div v-if="current.flash" class="w-up text-xs font-semibold">This reroll passes. Stop here.</div>
+          <div v-for="m in current.flagged" :key="m.matcher" class="flex items-center gap-1 text-xs">
+            <span :class="[$style.dot, $style[m.rating]]" /><span>{{ m.label }}</span>
+          </div>
         </div>
       </div>
-    </div>
-  </Teleport>
+    </Teleport>
+  </Widget>
 </template>
 
 <script lang="ts">

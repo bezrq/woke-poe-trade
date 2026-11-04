@@ -205,7 +205,7 @@ export class ScreenScanner {
       this.failures++
       if (this.failures === 1) this.logger.write(`error [${this.kind.topic}] ${String(err)}`)
       if (this.failures >= 5) {
-        this.stop('OCR isn\'t working. Check that the OCR files are installed (the same ones APT\'s heist gem OCR uses).')
+        this.stop(`OCR failed: ${String(err)}. Check that the OCR files are installed (the same ones APT's heist gem OCR uses).`)
       }
     }
   }

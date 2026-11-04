@@ -51,6 +51,9 @@ export interface PriceItem {
   // '' when the item has no variant (gem level/quality, links, etc.)
   variant: string
   chaos: number
+  // Price a day and a week ago, from poe.ninja's trend. Only on snapshots.
+  d1?: number
+  d7?: number
 }
 
 // One collected snapshot (kept for a couple of days for short-term movers).

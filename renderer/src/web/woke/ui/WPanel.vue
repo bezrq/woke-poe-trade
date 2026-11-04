@@ -1,6 +1,6 @@
 <template>
   <div class="w-surface" :class="$style.panel" :style="{ width, maxHeight }">
-    <div v-if="title || $slots.title || $slots.actions" :class="$style.head">
+    <div v-if="title || $slots.title || $slots.actions" :class="$style.head" data-widget-drag>
       <span :class="$style.title" class="w-trunc">
         <slot name="title">{{ title }}</slot>
       </span>

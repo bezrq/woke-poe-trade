@@ -70,7 +70,7 @@ export function scanTooltip (img: ImageData, opts: ScanOptions): ScanResult {
     return { sig: null, elapsed }
   }
 
-  const box = cv.boundingRect(blue)
+  const box = maskBounds(blue.data as Uint8Array, blue.cols, blue.rows)
   // Include the property lines above the mods (tier, quantity, pack size...).
   const lineH = Math.round(H * 0.0185)
   const top = Math.max(0, box.y - lineH * 12)
@@ -117,6 +117,27 @@ export function scanTooltip (img: ImageData, opts: ScanOptions): ScanResult {
 
   hsv.delete(); blue.delete(); area.delete(); full.delete()
   return result
+}
+
+// Smallest rect holding every set pixel. APT's OCR files ship a reduced opencv
+// without cv.boundingRect. The mask must have at least one set pixel.
+function maskBounds (data: Uint8Array, cols: number, rows: number) {
+  let x0 = cols
+  let x1 = -1
+  let y0 = rows
+  let y1 = -1
+  for (let y = 0; y < rows; y++) {
+    const off = y * cols
+    for (let x = 0; x < cols; x++) {
+      if (data[off + x]) {
+        if (x < x0) x0 = x
+        if (x > x1) x1 = x
+        if (y < y0) y0 = y
+        y1 = y
+      }
+    }
+  }
+  return new cv.Rect(x0, y0, x1 - x0 + 1, y1 - y0 + 1)
 }
 
 function hashBits (s: string): string {

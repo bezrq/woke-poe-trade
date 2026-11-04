@@ -21,30 +21,30 @@
         <button v-if="entries.length" type="button" class="w-icon-btn" title="Clear" @click="clear"><i class="fas fa-eraser" /></button>
       </template>
     </WPanel>
-  </Widget>
-  <Teleport to="body">
-    <div v-if="running && current" :class="$style.layer">
-      <div :class="[$style.card, $style[current.rated.verdict], { [$style.big]: current.bigValue }]" :style="cardStyle">
-        <div class="flex items-center gap-2">
-          <span :class="$style.tag">{{ VERDICT_LABEL[current.rated.verdict] }}</span>
-          <span class="flex-1 w-dim text-xs w-trunc">{{ headline(current) }}</span>
-          <WPrice :chaos="current.rated.totalChaos || null" :divine="divine" class="w-accent font-semibold" />
-        </div>
-        <div v-for="(r, i) in current.rated.rows" :key="i" :class="$style.erow">
-          <span :class="{ [$style.flagged]: r.flagged }">{{ shortEssenceName(r.essence) }}</span>
-          <WPrice :chaos="r.chaos" :divine="divine" :class="{ 'w-dim': !r.flagged }" />
-        </div>
-        <template v-if="current.rated.specials.length">
-          <div class="w-faint" style="font-size: 10.5px; margin-top: 3px;">Corrupting can turn {{ current.rated.flagged.join(', ') }} into:</div>
-          <div v-for="sp in current.rated.specials" :key="sp.name" :class="$style.erow" style="font-size: 11.5px;">
-            <span :class="$style.flagged">{{ sp.name.replace('Essence of ', '') }}</span>
-            <WPrice :chaos="sp.chaos" :divine="divine" />
+    <Teleport to="body">
+      <div v-if="running && current" :class="$style.layer">
+        <div :class="[$style.card, $style[current.rated.verdict], { [$style.big]: current.bigValue }]" :style="cardStyle">
+          <div class="flex items-center gap-2">
+            <span :class="$style.tag">{{ VERDICT_LABEL[current.rated.verdict] }}</span>
+            <span class="flex-1 w-dim text-xs w-trunc">{{ headline(current) }}</span>
+            <WPrice :chaos="current.rated.totalChaos || null" :divine="divine" class="w-accent font-semibold" />
           </div>
-        </template>
-        <div v-if="!hasPrices" class="w-faint" style="font-size: 10.5px;">No prices yet: open the Market tracker once to load them.</div>
+          <div v-for="(r, i) in current.rated.rows" :key="i" :class="$style.erow">
+            <span :class="{ [$style.flagged]: r.flagged }">{{ shortEssenceName(r.essence) }}</span>
+            <WPrice :chaos="r.chaos" :divine="divine" :class="{ 'w-dim': !r.flagged }" />
+          </div>
+          <template v-if="current.rated.specials.length">
+            <div class="w-faint" style="font-size: 10.5px; margin-top: 3px;">Corrupting can turn {{ current.rated.flagged.join(', ') }} into:</div>
+            <div v-for="sp in current.rated.specials" :key="sp.name" :class="$style.erow" style="font-size: 11.5px;">
+              <span :class="$style.flagged">{{ sp.name.replace('Essence of ', '') }}</span>
+              <WPrice :chaos="sp.chaos" :divine="divine" />
+            </div>
+          </template>
+          <div v-if="!hasPrices" class="w-faint" style="font-size: 10.5px;">No prices yet: open the Market tracker once to load them.</div>
+        </div>
       </div>
-    </div>
-  </Teleport>
+    </Teleport>
+  </Widget>
 </template>
 
 <script lang="ts">

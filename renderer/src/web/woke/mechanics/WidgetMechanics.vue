@@ -9,7 +9,7 @@
 
         <WPanel v-else width="19rem" max-height="60vh">
           <template #title>{{ mech.label }}</template>
-          <template #actions>
+          <template v-if="wm.active.value" #actions>
             <button class="w-icon-btn" title="Previous mechanic" @click="step(-1)"><i class="fas fa-chevron-left" /></button>
             <button class="w-icon-btn" title="Next mechanic" @click="step(1)"><i class="fas fa-chevron-right" /></button>
             <button class="w-icon-btn" title="Expand" @click="config.expanded = true"><i class="fas fa-expand-alt" /></button>
@@ -191,10 +191,10 @@ useMechanicZone((id) => {
 
 // ---- Glance (hover) ----
 const glanceEl = shallowRef<HTMLElement | null>(null)
+// Read-only over the game: making it clickable would pull the whole overlay up
+// and take focus from the game. Its buttons appear when the overlay is open.
 const hovering = useHoverZone(glanceEl, {
-  enabled: () => !props.config.expanded,
-  // Once the card is showing, resting on it makes it clickable.
-  activate: () => showGlance.value
+  enabled: () => !props.config.expanded
 })
 // Small delay before closing so moving between icon and card doesn't flicker.
 const showGlance = shallowRef(false)

@@ -101,7 +101,7 @@ import Widget from '@/web/overlay/Widget.vue'
 import { useLeagues } from '@/web/background/Leagues'
 import { useMarketCollector } from './collector'
 import { dailyHistory, dailyRowsForDate, latestSnapshots, snapshotAtOrBefore } from './db'
-import { computeMovers } from './analysis'
+import { computeMovers, trendThen } from './analysis'
 import { WPanel, WTabs, WSegmented, WSelect, WField, WPrice, WDelta, WSpark, WEmpty } from '../ui'
 import type { Mover } from './analysis'
 import { itemKey, utcDate } from './types'
@@ -176,6 +176,9 @@ async function loadMovers () {
     then = await dailyRowsForDate(snap.league, utcDate(from))
   } else {
     then = (await snapshotAtOrBefore(snap.league, from))?.items ?? []
+  }
+  if (!then.length && props.config.period !== '6h') {
+    then = trendThen(snap.items, props.config.period)
   }
   if (!then.length) {
     movers.value = []

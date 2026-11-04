@@ -115,7 +115,9 @@ export async function startServer (
     }
   })
 
-  let port = (process.env.VITE_DEV_SERVER_URL) ? 8584 : 0
+  // woke: a fixed port, because the overlay's saved data (market history) is
+  // tied to its address. Falls back to any free port if something else has it.
+  let port = (process.env.VITE_DEV_SERVER_URL) ? 8584 : 8585
   let host = '127.0.0.1'
   // --listen=[host][:port]
   const listenOpt = process.argv.find(arg => arg.startsWith('--listen'))
@@ -126,10 +128,17 @@ export async function startServer (
   }
 
   return new Promise((resolve, reject) => {
+    server.once('listening', () => {
+      resolve((server.address() as AddressInfo).port)
+    })
+    server.on('error', (err: NodeJS.ErrnoException) => {
+      if (err.code === 'EADDRINUSE' && !listenOpt && !process.env.VITE_DEV_SERVER_URL && port !== 0) {
+        port = 0
+        server.listen({ port, host })
+      } else {
+        reject(err)
+      }
+    })
     server.listen({ port, host })
-      .once('error', reject)
-      .once('listening', () => {
-        resolve((server.address() as AddressInfo).port)
-      })
   })
 }

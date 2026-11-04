@@ -1,7 +1,7 @@
 import { shallowRef, getCurrentScope, onScopeDispose } from 'vue'
 import { createGlobalState } from '@vueuse/core'
 import { usePoeninja } from '@/web/background/Prices'
-import { onWokePricesLoaded } from './hook'
+import { onWokePricesLoaded, replayWokePrices } from './hook'
 import { findDivinePrice, parseDenseChunks } from './parse'
 import { saveSnapshot } from './db'
 import { utcDate } from './types'
@@ -42,7 +42,7 @@ const useCollectorState = createGlobalState(() => {
     const divine = findDivinePrice(items)
     const snapshot: Snapshot = { league, ts, divine, items }
     const date = utcDate(ts)
-    const daily: DailyRow[] = items.map(item => ({ league, date, divine, ts, ...item }))
+    const daily: DailyRow[] = items.map(({ d1, d7, ...item }) => ({ league, date, divine, ts, ...item }))
 
     perfTimeAsync('Prices: save to history', saveSnapshot(snapshot, daily))
       .then(() => {
@@ -61,7 +61,10 @@ const useCollectorState = createGlobalState(() => {
 function retain (poll: boolean) {
   const poeninja = usePoeninja()
   // A fresh holder wants current prices; APT skips the fetch if they are recent.
-  if (++users === 1) poeninja.queuePricesFetch()
+  if (++users === 1) {
+    poeninja.queuePricesFetch()
+    replayWokePrices()
+  }
   if (poll && ++pollers === 1) {
     keepalive = setInterval(() => { poeninja.queuePricesFetch() }, KEEPALIVE_MS)
   }
