@@ -4,7 +4,7 @@
       <div class="flex flex-col gap-1" style="width: 13rem;">
         <div class="p-1 flex items-baseline gap-2">
           <span class="truncate grow">{{ config.wmTitle || 'Labyrinth' }}</span>
-          <span class="text-xs text-gray-400 whitespace-nowrap" title="Labs reset at 7 PM US Central">resets in {{ resetIn }}</span>
+          <span class="text-xs text-gray-400 whitespace-nowrap" title="Labs reset at midnight UTC">resets in {{ resetIn }}</span>
         </div>
         <div v-for="d in DIFFICULTIES" :key="d" class="flex gap-x-1">
           <button @click="open(d, 'overlay')" :class="[$style.entryBtn, { [$style.active]: openDiff === d }]">
