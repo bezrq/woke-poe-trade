@@ -14,6 +14,20 @@
         </label>
       </div>
     </div>
+    <div>
+      <div class="mb-1 flex items-baseline gap-2">
+        <label for="woke-ui-scale" class="flex-1">Panel size</label>
+        <span class="text-sm" style="font-variant-numeric: tabular-nums;">{{ isAuto ? 'Auto' : `${scaleValue}%` }}</span>
+      </div>
+      <input id="woke-ui-scale" type="range" :min="MIN_SCALE" :max="MAX_SCALE" step="5" class="w-full"
+        :value="scaleValue" @input="setScale(($event.target as HTMLInputElement).value)">
+      <div class="flex justify-between text-gray-500 text-xs"><span>{{ MIN_SCALE }}%</span><span>100%</span><span>{{ MAX_SCALE }}%</span></div>
+      <label class="flex items-center gap-2 mt-1">
+        <input type="checkbox" :checked="isAuto" @change="uiScale = ($event.target as HTMLInputElement).checked ? 'auto' : scaleValue">
+        <span>Match the game window (about 85% at 1080p, 110% at 1440p)</span>
+      </label>
+      <div class="text-gray-500 text-sm">Sizes the toolkit's panels; APT's own windows keep their size. Saved instantly.</div>
+    </div>
   </div>
 </template>
 
@@ -24,7 +38,16 @@ export default {
 </script>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import { wokeTheme, WOKE_THEMES } from './theme'
+import { MAX_SCALE, MIN_SCALE, uiScale } from './scale'
+
+const isAuto = computed(() => uiScale.value === 'auto')
+// The settings window isn't the game's size, so auto shows as 100% here.
+const scaleValue = computed(() => uiScale.value === 'auto' ? 100 : uiScale.value)
+function setScale (v: string) {
+  uiScale.value = Number(v)
+}
 </script>
 
 <style module>

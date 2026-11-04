@@ -16,4 +16,6 @@ export interface MechanicsWidget extends Widget {
   betrayalStars: string[]
   // User overrides of Betrayal reward text, by slot key.
   betrayalOverrides: Record<string, string>
+  // Where each Syndicate member is now (division index), set by the player.
+  betrayalAt?: Record<string, number>
 }

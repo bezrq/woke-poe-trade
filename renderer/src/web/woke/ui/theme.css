@@ -212,3 +212,6 @@
 
 /* "Hide all panels" hotkey (shared/hide-all.ts). */
 body[data-woke-hidden] [data-w-panel] { display: none !important; }
+
+/* Panel size (ui/scale.ts). */
+[data-w-panel] { zoom: var(--w-ui-scale, 1); }

@@ -83,3 +83,36 @@ export function priceReward (reward: string, items: PriceItem[]): PricedReward {
 export function slotKey (member: string, division: number): string {
   return `${member}|${division}`
 }
+
+// ---- Goals: starred slots, and what to do with whoever you meet ----
+
+export interface BetrayalGoal { member: string, di: number }
+
+export function goalsFromStars (stars: string[]): BetrayalGoal[] {
+  const out: BetrayalGoal[] = []
+  for (const key of stars) {
+    const [member, di] = key.split('|')
+    const n = Number(di)
+    if (member && Number.isInteger(n) && !out.some(g => g.member === member)) out.push({ member, di: n })
+  }
+  return out
+}
+
+export type AdviceKind = 'move' | 'keep' | 'execute' | 'any'
+
+export interface Advice { kind: AdviceKind, text: string }
+
+// `at`: where each member is now (division index), as the player last set it.
+export function adviceFor (member: string, goals: BetrayalGoal[], at: Record<string, number>): Advice {
+  const goal = goals.find(g => g.member === member)
+  const now = at[member]
+  if (goal) {
+    if (now === goal.di) return { kind: 'keep', text: 'Keep: pick the option that raises their rank, otherwise Interrogate.' }
+    return { kind: 'move', text: `Move: pick the option that sends them to ${DIVISIONS[goal.di]}, otherwise Interrogate.` }
+  }
+  if (now != null) {
+    const blocked = goals.find(g => g.di === now && at[g.member] !== g.di)
+    if (blocked) return { kind: 'execute', text: `Execute: frees a ${DIVISIONS[now]} slot for ${blocked.member}.` }
+  }
+  return { kind: 'any', text: 'Not part of a goal: Interrogate, or take whatever pays most now.' }
+}

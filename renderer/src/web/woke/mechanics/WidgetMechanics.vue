@@ -15,7 +15,14 @@
             <button class="w-icon-btn" title="Expand" @click="config.expanded = true"><i class="fas fa-expand-alt" /></button>
           </template>
           <div v-if="!hasPrices" :class="$style.warn"><i class="fas fa-exclamation-triangle" /> Waiting for poe.ninja prices…</div>
-          <template v-if="mech.id === 'betrayal'">
+          <template v-if="mech.id === 'betrayal' && goals.length">
+            <div class="w-group-label">Goals · {{ goalsDone }} of {{ goals.length }} in place</div>
+            <div v-for="g in goalRows.filter(r => !r.done)" :key="g.member" class="w-row" :class="$style.glanceBtr">
+              <span class="w-trunc"><span class="w-accent">{{ g.member }}</span> → {{ DIVISIONS[g.di] }}</span>
+              <span class="w-dim text-xs">{{ g.nowLabel }}</span>
+            </div>
+          </template>
+          <template v-else-if="mech.id === 'betrayal'">
             <div class="w-group-label">{{ starredGlance.length ? 'Starred slots' : 'Most valuable slots' }}</div>
             <div v-for="row in glanceBetrayal" :key="row.key" class="w-row" :class="$style.glanceBtr">
               <span class="w-trunc"><span class="w-accent">{{ row.member }}</span> · {{ row.reward }}</span>
@@ -72,6 +79,31 @@
             <div v-if="mech.id === 'betrayal'" :class="$style.toolbar">
               <WButton size="sm" icon="fas fa-th" @click="showBoard = !showBoard">{{ showBoard ? 'Hide board' : 'Full board' }}</WButton>
             </div>
+            <template v-if="mech.id === 'betrayal'">
+              <div class="w-group-label">Goals <span class="w-faint">(starred slots)</span></div>
+              <div v-if="!goals.length" class="w-dim text-xs" :class="$style.pad">Star the slots you want (left) and this turns into a to-do list.</div>
+              <div v-for="g in goalRows" :key="g.member" :class="$style.goal">
+                <span class="w-trunc"><i :class="g.done ? 'fas fa-check-circle w-up' : 'far fa-circle w-accent'" /> {{ g.member }} → {{ DIVISIONS[g.di] }}</span>
+                <span :class="$style.where" :title="`Where is ${g.member} now?`">
+                  <button v-for="(d, di) in DIVISIONS" :key="d" type="button" :title="d"
+                    :class="[$style.whereBtn, { [$style.whereOn]: betrayalAt[g.member] === di }]"
+                    @click="setAt(g.member, di)">{{ d[0] }}</button>
+                </span>
+              </div>
+              <template v-if="goals.length">
+                <div class="w-group-label">When you meet</div>
+                <div :class="$style.pad">
+                  <WSelect v-model="metMember" :options="MEMBERS.map(m => ({ value: m, label: m }))" />
+                  <div class="text-xs mt-1" :class="ADVICE_CLASS[metAdvice.kind]">{{ metAdvice.text }}</div>
+                  <div class="flex items-center gap-1 mt-1 text-xs w-dim">
+                    <span>{{ metMember }} is now in</span>
+                    <button v-for="(d, di) in DIVISIONS" :key="d" type="button" :title="d"
+                      :class="[$style.whereBtn, { [$style.whereOn]: betrayalAt[metMember] === di }]"
+                      @click="setAt(metMember, di)">{{ d[0] }}</button>
+                  </div>
+                </div>
+              </template>
+            </template>
             <template v-if="scarabs.length">
               <div class="w-group-label">Scarabs</div>
               <div v-for="s in scarabs" :key="s.item.name" class="w-row" :class="$style.scarabGrid">
@@ -138,12 +170,13 @@ export default {
 import { inject, computed, shallowRef, watch, onUnmounted } from 'vue'
 import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
-import { WPanel, WSegmented, WButton, WPrice, WChip, WField } from '../ui'
+import { WPanel, WSegmented, WButton, WPrice, WChip, WField, WSelect } from '../ui'
 import { usePriceIndex } from '../market/price-index'
 import { useHoverZone } from '../shared/hover'
 import MechanicPrices from './MechanicPrices.vue'
 import { MECHANICS, mechanicById, priceScarabs } from './data'
-import { DIVISIONS, MEMBERS, REWARDS, priceReward, slotKey } from './betrayal'
+import { DIVISIONS, MEMBERS, REWARDS, adviceFor, goalsFromStars, priceReward, slotKey } from './betrayal'
+import type { AdviceKind } from './betrayal'
 import { useMechanicZone } from './zone'
 
 const props = defineProps<{
@@ -269,6 +302,20 @@ function toggleStar (key: string) {
   props.config.betrayalStars = stars.includes(key) ? stars.filter(k => k !== key) : [...stars, key]
 }
 
+const goals = computed(() => goalsFromStars(props.config.betrayalStars))
+const betrayalAt = computed(() => props.config.betrayalAt ?? {})
+const goalRows = computed(() => goals.value.map(g => {
+  const now = betrayalAt.value[g.member]
+  return { ...g, done: now === g.di, nowLabel: now == null ? 'where now?' : `now ${DIVISIONS[now]}` }
+}))
+const goalsDone = computed(() => goalRows.value.filter(g => g.done).length)
+function setAt (member: string, di: number) {
+  props.config.betrayalAt = { ...betrayalAt.value, [member]: di }
+}
+const metMember = shallowRef<string>(MEMBERS[0])
+const metAdvice = computed(() => adviceFor(metMember.value, goals.value, betrayalAt.value))
+const ADVICE_CLASS: Record<AdviceKind, string> = { move: 'w-accent', keep: 'w-up', execute: 'w-down', any: 'w-dim' }
+
 function boardMatch (member: string, div: string, reward: string) {
   const q = boardQuery.value.trim().toLowerCase()
   if (!q) return true
@@ -294,6 +341,20 @@ function boardMatch (member: string, div: string, reward: string) {
 .icon:hover { opacity: 1; }
 .warn { color: var(--w-warn); padding: 6px var(--w-pad); font-size: 12px; }
 .glanceBtr { grid-template-columns: minmax(0, 1fr) 64px; }
+.pad { padding: 4px var(--w-pad) 8px; }
+.goal { display: flex; align-items: center; gap: 6px; padding: 3px var(--w-pad); font-size: 12.5px; }
+.goal > :first-child { flex: 1; min-width: 0; }
+.where { display: inline-flex; gap: 2px; }
+.whereBtn {
+  width: 20px;
+  height: 20px;
+  font-size: 10.5px;
+  border-radius: 3px;
+  border: 1px solid var(--w-line);
+  color: var(--w-dim);
+  background: var(--w-panel-2);
+}
+.whereOn { color: var(--w-accent-fg); background: var(--w-accent); border-color: var(--w-accent); }
 .chips { display: flex; flex-wrap: wrap; gap: 4px; padding: 6px var(--w-pad) 8px; }
 .split {
   display: grid;

@@ -11,6 +11,7 @@ import AppearanceSettings from './ui/AppearanceSettings.vue'
 import ModulesSettings from './switchboard/ModulesSettings.vue'
 import SetupOverlay from './switchboard/SetupOverlay.vue'
 import PerfSettings from './ui/PerfSettings.vue'
+import HotkeysSettings from './switchboard/HotkeysSettings.vue'
 import type { Component } from 'vue'
 import type { WidgetSpec } from '@/web/overlay/interfaces'
 
@@ -105,7 +106,7 @@ export function wokeSettingsFor (wmType: string | undefined): Component | undefi
 export { wokeShortcutsFor } from './shortcuts'
 
 // Extra pages for APT's main settings window (shown next to "General").
-export const wokeGeneralSettings: Component[] = [AppearanceSettings, ModulesSettings, PerfSettings]
+export const wokeGeneralSettings: Component[] = [AppearanceSettings, ModulesSettings, HotkeysSettings, PerfSettings]
 
 // Mounted once inside APT's overlay window: first-run module setup.
 export const WokeOverlay = SetupOverlay
