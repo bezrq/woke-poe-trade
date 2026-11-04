@@ -1,0 +1,87 @@
+<template>
+  <div v-if="show" :class="$style.stack">
+    <div v-if="updateReady" :class="$style.pill" role="status">
+      <i class="fas fa-arrow-circle-up w-accent" />
+      <span>Update {{ updateReady }} ready, installs when you quit</span>
+      <w-button size="sm" @click="restartNow">Restart now</w-button>
+      <button type="button" class="w-icon-btn" title="Hide" aria-label="Hide" @click="hiddenUpdate = updateReady"><i class="fas fa-times" /></button>
+    </div>
+    <div v-if="crash" :class="$style.pill" role="alert">
+      <i class="fas fa-exclamation-circle w-down" />
+      <span>{{ crash.count > 1 ? `The app ran into ${crash.count} problems last time` : 'The app closed unexpectedly last time' }}</span>
+      <w-button size="sm" variant="primary" title="Opens a pre-filled GitHub issue you can read and edit before sending" @click="report">Report…</w-button>
+      <w-button size="sm" variant="ghost" @click="dismiss">Dismiss</w-button>
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+// Small notices at the top of the overlay, shown only while it is open:
+// an update waiting to install, and a crash from the last run to report.
+import { computed, inject, shallowRef } from 'vue'
+import { Host } from '@/web/background/IPC'
+import type { WidgetManager } from '@/web/overlay/interfaces'
+import { WButton } from '../ui'
+import { hostRequest } from '../shared/host'
+import { reportProblem } from './report'
+
+interface PendingCrash { id: string, at: number, title: string, count: number }
+
+const wm = inject<WidgetManager>('wm')!
+
+const show = computed(() => wm.active.value && !wm.widgets.value.some(w => w.wmZorder === 'exclusive' && w.wmWants === 'show'))
+
+const hiddenUpdate = shallowRef<string | null>(null)
+const updateReady = computed(() => {
+  const info = Host.updateInfo.value
+  return info.state === 'update-downloaded' && info.version !== hiddenUpdate.value ? info.version : null
+})
+
+function restartNow () {
+  Host.sendEvent({ name: 'CLIENT->MAIN::user-action', payload: { action: 'update-and-restart' } })
+}
+
+const crash = shallowRef<PendingCrash | null>(null)
+hostRequest<PendingCrash | null>('crash-pending', {}).then(c => { crash.value = c }).catch(() => {})
+
+async function report () {
+  const c = crash.value
+  if (!c) return
+  crash.value = null
+  await reportProblem(c.id).catch(() => {})
+  await hostRequest('crash-dismiss', {}).catch(() => {})
+}
+
+async function dismiss () {
+  crash.value = null
+  await hostRequest('crash-dismiss', {}).catch(() => {})
+}
+</script>
+
+<style module>
+.stack {
+  position: absolute;
+  left: 50%;
+  top: 36px;
+  transform: translateX(-50%);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+.pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 6px 4px 12px;
+  font-family: var(--w-body);
+  font-size: var(--w-text-sm);
+  color: var(--w-fg);
+  background: var(--w-panel);
+  border: 1px solid var(--w-line-strong);
+  border-radius: 999px;
+  box-shadow: var(--w-shadow);
+  white-space: nowrap;
+}
+</style>

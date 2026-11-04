@@ -6,6 +6,8 @@ export class AppTray {
   public overlayKey = 'Shift + Space'
   private tray: Tray
   serverPort = 0
+  // woke: opens the first-run setup window.
+  onRunSetup?: () => void
 
   constructor (server: ServerEvents) {
     let trayImage = nativeImage.createFromPath(
@@ -23,7 +25,7 @@ export class AppTray {
     }
 
     this.tray = new Tray(trayImage)
-    this.tray.setToolTip(`Awakened PoE Trade v${app.getVersion()}`)
+    this.tray.setToolTip(`Woke PoE Trade v${app.getVersion()}`)
     this.rebuildMenu()
 
     server.onEventAnyClient('CLIENT->MAIN::user-action', ({ action }) => {
@@ -49,6 +51,10 @@ export class AppTray {
         click: () => {
           shell.openExternal(`http://localhost:${this.serverPort}`)
         }
+      },
+      {
+        label: 'Run setup again',
+        click: () => { this.onRunSetup?.() }
       },
       { type: 'separator' },
       {
