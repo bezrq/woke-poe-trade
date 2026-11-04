@@ -13,7 +13,7 @@
         </div>
       </template>
     </DockItem>
-    <WPanel :title="config.wmTitle || 'Lab gems'" width="30rem">
+    <WPanel :title="config.wmTitle || 'Lab gems'" icon="lab" :updated="snapshot?.ts ?? null" :fresh-min="40" :stale-min="180" width="30rem">
       <template #tabs>
         <WTabs v-model="config.view" :options="[{ value: 'color', label: 'Colour roll' }, { value: 'specific', label: 'Specific gem' }]" />
       </template>
@@ -33,8 +33,7 @@
       <template #meta>
         <template v-if="snapshot">
           <span>{{ snapshot.league }}</span><span class="w-faint">·</span>
-          <span>{{ priceCount }} gem prices</span><span class="w-faint">·</span>
-          <span>updated {{ ago(snapshot.ts) }}</span>
+          <span>{{ priceCount }} gem prices</span>
         </template>
         <span v-else>Waiting for poe.ninja prices…</span>
       </template>
@@ -128,7 +127,6 @@ export default {
 
 <script setup lang="ts">
 import { inject, computed, shallowRef, watch } from 'vue'
-import { useVisibleClock } from '../shared/visible-clock'
 import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
 import { WPanel, WTabs, WSelect, WSegmented, WField, WPrice, WEmpty, WChip } from '../ui'
@@ -173,8 +171,6 @@ const league = computed(() => leagues.selectedId.value)
 
 const snapshot = shallowRef<Snapshot | null>(null)
 const expanded = shallowRef<string | null>(null)
-const now = shallowRef(Date.now())
-useVisibleClock(props.config, () => { now.value = Date.now() }, 60 * 1000)
 
 async function load () {
   if (!league.value) { snapshot.value = null; return }
@@ -233,13 +229,6 @@ function pct (p: number) { return `${(p * 100).toFixed(1)}%` }
 function stateLabel (s: GemState) {
   const [level, quality] = s.split('/')
   return `Level ${level}${quality ? ` / ${quality}%` : ' / 0%'}`
-}
-
-function ago (ts: number) {
-  const min = Math.max(0, Math.round((now.value - ts) / 60000))
-  if (min < 1) return 'just now'
-  if (min < 60) return `${min} min ago`
-  return `${Math.round(min / 60)} h ago`
 }
 </script>
 

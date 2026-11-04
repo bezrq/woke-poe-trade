@@ -1,6 +1,6 @@
 <template>
   <div :class="[$style.item, { [$style.active]: active }]">
-    <button type="button" :class="$style.main" @click="emit('select')">
+    <button type="button" :class="$style.main" class="w-focusable" @click="emit('select')">
       <span :class="$style.line"><slot /></span>
       <span v-if="$slots.sub" :class="$style.sub" class="w-trunc"><slot name="sub" /></span>
     </button>
@@ -22,7 +22,7 @@ const emit = defineEmits<{ (e: 'select'): void }>()
   padding-right: 6px;
   border-bottom: 1px solid var(--w-line-soft);
 }
-.item:hover { background: var(--w-accent-soft); }
+.item:hover, .item:focus-within { background: var(--w-accent-soft); }
 .active { background: var(--w-accent-soft); box-shadow: inset 2px 0 0 var(--w-accent); }
 .main {
   flex: 1;

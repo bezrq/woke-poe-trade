@@ -15,7 +15,10 @@
         </div>
       </template>
     </DockItem>
-    <WPanel :title="config.wmTitle || 'Market tracker'" width="30rem">
+    <WPanel ref="panel" :title="config.wmTitle || 'Market tracker'" icon="divine" :updated="latest?.ts ?? null" :fresh-min="40" :stale-min="180" width="30rem">
+      <template v-if="collector.lastError.value" #banner>
+        <WBanner>Couldn't save the latest prices ({{ collector.lastError.value }}). Showing the last saved snapshot; it retries on the next refresh.</WBanner>
+      </template>
       <template #tabs>
         <WTabs v-model="config.view" :options="[
           { value: 'movers', label: 'Movers' },
@@ -52,15 +55,13 @@
       <template #meta>
         <template v-if="latest">
           <span>{{ latest.league }}</span><span class="w-faint">·</span>
-          <span>{{ latest.items.length }} items</span><span class="w-faint">·</span>
-          <span>updated {{ ago(latest.ts) }}</span>
+          <span>{{ latest.items.length }} items</span>
           <template v-if="latest.divine"><span class="w-faint">·</span>
-            <span class="inline-flex items-center gap-1"><img src="/images/divine.png" class="w-4 h-4"> = {{ Math.round(latest.divine) }}c</span>
+            <span class="inline-flex items-center gap-1"><WIcon currency="divine" /> = {{ Math.round(latest.divine) }}<WIcon currency="chaos" /></span>
           </template>
         </template>
         <span v-else-if="league">Waiting for the first poe.ninja snapshot for {{ league }} (refreshes about every 30 min)…</span>
         <span v-else>Select a league in APT's price check settings to start collecting.</span>
-        <span v-if="collector.lastError.value" class="w-down">{{ collector.lastError.value }}</span>
         <template v-if="config.view === 'movers' && divMove != null">
           <span class="w-faint">·</span>
           <span :title="unit === 'chaos' ? 'Moves below include this divine swing. Switch to div to remove it.' : 'Moves below are measured in divines.'">
@@ -69,16 +70,18 @@
       </template>
 
       <template v-if="config.view === 'movers'">
-        <WEmpty v-if="moversNote" icon="fas fa-chart-line">{{ moversNote }}</WEmpty>
+        <WSkeleton v-if="!latest && league" :rows="8" />
+        <WEmpty v-else-if="moversNote" :art="{ currency: 'divine' }">{{ moversNote }}</WEmpty>
         <template v-else>
           <div class="w-row w-row--head" :class="$style.grid"><span /><span>Item</span><span>Then</span><span class="text-right">Now</span><span class="text-right">%</span></div>
-          <div v-for="m in movers" :key="key(m)" class="w-row" :class="$style.grid">
+          <div v-for="m in movers" :key="key(m)" class="w-row" :class="$style.grid" tabindex="0"
+            @contextmenu="rowMenu($event, m)" @keydown.w.prevent="toggleWatch(m)" @keydown.c.ctrl.prevent="copyName(m)">
             <button @click="toggleWatch(m)" :title="isWatched(m) ? 'Remove from watchlist' : 'Add to watchlist'"
               class="w-icon-btn" :class="{ 'w-icon-btn--on': isWatched(m) }">
               <i :class="isWatched(m) ? 'fas fa-star' : 'far fa-star'" />
             </button>
-            <span class="w-trunc" :class="rarityClass(m.type)" :title="m.type">
-              <i v-if="isThin(m)" class="fas fa-exclamation-circle w-faint mr-1" :title="thinTitle(m)" />{{ m.name }}<span v-if="m.variant" class="w-dim ml-1">{{ m.variant }}</span></span>
+            <span class="w-trunc inline-flex items-center gap-1.5" :class="rarityClass(m.type)" :title="m.type">
+              <WIcon :src="ninjaIcon(m.type, m.name) ?? undefined" /><i v-if="isThin(m)" class="fas fa-exclamation-circle w-faint mr-1" :title="thinTitle(m)" />{{ m.name }}<span v-if="m.variant" class="w-dim ml-1">{{ m.variant }}</span></span>
             <WPrice :chaos="m.then" :divine="latest?.divine" :unit="unitFor(m)" class="w-dim" />
             <WPrice :chaos="m.now" :divine="latest?.divine" :unit="unitFor(m)" />
             <WDelta :value="m.change" class="text-right" />
@@ -87,13 +90,14 @@
       </template>
 
       <template v-else>
-        <WEmpty v-if="!config.watchlist.length" icon="far fa-star">Star items in Movers or search above to watch them.</WEmpty>
-        <div v-for="w in watchRows" :key="key(w.item)" class="w-row" :class="$style.grid">
-          <button @click="toggleWatch(w.item)" title="Remove from watchlist" class="w-icon-btn w-icon-btn--on">
+        <WEmpty v-if="!config.watchlist.length" icon="far fa-star">Star items in Movers, press <WKbd keys="W" /> on a row, or search above to watch them.</WEmpty>
+        <div v-for="w in watchRows" :key="key(w.item)" class="w-row" :class="$style.grid" tabindex="0"
+          @contextmenu="rowMenu($event, w.item)" @keydown.delete.prevent="toggleWatch(w.item)" @keydown.c.ctrl.prevent="copyName(w.item)">
+          <button @click="toggleWatch(w.item)" title="Remove from watchlist (Del)" class="w-icon-btn w-icon-btn--on">
             <i class="fas fa-star" />
           </button>
-          <span class="w-trunc" :class="rarityClass(w.item.type)" :title="w.item.type">
-            <i v-if="w.thin" class="fas fa-exclamation-circle w-faint mr-1" :title="thinTitle({ gaps: w.gaps })" />{{ w.item.name }}<span v-if="w.item.variant" class="w-dim ml-1">{{ w.item.variant }}</span>
+          <span class="w-trunc inline-flex items-center gap-1.5" :class="rarityClass(w.item.type)" :title="w.item.type">
+            <WIcon :src="ninjaIcon(w.item.type, w.item.name) ?? undefined" /><i v-if="w.thin" class="fas fa-exclamation-circle w-faint mr-1" :title="thinTitle({ gaps: w.gaps })" />{{ w.item.name }}<span v-if="w.item.variant" class="w-dim ml-1">{{ w.item.variant }}</span>
             <button class="w-icon-btn ml-1" :class="{ 'w-icon-btn--on': hasAlert(w.item) }" :title="alertTitle(w.item)"
               @click="alertKey = alertKey === key(w.item) ? null : key(w.item)"><i class="fas fa-bell text-xs" /></button>
           </span>
@@ -113,6 +117,7 @@
 
       <template #footer>
         <span>Prices from poe.ninja</span>
+        <span class="ml-auto w-faint">Right-click a row for actions</span>
       </template>
     </WPanel>
   </Widget>
@@ -134,14 +139,13 @@ export default {
 
 <script setup lang="ts">
 import { inject, computed, shallowRef, watch } from 'vue'
-import { useVisibleClock } from '../shared/visible-clock'
 import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
 import { useLeagues } from '@/web/background/Leagues'
 import { useMarketCollector } from './collector'
 import { dailyHistory, dailyRowsForDate, latestSnapshots, snapshotAtOrBefore } from './db'
 import { computeMovers, trendThen } from './analysis'
-import { WPanel, WTabs, WSegmented, WSelect, WField, WPrice, WDelta, WSpark, WEmpty, WChip } from '../ui'
+import { WPanel, WTabs, WSegmented, WSelect, WField, WPrice, WDelta, WSpark, WEmpty, WChip, WIcon, WKbd, WSkeleton, WBanner, ninjaIcon, openMenu, toast } from '../ui'
 import type { Mover } from './analysis'
 import { isThin, itemKey, thinTitle, utcDate } from './types'
 import type { PriceItem, Snapshot } from './types'
@@ -185,8 +189,6 @@ const unit = computed({
   set: (v: string) => { props.config.unit = v === 'div' ? 'div' : 'chaos' }
 })
 const addQuery = shallowRef('')
-const now = shallowRef(Date.now())
-useVisibleClock(props.config, () => { now.value = Date.now() }, 60 * 1000)
 
 const types = computed(() => Array.from(new Set(latest.value?.items.map(i => i.type) ?? [])).sort())
 const typeOptions = computed(() => [{ value: '', label: 'All categories' }, ...types.value.map(t => ({ value: t, label: t }))])
@@ -353,22 +355,35 @@ function isWatched (item: { type: string, name: string, variant: string }) {
 function toggleWatch (item: { type: string, name: string, variant: string }) {
   const k = itemKey(item)
   if (isWatched(item)) {
-    props.config.watchlist = props.config.watchlist.filter(w => itemKey(w) !== k)
+    const before = props.config.watchlist
+    props.config.watchlist = before.filter(w => itemKey(w) !== k)
+    toast(`Stopped watching ${item.name}`, { undo: () => { props.config.watchlist = before }, anchor: panel.value?.el })
   } else {
     props.config.watchlist.push({ type: item.type, name: item.name, variant: item.variant })
   }
 }
 
+const panel = shallowRef<InstanceType<typeof WPanel> | null>(null)
+
+function copyName (item: { name: string }) {
+  navigator.clipboard.writeText(item.name)
+    .then(() => toast(`Copied "${item.name}"`, { anchor: panel.value?.el, ms: 1800 }))
+    .catch(() => {})
+}
+
+function rowMenu (e: MouseEvent, item: { type: string, name: string, variant: string }) {
+  const watched = isWatched(item)
+  openMenu(e, [
+    { label: watched ? 'Stop watching' : 'Watch price', icon: watched ? 'fas fa-star' : 'far fa-star', keys: watched ? 'Del' : 'W', action: () => toggleWatch(item) },
+    ...(watched ? [{ label: 'Set price alert…', icon: 'fas fa-bell', action: () => { props.config.view = 'watchlist'; alertKey.value = key(item) } }] : []),
+    { label: 'Copy name', icon: 'far fa-copy', keys: 'Ctrl + C', action: () => copyName(item) },
+    { label: 'Show only this category', icon: 'fas fa-filter', action: () => { props.config.view = 'movers'; props.config.typeFilter = item.type } }
+  ])
+}
+
 function addWatch (item: PriceItem) {
   toggleWatch(item)
   addQuery.value = ''
-}
-
-function ago (ts: number) {
-  const min = Math.max(0, Math.round((now.value - ts) / 60000))
-  if (min < 1) return 'just now'
-  if (min < 60) return `${min} min ago`
-  return `${Math.round(min / 60)} h ago`
 }
 </script>
 

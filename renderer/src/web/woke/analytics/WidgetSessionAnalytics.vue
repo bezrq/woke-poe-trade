@@ -1,6 +1,6 @@
 <template>
   <Widget :config="config" move-handles="corners" :inline-edit="false" :readonly="true">
-    <WPanel :title="config.wmTitle || 'Session analytics'" width="34rem">
+    <WPanel :title="config.wmTitle || 'Session analytics'" icon="divine" width="34rem">
       <template #tabs>
         <WTabs v-model="tab" :options="tabOptions" />
       </template>
