@@ -2,9 +2,9 @@
 // and mod worth tags sit above the filters, the verdict and drivers below
 // them, so they meet here instead of passing props through APT's components.
 
-import { shallowRef, watch } from 'vue'
+import { computed, shallowRef } from 'vue'
 import { ItemCategory, ItemRarity, ParsedItem } from '@/parser'
-import { AppConfig } from '@/web/Config'
+import { AppConfig, saveConfig } from '@/web/Config'
 import { useLeagues } from '@/web/background/Leagues'
 import { requestPoeprices, RareItemPrice } from '@/web/price-check/price-prediction/poeprices'
 import type { ModWorth } from './mod-worth'
@@ -25,16 +25,34 @@ export const checkedFair = shallowRef<{ item: ParsedItem, chaos: number } | null
 /** Worth per mod (by statRef) for the checked item. */
 export const modWorth = shallowRef<{ item: ParsedItem, map: Map<string, ModWorth> } | null>(null)
 
-// Ask poeprices.info for rares (free, no trade rate limit). Own switch,
-// separate from APT's "show prediction" widget.
-const PP_KEY = 'woke.pricePoeprices'
-function readPp (): boolean {
-  try { return localStorage.getItem(PP_KEY) !== '0' } catch { return true }
+// Ask poeprices.info for rares (free, no trade rate limit). One switch with
+// APT's "show prediction" setting, so the two can't disagree.
+function priceCheckWidget (): { requestPricePrediction?: boolean } | undefined {
+  try {
+    return AppConfig().widgets.find(w => w.wmType === 'price-check') as { requestPricePrediction?: boolean } | undefined
+  } catch { return undefined }
 }
-export const usePoeprices = shallowRef(readPp())
-watch(usePoeprices, (v) => {
-  try { localStorage.setItem(PP_KEY, v ? '1' : '0') } catch {}
+export const usePoeprices = computed<boolean>({
+  get: () => priceCheckWidget()?.requestPricePrediction ?? true,
+  set: (v) => {
+    const w = priceCheckWidget()
+    if (!w || w.requestPricePrediction === v) return
+    w.requestPricePrediction = v
+    saveConfig()
+  }
 })
+
+// Builds before the switches merged kept ours in localStorage: an "off"
+// there carries over once.
+const OLD_PP_KEY = 'woke.pricePoeprices'
+function carryOldSwitch () {
+  try {
+    const old = localStorage.getItem(OLD_PP_KEY)
+    if (old == null) return
+    localStorage.removeItem(OLD_PP_KEY)
+    if (old === '0') usePoeprices.value = false
+  } catch {}
+}
 
 const NO_PREDICTION = new Set<ItemCategory | undefined>([
   ItemCategory.Map, ItemCategory.CapturedBeast, ItemCategory.HeistContract,
@@ -50,6 +68,7 @@ export function canAskPoeprices (item: ParsedItem): boolean {
 }
 
 export function loadPoeprices (item: ParsedItem) {
+  carryOldSwitch()
   if (poepricesState.value?.item === item && poepricesState.value.status !== 'off') return
   if (!canAskPoeprices(item)) { poepricesState.value = null; return }
   if (!usePoeprices.value) { poepricesState.value = { item, status: 'off', price: null }; return }
