@@ -75,8 +75,12 @@ function queued<T> (fn: () => Promise<T>): Promise<T> {
 
 function csvCell (v: unknown): string {
   const s = v == null ? '' : String(v)
-  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
+  return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
 }
+
+// Excel reads a CSV without a byte order mark as the PC's ANSI code page,
+// which garbles names like "Doppelgänger Guise" or "Maelström of Chaos".
+const UTF8_BOM = '\uFEFF'
 
 type Args = Record<string, unknown>
 
@@ -123,7 +127,7 @@ export const sessionHandlers: Record<string, (args: Args) => Promise<unknown>> =
   'sessions-export': async ({ rows }) => {
     const list = (rows as Array<Record<string, unknown>>) ?? []
     const cols = list.length ? Object.keys(list[0]) : []
-    const text = [cols.join(','), ...list.map(r => cols.map(c => csvCell(r[c])).join(','))].join('\r\n')
+    const text = UTF8_BOM + [cols.join(','), ...list.map(r => cols.map(c => csvCell(r[c])).join(','))].join('\r\n')
     const file = path.join(root(), `maps-${new Date().toISOString().slice(0, 10)}.csv`)
     await writeAtomic(file, text)
     shell.showItemInFolder(file)
