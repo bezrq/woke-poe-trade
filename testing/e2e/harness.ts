@@ -151,6 +151,19 @@ export class Overlay {
     return this.page.locator(`#widget-${w.wmId}`)
   }
 
+  // A module's icon in the dock (the row of icons shown while you play).
+  dockIcon (moduleId: string) {
+    return this.page.locator(`[data-dock="${moduleId}"]`)
+  }
+
+  // Rests the mouse on a dock icon until its card opens (main's hover
+  // tracker sees the mouse; the overlay doesn't get mouse events in game).
+  async hoverDockIcon (moduleId: string) {
+    const box = await this.dockIcon(moduleId).boundingBox()
+    if (!box) throw new Error(`Dock icon ${moduleId} is not on screen`)
+    await this.moveMouse(Math.round(box.x + box.width / 2), Math.round(box.y + box.height / 2))
+  }
+
   // A widget's saved config, as the app last wrote it to config.json.
   savedWidget (wmType: string): any { // eslint-disable-line @typescript-eslint/no-explicit-any
     return this.app.readConfig()?.widgets.find((w: { wmType: string }) => w.wmType === wmType)

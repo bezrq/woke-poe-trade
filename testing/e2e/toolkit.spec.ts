@@ -55,16 +55,18 @@ test('first run: picking the Leveling preset switches mapping tools off', async 
   expect(off).not.toContain('run-timer')
 })
 
-test('hide-all hotkey hides every toolkit panel and brings them back', async ({ overlay }) => {
+test('hide-all hotkey hides the toolkit (dock included) and brings it back', async ({ overlay }) => {
   await overlay.boot({
-    widgets: [{ wmType: 'woke-campaign', wmWants: 'show' }],
+    widgets: [{ wmType: 'woke-campaign' }],
     patch: c => { c.woke.hideAllHotkey = 'Alt + H' }
   })
-  const strip = overlay.widget('woke-campaign').getByText('waiting for a zone change')
-  await expect(strip).toBeVisible()
+  // In a campaign zone the dock shows the campaign icon.
+  await overlay.replayLog('client-logs/campaign-act1.txt')
+  const icon = overlay.dockIcon('campaign')
+  await expect(icon).toBeVisible()
   await overlay.pressHotkey('Alt + H')
-  await expect(strip).toBeHidden()
+  await expect(icon).toBeHidden()
   await expect(overlay.page.getByText('Toolkit panels hidden')).toBeVisible()
   await overlay.pressHotkey('Alt + H')
-  await expect(strip).toBeVisible()
+  await expect(icon).toBeVisible()
 })

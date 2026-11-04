@@ -1,5 +1,5 @@
 <template>
-  <span ref="rootEl" :class="$style.root">
+  <span ref="rootEl" :class="$style.root" :data-dock="host.props.id">
     <span ref="iconEl" :class="[$style.icon, { [$style.peek]: peekText, [$style.hot]: showCard }]"
       :title="wm.active.value ? `${host.props.title}${host.props.wmId != null ? ' · click to open' : ''}` : undefined"
       @click="click">

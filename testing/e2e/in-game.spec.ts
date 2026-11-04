@@ -16,24 +16,30 @@ test('regex library: clicking a saved string searches the stash in game', async 
 })
 
 test('league mechanics icon: shows in a mechanic zone, hides in the hideout', async ({ overlay }) => {
-  await overlay.boot({ widgets: [{ wmType: 'woke-mechanics', wmWants: 'show' }] })
-  const icon = overlay.widget('woke-mechanics').locator('[title^="League mechanics"]')
+  await overlay.boot({ widgets: [{ wmType: 'woke-mechanics' }] })
+  const icon = overlay.dockIcon('mechanics')
   const lines = logFixture('client-logs/mapping-session.txt')
   const upTo = (text: string) => lines.slice(0, lines.findIndex(l => l.includes(text)) + 1)
 
   // Strand: a plain map, nothing to show.
   await overlay.log(upTo('You have entered Strand.'))
   await expect(icon).toHaveCount(0)
-  // Einhar speaks in the Cemetery map: Bestiary.
+  // Einhar speaks in the Cemetery map: Bestiary. Resting the mouse on the
+  // icon opens its card.
   const einhar = upTo('Einhar, Beastmaster:')
   await overlay.log(einhar.slice(upTo('You have entered Strand.').length))
-  await expect(icon).toHaveAttribute('title', /Bestiary/)
-  await overlay.snap('bestiary icon after Einhar speaks')
+  await expect(icon).toBeVisible()
+  await overlay.hoverDockIcon('mechanics')
+  await expect(icon).toContainText('Bestiary', { timeout: 5000 })
+  await overlay.snap('bestiary card from the dock icon')
+  await overlay.moveMouse(1000, 900)
   // Back in the hideout: gone.
   const hideout = upTo('Generating level 68 area "Delve_Main"').slice(einhar.length, -1)
   await overlay.log(hideout)
   await expect(icon).toHaveCount(0)
   // Azurite Mine: Delve, from the zone itself.
   await overlay.log(lines.slice(einhar.length + hideout.length, lines.findIndex(l => l.includes('Azurite Mine')) + 1))
-  await expect(icon).toHaveAttribute('title', /Delve/)
+  await expect(icon).toBeVisible()
+  await overlay.hoverDockIcon('mechanics')
+  await expect(icon).toContainText('Delve', { timeout: 5000 })
 })

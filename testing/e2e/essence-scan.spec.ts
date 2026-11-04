@@ -13,16 +13,18 @@ test('Alt+E reads a monolith with Misery and Envy: CORRUPT, with the flagged ess
   await overlay.moveMouse(cursor.x, cursor.y)
   await overlay.pressHotkey('Alt + E')
 
-  const panel = overlay.widget('woke-essence-scan')
-  await expect(panel).toContainText('1 read', { timeout: 20_000 })
-  await expect(panel).toContainText('CORRUPT')
-  // The badge next to the monolith names the essences it read.
-  await expect(overlay.page.getByText('CORRUPT').first()).toBeVisible()
+  // While you play the panel stays out of the way: a card by the monolith
+  // and a dock icon counting monoliths worth corrupting.
+  const card = overlay.page.getByText('CORRUPT', { exact: true }).filter({ visible: true })
+  await expect(card).toBeVisible({ timeout: 20_000 })
   for (const name of ['Misery', 'Greed', 'Envy']) {
     await expect(overlay.page.locator('body')).toContainText(name)
   }
+  await expect(overlay.dockIcon('essence-scan')).toContainText('1')
+  await expect(overlay.widget('woke-essence-scan')).toContainText('1 read')
   await overlay.snap('essence monolith badge')
 
+  // Alt+E again stops scanning: the icon goes.
   await overlay.pressHotkey('Alt + E')
-  await expect(panel.getByRole('button', { name: 'Start' })).toBeVisible()
+  await expect(overlay.dockIcon('essence-scan')).toHaveCount(0)
 })

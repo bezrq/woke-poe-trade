@@ -26,6 +26,14 @@ npm ci
 npm run dev
 ```
 
+# Testing (woke)
+
+Every pull request runs `.github/workflows/test.yml`: unit tests
+(`cd renderer && npm test`), type checks, and the fake-game tests, where the
+real app runs against a fake Path of Exile (hotkeys, clipboard, Client.txt,
+screenshots and OCR). See [testing/README.md](testing/README.md) for how to
+run them and add scenarios.
+
 # How to build
 
 ```shell
