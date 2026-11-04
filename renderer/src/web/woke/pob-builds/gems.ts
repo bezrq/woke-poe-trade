@@ -1,14 +1,35 @@
 // Gem shopping list for a build while levelling: when each gem can be used
 // and where to get it in the campaign, for the character's class.
 // Data: gem-sources.json, generated from exile-leveling (MIT, see
-// LICENSE-exile-leveling.txt): { name: { l: required level, s: sources } },
-// source = [act, quest, npc, 'q' (quest reward) | 'v' (vendor), class mask].
+// LICENSE-exile-leveling.txt): { name: { l: required level, a: colour,
+// s: sources } }, colour = r/g/b/w (primary attribute), source = [act, quest,
+// npc, 'q' (quest reward) | 'v' (vendor), class mask].
 import raw from './gem-sources.json'
 import type { PobDetails } from './widget'
 
-type Source = [number, string, string, string, string]
-const DATA = raw as unknown as Record<string, { l: number, s: Source[] }>
-const CLASSES = ['Duelist', 'Marauder', 'Ranger', 'Scion', 'Shadow', 'Templar', 'Witch']
+export type GemSource = [number, string, string, string, string]
+type Source = GemSource
+export type GemColour = 'r' | 'g' | 'b' | 'w'
+const DATA = raw as unknown as Record<string, { l: number, a: GemColour, s: Source[] }>
+
+export interface GemData {
+  // The item name, as loot filters and the trade site spell it
+  // ("Combustion Support" where PoB says "Combustion").
+  name: string
+  requiredLevel: number
+  colour: GemColour
+  sources: GemSource[]
+}
+
+export function gemData (name: string): GemData | null {
+  const key = DATA[name] ? name : DATA[`${name} Support`] ? `${name} Support` : null
+  if (!key) return null
+  const d = DATA[key]
+  return { name: key, requiredLevel: d.l, colour: d.a ?? 'w', sources: d.s }
+}
+
+export const CLASS_NAMES = ['Duelist', 'Marauder', 'Ranger', 'Scion', 'Shadow', 'Templar', 'Witch']
+const CLASSES = CLASS_NAMES
 
 // Ascendancies map to their base class.
 const ASCENDANCY_CLASS: Record<string, string> = {
@@ -62,26 +83,27 @@ export function requiredLevel (name: string): number | null {
   return (DATA[name] ?? DATA[`${name} Support`])?.l ?? null
 }
 
-// Every enabled gem in the build, ordered by when you can use it.
-export function nextGems (details: PobDetails, charLevel: number | null, className: string): NextGem[] {
+// Every enabled gem in the build (or just `names`), ordered by when you can
+// use it.
+export function nextGems (details: PobDetails, charLevel: number | null, className: string, names?: string[]): NextGem[] {
   const cls = baseClass(className || details.className)
   const level = charLevel ?? 1
+  const list = names ?? details.skills
+    .filter(g => g.enabled)
+    .flatMap(g => g.gems.filter(x => x.enabled).map(x => x.name))
   const seen = new Set<string>()
   const out: NextGem[] = []
-  for (const group of details.skills) {
-    if (!group.enabled) continue
-    for (const gem of group.gems) {
-      if (!gem.enabled || seen.has(gem.name)) continue
-      seen.add(gem.name)
-      const req = requiredLevel(gem.name)
-      if (req == null) continue
-      out.push({
-        name: gem.name,
-        requiredLevel: req,
-        source: sourceFor(gem.name, cls),
-        when: req <= level ? 'now' : req <= level + 6 ? 'soon' : 'later'
-      })
-    }
+  for (const name of list) {
+    if (!name || seen.has(name)) continue
+    seen.add(name)
+    const req = requiredLevel(name)
+    if (req == null) continue
+    out.push({
+      name,
+      requiredLevel: req,
+      source: sourceFor(name, cls),
+      when: req <= level ? 'now' : req <= level + 6 ? 'soon' : 'later'
+    })
   }
   return out.sort((a, b) => a.requiredLevel - b.requiredLevel || a.name.localeCompare(b.name))
 }

@@ -1,5 +1,5 @@
 // Loads the source filter, applies the widget's edits, and saves the result.
-import { computed, onUnmounted, shallowRef, ref } from 'vue'
+import { computed, onUnmounted, shallowRef, ref, watch } from 'vue'
 import { Host, MainProcess } from '@/web/background/IPC'
 import { hostRequest } from '../shared/host'
 import { parseLogLine } from '../campaign/log-parse'
@@ -9,11 +9,20 @@ import { addEdit, applyEdits, nextEditId } from './edits'
 import type { EditStatus, FilterEdit, NewFilterEdit } from './edits'
 import { outputName } from './widget'
 import type { LootFilterWidget } from './widget'
+import { buildRuleBlocks, insertBuildBlocks } from './build-rules'
+import { useBuildRuleInput } from './build-input'
 
 // First line of every file the editor writes; marks a filter as ours.
 export const WOKE_MARK = '# WOKE-LOOT-FILTER-EDITOR'
 
 export interface FilterFile { name: string, size: number, mtime: number, online?: boolean, title?: string }
+
+// Short, stable fingerprint of the build rules (kept in config).
+function hash (text: string): string {
+  let h = 5381
+  for (let i = 0; i < text.length; i++) h = ((h << 5) + h + text.charCodeAt(i)) | 0
+  return (h >>> 0).toString(36)
+}
 
 function stem (name: string): string {
   return name.replace(/\.filter$/i, '')
@@ -29,10 +38,17 @@ export function useLootFilter (config: LootFilterWidget) {
   const baseNeedsBackup = ref(false)
   const doc = shallowRef<FilterDoc | null>(null)
   const statuses = shallowRef<EditStatus[]>([])
+  const buildBlockCount = ref(0)
   const loading = ref(false)
   const saving = ref(false)
   const error = ref<string | null>(null)
-  const savedEdits = ref(JSON.stringify(config.edits))
+  // Rules from the active PoB build; part of what "unsaved" compares.
+  const buildInput = useBuildRuleInput()
+  const buildSig = computed(() => JSON.stringify(buildInput.value ? [buildInput.value, config.buildRules] : null))
+  const signature = () => JSON.stringify([config.edits, hash(buildSig.value)])
+  // The build part is only known once the build file is read, so start from
+  // what the last save used.
+  const savedEdits = ref(JSON.stringify([config.edits, config.savedBuildSig ?? hash(buildSig.value)]))
   const lastSaved = ref<number | null>(null)
   // Version of the base file when it was loaded, to flag NeverSink updates.
   const baseVersion = ref<string | null>(null)
@@ -69,7 +85,7 @@ export function useLootFilter (config: LootFilterWidget) {
     clearTimeout(reloadTimer)
   })
 
-  const dirty = computed(() => JSON.stringify(config.edits) !== savedEdits.value)
+  const dirty = computed(() => signature() !== savedEdits.value)
   const failed = computed(() => statuses.value.filter(s => !s.ok))
   const updatedSinceSave = computed(() =>
     baseVersion.value != null && config.lastVersion != null && baseVersion.value !== config.lastVersion)
@@ -77,6 +93,14 @@ export function useLootFilter (config: LootFilterWidget) {
   function rebuild () {
     if (baseText.value == null) { doc.value = null; return }
     const next = parseFilter(baseText.value)
+    // Build rules go in first, so edits to them (restyles) apply on top.
+    const input = buildInput.value
+    buildBlockCount.value = 0
+    if (input) {
+      const blocks = buildRuleBlocks(input, config.buildRules)
+      insertBuildBlocks(next, blocks)
+      buildBlockCount.value = blocks.length
+    }
     statuses.value = applyEdits(next, config.edits)
     doc.value = next
   }
@@ -147,7 +171,7 @@ export function useLootFilter (config: LootFilterWidget) {
     const d = doc.value!
     return [
       WOKE_MARK,
-      `# Made from "${config.sourceOnline ? `${config.sourceTitle} (online filter, this copy doesn't auto-update)` : config.sourceName}"${d.version ? ` (NeverSink ${d.version})` : ''} with ${config.edits.length} change(s).`,
+      `# Made from "${config.sourceOnline ? `${config.sourceTitle} (online filter, this copy doesn't auto-update)` : config.sourceName}"${d.version ? ` (NeverSink ${d.version})` : ''} with ${config.edits.length} change(s)${buildBlockCount.value ? ` and ${buildBlockCount.value} build rule(s) for ${buildInput.value?.buildName ?? 'your build'}` : ''}.`,
       '# This file is rewritten on every save from the loot filter editor; change it there.',
       ''
     ]
@@ -164,7 +188,8 @@ export function useLootFilter (config: LootFilterWidget) {
         baseNeedsBackup.value = false
       }
       await hostRequest('filter-write', { dir: config.folder, name, text: serializeFilter(doc.value, header()) })
-      savedEdits.value = JSON.stringify(config.edits)
+      savedEdits.value = signature()
+      config.savedBuildSig = hash(buildSig.value)
       config.lastVersion = doc.value.version
       lastSaved.value = Date.now()
       if (config.reloadViaChat) reloadInGame()
@@ -195,7 +220,12 @@ export function useLootFilter (config: LootFilterWidget) {
     })
   }
 
+  // A new active build, or a rule switched on or off: show it right away.
+  watch(buildSig, () => { if (baseText.value != null) rebuild() })
+
   return {
+    buildInput,
+    buildBlockCount,
     files,
     folder,
     doc,

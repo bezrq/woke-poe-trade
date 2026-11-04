@@ -30,14 +30,7 @@
             <span v-if="timer.paused" style="color: var(--w-warn);">paused</span>
             <span v-if="timer.act" class="ml-auto w-dim">act {{ formatRunTime(timer.act) }}</span>
           </div>
-          <div v-if="nextGem" :class="$style.build" class="w-trunc" :title="nextGem.source ?? undefined">
-            <span class="w-dim">Next gem</span> <span class="w-rarity-gem">{{ nextGem.name.replace(/ Support$/, '') }}</span>
-            <span class="w-num w-faint"> · lv {{ nextGem.requiredLevel }}</span>
-            <div v-if="nextGem.source" class="w-dim text-xs w-trunc">{{ nextGem.source }}</div>
-          </div>
-          <div v-else-if="config.showBuild && activeBuild && mainGroups.length" :class="$style.build" class="w-trunc w-rarity-gem">
-            {{ mainGroups[0].gems.filter(x => x.enabled).map(x => x.name.replace(/ Support$/, '')).join(' · ') }}
-          </div>
+          <CampaignBuild :config="config" :show-tree="false" :max-links="1" />
         </div>
       </template>
     </DockItem>
@@ -115,14 +108,7 @@
           </div>
           <div v-if="note" :class="$style.callout" class="whitespace-pre-wrap">{{ note }}</div>
 
-          <div v-if="config.showBuild && activeBuild && (tree || mainGroups.length)" :class="$style.build">
-            <a v-if="tree && safeUrl(tree.url)" :href="safeUrl(tree.url)" target="_blank" class="block w-trunc w-accent hover:underline">
-              <i class="fas fa-external-link-alt text-xs" /> Tree: {{ tree.title }}
-            </a>
-            <div v-for="(g, i) in mainGroups" :key="i" class="w-trunc w-rarity-gem" :title="g.gems.map(x => x.name).join(', ')">
-              {{ g.gems.filter(x => x.enabled).map(x => x.name.replace(/ Support$/, '')).join(' · ') }}
-            </div>
-          </div>
+          <CampaignBuild :config="config" :tickable="wm.active.value" />
         </div>
       </div>
     </div>
@@ -154,8 +140,8 @@ import RouteParts from './RouteParts.vue'
 import DockItem from '../dock/DockItem.vue'
 import { hideWhilePlaying, tickWhile } from '../dock/dock'
 import { reportProblem } from '../dock/health'
-import { nextGems } from '../pob-builds/gems'
-import { actFromAreaId, actLabel, parseLogLine, pickTreeForLevel } from './log-parse'
+import { actFromAreaId, actLabel, parseLogLine } from './log-parse'
+import CampaignBuild from './CampaignBuild.vue'
 import type { LogEvent } from './log-parse'
 import { emptyState, migrateCampaign, parseHotkeyTarget } from './widget'
 import type { CampaignWidget } from './widget'
@@ -168,8 +154,6 @@ import {
 } from './run-timer'
 import type { RunTimerWidget } from './run-timer'
 import { isWidgetTypeOn } from '../modules'
-import { POB_BUILDS_TYPE, pobApi } from '../pob-builds/widget'
-import type { PobBuildsWidget, PobDetails } from '../pob-builds/widget'
 
 const props = defineProps<{
   config: CampaignWidget
@@ -326,6 +310,7 @@ function apply (ev: LogEvent): boolean {
       state.charName = ''
       state.className = ''
       state.level = null
+      state.gemsGot = []
     }
     props.config.step = advanceOnEnter(route.value, props.config.step, ev.areaId, routeData)
   } else if (ev.kind === 'zone') {
@@ -414,41 +399,6 @@ onUnmounted(() => {
   logListener.abort()
   hotkeys.abort()
 })
-
-// ---- build (optional, from the PoB builds widget) ----
-
-const pobWidget = computed(() => AppConfig().widgets
-  .find(w => w.wmType === POB_BUILDS_TYPE && (w as PobBuildsWidget).activeBuild) as PobBuildsWidget | undefined)
-const activeBuild = computed(() => pobWidget.value?.activeBuild ?? null)
-const details = shallowRef<PobDetails | null>(null)
-
-watch([activeBuild, () => props.config.showBuild], async ([relPath, show]) => {
-  details.value = null
-  if (!relPath || !show || !pobWidget.value) return
-  try {
-    details.value = await pobApi.read(pobWidget.value, relPath)
-  } catch {
-    // The build moved or was deleted; the guide works without it.
-  }
-}, { immediate: true })
-
-const tree = computed(() => details.value ? pickTreeForLevel(details.value.trees, s.value.level) : null)
-const mainGroups = computed(() => {
-  const groups = details.value?.skills.filter(g => g.enabled && g.gems.length) ?? []
-  const main = groups.filter(g => g.isMain)
-  return (main.length ? main : groups).slice(0, 2)
-})
-
-// The next gem the build uses that you can't use yet.
-const nextGem = computed(() => {
-  if (!props.config.showBuild || !details.value) return null
-  const level = s.value.level ?? 1
-  return nextGems(details.value, level, s.value.className).find(g => g.requiredLevel > level) ?? null
-})
-
-function safeUrl (url: string) {
-  return /^https?:\/\//i.test(url) ? url : undefined
-}
 </script>
 
 <style module>
