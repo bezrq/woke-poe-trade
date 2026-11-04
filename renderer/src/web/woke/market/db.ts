@@ -1,49 +1,14 @@
-// Local price history in the overlay's IndexedDB (persists in Electron's user data).
+// Local price history, saved as files by the main process
+// (main/src/woke/market-store.ts). It used to live in the overlay's
+// IndexedDB, which is tied to the overlay's port; the old data is moved over
+// once (importOldHistory).
 import type { DailyRow, Snapshot } from './types'
-
-const DB_NAME = 'woke-market'
-const DB_VERSION = 1
+import { hostRequest } from '../shared/host'
 
 // Snapshots are only needed for intraday movers; daily rows keep the long history.
 export const SNAPSHOT_RETENTION_MS = 3 * 24 * 60 * 60 * 1000
 
-let dbPromise: Promise<IDBDatabase> | null = null
-
-function openDb (): Promise<IDBDatabase> {
-  if (!dbPromise) {
-    dbPromise = new Promise((resolve, reject) => {
-      const req = indexedDB.open(DB_NAME, DB_VERSION)
-      req.onupgradeneeded = () => {
-        const db = req.result
-        if (!db.objectStoreNames.contains('snapshots')) {
-          db.createObjectStore('snapshots', { keyPath: ['league', 'ts'] })
-        }
-        if (!db.objectStoreNames.contains('daily')) {
-          const daily = db.createObjectStore('daily', { keyPath: ['league', 'date', 'type', 'name', 'variant'] })
-          daily.createIndex('byItem', ['league', 'type', 'name', 'variant'])
-        }
-      }
-      req.onsuccess = () => resolve(req.result)
-      req.onerror = () => { dbPromise = null; reject(req.error) }
-    })
-  }
-  return dbPromise
-}
-
-function done (tx: IDBTransaction): Promise<void> {
-  return new Promise((resolve, reject) => {
-    tx.oncomplete = () => resolve()
-    tx.onerror = () => reject(tx.error)
-    tx.onabort = () => reject(tx.error)
-  })
-}
-
-function request<T> (req: IDBRequest<T>): Promise<T> {
-  return new Promise((resolve, reject) => {
-    req.onsuccess = () => resolve(req.result)
-    req.onerror = () => reject(req.error)
-  })
-}
+const SLOW_MS = 120_000
 
 // Several widgets ask for the newest snapshot after every save; it's a few
 // thousand items, so read it from disk once and share it.
@@ -51,15 +16,8 @@ const latestCache = new Map<string, Promise<Snapshot | null>>()
 
 export async function saveSnapshot (snapshot: Snapshot, daily: DailyRow[]): Promise<void> {
   latestCache.delete(snapshot.league)
-  const db = await openDb()
-  const tx = db.transaction(['snapshots', 'daily'], 'readwrite')
-  tx.objectStore('snapshots').put(snapshot)
-  const dailyStore = tx.objectStore('daily')
-  for (const row of daily) dailyStore.put(row)
-  // Drop old snapshots for this league.
-  tx.objectStore('snapshots').delete(
-    IDBKeyRange.bound([snapshot.league, 0], [snapshot.league, snapshot.ts - SNAPSHOT_RETENTION_MS]))
-  await done(tx)
+  await importOldHistory()
+  await hostRequest('market-save', { snapshot, daily }, SLOW_MS)
   latestCache.set(snapshot.league, Promise.resolve(snapshot))
 }
 
@@ -79,48 +37,106 @@ export async function latestSnapshots (league: string, count: number): Promise<S
 }
 
 async function readLatest (league: string, count: number): Promise<Snapshot[]> {
-  const db = await openDb()
-  const store = db.transaction('snapshots').objectStore('snapshots')
-  const out: Snapshot[] = []
-  return new Promise((resolve, reject) => {
-    const req = store.openCursor(IDBKeyRange.bound([league, 0], [league, Infinity]), 'prev')
-    req.onsuccess = () => {
-      const cursor = req.result
-      if (!cursor || out.length >= count) { resolve(out); return }
-      out.push(cursor.value as Snapshot)
-      cursor.continue()
-    }
-    req.onerror = () => reject(req.error)
-  })
+  await importOldHistory()
+  return await hostRequest<Snapshot[]>('market-latest', { league, count }, SLOW_MS)
 }
 
 // The newest snapshot taken at or before `ts`.
 export async function snapshotAtOrBefore (league: string, ts: number): Promise<Snapshot | null> {
-  const db = await openDb()
-  const store = db.transaction('snapshots').objectStore('snapshots')
-  return new Promise((resolve, reject) => {
-    const req = store.openCursor(IDBKeyRange.bound([league, 0], [league, ts]), 'prev')
-    req.onsuccess = () => resolve((req.result?.value as Snapshot | undefined) ?? null)
-    req.onerror = () => reject(req.error)
-  })
+  await importOldHistory()
+  return await hostRequest<Snapshot | null>('market-at', { league, ts }, SLOW_MS)
 }
 
 export async function dailyRowsForDate (league: string, date: string): Promise<DailyRow[]> {
-  const db = await openDb()
-  const store = db.transaction('daily').objectStore('daily')
-  return request(store.getAll(IDBKeyRange.bound([league, date], [league, date, []]))) as Promise<DailyRow[]>
+  await importOldHistory()
+  return await hostRequest<DailyRow[]>('market-daily-date', { league, date }, SLOW_MS)
 }
 
 export async function dailyHistory (league: string, item: { type: string, name: string, variant: string }): Promise<DailyRow[]> {
-  const db = await openDb()
-  const index = db.transaction('daily').objectStore('daily').index('byItem')
-  const rows = await request(index.getAll([league, item.type, item.name, item.variant])) as DailyRow[]
-  return rows.sort((a, b) => a.date.localeCompare(b.date))
+  await importOldHistory()
+  return await hostRequest<DailyRow[]>('market-daily-item', { league, type: item.type, name: item.name, variant: item.variant }, SLOW_MS)
 }
 
 // For other modules and for export: every daily row of a league.
 export async function allDailyRows (league: string): Promise<DailyRow[]> {
-  const db = await openDb()
-  const store = db.transaction('daily').objectStore('daily')
-  return request(store.getAll(IDBKeyRange.bound([league], [league, []]))) as Promise<DailyRow[]>
+  await importOldHistory()
+  return await hostRequest<DailyRow[]>('market-daily-all', { league }, SLOW_MS)
+}
+
+// ---- one-time move from IndexedDB ----
+
+const OLD_DB_NAME = 'woke-market'
+const IMPORT_CHUNK = 5000
+let importing: Promise<void> | null = null
+
+export function importOldHistory (): Promise<void> {
+  importing ??= (async () => {
+    const status = await hostRequest<{ imported: boolean }>('market-import-status', null)
+    if (status.imported) return
+    const db = await openOldDb()
+    // Nothing here: maybe the history sits under the overlay's other port.
+    // Don't mark it done, so it's picked up when the app runs on that port.
+    if (!db) return
+    try {
+      const daily = await readAll<DailyRow>(db, 'daily')
+      for (let i = 0; i < daily.length; i += IMPORT_CHUNK) {
+        await hostRequest('market-import', { daily: daily.slice(i, i + IMPORT_CHUNK) }, SLOW_MS)
+      }
+      // One at a time: a snapshot is a few thousand items.
+      const cutoff = Date.now() - SNAPSHOT_RETENTION_MS
+      for (const key of await readKeys(db, 'snapshots')) {
+        if (!Array.isArray(key) || Number(key[1]) < cutoff) continue
+        const snap = await readOne<Snapshot>(db, 'snapshots', key)
+        if (snap) await hostRequest('market-import', { snapshots: [snap] }, SLOW_MS)
+      }
+    } finally {
+      db.close()
+    }
+    // The old database is left as it was, as a backup.
+    await hostRequest('market-import-done', null)
+  })()
+  // Failed (app not answering): try again on the next call.
+  importing.catch(() => { importing = null })
+  return importing
+}
+
+// Opens the old database only if it exists (open() would create it).
+async function openOldDb (): Promise<IDBDatabase | null> {
+  if (typeof indexedDB === 'undefined') return null
+  if (typeof indexedDB.databases === 'function') {
+    const list = await indexedDB.databases()
+    if (!list.some(d => d.name === OLD_DB_NAME)) return null
+  }
+  return await new Promise((resolve) => {
+    const req = indexedDB.open(OLD_DB_NAME)
+    req.onupgradeneeded = () => { req.transaction?.abort() }
+    req.onsuccess = () => resolve(req.result)
+    req.onerror = () => resolve(null)
+  })
+}
+
+function readAll<T> (db: IDBDatabase, store: string): Promise<T[]> {
+  if (!db.objectStoreNames.contains(store)) return Promise.resolve([])
+  return new Promise((resolve, reject) => {
+    const req = db.transaction(store).objectStore(store).getAll()
+    req.onsuccess = () => resolve(req.result as T[])
+    req.onerror = () => reject(req.error)
+  })
+}
+
+function readKeys (db: IDBDatabase, store: string): Promise<IDBValidKey[]> {
+  if (!db.objectStoreNames.contains(store)) return Promise.resolve([])
+  return new Promise((resolve, reject) => {
+    const req = db.transaction(store).objectStore(store).getAllKeys()
+    req.onsuccess = () => resolve(req.result)
+    req.onerror = () => reject(req.error)
+  })
+}
+
+function readOne<T> (db: IDBDatabase, store: string, key: IDBValidKey): Promise<T | undefined> {
+  return new Promise((resolve, reject) => {
+    const req = db.transaction(store).objectStore(store).get(key)
+    req.onsuccess = () => resolve(req.result as T | undefined)
+    req.onerror = () => reject(req.error)
+  })
 }

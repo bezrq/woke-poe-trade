@@ -12,6 +12,7 @@ import type { GameLogWatcher } from '../host-files/GameLogWatcher'
 import { readGameLogTail } from './game-log-tail'
 import { perfSnapshot, startProcessSampler } from './perf'
 import { hotkeyFailures } from './hotkey-failures'
+import { marketHandlers } from './market-store'
 
 type Handler = (args: any) => Promise<unknown> // eslint-disable-line @typescript-eslint/no-explicit-any
 
@@ -27,7 +28,8 @@ const handlers: Record<string, Handler> = {
   'filter-folder': showFilterFolder,
   'perf-stats': async () => perfSnapshot(),
   'ocr-check': async () => checkOcr(),
-  'hotkey-failures': async () => hotkeyFailures()
+  'hotkey-failures': async () => hotkeyFailures(),
+  ...marketHandlers
 }
 
 export function initWoke (server: ServerEvents, logger: Logger, poeWindow: GameWindow, gameLog: GameLogWatcher): void {
