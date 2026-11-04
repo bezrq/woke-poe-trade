@@ -22,6 +22,8 @@ export class Shortcuts {
   private logKeys = false
   private areaTracker: WidgetAreaTracker
   private clipboard: HostClipboard
+  private ocrWorker: Promise<OcrWorker> | null = null
+  private ocrLanguage = ''
 
   static async create (
     logger: Logger,
@@ -30,8 +32,8 @@ export class Shortcuts {
     gameConfig: GameConfig,
     server: ServerEvents
   ) {
-    const ocrWorker = await OcrWorker.create()
-    const shortcuts = new Shortcuts(logger, overlay, poeWindow, gameConfig, server, ocrWorker)
+    // woke: the OCR worker loads only once an OCR hotkey is registered
+    const shortcuts = new Shortcuts(logger, overlay, poeWindow, gameConfig, server)
     return shortcuts
   }
 
@@ -40,8 +42,7 @@ export class Shortcuts {
     private overlay: OverlayWindow,
     private poeWindow: GameWindow,
     private gameConfig: GameConfig,
-    private server: ServerEvents,
-    private ocrWorker: OcrWorker
+    private server: ServerEvents
   ) {
     this.areaTracker = new WidgetAreaTracker(server, overlay)
     this.clipboard = new HostClipboard(logger)
@@ -100,7 +101,10 @@ export class Shortcuts {
     this.stashScroll = stashScroll
     this.logKeys = logKeys
     this.clipboard.updateOptions(restoreClipboard)
-    this.ocrWorker.updateOptions(language)
+    this.ocrLanguage = language
+    if (actions.some(a => a.action.type === 'ocr-text')) {
+      this.getOcrWorker().then(w => w.updateOptions(language)).catch(() => {})
+    }
 
     const allShortcuts = new Set([
       'Ctrl + C', 'Ctrl + V', 'Ctrl + A',
@@ -129,6 +133,14 @@ export class Shortcuts {
     this.actions = actions.filter(action =>
       !duplicates.has(action.shortcut) ||
       action.action.type === 'toggle-overlay')
+  }
+
+  private getOcrWorker () {
+    if (!this.ocrWorker) {
+      const language = this.ocrLanguage
+      this.ocrWorker = OcrWorker.create().then(async w => { await w.updateOptions(language); return w })
+    }
+    return this.ocrWorker
   }
 
   private register () {
@@ -186,11 +198,12 @@ export class Shortcuts {
           const { action } = entry
           const pressTime = Date.now()
           const imageData = this.poeWindow.screenshot()
-          this.ocrWorker.findHeistGems({
+          const image = {
             width: this.poeWindow.bounds.width,
             height: this.poeWindow.bounds.height,
             data: imageData
-          }).then(result => {
+          }
+          this.getOcrWorker().then(w => w.findHeistGems(image)).then(result => {
             this.server.sendEventTo('last-active', {
               name: 'MAIN->CLIENT::ocr-text',
               payload: {

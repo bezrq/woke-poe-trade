@@ -17,6 +17,7 @@
       style="max-width: 38rem; z-index: 999; position: absolute; left: 0; right: 0;"
     >{{ logs }}</pre>
     <loading-animation />
+    <woke-overlay />
     <div v-if="showEditingNotification"
       class="widget-default-style p-6 bg-blue-600 mx-auto text-center text-base mt-6"
       style="min-width: 30rem; z-index: 998; width: fit-content; position: absolute; left: 0; right: 0;">
@@ -38,6 +39,8 @@ import { Widget, WidgetManager } from './interfaces'
 import { registry } from './widget-registry.js'
 import { AppConfig, saveConfig, pushHostConfig } from '@/web/Config'
 import LoadingAnimation from './LoadingAnimation.vue'
+import { WokeOverlay } from '@/web/woke'
+import { isWidgetTypeOn } from '@/web/woke/modules'
 // ---
 import { usePoeninja } from '@/web/background/Prices'
 import { useLeagues } from '@/web/background/Leagues'
@@ -47,7 +50,8 @@ type WMID = Widget['wmId']
 
 export default defineComponent({
   components: {
-    LoadingAnimation
+    LoadingAnimation,
+    WokeOverlay
   },
   setup () {
     usePoeninja()
@@ -295,7 +299,8 @@ export default defineComponent({
       t,
       poePanelWidth,
       overlayBackground,
-      widgets: computed(() => AppConfig().widgets),
+      // woke: widgets of switched-off modules stay in config but aren't mounted
+      widgets: computed(() => AppConfig().widgets.filter(w => isWidgetTypeOn(AppConfig(), w.wmType))),
       handleBackgroundClick,
       isVisible,
       overlayKey: computed(() => AppConfig().overlayKey),

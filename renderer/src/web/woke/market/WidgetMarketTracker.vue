@@ -127,7 +127,7 @@ if (props.config.wmFlags[0] === 'uninitialized') {
   wm.show(props.config.wmId)
 }
 
-const collector = useMarketCollector()
+const collector = useMarketCollector({ poll: true })
 const leagues = useLeagues()
 const league = computed(() => leagues.selectedId.value)
 

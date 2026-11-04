@@ -119,7 +119,7 @@ if (props.config.wmFlags[0] === 'uninitialized') {
 
 const COLOR_NAMES: Record<GemColor, string> = { r: 'Red', g: 'Green', b: 'Blue' }
 
-const collector = useMarketCollector()
+const collector = useMarketCollector({ poll: true })
 const leagues = useLeagues()
 const league = computed(() => leagues.selectedId.value)
 

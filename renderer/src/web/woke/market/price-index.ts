@@ -3,13 +3,13 @@
 import { computed, shallowRef, watch } from 'vue'
 import { createGlobalState } from '@vueuse/core'
 import { useLeagues } from '@/web/background/Leagues'
-import { useMarketCollector } from './collector'
+import { useCollectorState, useMarketCollector } from './collector'
 import { latestSnapshots } from './db'
 import { itemKey } from './types'
 import type { PriceItem, Snapshot } from './types'
 
-export const usePriceIndex = createGlobalState(() => {
-  const collector = useMarketCollector()
+const usePriceIndexState = createGlobalState(() => {
+  const collector = useCollectorState()
   const leagues = useLeagues()
   const snapshot = shallowRef<Snapshot | null>(null)
 
@@ -45,3 +45,9 @@ export const usePriceIndex = createGlobalState(() => {
 
   return { snapshot, price, search }
 })
+
+// Holds the collector (saving only, no polling) while the caller is mounted.
+export function usePriceIndex () {
+  useMarketCollector()
+  return usePriceIndexState()
+}
