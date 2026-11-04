@@ -2,7 +2,9 @@
 // with handlers registered by op name.
 import type { ServerEvents } from '../server'
 import type { Logger } from '../RemoteLogger'
+import type { GameWindow } from '../windowing/GameWindow'
 import { listBuilds, openBuild, readBuild, showBuild } from './pob-builds'
+import { MapScanner } from './map-scan'
 
 type Handler = (args: any) => Promise<unknown> // eslint-disable-line @typescript-eslint/no-explicit-any
 
@@ -13,7 +15,13 @@ const handlers: Record<string, Handler> = {
   'pob-show': showBuild
 }
 
-export function initWoke (server: ServerEvents, logger: Logger): void {
+export function initWoke (server: ServerEvents, logger: Logger, poeWindow: GameWindow): void {
+  const mapScanner = new MapScanner(server, logger, poeWindow)
+  handlers['map-scan-start'] = async () => await mapScanner.start()
+  handlers['map-scan-stop'] = async () => mapScanner.stop()
+  handlers['map-scan-reread'] = async () => mapScanner.reread()
+  handlers['map-scan-status'] = async () => ({ running: mapScanner.isRunning })
+
   server.onEventAnyClient('CLIENT->MAIN::woke-request', ({ id, op, args }) => {
     const handler = handlers[op]
     const reply = (payload: { ok: boolean, data?: unknown, error?: string }) => {

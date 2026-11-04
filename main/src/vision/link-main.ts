@@ -3,6 +3,7 @@ import * as Comlink from 'comlink'
 import nodeEndpoint from 'comlink/dist/umd/node-adapter'
 import type { WorkerAPI } from './link-worker'
 import type { ImageData } from './utils'
+import type { ScanOptions } from '../woke/map-scan-vision'
 import { app } from 'electron'
 import path from 'path'
 
@@ -38,5 +39,10 @@ export class OcrWorker {
     const result = await this.api.findHeistGems(
       Comlink.transfer(image, [image.data.buffer]))
     return result
+  }
+
+  async scanMapTooltip (image: ImageData, opts: ScanOptions) {
+    return await this.api.scanMapTooltip(
+      Comlink.transfer(image, [image.data.buffer]), opts)
   }
 }

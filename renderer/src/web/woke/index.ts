@@ -33,6 +33,9 @@ import WidgetFarming from './farming/WidgetFarming.vue'
 import WidgetMapMods from './map-mods/WidgetMapMods.vue'
 import MapModsEditor from './map-mods/map-mods-editor.vue'
 import { MAP_MODS_TYPE } from './map-mods/widget'
+import WidgetMapScan from './map-mods/WidgetMapScan.vue'
+import MapScanEditor from './map-mods/map-scan-editor.vue'
+import { MAP_SCAN_TYPE } from './map-mods/scan'
 
 type WidgetComponent = Component & { widget: WidgetSpec }
 
@@ -45,7 +48,8 @@ export const wokeWidgets: WidgetComponent[] = [
   WidgetAtlas as unknown as WidgetComponent,
   WidgetLab as unknown as WidgetComponent,
   WidgetFarming as unknown as WidgetComponent,
-  WidgetMapMods as unknown as WidgetComponent
+  WidgetMapMods as unknown as WidgetComponent,
+  WidgetMapScan as unknown as WidgetComponent
 ]
 
 const editors: Record<string, Component> = {
@@ -55,7 +59,8 @@ const editors: Record<string, Component> = {
   [CAMPAIGN_TYPE]: CampaignEditor,
   [ATLAS_TYPE]: AtlasEditor,
   [LAB_TYPE]: LabEditor,
-  [MAP_MODS_TYPE]: MapModsEditor
+  [MAP_MODS_TYPE]: MapModsEditor,
+  [MAP_SCAN_TYPE]: MapScanEditor
 }
 
 export function wokeSettingsFor (wmType: string | undefined): Component | undefined {

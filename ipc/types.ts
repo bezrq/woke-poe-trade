@@ -80,7 +80,8 @@ export type IpcEvent =
   IpcUserAction |
   // woke modules (see main/src/woke, renderer/src/web/woke)
   IpcWokeRequest |
-  IpcWokeResponse
+  IpcWokeResponse |
+  IpcWokeEvent
 
 export type IpcEventPayload<Name extends IpcEvent['name'], T extends IpcEvent = IpcEvent> =
   T extends { name: Name, payload: infer P } ? P : never
@@ -191,6 +192,13 @@ type IpcWokeRequest =
     id: number
     op: string
     args: unknown
+  }>
+
+// Pushed from main to the overlay, e.g. map scan readings.
+type IpcWokeEvent =
+  Event<'MAIN->CLIENT::woke-event', {
+    topic: string
+    data: unknown
   }>
 
 type IpcWokeResponse =
