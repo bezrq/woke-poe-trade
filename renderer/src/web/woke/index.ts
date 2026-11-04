@@ -33,6 +33,9 @@ import WidgetLab from './lab/WidgetLab.vue'
 import LabEditor from './lab/lab-editor.vue'
 import { LAB_TYPE } from './lab/lab'
 import WidgetFarming from './farming/WidgetFarming.vue'
+import WidgetMechanics from './mechanics/WidgetMechanics.vue'
+import MechanicsEditor from './mechanics/mechanics-editor.vue'
+import { MECHANICS_TYPE } from './mechanics/widget'
 import WidgetMapMods from './map-mods/WidgetMapMods.vue'
 import MapModsEditor from './map-mods/map-mods-editor.vue'
 import { MAP_MODS_TYPE } from './map-mods/widget'
@@ -52,6 +55,7 @@ export const wokeWidgets: WidgetComponent[] = [
   WidgetAtlas as unknown as WidgetComponent,
   WidgetLab as unknown as WidgetComponent,
   WidgetFarming as unknown as WidgetComponent,
+  WidgetMechanics as unknown as WidgetComponent,
   WidgetMapMods as unknown as WidgetComponent,
   WidgetLabGems as unknown as WidgetComponent,
   WidgetLeagueInvest as unknown as WidgetComponent,
@@ -66,6 +70,7 @@ const editors: Record<string, Component> = {
   [RUN_TIMER_TYPE]: RunTimerEditor,
   [ATLAS_TYPE]: AtlasEditor,
   [LAB_TYPE]: LabEditor,
+  [MECHANICS_TYPE]: MechanicsEditor,
   [MAP_MODS_TYPE]: MapModsEditor
 }
 
