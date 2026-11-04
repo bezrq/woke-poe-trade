@@ -23,6 +23,9 @@ import { POB_BUILDS_TYPE } from './pob-builds/widget'
 import WidgetCampaign from './campaign/WidgetCampaign.vue'
 import CampaignEditor from './campaign/campaign-editor.vue'
 import { CAMPAIGN_TYPE } from './campaign/widget'
+import WidgetRunTimer from './campaign/WidgetRunTimer.vue'
+import RunTimerEditor from './campaign/run-timer-editor.vue'
+import { RUN_TIMER_TYPE } from './campaign/run-timer'
 import WidgetAtlas from './atlas/WidgetAtlas.vue'
 import AtlasEditor from './atlas/atlas-editor.vue'
 import { ATLAS_TYPE } from './atlas/widget'
@@ -39,6 +42,7 @@ export const wokeWidgets: WidgetComponent[] = [
   WidgetMarketTracker as unknown as WidgetComponent,
   WidgetPobBuilds as unknown as WidgetComponent,
   WidgetCampaign as unknown as WidgetComponent,
+  WidgetRunTimer as unknown as WidgetComponent,
   WidgetAtlas as unknown as WidgetComponent,
   WidgetLab as unknown as WidgetComponent,
   WidgetFarming as unknown as WidgetComponent
@@ -49,6 +53,7 @@ const editors: Record<string, Component> = {
   [TRADE_SEARCHES_TYPE]: TradeSearchesEditor,
   [POB_BUILDS_TYPE]: PobBuildsEditor,
   [CAMPAIGN_TYPE]: CampaignEditor,
+  [RUN_TIMER_TYPE]: RunTimerEditor,
   [ATLAS_TYPE]: AtlasEditor,
   [LAB_TYPE]: LabEditor
 }
