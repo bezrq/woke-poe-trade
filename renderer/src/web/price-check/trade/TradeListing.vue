@@ -11,9 +11,16 @@
       </div>
       <online-filter v-if="list" :filters="filters" api="trade" />
       <div class="flex-1"></div>
+      <price-view-toggle class="mr-2" />
       <trade-links v-if="list"
         :get-link="makeTradeLink" />
     </div>
+    <price-verdict v-if="improved"
+      :item="item"
+      :insight="insight"
+      :divine="divine"
+      :loading="!list || !slowdownReady"
+      :total="list ? list.total : null" />
     <div class="layout-column overflow-y-auto overflow-x-hidden">
       <table class="table-stripped w-full">
         <thead>
@@ -48,7 +55,9 @@
             <tr v-if="!result" :key="idx">
               <td colspan="100" class="text-transparent">***</td>
             </tr>
-            <tr v-else :key="result.id">
+            <tr v-else :key="result.id"
+              :class="{ [$style.ignored]: improved && insight.dropped.has(result.id) }"
+              :title="ignoredTitle(result.id)">
               <td class="px-2 whitespace-nowrap">
                 <span :class="{ 'line-through': result.priceCurrency === 'exalted' }">{{ result.priceAmount }} {{ result.priceCurrency }}</span>
                 <span v-if="result.listedTimes > 2" class="rounded px-1 text-gray-800 bg-gray-400 ml-1 -mr-2"><span class="font-sans">×</span> {{ result.listedTimes }}</span>
@@ -102,6 +111,11 @@ import { ParsedItem } from '@/parser'
 import { artificialSlowdown } from './artificial-slowdown'
 import OnlineFilter from './OnlineFilter.vue'
 import TradeLinks from './TradeLinks.vue'
+import PriceVerdict from '@/web/woke/price-insight/PriceVerdict.vue'
+import PriceViewToggle from '@/web/woke/price-insight/PriceViewToggle.vue'
+import { priceView } from '@/web/woke/price-insight/view'
+import { useInsight } from '@/web/woke/price-insight/useInsight'
+import { DROP_LABEL } from '@/web/woke/price-insight/insight'
 
 const slowdown = artificialSlowdown(900)
 
@@ -207,7 +221,7 @@ function useTradeApi () {
 }
 
 export default defineComponent({
-  components: { OnlineFilter, TradeLinks, UiErrorBox },
+  components: { OnlineFilter, TradeLinks, UiErrorBox, PriceVerdict, PriceViewToggle },
   emits: ['reset'],
   props: {
     filters: {
@@ -232,6 +246,9 @@ export default defineComponent({
 
     const { error, searchResult, groupedResults, search } = useTradeApi()
 
+    // woke: improved view reads the same listings, nothing extra is requested
+    const { insight, divine } = useInsight(groupedResults)
+
     const showBrowser = inject<(url: string) => void>('builtin-browser')!
 
     function makeTradeLink () {
@@ -245,6 +262,14 @@ export default defineComponent({
     return {
       t,
       list: searchResult,
+      improved: computed(() => priceView.value === 'improved'),
+      insight,
+      divine,
+      ignoredTitle (id: string) {
+        const reason = priceView.value === 'improved' ? insight.value.dropped.get(id) : undefined
+        return reason ? `Ignored by the verdict: ${DROP_LABEL[reason]}` : undefined
+      },
+      slowdownReady: slowdown.isReady,
       groupedResults: computed(() => {
         if (!slowdown.isReady.value) {
           return Array<undefined>(SHOW_RESULTS)
@@ -313,6 +338,10 @@ export default defineComponent({
   max-width: none;
   height: 1.25rem;
   vertical-align: bottom;
+}
+
+.ignored > td {
+  opacity: 0.4;
 }
 
 .legacyMessage {
