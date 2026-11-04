@@ -200,7 +200,7 @@ import { useLeagues } from '@/web/background/Leagues'
 import { useSessionStore } from '../analytics/store'
 import { ANALYTICS_TYPE } from '../analytics/types'
 import type { AtlasWidget } from '../atlas/widget'
-import { FARMING_LOOT_TARGET, addLoot as addLootTo, costsForStrategy, countNewMap, currentRun, elapsed, formatHms, historyToRecords, isMapArea, lineValue, maybeAutoPause, nameRun, pauseSession, newSession, onZoneChange, rememberCosts, removeLoot, sellPrice, sellRules, startRun, strategyStats, toSessionRecord, totals } from './farming'
+import { FARMING_LOOT_TARGET, addLoot as addLootTo, costsForStrategy, countNewMap, currentRun, elapsed, formatHms, historyToRecords, isMapArea, isMapSideArea, lineValue, maybeAutoPause, nameRun, pauseSession, newSession, onZoneChange, rememberCosts, removeLoot, sellPrice, sellRules, startRun, strategyStats, toSessionRecord, totals } from './farming'
 import type { CostLine, LiveRun, LootLine, PricedRef } from './farming'
 
 const props = defineProps<{
@@ -491,7 +491,7 @@ const logListener = Host.onEvent('MAIN->CLIENT::game-log', (e) => {
     if (ev?.kind !== 'area') continue
     const nowTs = Date.now()
     const inMap = isMapArea(ev.areaId)
-    onZoneChange(sess, inMap, nowTs)
+    onZoneChange(sess, inMap || isMapSideArea(ev.areaId), nowTs)
     if (inMap && sess.runningSince != null && props.config.autoCountMaps && countNewMap(sess, ev.areaId, ev.seed)) {
       sess.maps++
       startRun(sess, ev.areaId, ev.areaLevel, nowTs)

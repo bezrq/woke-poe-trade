@@ -8,7 +8,7 @@ import { pickStage } from '@/web/woke/pob-builds/build-model'
 import { bundledRoute, routeData } from '@/web/woke/campaign/route-data'
 import { advanceOnEnter, resyncTo, DEFAULT_ROUTE_OPTIONS, xpMultiplier } from '@/web/woke/campaign/route-parse'
 import type { RouteOptions } from '@/web/woke/campaign/route-parse'
-import { countNewMap, isMapArea, newSession, onZoneChange, maybeAutoPause, AUTO_PAUSE_MS } from '@/web/woke/farming/farming'
+import { countNewMap, isMapArea, isMapSideArea, newSession, onZoneChange, maybeAutoPause, AUTO_PAUSE_MS } from '@/web/woke/farming/farming'
 import { mechanicForSpeaker } from '@/web/woke/mechanics/zone'
 import { BOSS_AREAS, bossAreaIds } from '@/web/woke/shared/boss-areas'
 import { BOSSES } from '@/web/woke/boss-runs/bosses'
@@ -113,6 +113,23 @@ describe('farming', () => {
     expect(maps).toBe(2)
     expect(s.mapMs).toBeGreaterThan(0)
     expect(s.otherMs).toBeGreaterThan(0)
+  })
+
+  it('a Vaal side area is part of the map, not a new one', () => {
+    const s = newSession('x', 0)
+    let maps = 0
+    const enter = (areaId: string, seed: string, at: number) => {
+      const inMap = isMapArea(areaId)
+      onZoneChange(s, inMap || isMapSideArea(areaId), at)
+      if (inMap && countNewMap(s, areaId, seed)) maps++
+    }
+    enter('MapWorldsStrand', '11', 1000)
+    enter('MapSideArea_VaalTemple', '22', 2000)
+    enter('MapWorldsStrand', '11', 3000)
+    enter('HideoutFelled', '33', 4000)
+    expect(maps).toBe(1)
+    // The side area's time is map time.
+    expect(s.mapMs).toBe(3000)
   })
 
   it('a pinnacle boss fight is not a map', () => {
