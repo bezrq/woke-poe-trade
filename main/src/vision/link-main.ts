@@ -56,4 +56,9 @@ export class OcrWorker {
     return await this.api.scanMapTooltip(
       Comlink.transfer(image, [image.data.buffer]), opts)
   }
+
+  async scanEssenceLabel (image: ImageData, opts: ScanOptions) {
+    return await this.api.scanEssenceLabel(
+      Comlink.transfer(image, [image.data.buffer]), opts)
+  }
 }
