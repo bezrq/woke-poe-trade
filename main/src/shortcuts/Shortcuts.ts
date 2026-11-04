@@ -11,6 +11,7 @@ import type { OverlayWindow } from '../windowing/OverlayWindow'
 import type { GameWindow } from '../windowing/GameWindow'
 import type { GameConfig } from '../host-files/GameConfig'
 import type { ServerEvents } from '../server'
+import { perfRecord } from '../woke/perf'
 
 type UiohookKeyT = keyof typeof UiohookKey
 const UiohookToName = Object.fromEntries(Object.entries(UiohookKey).map(([k, v]) => ([v, k])))
@@ -157,9 +158,11 @@ export class Shortcuts {
           const { action } = entry
 
           const pressPosition = screen.getCursorScreenPoint()
+          const pressTime = performance.now()
 
           this.clipboard.readItemText()
             .then(clipboard => {
+              perfRecord('Item hotkey → item text copied', performance.now() - pressTime)
               this.areaTracker.removeListeners()
               this.server.sendEventTo('last-active', {
                 name: 'MAIN->CLIENT::item-text',

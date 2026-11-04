@@ -1,0 +1,190 @@
+<template>
+  <div class="p-2 flex flex-col gap-4 max-w-2xl">
+    <div class="flex items-center gap-2">
+      <div class="flex-1 text-gray-500 text-sm">
+        Timings from this session. Updates every few seconds while this page is open.
+        Use "Copy report" and paste it in the project chat to share the numbers.
+      </div>
+      <button class="btn" @click="copyReport">{{ copied ? 'Copied' : 'Copy report' }}</button>
+    </div>
+
+    <div v-if="error" class="text-red-400 text-sm">Couldn't read the app's numbers: {{ error }}</div>
+
+    <section>
+      <div class="mb-1">Startup</div>
+      <div class="text-gray-500 text-sm mb-1">Milliseconds after the app was launched.</div>
+      <table :class="$style.table">
+        <tr v-for="row in startupRows" :key="row.where + row.name">
+          <td>{{ row.name }}</td>
+          <td :class="$style.where">{{ row.where }}</td>
+          <td :class="$style.num">{{ row.ms != null ? fmt(row.ms) : '–' }}</td>
+        </tr>
+      </table>
+    </section>
+
+    <section>
+      <div class="mb-1">Timings</div>
+      <div class="text-gray-500 text-sm mb-1">Milliseconds. "p95" is the slowest of the usual cases (95th percentile of the last 50).</div>
+      <table :class="$style.table">
+        <tr :class="$style.head">
+          <td>What</td><td :class="$style.num">times</td><td :class="$style.num">last</td>
+          <td :class="$style.num">median</td><td :class="$style.num">p95</td><td :class="$style.num">max</td>
+        </tr>
+        <tr v-for="row in timingRows" :key="row.name">
+          <td>{{ row.name }}</td>
+          <td :class="$style.num">{{ row.count }}</td>
+          <td :class="$style.num">{{ fmt(row.last) }}</td>
+          <td :class="$style.num">{{ fmt(row.median) }}</td>
+          <td :class="$style.num">{{ fmt(row.p95) }}</td>
+          <td :class="$style.num">{{ fmt(row.max) }}</td>
+        </tr>
+        <tr v-if="!timingRows.length"><td class="text-gray-500">Nothing measured yet. Price check an item or use a tool, then come back.</td></tr>
+      </table>
+    </section>
+
+    <section>
+      <div class="mb-1">Overlay hiccups</div>
+      <div class="text-gray-500 text-sm mb-1">Moments the overlay was busy for 50 ms or more (it can't react during them).</div>
+      <div class="text-sm">
+        {{ renderer.freezes.count }} this session<template v-if="renderer.freezes.recent.length">; latest:
+          <span v-for="f in renderer.freezes.recent.slice(-6).reverse()" :key="f.at" :class="$style.chip">{{ f.ms }} ms, {{ ago(f.at) }}</span>
+        </template>
+      </div>
+    </section>
+
+    <section>
+      <div class="mb-1">CPU and memory</div>
+      <div class="text-gray-500 text-sm mb-1">
+        Sampled every 15 seconds. CPU is percent of one core, summed over the app's processes.
+      </div>
+      <div v-if="!main?.processes.length" class="text-sm text-gray-500">First sample comes 15 seconds after launch.</div>
+      <template v-else>
+        <div class="text-sm mb-1">
+          While playing (game focused): <b>{{ cpuWhilePlaying ?? '–' }}</b>% CPU on average over the last {{ minutesSampled }} min.
+          Now: {{ latest!.cpuPercent }}% CPU, {{ latest!.memoryMb }} MB<template v-if="renderer.heapMb != null"> (overlay JS heap {{ renderer.heapMb }} MB)</template>.
+        </div>
+        <table :class="$style.table">
+          <tr :class="$style.head"><td>Process</td><td :class="$style.num">CPU %</td><td :class="$style.num">MB</td></tr>
+          <tr v-for="p in latest!.byType" :key="p.type">
+            <td>{{ p.type }}</td><td :class="$style.num">{{ p.cpuPercent }}</td><td :class="$style.num">{{ p.memoryMb }}</td>
+          </tr>
+        </table>
+      </template>
+    </section>
+  </div>
+</template>
+
+<script lang="ts">
+export default {
+  name: 'Performance'
+}
+</script>
+
+<script setup lang="ts">
+import { computed, onUnmounted, shallowRef } from 'vue'
+import { hostRequest } from '../shared/host'
+import { rendererPerf } from '../shared/perf'
+import type { TimingRow } from '../shared/perf'
+
+interface MainPerf {
+  startedAt: number
+  marks: Array<{ name: string, ms: number }>
+  timings: TimingRow[]
+  processes: Array<{
+    at: number
+    gameFocused: boolean
+    cpuPercent: number
+    memoryMb: number
+    byType: Array<{ type: string, cpuPercent: number, memoryMb: number }>
+  }>
+}
+
+const main = shallowRef<MainPerf | null>(null)
+const renderer = shallowRef(rendererPerf())
+const error = shallowRef('')
+const copied = shallowRef(false)
+
+async function refresh () {
+  renderer.value = rendererPerf()
+  try {
+    main.value = await hostRequest<MainPerf>('perf-stats', null, 5000)
+    error.value = ''
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : String(err)
+  }
+}
+refresh()
+const timer = setInterval(refresh, 3000)
+onUnmounted(() => { clearInterval(timer) })
+
+const startupRows = computed(() => {
+  const rows: Array<{ name: string, where: string, ms: number | null }> = []
+  const m = main.value
+  for (const mark of m?.marks ?? []) rows.push({ name: mark.name, where: 'app', ms: mark.ms })
+  // The overlay page has its own clock; shift it onto the app's.
+  const offset = m ? renderer.value.timeOrigin - m.startedAt : null
+  for (const mark of renderer.value.startup) {
+    rows.push({ name: mark.name, where: 'overlay', ms: offset != null ? offset + mark.ms : null })
+  }
+  return rows.sort((a, b) => (a.ms ?? Infinity) - (b.ms ?? Infinity))
+})
+
+const timingRows = computed(() => [
+  ...(main.value?.timings ?? []),
+  ...renderer.value.timings
+].sort((a, b) => a.name.localeCompare(b.name)))
+
+const latest = computed(() => main.value?.processes[main.value.processes.length - 1] ?? null)
+const minutesSampled = computed(() => Math.max(1, Math.round((main.value?.processes.length ?? 0) * 15 / 60)))
+const cpuWhilePlaying = computed(() => {
+  const playing = (main.value?.processes ?? []).filter(p => p.gameFocused)
+  if (!playing.length) return null
+  return Math.round(playing.reduce((a, p) => a + p.cpuPercent, 0) / playing.length * 10) / 10
+})
+
+function fmt (ms: number) {
+  return ms >= 100 ? String(Math.round(ms)) : ms.toFixed(1)
+}
+
+function ago (at: number) {
+  const s = Math.round((Date.now() - at) / 1000)
+  if (s < 60) return `${s}s ago`
+  if (s < 3600) return `${Math.round(s / 60)}m ago`
+  return `${Math.round(s / 3600)}h ago`
+}
+
+function reportText () {
+  const lines: string[] = ['Poetools performance report', new Date().toISOString(), '']
+  lines.push('Startup (ms after launch)')
+  for (const r of startupRows.value) lines.push(`  ${r.name} [${r.where}]: ${r.ms ?? '-'}`)
+  lines.push('', 'Timings (ms): times / last / median / p95 / max')
+  for (const r of timingRows.value) lines.push(`  ${r.name}: ${r.count} / ${fmt(r.last)} / ${fmt(r.median)} / ${fmt(r.p95)} / ${fmt(r.max)}`)
+  lines.push('', `Overlay hiccups: ${renderer.value.freezes.count}` +
+    (renderer.value.freezes.recent.length ? ` (latest ms: ${renderer.value.freezes.recent.map(f => f.ms).join(', ')})` : ''))
+  if (latest.value) {
+    lines.push('', `CPU while playing: ${cpuWhilePlaying.value ?? '-'}% avg; now ${latest.value.cpuPercent}%, ${latest.value.memoryMb} MB`)
+    for (const p of latest.value.byType) lines.push(`  ${p.type}: ${p.cpuPercent}% / ${p.memoryMb} MB`)
+  }
+  if (renderer.value.heapMb != null) lines.push(`Overlay JS heap: ${renderer.value.heapMb} MB`)
+  return lines.join('\n')
+}
+
+async function copyReport () {
+  try {
+    await navigator.clipboard.writeText(reportText())
+    copied.value = true
+    setTimeout(() => { copied.value = false }, 1500)
+  } catch (err) {
+    error.value = `Copy failed: ${String(err)}`
+  }
+}
+</script>
+
+<style module>
+.table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+.table td { padding: 2px 6px; border-bottom: 1px solid rgba(255, 255, 255, 0.05); }
+.head td { color: rgb(160, 174, 192); }
+.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.where { color: rgb(113, 128, 150); width: 1%; white-space: nowrap; }
+.chip { margin-left: 6px; white-space: nowrap; }
+</style>

@@ -45,10 +45,16 @@ export function useHoverZone (
     post(zones)
   }
 
+  // Last zones the main process accepted; unchanged zones aren't resent.
+  let lastSent: string | null = null
+
   function post (zones: Array<{ id: string, x: number, y: number, width: number, height: number, activate: boolean }>) {
-    // The socket may not be open yet right after startup; the periodic resend catches up.
+    const key = JSON.stringify(zones)
+    if (key === lastSent) return
+    // The socket may not be open yet right after startup; the periodic check catches up.
     try {
       Host.sendEvent({ name: 'OVERLAY->MAIN::woke-hover-zones', payload: { owner, zones, dpr: window.devicePixelRatio } })
+      lastSent = key
     } catch {}
   }
 
@@ -78,7 +84,7 @@ export function useHoverZone (
   }
 
   // Widgets move by changing their anchor, which also changes the rect;
-  // a cheap periodic resend covers drags and window moves.
+  // a cheap periodic check covers drags and window moves (sent only if changed).
   let timer: ReturnType<typeof setInterval> | null = null
   onMounted(() => {
     observer = new ResizeObserver(() => send())
@@ -94,6 +100,7 @@ export function useHoverZone (
     bind(null)
     observer?.disconnect()
     if (timer) clearInterval(timer)
+    lastSent = null
     post([])
   })
 
