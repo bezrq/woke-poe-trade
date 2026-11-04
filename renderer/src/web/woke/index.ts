@@ -60,6 +60,7 @@ import WidgetBossRuns from './boss-runs/WidgetBossRuns.vue'
 import WidgetLootFilter from './loot-filter/WidgetLootFilter.vue'
 import LootFilterEditor from './loot-filter/loot-filter-editor.vue'
 import { LOOT_FILTER_TYPE } from './loot-filter/widget'
+import WidgetSessionAnalytics from './analytics/WidgetSessionAnalytics.vue'
 
 type WidgetComponent = Component & { widget: WidgetSpec }
 
@@ -81,7 +82,8 @@ export const wokeWidgets: WidgetComponent[] = [
   WidgetLabGems as unknown as WidgetComponent,
   WidgetLeagueInvest as unknown as WidgetComponent,
   WidgetBossRuns as unknown as WidgetComponent,
-  WidgetLootFilter as unknown as WidgetComponent
+  WidgetLootFilter as unknown as WidgetComponent,
+  WidgetSessionAnalytics as unknown as WidgetComponent
 ]
 
 const editors: Record<string, Component> = {

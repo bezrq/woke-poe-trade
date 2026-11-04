@@ -14,6 +14,7 @@ import { perfSnapshot, startProcessSampler } from './perf'
 import { hotkeyFailures } from './hotkey-failures'
 import { marketHandlers } from './market-store'
 import { labLayoutImage } from './lab-layout'
+import { sessionHandlers } from './session-store'
 
 type Handler = (args: any) => Promise<unknown> // eslint-disable-line @typescript-eslint/no-explicit-any
 
@@ -31,7 +32,8 @@ const handlers: Record<string, Handler> = {
   'ocr-check': async () => checkOcr(),
   'hotkey-failures': async () => hotkeyFailures(),
   'lab-layout-image': labLayoutImage,
-  ...marketHandlers
+  ...marketHandlers,
+  ...sessionHandlers
 }
 
 export function initWoke (server: ServerEvents, logger: Logger, poeWindow: GameWindow, gameLog: GameLogWatcher): void {

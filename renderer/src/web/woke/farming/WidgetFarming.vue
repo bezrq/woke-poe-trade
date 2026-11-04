@@ -9,6 +9,7 @@
         <div v-if="s" class="flex flex-col gap-0.5 w-num" style="padding: 6px var(--w-pad) 8px;">
           <div v-if="s.strategy" class="w-head-font w-accent w-trunc">{{ s.strategy }}</div>
           <div v-if="mapClock != null" class="flex justify-between"><span class="w-dim">This map</span><span>{{ formatHms(mapClock) }}</span></div>
+          <div v-if="lastRun" class="flex justify-between gap-2"><span class="w-dim">Last map</span><span class="w-trunc"><span :class="runResult(lastRun) >= 0 ? 'w-up' : 'w-down'">{{ fmt(runResult(lastRun)) }}</span><span class="w-dim ml-1">{{ lastRun.name }}</span></span></div>
           <div class="flex justify-between"><span class="w-dim">Profit</span><span :class="t.profit >= 0 ? 'w-up' : 'w-down'">{{ fmt(t.profit) }}</span></div>
           <div class="flex justify-between"><span class="w-dim">Per hour</span><span>{{ t.perHour != null ? fmt(t.perHour) : '—' }}</span></div>
           <div class="flex justify-between"><span class="w-dim">Maps</span><span>{{ s.maps }}<span v-if="t.perMap != null" class="w-dim"> · {{ fmt(t.perMap) }} each</span></span></div>
@@ -71,6 +72,16 @@
                 <span class="w-dim" title="Share of session time spent inside maps (from Client.txt)">In maps</span><span class="w-num">{{ Math.round(mapShare * 100) }}%</span>
               </template>
             </div>
+            <div v-if="run" :class="$style.mapLine">
+              <div class="min-w-0">
+                <div :class="$style.k">This map</div>
+                <div class="w-trunc"><span style="color: var(--w-fg);">{{ run.name }}</span><span class="w-dim"> · {{ formatHms(run.mapMs + liveMs(true)).replace(/^0:/, '') }}<template v-if="runDrops(run)"> · {{ runDrops(run) }} drop{{ runDrops(run) === 1 ? '' : 's' }}</template></span></div>
+              </div>
+              <div v-if="lastRun" class="text-right min-w-0">
+                <div :class="$style.k">Last map</div>
+                <div class="w-trunc"><span class="w-num" :class="runResult(lastRun) >= 0 ? 'w-up' : 'w-down'">{{ fmt(runResult(lastRun)) }}</span><span class="w-faint ml-1">{{ lastRun.name }}</span></div>
+              </div>
+            </div>
             <div v-if="s.autoPaused" class="text-xs w-dim"><i class="fas fa-pause-circle" /> Paused after 5 minutes without a zone change. Resumes when you change zone.</div>
             <div v-if="config.lootHotkey" class="text-xs w-faint">Hover an item in game and press <WKbd :keys="config.lootHotkey" /> to add it.</div>
             <div v-if="t.missingPrices" class="text-xs" style="color: var(--w-warn);">{{ t.missingPrices }} item(s) have no price and count as 0.</div>
@@ -102,7 +113,8 @@
         </template>
 
         <template v-else-if="tab === 'costs'">
-          <div class="w-dim">What one map costs to run: map, scarabs, compasses, etc.</div>
+          <div class="w-dim">What one map costs to run: map, scarabs, compasses, etc.<template v-if="config.strategy.trim()"> Saved for <span style="color: var(--w-fg);">{{ config.strategy.trim() }}</span>; switching strategy switches costs.</template></div>
+          <div v-if="filledFromAtlas" class="text-xs w-faint"><i class="fas fa-globe" /> Scarabs filled from the atlas strategy "{{ filledFromAtlas }}".</div>
           <div class="relative">
             <WField v-model="costQuery" icon="fas fa-plus" placeholder="Add an input…" class="w-full" />
             <div v-if="costResults.length" class="w-surface absolute left-0 right-0 z-10 mt-1 py-1">
@@ -124,6 +136,7 @@
         </template>
 
         <template v-else>
+          <WButton size="sm" icon="fas fa-chart-bar" class="self-start" @click="openAnalytics">Open Session analytics</WButton>
           <WEmpty v-if="!config.history.length" icon="fas fa-history">Ended sessions show up here.</WEmpty>
           <div v-else>
             <div class="w-row w-row--head px-0" :class="$style.histGrid">
@@ -159,7 +172,7 @@ export default {
 </script>
 
 <script setup lang="ts">
-import { inject, computed, shallowRef, onUnmounted } from 'vue'
+import { inject, computed, shallowRef, onUnmounted, watch, nextTick } from 'vue'
 import { useVisibleClock } from '../shared/visible-clock'
 import { Host } from '@/web/background/IPC'
 import { AppConfig, saveConfig } from '@/web/Config'
@@ -178,9 +191,13 @@ import { useZone } from '../shared/zone'
 import DockItem from '../dock/DockItem.vue'
 import { tickWhile } from '../dock/dock'
 import { ATLAS_TYPE } from '../atlas/widget'
+import { parseScarabs, priceScarabs } from '../atlas/guide'
+import { useLeagues } from '@/web/background/Leagues'
+import { useSessionStore } from '../analytics/store'
+import { ANALYTICS_TYPE } from '../analytics/types'
 import type { AtlasWidget } from '../atlas/widget'
-import { FARMING_LOOT_TARGET, countNewMap, elapsed, formatHms, isMapArea, lineValue, maybeAutoPause, newSession, onZoneChange, sellPrice, sellRules, strategyStats, totals } from './farming'
-import type { CostLine, LootLine, PricedRef } from './farming'
+import { FARMING_LOOT_TARGET, addLoot as addLootTo, costsForStrategy, countNewMap, currentRun, elapsed, formatHms, historyToRecords, isMapArea, lineValue, maybeAutoPause, nameRun, newSession, onZoneChange, rememberCosts, removeLoot, sellPrice, sellRules, startRun, strategyStats, toSessionRecord, totals } from './farming'
+import type { CostLine, LiveRun, LootLine, PricedRef } from './farming'
 
 const props = defineProps<{
   config: FarmingWidget
@@ -277,6 +294,87 @@ const mapShare = computed(() => {
   return map + other > 60_000 ? map / (map + other) : null
 })
 
+// --- This map (C1) ---
+const run = computed(() => s.value ? currentRun(s.value) : null)
+const lastRun = computed(() => {
+  const runs = s.value?.runs ?? []
+  return runs.length >= 2 ? runs[runs.length - 2] : null
+})
+// Running time not yet booked to the current zone.
+function liveMs (inMap: boolean): number {
+  const sess = s.value
+  if (!sess || sess.runningSince == null || sess.lastZoneAt == null || !!sess.inMap !== inMap) return 0
+  return Math.max(0, now.value - Math.max(sess.lastZoneAt, sess.runningSince))
+}
+function runDrops (r: LiveRun): number {
+  return r.loot.reduce((n, l) => n + l.qty, 0)
+}
+function runResult (r: LiveRun): number {
+  return lineValue(r.loot, (x) => sellPrice(x, price(x), rules.value)).total - costPerMap.value
+}
+
+// --- Map costs per strategy, filled from Atlas strategies' scarabs ---
+const filledFromAtlas = shallowRef('')
+function atlasScarabCosts (name: string): CostLine[] | null {
+  const snap = prices.snapshot.value
+  if (!snap || !name) return null
+  for (const w of AppConfig().widgets) {
+    if (w.wmType !== ATLAS_TYPE) continue
+    const st = (w as AtlasWidget).strategies.find(x => x.name.trim() === name)
+    if (!st?.scarabs) continue
+    const lines = priceScarabs(parseScarabs(st.scarabs), snap.items).filter(p => p.item)
+    if (!lines.length) continue
+    return lines.map(p => ({ type: p.item!.type, name: p.item!.name, variant: p.item!.variant, qty: p.qty }))
+  }
+  return null
+}
+watch(() => props.config.strategy, (name) => {
+  const trimmed = (name ?? '').trim()
+  const saved = costsForStrategy(props.config, trimmed)
+  if (saved) {
+    props.config.costs = saved
+    filledFromAtlas.value = ''
+    return
+  }
+  const scarabs = atlasScarabCosts(trimmed)
+  if (scarabs) {
+    props.config.costs = [...props.config.costs.filter(c => c.type !== 'Scarab'), ...scarabs]
+    filledFromAtlas.value = trimmed
+  }
+})
+// Configs from before costs were saved per strategy: keep the current list for the current strategy.
+if (!props.config.costsByStrategy) rememberCosts(props.config)
+watch(() => props.config.costs, () => { rememberCosts(props.config) }, { deep: true })
+
+// --- Session analytics ---
+const leagues = useLeagues()
+const sessionStore = useSessionStore()
+// Copies the old history (totals only) into Session analytics once.
+if (!props.config.historyExported) {
+  if (!props.config.history.length) {
+    props.config.historyExported = true
+  } else {
+    const stop = watch(() => leagues.selectedId.value, (league) => {
+      if (!league) return
+      nextTick(() => stop())
+      sessionStore.saveMany(historyToRecords(props.config.history, league))
+        .then(() => { props.config.historyExported = true; saveConfig() })
+        .catch(() => {})
+    }, { immediate: true })
+  }
+}
+
+function openAnalytics () {
+  const existing = AppConfig().widgets.find(w => w.wmType === ANALYTICS_TYPE)
+  if (existing) {
+    wm.show(existing.wmId)
+    return
+  }
+  wm.create(ANALYTICS_TYPE)
+  const created = wm.widgets.value.reduce((a, b) => (a.wmId > b.wmId ? a : b))
+  nextTick(() => nextTick(() => wm.show(created.wmId)))
+}
+
 function lootPrice (line: PricedRef & { qty: number }) {
   const p = sellPrice(line, price(line), rules.value)
   if (p == null) return 'no price'
@@ -310,6 +408,13 @@ function end () {
   const nowTs = Date.now()
   const tt = totals(sess, props.config.costs, price, nowTs, rules.value)
   if (sess.maps || sess.loot.length || sess.extraChaos) {
+    const record = toSessionRecord(sess, props.config.costs, price, rules.value, {
+      now: nowTs,
+      league: leagues.selectedId.value ?? '',
+      divine: prices.snapshot.value?.divine ?? null,
+      strategy: props.config.strategy
+    })
+    sessionStore.save(record).catch(() => {})
     props.config.history.push({
       strategy: sess.strategy || props.config.strategy,
       endedAt: nowTs,
@@ -331,18 +436,15 @@ function clearHistory () {
 function addLoot (item: PriceItem) {
   const sess = props.config.session
   if (!sess) return
-  const k = itemKey(item)
-  const line = sess.loot.find(l => itemKey(l) === k)
-  if (line) line.qty++
-  else sess.loot.push({ type: item.type, name: item.name, variant: item.variant, qty: 1 })
+  addLootTo(sess, item, 1)
   lootQuery.value = ''
 }
 
 function changeQty (line: LootLine, delta: number) {
   const sess = props.config.session
   if (!sess) return
-  line.qty += delta
-  if (line.qty <= 0) sess.loot = sess.loot.filter(l => l !== line)
+  if (delta > 0) addLootTo(sess, line, delta)
+  else removeLoot(sess, line, -delta)
 }
 
 function addCost (item: PriceItem) {
@@ -365,14 +467,24 @@ const logListener = Host.onEvent('MAIN->CLIENT::game-log', (e) => {
   let changed = false
   for (const line of e.lines) {
     const ev = parseLogLine(line)
+    if (ev?.kind === 'zone') {
+      nameRun(sess, ev.name)
+      continue
+    }
     if (ev?.kind !== 'area') continue
+    const nowTs = Date.now()
     const inMap = isMapArea(ev.areaId)
-    onZoneChange(sess, inMap, Date.now())
+    onZoneChange(sess, inMap, nowTs)
     if (inMap && sess.runningSince != null && props.config.autoCountMaps && countNewMap(sess, ev.areaId, ev.seed)) {
       sess.maps++
-      now.value = Date.now()
+      startRun(sess, ev.areaId, ev.areaLevel, nowTs)
+      now.value = nowTs
       const per = t.value.perMap
-      setTimeout(() => dockRef.value?.peek(`Map ${sess.maps}` + (per != null ? ` · ${fmt(per)} per map so far` : '')), 1500)
+      const prev = sess.runs && sess.runs.length >= 2 ? sess.runs[sess.runs.length - 2] : null
+      const text = prev
+        ? `Map ${sess.maps} · last map ${fmt(runResult(prev))}`
+        : `Map ${sess.maps}` + (per != null ? ` · ${fmt(per)} per map so far` : '')
+      setTimeout(() => dockRef.value?.peek(text), 1500)
     }
     changed = true
   }
@@ -394,10 +506,7 @@ const itemListener = MainProcess.onEvent('MAIN->CLIENT::item-text', (e) => {
   const match = candidates.find(i => i.variant === gemState) ?? candidates.find(i => !i.variant) ?? candidates[0]
   const ref = match ?? { type: '', name, variant: '' }
   const qty = parsed.stackSize?.value ?? 1
-  const k = itemKey(ref)
-  const line = sess.loot.find(l => itemKey(l) === k)
-  if (line) line.qty += qty
-  else sess.loot.push({ type: ref.type, name: ref.name, variant: ref.variant, qty })
+  addLootTo(sess, ref, qty)
   saveConfig()
 })
 onUnmounted(() => { itemListener.abort() })
@@ -438,5 +547,14 @@ onUnmounted(() => { logListener.abort() })
 }
 .lineGrid { grid-template-columns: minmax(0, 1fr) 22px 28px 22px 72px; gap: 4px; }
 .costGrid { grid-template-columns: minmax(0, 1fr) 56px 72px 22px; }
+.mapLine {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 8px;
+  background: var(--w-panel-2);
+  border: 1px solid var(--w-line-soft);
+  border-radius: var(--w-radius-sm);
+}
 .histGrid { grid-template-columns: minmax(0, 1fr) 40px 44px 64px 64px; }
 </style>
