@@ -293,6 +293,9 @@ hostRequest<{ running: boolean, rolling?: boolean }>('map-scan-status', null)
 onUnmounted(() => {
   events.abort()
   hotkeys.abort()
+  // Removed or switched off: its hotkey is gone too, so nothing could stop
+  // the scan (screenshots several times a second) until its idle timeout.
+  if (running.value) hostRequest('map-scan-stop', null).catch(() => {})
 })
 </script>
 

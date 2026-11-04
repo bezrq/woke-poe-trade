@@ -4,7 +4,7 @@
 // whenever it changes, so rerolling the same map gives a new reading.
 // Used by map scan (map tooltips) and essence scan (essence monolith labels).
 import { uIOhook } from 'uiohook-napi'
-import { app } from 'electron'
+import { app, screen } from 'electron'
 import fs from 'fs'
 import path from 'path'
 import type { ServerEvents } from '../server'
@@ -212,6 +212,10 @@ export class ScreenScanner {
       this.lastReadingAt = Date.now()
       this.emptyAt = null
       this.failures = 0
+      // Start from where the cursor is now: mousemove only arrives once it
+      // moves, so a scan started while resting on a map would read nothing.
+      this.mouse = cursorInScreenPixels()
+      this.movedAt = 0
       this.loopId++
       uIOhook.on('mousemove', this.onMouseMove)
       this.schedule()
@@ -381,6 +385,12 @@ Promise<{ labels: Array<{ lines: string[], at: { x: number, y: number } }> }> {
   } finally {
     releaseWorker()
   }
+}
+
+// Same units as uiohook's mouse events: physical pixels on Windows.
+function cursorInScreenPixels (): { x: number, y: number } {
+  const p = screen.getCursorScreenPoint()
+  return process.platform === 'win32' ? screen.dipToScreenPoint(p) : p
 }
 
 // Copies a rectangle of a 4-byte-per-pixel image.

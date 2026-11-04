@@ -2,17 +2,19 @@
 // English client lines only.
 
 export type LogEvent =
-  { kind: 'area', areaId: string, areaLevel: number } |
+  // seed: the instance's seed. Re-entering the same instance (through a
+  // portal from the hideout, say) logs the same seed again.
+  { kind: 'area', areaId: string, areaLevel: number, seed?: string } |
   { kind: 'zone', name: string } |
   { kind: 'level', charName: string, className: string, level: number }
 
-const AREA_RE = /Generating level (\d+) area "([^"]+)"/
+const AREA_RE = /Generating level (\d+) area "([^"]+)"(?: with seed (\d+))?/
 const ZONE_RE = /\] : You have entered (.+?)\.?$/
 const LEVEL_RE = /\] : (\S+) \(([^)]+)\) is now level (\d+)\s*$/
 
 export function parseLogLine (line: string): LogEvent | null {
   let m = AREA_RE.exec(line)
-  if (m) return { kind: 'area', areaLevel: Number(m[1]), areaId: m[2] }
+  if (m) return { kind: 'area', areaLevel: Number(m[1]), areaId: m[2], seed: m[3] }
   m = ZONE_RE.exec(line)
   if (m) return { kind: 'zone', name: m[1] }
   m = LEVEL_RE.exec(line)

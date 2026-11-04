@@ -28,9 +28,8 @@ const useCollectorState = createGlobalState(() => {
   // Bumped after every save so views can reload.
   const revision = shallowRef(0)
 
-  onWokePricesLoaded((league, chunks) => {
+  onWokePricesLoaded((league, chunks, ts) => {
     if (users === 0) return
-    const ts = Date.now()
     // Parsing and saving a few thousand rows takes a while; wait for a quiet
     // moment so it never delays a price check.
     whenIdle(() => { collect(league, chunks, ts) })
@@ -42,7 +41,12 @@ const useCollectorState = createGlobalState(() => {
     const divine = findDivinePrice(items)
     const snapshot: Snapshot = { league, ts, divine, items }
     const date = utcDate(ts)
-    const daily: DailyRow[] = items.map(({ d1, d7, ...item }) => ({ league, date, divine, ts, ...item }))
+    const daily: DailyRow[] = items.map(item => {
+      const row: DailyRow & { d1?: number, d7?: number } = { league, date, divine, ts, ...item }
+      delete row.d1
+      delete row.d7
+      return row
+    })
 
     perfTimeAsync('Prices: save to history', saveSnapshot(snapshot, daily))
       .then(() => {

@@ -2,10 +2,11 @@
 // Kept dependency-free so Prices.ts can import it without import cycles.
 import type { DenseChunk } from './parse'
 
-type Listener = (leagueId: string, chunks: DenseChunk[]) => void
+// `at`: when poe.ninja's prices were loaded (not when a listener hears them).
+type Listener = (leagueId: string, chunks: DenseChunk[], at: number) => void
 
 const listeners = new Set<Listener>()
-let last: { leagueId: string, chunks: DenseChunk[] } | null = null
+let last: { leagueId: string, chunks: DenseChunk[], at: number } | null = null
 
 export function onWokePricesLoaded (fn: Listener): () => void {
   listeners.add(fn)
@@ -13,13 +14,18 @@ export function onWokePricesLoaded (fn: Listener): () => void {
 }
 
 // For a widget placed after prices loaded: APT won't fetch again for 30 minutes.
+// Keeps the original load time, so the replayed snapshot isn't stamped as new.
 export function replayWokePrices (): void {
-  if (last) emitWokePricesLoaded(last.leagueId, last.chunks)
+  if (last) notify(last.leagueId, last.chunks, last.at)
 }
 
 export function emitWokePricesLoaded (leagueId: string, chunks: DenseChunk[]): void {
-  last = { leagueId, chunks }
+  last = { leagueId, chunks, at: Date.now() }
+  notify(leagueId, chunks, last.at)
+}
+
+function notify (leagueId: string, chunks: DenseChunk[], at: number): void {
   for (const fn of listeners) {
-    try { fn(leagueId, chunks) } catch (err) { console.error('[woke/market]', err) }
+    try { fn(leagueId, chunks, at) } catch (err) { console.error('[woke/market]', err) }
   }
 }

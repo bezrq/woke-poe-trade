@@ -23,7 +23,7 @@
           <span>{{ priceCount }} gem prices</span><span class="w-faint">·</span>
           <span>updated {{ ago(snapshot.ts) }}</span>
         </template>
-        <span v-else>Waiting for poe.ninja prices (open the Market tracker once, or price check anything)…</span>
+        <span v-else>Waiting for poe.ninja prices…</span>
       </template>
 
       <div v-if="config.runner" class="flex flex-wrap gap-2 items-center py-2" style="padding-left: var(--w-pad); padding-right: var(--w-pad); border-bottom: 1px solid var(--w-line);">

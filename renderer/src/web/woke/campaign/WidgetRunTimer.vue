@@ -1,6 +1,6 @@
 <template>
   <Widget :config="config" move-handles="corners" :inline-edit="false" :readonly="true">
-    <div class="flex flex-col items-start gap-1">
+    <div class="flex flex-col items-start gap-1" data-w-panel>
       <!-- HUD strip: always on while the run is going. The campaign tracker
            shows run time in its own strip, so the timer docks under it. -->
       <div v-if="!docked" :class="$style.strip">

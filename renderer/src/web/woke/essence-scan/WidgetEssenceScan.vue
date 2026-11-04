@@ -48,7 +48,7 @@
               <WPrice :chaos="sp.chaos" :divine="divine" />
             </div>
           </template>
-          <div v-if="!hasPrices" class="w-faint" style="font-size: 10.5px;">No prices yet: open the Market tracker once to load them.</div>
+          <div v-if="!hasPrices" class="w-faint" style="font-size: 10.5px;">Waiting for poe.ninja prices…</div>
         </div>
       </div>
     </Teleport>
@@ -272,6 +272,9 @@ hostRequest<{ running: boolean }>('essence-scan-status', null)
 onUnmounted(() => {
   events.abort()
   hotkeys.abort()
+  // Removed or switched off: its hotkey is gone too, so nothing could stop
+  // the scan (screenshots several times a second) until its idle timeout.
+  if (running.value) hostRequest('essence-scan-stop', null).catch(() => {})
   clearTimeout(onceTimer)
 })
 </script>
