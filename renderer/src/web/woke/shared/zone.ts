@@ -19,17 +19,22 @@ export interface ZoneState {
 }
 
 // Pinnacle boss arenas by their "You have entered" name, next to the area
-// ids in boss-areas.ts. Add names here when a fight isn't recognised.
+// ids in boss-areas.ts (pairs as Client.txt logs them, e.g.
+// MapWorldsPrimordialBoss3 -> "Absence of Patience and Wisdom"). Add names
+// here when a fight isn't recognised. [] = a boss fight with no boss runs entry.
 export const BOSS_ARENAS: Record<string, string[]> = {
   "The Shaper's Realm": ['shaper', 'uber-shaper'],
   'Absence of Value and Meaning': ['uber-elder', 'uber-uber-elder'],
   'Eye of the Storm': ['uber-sirus'],
+  // The Maven's own fight (MavenBoss).
   'Absence of Mercy and Empathy': ['maven', 'uber-maven'],
-  "The Maven's Crucible": ['maven', 'uber-maven'],
-  'Absence of Patience and Wisdom': ['exarch', 'uber-exarch', 'eater', 'uber-eater'],
-  'Absence of Symmetry and Harmony': ['exarch', 'uber-exarch', 'eater', 'uber-eater'],
-  'Seething Chyme': ['eater', 'uber-eater'],
-  'Polaric Void': ['exarch', 'uber-exarch'],
+  // Maven's Invitations (MavenHub), not the Maven fight.
+  "The Maven's Crucible": ['feared'],
+  'Absence of Patience and Wisdom': ['exarch', 'uber-exarch'],
+  'Absence of Symmetry and Harmony': ['eater', 'uber-eater'],
+  // The Infinite Hunger and The Black Star.
+  'Seething Chyme': [],
+  'Polaric Void': [],
   'Cortex': ['uber-cortex'],
   'The Feared': ['feared']
 }

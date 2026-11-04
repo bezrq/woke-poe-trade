@@ -12,7 +12,7 @@ import type { RouteOptions } from '@/web/woke/campaign/route-parse'
 import { countNewMap, isMapArea, isMapSideArea, newSession, onZoneChange, maybeAutoPause, AUTO_PAUSE_MS } from '@/web/woke/farming/farming'
 import { mechanicForSpeaker } from '@/web/woke/mechanics/zone'
 import { BOSS_AREAS, bossAreaIds } from '@/web/woke/shared/boss-areas'
-import { arenaBosses, zoneKind } from '@/web/woke/shared/zone'
+import { BOSS_ARENAS, arenaBosses, zoneKind } from '@/web/woke/shared/zone'
 import { BOSSES } from '@/web/woke/boss-runs/bosses'
 import { mechanicForZone } from '@/web/woke/mechanics/data'
 import { difficultyForAreaLevel, isPlazaArea, msUntilLabReset, PLAZA_ZONE, staleLayoutDate } from '@/web/woke/lab/lab'
@@ -142,6 +142,14 @@ describe('farming', () => {
     expect(bossAreaIds('MapWorldsPrimordialBoss4')).toEqual(['eater', 'uber-eater'])
     expect(zoneKind('MapWorldsPrimordialBoss4', '')).toBe('boss')
     expect(arenaBosses('MapWorldsShapersRealm', "The Shaper's Realm")).toEqual(['shaper', 'uber-shaper'])
+    // Area id and name pairs from real Client.txt logs.
+    expect(arenaBosses('MapWorldsPrimordialBoss3', 'Absence of Patience and Wisdom')).toEqual(['exarch', 'uber-exarch'])
+    expect(arenaBosses('MapWorldsPrimordialBoss4', 'Absence of Symmetry and Harmony')).toEqual(['eater', 'uber-eater'])
+    expect(arenaBosses('MapWorldsPrimordialBoss1', 'Seething Chyme')).toEqual([])
+    expect(arenaBosses('MapWorldsPrimordialBoss2', 'Polaric Void')).toEqual([])
+    expect(zoneKind('MapWorldsPrimordialBoss2', 'Polaric Void')).toBe('boss')
+    expect(arenaBosses('MavenHub', "The Maven's Crucible")).toEqual(['feared'])
+    expect(Object.values(BOSS_ARENAS).flat().filter(id => !BOSSES.some(b => b.id === id))).toEqual([])
     // Every boss named exists in the boss list.
     const known = new Set(BOSSES.map(b => b.id))
     expect(Object.values(BOSS_AREAS).flat().filter(id => !known.has(id))).toEqual([])
