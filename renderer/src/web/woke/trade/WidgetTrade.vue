@@ -80,7 +80,7 @@ export default {
 </script>
 
 <script setup lang="ts">
-import { computed, inject, nextTick, onUnmounted, reactive, shallowRef } from 'vue'
+import { computed, inject, nextTick, onUnmounted, reactive, shallowRef, watch } from 'vue'
 import { Host, MainProcess } from '@/web/background/IPC'
 import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
@@ -179,11 +179,19 @@ function expand (o: Offer) {
 }
 
 const now = shallowRef(Date.now())
-const clock = setInterval(() => {
-  if (!book.offers.length) return
-  now.value = Date.now()
-  prune(book, now.value)
-}, 1000)
+// Ticks only while there are offers to age (the perf checks count wakeups
+// while you play).
+let clock: ReturnType<typeof setInterval> | undefined
+watch(() => book.offers.length > 0, (any) => {
+  clearInterval(clock)
+  clock = undefined
+  if (any) {
+    clock = setInterval(() => {
+      now.value = Date.now()
+      prune(book, now.value)
+    }, 1000)
+  }
+}, { immediate: true })
 
 // --- Client.txt ---
 const dockRef = shallowRef<InstanceType<typeof DockItem> | null>(null)

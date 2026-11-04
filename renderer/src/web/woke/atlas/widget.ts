@@ -82,6 +82,11 @@ export function useAtlasData (url: string) {
   return { atlasData, atlasDataError }
 }
 
+// The loaded data, without starting a load.
+export function atlasDataState () {
+  return { atlasData, atlasDataError }
+}
+
 // After a failed download: try the same URL again.
 export function retryAtlasData (url: string) {
   loadingUrl = null

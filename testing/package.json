@@ -8,6 +8,7 @@
     "get:ocr": "node tools/get-ocr-files.mjs",
     "test:main": "npm run build:host && vitest run",
     "test:e2e": "npm run build:host && playwright test",
+    "test:perf": "npm run build:host && playwright test -c playwright.perf.config.ts",
     "test": "npm run test:main && playwright test"
   },
   "devDependencies": {

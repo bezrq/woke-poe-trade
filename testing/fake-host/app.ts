@@ -24,6 +24,7 @@ import { KeyToElectron } from '../../ipc/KeyToCode'
 import type { IpcEvent } from '../../ipc/types'
 import type { AppUpdater } from '../../main/src/AppUpdater'
 import { decodePng } from './png'
+import { OcrWorker } from '../../main/src/vision/link-main'
 
 const fakeHook = (nodeGypBuild as unknown as { fakeHook: { emit: (e: unknown) => void } }).fakeHook
 
@@ -186,6 +187,9 @@ export class FakeApp {
   }
 
   unmockedRequests () { return this.requests.filter(r => !r.mocked) }
+
+  // OCR workers (opencv + tesseract, 100-200 MB each) loaded right now.
+  ocrWorkers () { return OcrWorker.live }
 }
 
 function clientLogStamp (d: Date): string {

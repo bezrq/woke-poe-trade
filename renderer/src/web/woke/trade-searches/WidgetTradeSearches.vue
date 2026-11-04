@@ -147,7 +147,8 @@ const unseen = shallowRef(0)
 const total = shallowRef(-1)
 const latest = shallowRef<Array<{ name: string, price: string }>>([])
 const dockRef = shallowRef<InstanceType<typeof DockItem> | null>(null)
-const livePoll = setInterval(async () => {
+// Ticks only while a live search is open (it used to tick all the time).
+async function pollLive () {
   const el = webviewEl.value
   if (!liveOpen.value || !el?.executeJavaScript) {
     lastCount = -1
@@ -165,7 +166,8 @@ const livePoll = setInterval(async () => {
     lastCount = n
     total.value = n
   } catch {}
-}, 1500)
+}
+let livePoll: ReturnType<typeof setInterval> | undefined
 function onCard (open: boolean) {
   if (!open) unseen.value = 0
 }
@@ -197,6 +199,12 @@ const overlayKey = computed(() => AppConfig().overlayKey)
 watch(() => props.config.enableHotkeys, () => { pushHostConfig() })
 
 const liveOpen = computed(() => !!openEntry.value && isLiveSearch(openEntry.value.url))
+watch(liveOpen, (open) => {
+  clearInterval(livePoll)
+  livePoll = undefined
+  lastCount = -1
+  if (open) livePoll = setInterval(pollLive, 1500)
+}, { immediate: true })
 
 // A search you opened stays over the game until you close it, like before,
 // except a live search: it keeps running out of sight and its dock icon

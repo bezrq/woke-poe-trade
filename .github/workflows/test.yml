@@ -91,6 +91,11 @@ jobs:
     - name: Overlay tests on the fake game
       run: npx playwright test
       working-directory: ./testing
+    # Every module on: startup, a map, opening the overlay, a price check,
+    # memory. Counts and sizes over testing/perf/budgets.json fail the run.
+    - name: Performance checks
+      run: npx playwright test -c playwright.perf.config.ts
+      working-directory: ./testing
     - name: Upload report (screenshots of every scenario)
       if: ${{ !cancelled() }}
       uses: actions/upload-artifact@v7
@@ -99,4 +104,5 @@ jobs:
         path: |
           testing/report
           testing/test-results
+          testing/perf-results
         retention-days: 14

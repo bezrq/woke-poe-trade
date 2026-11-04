@@ -130,6 +130,13 @@ export class Overlay {
       })
     }
     opts.patch?.(config)
+    // Leave the page that's open (the default config capture, or an earlier
+    // boot) first: it can still save its own settings on the way out, which
+    // would land over the config written here.
+    if (this.page.url() !== 'about:blank') {
+      await this.page.goto('about:blank')
+      await this.app.settled(300, 5000)
+    }
     this.app.writeConfig(config)
     this.app.newClientLog(typeof opts.logBefore === 'string' ? logFixture(opts.logBefore) : opts.logBefore ?? [])
     this.app.clearReceived()
