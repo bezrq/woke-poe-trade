@@ -4,8 +4,8 @@ import nodeEndpoint from 'comlink/dist/umd/node-adapter'
 import * as Bindings from './wasm-bindings'
 import { HeistGemFinder } from './HeistGemFinder'
 import { ImageData } from './utils'
-import { scanTooltip } from '../woke/map-scan-vision'
-import type { ScanOptions } from '../woke/map-scan-vision'
+import { scanTooltip, ocrLine } from '../woke/map-scan-vision'
+import type { ScanOptions, LineImage } from '../woke/map-scan-vision'
 import { scanEssenceLabel, scanAllEssenceLabels } from '../woke/essence-scan-vision'
 
 let _heistGems: HeistGemFinder
@@ -29,6 +29,11 @@ const WorkerBody = {
   async scanMapTooltip (screenshot: ImageData, opts: ScanOptions) {
     await _changeLangPromise
     return scanTooltip(screenshot, opts)
+  },
+  // woke map scan: OCR some of a tooltip's lines (main splits them across workers)
+  async ocrLines (lines: LineImage[]) {
+    await _changeLangPromise
+    return lines.map(ocrLine)
   },
   // woke essence scan mode
   async scanEssenceLabel (screenshot: ImageData, opts: ScanOptions) {
