@@ -9,10 +9,10 @@
           <span title="Labs reset at midnight UTC"><i class="far fa-clock" /> resets in {{ resetIn }}</span>
         </div>
         <img v-if="peekImg" :src="peekImg" :class="$style.cardImg" alt="Today's layout">
-        <div v-else-if="peekError" class="w-dim text-xs" style="padding: 6px var(--w-pad);">Couldn't load the layout ({{ peekError }}). Open the overlay and click the icon for poelab's page.</div>
-        <div v-else-if="peekDiff" class="w-dim text-xs" style="padding: 6px var(--w-pad);">Loading today's layout from poelab…</div>
+        <WBanner v-else-if="peekError">Couldn't load the layout ({{ peekError }}). Open the overlay and click the icon for poelab's page.</WBanner>
+        <div v-else-if="peekDiff" :class="$style.cardSkel" aria-busy="true" aria-label="Loading today's layout" />
         <div v-else class="w-dim text-xs" style="padding: 6px var(--w-pad);">Enter Aspirant's Plaza to load the layout.</div>
-        <div v-if="peekImg && staleOf(peekImg)" class="text-xs" style="color: var(--w-warn); padding: 2px var(--w-pad);">Today's layout isn't posted yet. This one is from {{ staleOf(peekImg) }}.</div>
+        <WBanner v-if="peekImg && staleOf(peekImg)" tone="warn">Today's layout isn't posted yet. This one is from {{ staleOf(peekImg) }}.</WBanner>
         <div v-if="config.notes.trim()" class="whitespace-pre-wrap w-dim text-xs" style="padding: 4px var(--w-pad);">{{ config.notes }}</div>
       </template>
     </DockItem>
@@ -35,8 +35,8 @@
       </WPanel>
       <WPanel v-if="openDiff" size-key="layout" :title="`${labLabel(openDiff)} Labyrinth`" :scroll="false" max-height="none"
         style="width: 60vw; height: 80vh;">
-        <template v-if="staleDate" #meta>
-          <span style="color: var(--w-warn);"><i class="fas fa-exclamation-triangle" /> Today's layout isn't posted yet. This one is from {{ staleDate }}.</span>
+        <template v-if="staleDate" #banner>
+          <WBanner tone="warn">Today's layout isn't posted yet. This one is from {{ staleDate }}.</WBanner>
         </template>
         <template #actions>
           <button v-if="layoutImg" class="w-icon-btn mr-1" :class="{ 'w-icon-btn--on': config.fullPage }" @click="config.fullPage = !config.fullPage"
@@ -75,7 +75,7 @@ import { Host, MainProcess } from '@/web/background/IPC'
 import { AppConfig } from '@/web/Config'
 import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
-import { WPanel, WKbd, WListItem } from '../ui'
+import { WPanel, WKbd, WListItem, WBanner } from '../ui'
 import { DEFAULT_LAB_URLS, DIFFICULTIES, FIND_LAYOUT_JS, PLAZA_ZONE, dateInUrl, difficultyForAreaLevel, formatDuration, labLabel, msUntilLabReset, parseHotkeyTarget } from './lab'
 import { useZone } from '../shared/zone'
 import { hostRequest } from '../shared/host'
@@ -210,6 +210,13 @@ onUnmounted(() => { hotkeys.abort() })
 <style module>
 .imgWrap { background: #000; }
 .cardImg { display: block; width: 100%; height: auto; background: #000; }
+.cardSkel {
+  height: 12rem; margin: 0 var(--w-pad) 6px; border-radius: var(--w-r-sm);
+  background: linear-gradient(90deg, var(--w-panel-2), var(--w-panel-3), var(--w-panel-2));
+  background-size: 200% 100%; animation: labShimmer 1.4s linear infinite;
+}
+@keyframes labShimmer { to { background-position: -200% 0; } }
+@media (prefers-reduced-motion: reduce) { .cardSkel { animation: none; } }
 
 .fit { max-width: 100%; max-height: 100%; margin: auto; display: block; cursor: zoom-in; }
 .full { max-width: none; cursor: zoom-out; }

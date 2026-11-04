@@ -20,7 +20,7 @@
         <div v-if="config.hotkey" class="w-faint text-xs px-3 py-1"><WKbd :keys="config.hotkey" /> to stop</div>
       </template>
     </DockItem>
-    <WPanel :title="config.wmTitle || 'Map scan'" icon="map" width="19rem">
+    <WPanel ref="panel" :title="config.wmTitle || 'Map scan'" icon="map" width="19rem">
       <template #actions>
         <span :class="[$style.led, { [$style.on]: running }]" />
         <WButton size="sm" :variant="running ? 'default' : 'primary'" @click="toggle">{{ running ? 'Stop' : 'Start' }}</WButton>
@@ -66,7 +66,7 @@
       </WEmpty>
       <template #footer>
         <span class="flex-1">{{ entries.length }} scanned · profile {{ profileName }}</span>
-        <button v-if="entries.length" type="button" class="w-icon-btn" title="Clear" @click="clear"><i class="fas fa-eraser" /></button>
+        <button v-if="entries.length" type="button" class="w-icon-btn" title="Clear (Undo in the note)" @click="clear"><i class="fas fa-eraser" /></button>
       </template>
     </WPanel>
     <Teleport to="body">
@@ -117,7 +117,7 @@ import { computed, inject, onUnmounted, shallowRef } from 'vue'
 import { MainProcess } from '@/web/background/IPC'
 import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
-import { WPanel, WButton, WEmpty, WKbd } from '../ui'
+import { WPanel, WButton, WEmpty, WKbd, toast } from '../ui'
 import { hostRequest } from '../shared/host'
 import DockItem from '../dock/DockItem.vue'
 import { mechanicIcon } from '../ui/game-icons'
@@ -303,11 +303,14 @@ async function roll () {
   }
 }
 
+const panel = shallowRef<InstanceType<typeof WPanel> | null>(null)
 function clear () {
+  const before = { entries: entries.value, rolls: rolls.value }
   entries.value = []
   rolls.value = []
   current.value = null
   hostRequest('map-scan-reread', null).catch(() => {})
+  toast('Scan list cleared', { anchor: panel.value?.el, undo: () => { entries.value = before.entries; rolls.value = before.rolls } })
 }
 
 const hotkeys = MainProcess.onEvent('MAIN->CLIENT::widget-action', (e) => {
