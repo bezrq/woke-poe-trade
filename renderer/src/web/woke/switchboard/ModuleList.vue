@@ -85,7 +85,7 @@ function statusLine (m: ModuleDef) {
 .switch {
   width: 30px;
   height: 16px;
-  border-radius: 999px;
+  border-radius: var(--w-r-pill);
   background: var(--w-panel-3);
   border: 1px solid var(--w-line-strong);
   position: relative;
@@ -106,18 +106,18 @@ function statusLine (m: ModuleDef) {
 .switch.on::after { left: 16px; background: var(--w-accent-fg); }
 .switch:focus-visible { outline: 2px solid var(--w-accent); outline-offset: 2px; }
 .need {
-  font-size: 10.5px;
+  font-size: var(--w-fs-xs);
   line-height: 15px;
   padding: 0 6px;
-  border-radius: 999px;
+  border-radius: var(--w-r-pill);
   border: 1px solid var(--w-line-strong);
   color: var(--w-dim);
   white-space: nowrap;
 }
 .need-poll { color: var(--w-info); border-color: color-mix(in srgb, var(--w-info) 35%, transparent); }
-.need-log { color: #c58bd6; border-color: rgba(197, 139, 214, .35); }
+.need-log { color: var(--w-corrupt); border-color: color-mix(in srgb, var(--w-corrupt) 35%, transparent); }
 .need-ocr { color: var(--w-warn); border-color: color-mix(in srgb, var(--w-warn) 40%, transparent); }
-.live { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; color: var(--w-dim); white-space: nowrap; }
+.live { display: inline-flex; align-items: center; gap: 5px; font-size: var(--w-fs-xs); color: var(--w-dim); white-space: nowrap; }
 .live i { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
 .running { background: var(--w-up); }
 .idle { background: var(--w-warn); }

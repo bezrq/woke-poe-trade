@@ -116,7 +116,7 @@ function safeUrl (url: string) {
 }
 .k {
   padding-top: 3px;
-  font-size: 10px;
+  font-size: var(--w-fs-xs);
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--w-faint);

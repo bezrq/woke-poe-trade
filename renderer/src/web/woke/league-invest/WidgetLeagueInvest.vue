@@ -358,11 +358,11 @@ function fmtDiv (div: number) { return `${div.toFixed(div >= 10 ? 0 : 1)} div` }
 .textarea {
   width: 100%;
   padding: 4px 8px;
-  font-size: 12px;
+  font-size: var(--w-fs-md);
   color: var(--w-fg);
   background: var(--w-panel-2);
   border: 1px solid var(--w-line);
-  border-radius: var(--w-radius-sm);
+  border-radius: var(--w-r-sm);
   resize: vertical;
 }
 .dayInput {
@@ -372,7 +372,7 @@ function fmtDiv (div: number) { return `${div.toFixed(div >= 10 ? 0 : 1)} div` }
   color: var(--w-fg);
   background: var(--w-panel-2);
   border: 1px solid var(--w-line);
-  border-radius: var(--w-radius-sm);
+  border-radius: var(--w-r-sm);
 }
 .hero {
   display: grid;
@@ -382,12 +382,12 @@ function fmtDiv (div: number) { return `${div.toFixed(div >= 10 ? 0 : 1)} div` }
   border-bottom: 1px solid var(--w-line);
 }
 .k {
-  font-size: 10.5px;
+  font-size: var(--w-fs-xs);
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--w-faint);
 }
-.big { font-size: 17px; font-weight: 500; }
+.big { font-size: var(--w-fs-xl); font-weight: 500; }
 .planGrid { grid-template-columns: minmax(0, 1fr) 76px 80px; }
 .rankGrid { grid-template-columns: minmax(0, 1fr) 72px 56px 56px 56px; }
 </style>

@@ -84,8 +84,8 @@
             </div>
             <div class="text-right">
               <div :class="$style.k">vs {{ cmpLabel }}</div>
-              <div v-if="delta != null" class="w-num" :class="delta <= 0 ? 'w-up' : 'w-down'" style="font-size: 16px;">{{ formatDelta(delta) }}</div>
-              <div v-else class="w-num w-faint" style="font-size: 16px;">—</div>
+              <div v-if="delta != null" class="w-num" :class="delta <= 0 ? 'w-up' : 'w-down'" style="font-size: var(--w-fs-xl);">{{ formatDelta(delta) }}</div>
+              <div v-else class="w-num w-faint" style="font-size: var(--w-fs-xl);">—</div>
             </div>
           </div>
           <div class="w-row w-row--head" :class="$style.grid">
@@ -315,21 +315,21 @@ onUnmounted(() => {
   padding: 5px 12px;
   background: var(--w-panel);
   border: 1px solid var(--w-line);
-  border-radius: var(--w-radius);
+  border-radius: var(--w-r-md);
   box-shadow: var(--w-shadow);
-  font-size: 12.5px;
+  font-size: var(--w-fs-md);
   white-space: nowrap;
   color: var(--w-fg);
 }
-.where { font-size: 14px; max-width: 16rem; }
+.where { font-size: var(--w-fs-lg); max-width: 16rem; }
 .sep { width: 1px; align-self: stretch; background: var(--w-line); }
 .k {
-  font-size: 10.5px;
+  font-size: var(--w-fs-xs);
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--w-faint);
 }
-.time { font-size: 14px; }
+.time { font-size: var(--w-fs-lg); }
 .hero {
   display: grid;
   grid-template-columns: 1fr auto;
@@ -337,12 +337,12 @@ onUnmounted(() => {
   padding: 8px var(--w-pad);
   border-bottom: 1px solid var(--w-line);
 }
-.big { font-size: 22px; font-weight: 500; }
+.big { font-size: var(--w-fs-xl); font-weight: 500; }
 .grid { grid-template-columns: minmax(0, 1fr) 3.6rem 4.4rem 3.6rem; }
 .histGrid { grid-template-columns: minmax(0, 1fr) 4.4rem 3.8rem 22px; }
 .now { background: var(--w-accent-soft); box-shadow: inset 2px 0 0 var(--w-accent); }
 .gold { color: var(--w-warn); }
-.mark { min-height: 22px; font-size: 11.5px; color: var(--w-dim); }
+.mark { min-height: 22px; font-size: var(--w-fs-sm); color: var(--w-dim); }
 .mark > span:first-child { padding-left: 14px; }
 .pbChip { color: var(--w-warn); margin-left: 4px; }
 </style>

@@ -60,13 +60,13 @@ const fits = computed<Fit[]>(() => {
   gap: 5px;
   margin-left: 0.5rem;
   padding: 0 8px;
-  border-radius: 99px;
+  border-radius: var(--w-r-pill);
   line-height: 18px;
-  font-size: 11.5px;
+  font-size: var(--w-fs-sm);
   white-space: nowrap;
   color: var(--w-accent);
   background: var(--w-accent-soft);
   border: 1px solid var(--w-line-strong);
 }
-.icon { font-size: 10px; }
+.icon { font-size: var(--w-fs-xs); }
 </style>

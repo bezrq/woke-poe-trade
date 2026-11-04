@@ -299,7 +299,7 @@ function pasteSearch (text: string) {
 <style module>
 .heading {
   padding: 4px 0 2px;
-  font-size: 10.5px;
+  font-size: var(--w-fs-xs);
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--w-faint);
@@ -311,21 +311,21 @@ function pasteSearch (text: string) {
 .textarea {
   width: 100%;
   padding: 4px 8px;
-  font-size: 12px;
+  font-size: var(--w-fs-md);
   color: var(--w-fg);
   background: var(--w-panel-2);
   border: 1px solid var(--w-line);
-  border-radius: var(--w-radius-sm);
+  border-radius: var(--w-r-sm);
   resize: vertical;
 }
 .select {
   height: 26px;
   margin-bottom: 4px;
   padding: 0 6px;
-  font-size: 12.5px;
+  font-size: var(--w-fs-md);
   color: var(--w-fg);
   background: var(--w-panel-2);
   border: 1px solid var(--w-line);
-  border-radius: var(--w-radius-sm);
+  border-radius: var(--w-r-sm);
 }
 </style>

@@ -2,13 +2,14 @@
   <img v-if="url && !failed" :src="url" :alt="label" :title="label" :class="['w-game-icon', $style.icon]" :style="box"
     loading="lazy" draggable="false" @error="failed = true">
   <i v-else-if="fa" :class="[fa, $style.fa]" :style="box" :title="label" />
+  <span v-else :class="$style.blank" :style="box" :title="label" />
 </template>
 
 <script setup lang="ts">
 // Game art for currency, items, gems and league mechanics (P18). Pass one of
 // `currency`, `item` (+ `ns`), `mechanic` or a direct `src`. Sizes follow the
 // icon grid: sm 16, md 20, lg 24. Falls back to a Font Awesome icon if the art
-// is missing or fails to load.
+// is missing or fails to load, or an empty box of the same size so rows stay aligned.
 import { computed, ref, watch } from 'vue'
 import type { BaseType } from '@/assets/data/interfaces'
 import { CURRENCY_ICONS, gameIcon, mechanicIcon } from './game-icons'
@@ -45,5 +46,6 @@ const box = computed(() => {
 
 <style module>
 .icon { display: inline-block; vertical-align: middle; }
+.blank { display: inline-block; flex: none; }
 .fa { display: inline-grid; place-items: center; font-size: calc(var(--w-icon-sm) * 0.75); color: var(--w-dim); flex: none; }
 </style>

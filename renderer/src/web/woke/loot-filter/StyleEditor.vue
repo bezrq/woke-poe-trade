@@ -167,7 +167,7 @@ function copy (tier: string) {
   min-height: 56px;
   padding: 10px;
   background: #2b2a26;
-  border-radius: var(--w-radius-sm);
+  border-radius: var(--w-r-sm);
 }
 .grid {
   display: grid;
@@ -188,7 +188,7 @@ function copy (tier: string) {
   background: var(--w-panel-2);
   color: var(--w-fg);
   border: 1px solid var(--w-line);
-  border-radius: var(--w-radius-sm);
+  border-radius: var(--w-r-sm);
   padding: 2px 4px;
   font-size: var(--w-text-sm);
 }

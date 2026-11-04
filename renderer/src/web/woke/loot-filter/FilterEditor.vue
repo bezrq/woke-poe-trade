@@ -410,7 +410,7 @@ function openFolder () {
   padding: 6px 8px;
   background: var(--w-panel-2);
   border: 1px solid transparent;
-  border-radius: var(--w-radius-sm);
+  border-radius: var(--w-r-sm);
   color: var(--w-fg);
   text-align: left;
   cursor: pointer;
@@ -459,7 +459,7 @@ function openFolder () {
   background: var(--w-panel-2);
   color: var(--w-fg);
   border: 1px solid var(--w-line);
-  border-radius: var(--w-radius-sm);
+  border-radius: var(--w-r-sm);
   padding: 2px 4px;
 }
 </style>

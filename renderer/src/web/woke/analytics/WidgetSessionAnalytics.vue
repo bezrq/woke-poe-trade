@@ -472,34 +472,34 @@ const tiles = computed(() => mapTileRows(inView.value, props.config.unit, divine
   padding: 8px;
   background: var(--w-panel-2);
   border: 1px solid var(--w-line-soft);
-  border-radius: var(--w-radius-sm);
+  border-radius: var(--w-r-sm);
 }
 .kv { display: grid; grid-template-columns: auto 1fr auto 1fr; gap: 2px 12px; }
-.k { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--w-faint); margin-bottom: 2px; }
-.bar { height: 7px; border-radius: 4px; background: var(--w-panel-3); position: relative; overflow: hidden; }
-.bar i { position: absolute; inset: 0 auto 0 0; background: var(--w-accent); border-radius: 4px; }
-.timeBar { height: 4px; border-radius: 3px; background: var(--w-panel-3); position: relative; overflow: hidden; }
+.k { font-size: var(--w-fs-xs); text-transform: uppercase; letter-spacing: 0.08em; color: var(--w-faint); margin-bottom: 2px; }
+.bar { height: 7px; border-radius: var(--w-r-sm); background: var(--w-panel-3); position: relative; overflow: hidden; }
+.bar i { position: absolute; inset: 0 auto 0 0; background: var(--w-accent); border-radius: var(--w-r-sm); }
+.timeBar { height: 4px; border-radius: var(--w-r-sm); background: var(--w-panel-3); position: relative; overflow: hidden; }
 .timeBar i { position: absolute; top: 0; bottom: 0; left: 0; background: var(--w-accent); opacity: 0.75; }
 .timeBar i.other { background: var(--w-faint); opacity: 1; }
 .loot {
-  font-size: 11px;
+  font-size: var(--w-fs-xs);
   padding: 0 6px;
-  border-radius: 3px;
+  border-radius: var(--w-r-sm);
   background: var(--w-panel-3);
   border: 1px solid transparent;
   white-space: nowrap;
 }
 .loot:hover { border-color: var(--w-line-strong); }
 .moving { border-color: var(--w-accent); }
-.flag { font-size: 10px; color: var(--w-warn); border: 1px solid var(--w-warn); border-radius: 3px; padding: 0 4px; opacity: 0.85; }
+.flag { font-size: var(--w-fs-xs); color: var(--w-warn); border: 1px solid var(--w-warn); border-radius: var(--w-r-sm); padding: 0 4px; opacity: 0.85; }
 .input {
   height: 24px;
   padding: 0 8px;
-  font-size: 12px;
+  font-size: var(--w-fs-md);
   color: var(--w-fg);
   background: var(--w-panel-2);
   border: 1px solid var(--w-line);
-  border-radius: var(--w-radius-sm);
+  border-radius: var(--w-r-sm);
 }
 .input:focus { outline: none; border-color: var(--w-accent); }
 </style>

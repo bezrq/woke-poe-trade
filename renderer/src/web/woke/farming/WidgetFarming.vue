@@ -518,11 +518,11 @@ onUnmounted(() => { logListener.abort() })
 .input {
   height: 26px;
   padding: 0 8px;
-  font-size: 12.5px;
+  font-size: var(--w-fs-md);
   color: var(--w-fg);
   background: var(--w-panel-2);
   border: 1px solid var(--w-line);
-  border-radius: var(--w-radius-sm);
+  border-radius: var(--w-r-sm);
 }
 .input:focus { outline: none; border-color: var(--w-accent); }
 .hero {
@@ -534,12 +534,12 @@ onUnmounted(() => { logListener.abort() })
   border-bottom: 1px solid var(--w-line);
 }
 .k {
-  font-size: 10.5px;
+  font-size: var(--w-fs-xs);
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--w-faint);
 }
-.big { font-size: 17px; font-weight: 500; }
+.big { font-size: var(--w-fs-xl); font-weight: 500; }
 .stats {
   display: grid;
   grid-template-columns: auto 1fr auto 1fr;
@@ -555,7 +555,7 @@ onUnmounted(() => { logListener.abort() })
   padding: 6px 8px;
   background: var(--w-panel-2);
   border: 1px solid var(--w-line-soft);
-  border-radius: var(--w-radius-sm);
+  border-radius: var(--w-r-sm);
 }
 .histGrid { grid-template-columns: minmax(0, 1fr) 40px 44px 64px 64px; }
 </style>

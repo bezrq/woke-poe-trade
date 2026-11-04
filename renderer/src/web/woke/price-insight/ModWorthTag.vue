@@ -38,14 +38,14 @@ const title = computed(() => {
 <style module>
 .tag {
   align-self: center;
-  font-family: var(--w-num, ui-monospace, monospace);
-  font-size: 11px;
+  font-family: var(--w-num);
+  font-size: var(--w-fs-xs);
   line-height: 16px;
   padding: 0 5px;
-  border-radius: 3px;
+  border-radius: var(--w-r-sm);
   white-space: nowrap;
 }
-.carry { background: var(--w-accent-soft, rgba(212, 166, 74, .14)); color: var(--w-accent, #d4a64a); }
-.adds { background: var(--w-panel-3, #374151); color: var(--w-fg, #e5e7eb); }
-.nothing { color: var(--w-faint, #6b7280); }
+.carry { background: var(--w-accent-soft); color: var(--w-accent); }
+.adds { background: var(--w-panel-3); color: var(--w-fg); }
+.nothing { color: var(--w-faint); }
 </style>

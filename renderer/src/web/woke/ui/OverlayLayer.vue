@@ -15,7 +15,7 @@
     </template>
   </div>
 
-  <div v-for="t in list" :key="t.id" :class="[$style.toast, 'w-enter']" :style="{ left: `${t.x}px`, top: `${t.y}px` }" role="status">
+  <div v-for="t in list" :key="t.id" :class="[$style.toast, 'w-enter']" :style="{ left: `${t.x / scale}px`, top: `${t.y / scale}px` }" role="status">
     <span class="w-trunc">{{ t.text }}</span>
     <button v-if="t.undo" type="button" :class="$style.undo" @click="undoToast(t.id)">Undo</button>
     <WKbd v-if="t.undo" keys="Ctrl + Z" />
@@ -33,14 +33,23 @@ const list = toasts
 const menuEl = ref<HTMLElement | null>(null)
 const hl = ref(-1)
 const size = ref({ w: 0, h: 0 })
+// Menus and notes follow the panel size setting like panels do. With CSS zoom,
+// left/top are in zoomed units, so screen coordinates are divided by it.
+const scale = ref(1)
+function readScale () {
+  scale.value = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--w-ui-scale')) || 1
+}
 
+watch(toasts, readScale)
 watch(menu, async (m) => {
   hl.value = -1
   if (!m) return
+  readScale()
   await nextTick()
   const el = menuEl.value
   if (!el) return
-  size.value = { w: el.offsetWidth, h: el.offsetHeight }
+  const r = el.getBoundingClientRect()
+  size.value = { w: r.width, h: r.height }
   el.focus({ preventScroll: true })
 })
 
@@ -48,9 +57,9 @@ watch(menu, async (m) => {
 const menuPos = computed(() => {
   const m = menu.value
   if (!m) return {}
-  const x = Math.min(m.x, window.innerWidth - size.value.w - 8)
+  const x = Math.max(8, Math.min(m.x, window.innerWidth - size.value.w - 8))
   const y = m.y + size.value.h > window.innerHeight - 8 ? Math.max(8, m.y - size.value.h) : m.y
-  return { left: `${Math.max(8, x)}px`, top: `${y}px` }
+  return { left: `${x / scale.value}px`, top: `${y / scale.value}px` }
 })
 
 function pick (item: MenuEntry) {
@@ -92,6 +101,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKey))
   border: 1px solid var(--w-line-strong); border-radius: var(--w-r-md); box-shadow: var(--w-shadow);
   font-family: var(--w-body); font-size: var(--w-fs-md); color: var(--w-fg);
   outline: none;
+  zoom: var(--w-ui-scale, 1);
 }
 .item {
   display: flex; align-items: center; gap: var(--w-s2); width: 100%; height: var(--w-row-h);
@@ -110,6 +120,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKey))
   padding: 5px 6px 5px 10px; font-family: var(--w-body); font-size: var(--w-fs-sm); color: var(--w-fg);
   background: var(--w-panel-3); border: 1px solid var(--w-line-strong); border-radius: var(--w-r-md);
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5); pointer-events: auto;
+  zoom: var(--w-ui-scale, 1);
 }
 .undo { color: var(--w-accent); font-weight: 600; padding: 0 4px; }
 .undo:hover { text-decoration: underline; }

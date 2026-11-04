@@ -103,12 +103,12 @@ function pick (value: string) {
   margin-bottom: 0.5rem;
 }
 .lbl {
-  font-size: 12px;
-  color: var(--w-dim, #9ca3af);
+  font-size: var(--w-fs-md);
+  color: var(--w-dim);
 }
 .src {
-  font-size: 11px;
-  color: var(--w-faint, #6b7280);
+  font-size: var(--w-fs-xs);
+  color: var(--w-faint);
   white-space: nowrap;
 }
 </style>

@@ -79,7 +79,7 @@ const emptyText = computed(() => {
 .head { display: flex; align-items: center; gap: 6px; }
 .chart { display: block; width: 100%; height: auto; }
 .grid { stroke: var(--w-line-soft, var(--w-line)); stroke-width: 1; }
-.lab { fill: var(--w-faint); font-family: var(--w-num); font-size: 9.5px; }
+.lab { fill: var(--w-faint); font-family: var(--w-num); font-size: var(--w-fs-xs); }
 .area { fill: var(--w-accent); opacity: 0.12; }
 .line { fill: none; stroke: var(--w-accent); stroke-width: 1.6; stroke-linejoin: round; }
 .pt { fill: var(--w-accent); }
