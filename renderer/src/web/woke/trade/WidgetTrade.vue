@@ -82,6 +82,7 @@ export default {
 <script setup lang="ts">
 import { computed, inject, nextTick, onUnmounted, reactive, shallowRef, watch } from 'vue'
 import { MainProcess } from '@/web/background/IPC'
+import { AppConfig } from '@/web/Config'
 import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
 import { WPanel, WTabs, WEmpty, WButton, WBanner, WSkeleton, WKbd, openMenu, toast, CURRENCY_ICONS } from '../ui'
@@ -200,7 +201,7 @@ const panel = shallowRef<InstanceType<typeof WPanel> | null>(null)
 const seenAtStart = new Set<string>()
 
 function handle (line: string, live: boolean) {
-  const ev = parseTradeLine(line)
+  const ev = parseTradeLine(line, Date.now(), AppConfig().language)
   if (!ev) return
   // Live lines use this computer's clock, so offers age the same way
   // whatever the log's clock says. Trades keep the log's time: it names
@@ -239,7 +240,7 @@ logTail().then(tail => {
   const until = Date.now() + 60_000
   for (const line of tail.lines) {
     if (seenLive.has(line)) continue
-    const ev = parseTradeLine(line, 0)
+    const ev = parseTradeLine(line, 0, AppConfig().language)
     if (!ev || ev.at < since || ev.at > until) continue
     // The same line may also arrive live if it was written as the app
     // started: count it once.

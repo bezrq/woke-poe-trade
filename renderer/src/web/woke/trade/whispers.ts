@@ -2,6 +2,8 @@
 // (in and out), people joining or leaving your area, and trade results.
 // English client lines only, like the other log readers.
 import { lineTime } from '../campaign/log-tail'
+import { parseChatLine } from '@/web/client-log/parse-chat'
+import type { LogEntry } from '@/web/client-log/parse-chat'
 
 export interface TradePrice {
   amount: number
@@ -130,7 +132,31 @@ const TO_RE = /^@To (?:<(?<guild>.+?)> )?(?<who>[^:]+?): (?<body>.+)$/
 const JOINED_RE = /^: (?<who>\S+) has joined the area\.$/
 const LEFT_RE = /^: (?<who>\S+) has left the area\.$/
 
-export function parseTradeLine (line: string, fallbackAt = Date.now()): TradeEvent | null {
+// Other client languages: APT's chat parser knows every language's whisper
+// and trade site formats.
+function localizedWhisper (line: string, at: number, language: string): TradeEvent | null {
+  let entry: LogEntry | null
+  try { entry = parseChatLine(line, language) } catch { return null }
+  if (!entry?.charName) return null
+  const channel = entry.сhannel as string
+  if (channel !== 'whisper.from' && channel !== 'whisper.to') return null
+  const t = entry.trade
+  const offer: TradeOffer | null = t
+    ? {
+        item: t.item.name,
+        qty: t.item.amount ?? 1,
+        price: Number.isFinite(t.price.amount) ? { amount: t.price.amount, currency: currencyName(t.price.name) } : null,
+        league: '',
+        tab: t.tab ?? null,
+        note: '',
+        bulk: t.item.amount != null
+      }
+    : parseOffer(entry.body)
+  return { kind: channel === 'whisper.from' ? 'whisper-in' : 'whisper-out', at, who: entry.charName, body: entry.body, offer }
+}
+
+// `language`: the game client's (Settings → Game), for whispers in other languages.
+export function parseTradeLine (line: string, fallbackAt = Date.now(), language = 'en'): TradeEvent | null {
   const cut = line.indexOf('] ')
   if (cut < 0) return null
   const text = line.slice(cut + 2).trimEnd()
@@ -145,7 +171,7 @@ export function parseTradeLine (line: string, fallbackAt = Date.now()): TradeEve
       const body = m.groups!.body
       return { kind: 'whisper-out', at, who: m.groups!.who, body, offer: parseOffer(body) }
     }
-    return null
+    return localizedWhisper(line, at, language)
   }
   if (!text.startsWith(': ')) return null
   if ((m = JOINED_RE.exec(text))) return { kind: 'joined', at, who: m.groups!.who }
