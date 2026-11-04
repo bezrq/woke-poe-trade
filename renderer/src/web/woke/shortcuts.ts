@@ -10,7 +10,7 @@ import { LAB_TYPE, hotkeyTarget as labHotkeyTarget } from './lab/lab'
 import type { LabWidget } from './lab/lab'
 import { MAP_MODS_TYPE, MAP_MODS_TARGET } from './map-mods/widget'
 import type { MapModsWidget } from './map-mods/widget'
-import { MAP_SCAN_TYPE, scanHotkeyTarget } from './map-mods/scan'
+import { MAP_SCAN_TYPE, rollHotkeyTarget, scanHotkeyTarget } from './map-mods/scan'
 import type { MapScanWidget } from './map-mods/scan'
 import { isWidgetTypeOn } from './modules'
 import { ESSENCE_SCAN_TYPE, essenceHotkeyTarget } from './essence-scan/widget'
@@ -82,8 +82,14 @@ export function wokeShortcutsFor (widget: Widget, config: { woke?: { setupDone: 
   }
   if (widget.wmType === MAP_SCAN_TYPE) {
     const scan = widget as MapScanWidget
-    if (!scan.hotkey) return []
-    return [{ shortcut: scan.hotkey, keepModKeys: true, action: { type: 'trigger-event', target: scanHotkeyTarget(widget.wmId) } }]
+    const actions: ShortcutAction[] = []
+    if (scan.hotkey) {
+      actions.push({ shortcut: scan.hotkey, keepModKeys: true, action: { type: 'trigger-event', target: scanHotkeyTarget(widget.wmId) } })
+    }
+    if (scan.rollHotkey) {
+      actions.push({ shortcut: scan.rollHotkey, keepModKeys: true, action: { type: 'trigger-event', target: rollHotkeyTarget(widget.wmId) } })
+    }
+    return actions
   }
   if (widget.wmType === ESSENCE_SCAN_TYPE) {
     const scan = widget as EssenceScanWidget

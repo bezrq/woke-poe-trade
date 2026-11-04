@@ -3,6 +3,8 @@
     <div class="grid gap-2 items-center" style="grid-template-columns: auto 1fr;">
       <span>Hotkey: turn scan mode on/off</span>
       <hotkey-input v-model="hotkey" />
+      <span>Hotkey: rolling mode (lock onto the hovered map)</span>
+      <hotkey-input v-model="rollHotkey" />
     </div>
     <label class="flex items-center gap-2">
       <input type="checkbox" v-model="alertOnPass">
@@ -12,6 +14,8 @@
       Scan mode reads the tooltip of the map under your mouse with on-screen text recognition,
       so no key press is needed per map. It re-reads whenever the tooltip changes, so rerolling the same
       map (chaos spamming) updates the verdict. Ratings come from the active profile in the Map mods widget.
+      For long reroll sessions, hover the map and press the rolling hotkey: it finds the tooltip once,
+      then reads only that box (faster) until you press the hotkey again.
       It needs Windows and the OCR files used by APT's heist gem reader.
     </div>
   </div>
@@ -30,6 +34,7 @@ export default defineComponent({
   setup (props) {
     return {
       hotkey: configModelValue(() => props.configWidget, 'hotkey'),
+      rollHotkey: configModelValue(() => props.configWidget, 'rollHotkey'),
       alertOnPass: configModelValue(() => props.configWidget, 'alertOnPass')
     }
   }
