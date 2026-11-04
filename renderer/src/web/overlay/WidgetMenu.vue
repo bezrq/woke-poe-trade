@@ -1,53 +1,16 @@
 <template>
-  <widget :config="config" :hideable="false" :removable="false" move-handles="corners" v-slot="{ isEditing }">
-    <div class="widget-default-style">
-      <div class="p-1 flex gap-1 items-center text-base">
-        <template v-for="widget in widgets" :key="widget.wmId">
-          <button @click="toggle(widget)"
-            :class="widget.wmWants === 'show' ? 'border-gray-500' : 'border-gray-800'"
-            class="bg-gray-800 rounded text-gray-100 p-2 leading-none whitespace-nowrap border"
-          >
-            <i v-if="widget.icon" class="fas align-bottom" :class="widget.icon" />
-            <template v-if="widget.title">{{ widget.title }}</template>
-          </button>
-        </template>
-        <ui-popover>
-          <template #target>
-            <button class="rounded text-gray-600 px-2 py-1 leading-none"><i class="fas fa-ellipsis-h"></i></button>
-          </template>
-          <template #content>
-            <div class="flex flex-col justify-center text-base">
-              <div class="text-gray-600 text-sm px-1 select-none whitespace-nowrap">{{ t(':add') }}</div>
-              <button v-for="spec in instantiableWidgets" :key="spec.type"
-                class="text-left hover:bg-gray-400 rounded px-1 whitespace-nowrap"
-                @click="createOfType(spec.type)">{{ t(spec.trNameKey ?? spec.type) }}</button>
-            </div>
-          </template>
-        </ui-popover>
-      </div>
-      <div v-if="isEditing" class="text-gray-100 px-2 pb-1 whitespace-nowrap">
-        <ui-toggle v-model="config.alwaysShow">{{ t(':always_show') }}</ui-toggle>
-      </div>
-      <div v-else class="px-1 pb-1">
-        <textarea class="px-2 py-1.5 bg-gray-700 rounded resize-none block"
-          rows="1" spellcheck="false"
-          :placeholder="t(':price_check')" @input="handleItemPaste"></textarea>
-      </div>
-    </div>
+  <widget :config="config" :hideable="false" :removable="false" readonly move-handles="corners">
+    <woke-tab-bar :config="config" @paste="handleItemPaste" />
   </widget>
 </template>
 
 <script lang="ts">
-import { defineComponent, PropType, computed, inject } from 'vue'
-import UiToggle from '@/web/ui/UiToggle.vue'
-import UiPopover from '@/web/ui/Popover.vue'
-import { Widget as IWidget, WidgetManager, WidgetMenu, WidgetSpec } from './interfaces'
-import { registry } from './widget-registry'
+import { defineComponent, PropType } from 'vue'
+import { WidgetMenu, WidgetSpec } from './interfaces'
 import { Host } from '@/web/background/IPC'
-import { AppConfig } from '@/web/Config'
-import { isWidgetTypeOn } from '@/web/woke/modules'
 import Widget from './Widget.vue'
-import { useI18nNs } from '@/web/i18n'
+// woke: the bar itself (tabs, pins, right-click menu, add list) lives in woke/.
+import WokeTabBar from '@/web/woke/tab-bar/TabBar.vue'
 
 export default defineComponent({
   widget: {
@@ -70,54 +33,15 @@ export default defineComponent({
       }
     }
   } satisfies WidgetSpec,
-  components: { Widget, UiToggle, UiPopover },
+  components: { Widget, WokeTabBar },
   props: {
     config: {
       type: Object as PropType<WidgetMenu>,
       required: true
     }
   },
-  setup (props) {
-    const wm = inject<WidgetManager>('wm')!
-
-    const widgets = computed(() => {
-      return wm.widgets.value.filter(widget =>
-        !widget.wmFlags.includes('menu::skip') &&
-        isWidgetTypeOn(AppConfig(), widget.wmType) &&
-        (props.config.alwaysShow || (widget.wmWants === 'hide'))
-      ).map((widget) => {
-        const regexMatch = widget.wmTitle
-          .match(/^(?:\{icon=(?<icon>[^}]+)\}\s*)?(?<title>.*)$/)
-        return {
-          wmId: widget.wmId,
-          wmWants: widget.wmWants,
-          title: regexMatch?.groups!.title ||
-            ((!regexMatch?.groups!.icon) ? `#${widget.wmId}` : undefined),
-          icon: regexMatch?.groups!.icon
-        }
-      })
-    })
-
-    const { t } = useI18nNs('widget_menu')
-
+  setup () {
     return {
-      t,
-      widgets,
-      instantiableWidgets: computed(() => {
-        return registry.widgets
-          .filter(({ widget }) => widget.instances === 'multi' && isWidgetTypeOn(AppConfig(), widget.type))
-          .map(({ widget }) => widget)
-      }),
-      createOfType (type: string) {
-        wm.create(type)
-      },
-      toggle (widget: Pick<IWidget, 'wmId' | 'wmWants'>) {
-        if (widget.wmWants === 'hide') {
-          wm.show(widget.wmId)
-        } else {
-          wm.hide(widget.wmId)
-        }
-      },
       handleItemPaste (e: Event) {
         const target = e.target as HTMLInputElement
         const inputRect = target.getBoundingClientRect()
