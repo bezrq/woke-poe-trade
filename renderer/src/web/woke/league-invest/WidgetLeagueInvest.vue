@@ -152,6 +152,7 @@ import { leagueDay, leagueStartDates } from './league-start'
 import { readZip } from './zip'
 import DockItem from '../dock/DockItem.vue'
 import { useZone } from '../shared/zone'
+import { useVisibleClock } from '../shared/visible-clock'
 import type { LeagueInvestWidget } from './widget'
 import { changedMatchers, isChanged } from './widget'
 
@@ -217,12 +218,18 @@ watch(league, async (id) => {
 }, { immediate: true })
 
 const start = computed(() => props.config.leagueStart || apiStart.value)
+// The overlay runs for days: the league day moves on at midnight UTC. The
+// clock is read on every zone change (the dock icon shows in town) and each
+// minute while the panel is open.
+const zone = useZone()
+const clock = shallowRef(Date.now())
+useVisibleClock(() => props.config, () => { clock.value = Date.now() }, 60_000)
+watch(() => zone.enteredAt, () => { clock.value = Date.now() })
 const day = computed<number | null>(() => {
   if (props.config.dayOverride != null) return props.config.dayOverride
-  return start.value ? Math.max(0, leagueDay(start.value)) : null
+  return start.value ? Math.max(0, leagueDay(start.value, clock.value)) : null
 })
 
-const zone = useZone()
 const dockShow = computed(() => day.value != null && day.value <= 14 && histories.value.length > 0 &&
   (zone.kind === 'town' || zone.kind === 'hideout'))
 
