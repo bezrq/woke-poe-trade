@@ -31,7 +31,7 @@
         </w-path-field>
         <div v-if="found.length" :class="$style.found">
           <button v-for="f in found" :key="f.path" type="button" :class="$style.pick" @click="config.clientLog = f.path; found = []">
-            <span class="w-mono w-trunc">{{ f.path }}</span><span class="w-dim">{{ f.source === 'running' ? 'running game' : `written ${ago(f.modified)}` }}</span>
+            <span class="w-mono w-trunc">{{ f.path }}</span><span class="w-dim">{{ f.source === 'running' ? 'running game' : `written ${agoPhrase(f.modified)}` }}</span>
           </button>
         </div>
         <div v-else-if="foundNone" class="w-dim" :class="$style.small">No Client.txt found. Start the game once, or use Browse.</div>
@@ -64,7 +64,7 @@ import { computed, shallowRef } from 'vue'
 import type { Config } from '@/web/Config'
 import { AppConfig } from '@/web/Config'
 import { useLeagues } from '@/web/background/Leagues'
-import { WButton, WField, WPathField, WSelect, WSettingRow, WSettingSection, WToggle, ago } from '../ui'
+import { WButton, WField, WPathField, WSelect, WSettingRow, WSettingSection, WToggle, agoPhrase } from '../ui'
 import { hostRequest } from '../shared/host'
 
 const props = defineProps<{ config: Config }>()

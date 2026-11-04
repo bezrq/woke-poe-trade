@@ -3,7 +3,7 @@
     <div :class="$style.head">
       <WToggle v-model="config.priceTiers.on">Re-tier from poe.ninja prices</WToggle>
       <span class="w-dim text-xs w-num" :title="league ? `League: ${league}` : ''">
-        <template v-if="updatedAt">{{ league }} · prices {{ ago(updatedAt) }} old</template>
+        <template v-if="updatedAt">{{ league }} · prices from {{ agoPhrase(updatedAt) }}</template>
         <template v-else>waiting for prices</template>
       </span>
       <span class="grow" />
@@ -77,7 +77,7 @@
 
 <script setup lang="ts">
 import { computed, reactive, watch } from 'vue'
-import { WButton, WChip, WEmpty, WField, WPrice, WSegmented, WToggle, ago, ninjaIcon, openMenu, toast } from '../ui'
+import { WButton, WChip, WEmpty, WField, WPrice, WSegmented, WToggle, agoPhrase, ninjaIcon, openMenu, toast } from '../ui'
 import { usePoeninja } from '@/web/background/Prices'
 import LabelPreview from './LabelPreview.vue'
 import type { LootFilterStore } from './store'
