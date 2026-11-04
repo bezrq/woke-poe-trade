@@ -21,6 +21,9 @@ import { POB_BUILDS_TYPE } from './pob-builds/widget'
 import WidgetCampaign from './campaign/WidgetCampaign.vue'
 import CampaignEditor from './campaign/campaign-editor.vue'
 import { CAMPAIGN_TYPE } from './campaign/widget'
+import WidgetAtlas from './atlas/WidgetAtlas.vue'
+import AtlasEditor from './atlas/atlas-editor.vue'
+import { ATLAS_TYPE } from './atlas/widget'
 
 type WidgetComponent = Component & { widget: WidgetSpec }
 
@@ -29,14 +32,16 @@ export const wokeWidgets: WidgetComponent[] = [
   WidgetTradeSearches as unknown as WidgetComponent,
   WidgetMarketTracker as unknown as WidgetComponent,
   WidgetPobBuilds as unknown as WidgetComponent,
-  WidgetCampaign as unknown as WidgetComponent
+  WidgetCampaign as unknown as WidgetComponent,
+  WidgetAtlas as unknown as WidgetComponent
 ]
 
 const editors: Record<string, Component> = {
   [REGEX_LIBRARY_TYPE]: RegexLibraryEditor,
   [TRADE_SEARCHES_TYPE]: TradeSearchesEditor,
   [POB_BUILDS_TYPE]: PobBuildsEditor,
-  [CAMPAIGN_TYPE]: CampaignEditor
+  [CAMPAIGN_TYPE]: CampaignEditor,
+  [ATLAS_TYPE]: AtlasEditor
 }
 
 export function wokeSettingsFor (wmType: string | undefined): Component | undefined {
