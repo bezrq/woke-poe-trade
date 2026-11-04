@@ -1,0 +1,74 @@
+// Turns strategy text copied from a guide, video description or forum post
+// into a strategy: the atlas tree link, scarab lines, map device notes, a
+// map regex and the rest as notes. Also prices scarab lines.
+import type { PriceItem } from '../market/types'
+import type { AtlasStrategy } from './widget'
+
+const TREE_URL = /https?:\/\/(?:www\.)?(?:pathofexile\.com\/(?:fullscreen-)?atlas-skill-tree\/[^\s)"']+|poeplanner\.com\/[^\s)"']+)/i
+const DEVICE_WORDS = /\b(map device|kirac|atlas memor|memory|sextant|omen|altar|eldritch|maven'?s invitation|delirium orb|map craft|alch|chisel|scour|vaal orb|8.?mod)/i
+const REGEX_LINE = /^"[^"]*!?[^"]*"(\s+"[^"]*")*$/
+
+export interface ScarabLine { qty: number, name: string }
+
+// "4x Ambush Scarab of Potency", "Ambush Scarab of Potency x2", "2 Breach Scarabs"
+export function parseScarabs (text: string): ScarabLine[] {
+  const out: ScarabLine[] = []
+  for (const raw of text.split(/\r?\n|,|;/)) {
+    const line = raw.replace(/^[\s\-*•·]+/, '').trim()
+    if (!/scarab/i.test(line)) continue
+    let qty = 1
+    let name = line
+    const pre = /^(\d+)\s*[x×]?\s+(.+)$/i.exec(line)
+    const post = /^(.+?)\s*[x×]\s*(\d+)$/i.exec(line)
+    if (pre) { qty = Number(pre[1]); name = pre[2] } else if (post) { qty = Number(post[2]); name = post[1] }
+    name = name.replace(/\bScarabs\b/i, 'Scarab').trim()
+    if (name) out.push({ qty: Math.max(1, Math.min(qty, 20)), name })
+  }
+  return out
+}
+
+export function parseGuideText (text: string): Omit<AtlasStrategy, 'id'> {
+  const lines = text.split(/\r?\n/).map(l => l.trim())
+  const treeUrl = TREE_URL.exec(text)?.[0] ?? ''
+  const scarabs: string[] = []
+  const device: string[] = []
+  const notes: string[] = []
+  let regex = ''
+  let name = ''
+  for (const line of lines) {
+    if (!line) continue
+    const clean = line.replace(/^[\s\-*•·]+/, '')
+    if (TREE_URL.test(line) && clean.replace(TREE_URL, '').replace(/[^\w]/g, '').length < 15) continue
+    if (!regex && REGEX_LINE.test(clean)) { regex = clean; continue }
+    if (/scarab/i.test(clean)) { scarabs.push(clean); continue }
+    if (DEVICE_WORDS.test(clean)) { device.push(clean); continue }
+    if (!name && clean.length <= 60 && !/https?:\/\//.test(clean)) { name = clean.replace(/[:#]+$/, ''); continue }
+    notes.push(clean)
+  }
+  return {
+    name: name || 'Imported strategy',
+    league: '',
+    tags: [],
+    treeUrl,
+    scarabs: scarabs.join('\n'),
+    device: device.join('\n'),
+    regex,
+    notes: notes.join('\n')
+  }
+}
+
+export interface PricedScarab extends ScarabLine { item: PriceItem | null }
+
+// Matches each line to a poe.ninja scarab: exact name first, then the
+// shortest scarab name containing it ("Ambush Scarab" → "Ambush Scarab").
+export function priceScarabs (lines: ScarabLine[], items: PriceItem[]): PricedScarab[] {
+  const scarabs = items.filter(i => i.type === 'Scarab')
+  return lines.map(l => {
+    const want = l.name.toLowerCase()
+    const exact = scarabs.find(s => s.name.toLowerCase() === want)
+    const loose = exact ?? scarabs
+      .filter(s => s.name.toLowerCase().includes(want) || want.includes(s.name.toLowerCase()))
+      .sort((a, b) => Math.abs(a.name.length - want.length) - Math.abs(b.name.length - want.length))[0]
+    return { ...l, item: loose ?? null }
+  })
+}
