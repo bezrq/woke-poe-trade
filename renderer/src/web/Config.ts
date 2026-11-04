@@ -6,6 +6,7 @@ import type * as widget from './overlay/widgets'
 import type { StashSearchWidget } from './stash-search/widget'
 import { wokeShortcutsFor } from './woke/shortcuts'
 import { filterAptShortcuts, needsGameLog } from './woke/modules'
+import { MAP_CHECK_TYPE, initMapCheckWidget } from './woke/map-mods/map-check'
 import type { WokeModulesConfig } from './woke/modules'
 import type { ItemCheckWidget } from './item-check/widget'
 import type { ItemSearchWidget } from './item-search/widget'
@@ -438,6 +439,10 @@ function upgradeConfig (_config: Config): Config {
     config.useIntlSite = (config.language === 'cmn-Hant' && config.realm === 'pc-ggg')
 
     config.configVersion = 18
+  }
+  // woke: single-instance windows are only created on a fresh config.
+  if (!config.widgets.some(w => w.wmType === MAP_CHECK_TYPE)) {
+    config.widgets.push(initMapCheckWidget(Math.max(0, ...config.widgets.map(w => w.wmId)) + 1))
   }
   /* eslint-enable */
 
