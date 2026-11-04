@@ -118,7 +118,8 @@ export default {
 </script>
 
 <script setup lang="ts">
-import { inject, computed, shallowRef, watch, onUnmounted } from 'vue'
+import { inject, computed, shallowRef, watch } from 'vue'
+import { useVisibleClock } from '../shared/visible-clock'
 import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
 import { useLeagues } from '@/web/background/Leagues'
@@ -167,8 +168,7 @@ const unit = computed({
 })
 const addQuery = shallowRef('')
 const now = shallowRef(Date.now())
-const clock = setInterval(() => { now.value = Date.now() }, 60 * 1000)
-onUnmounted(() => { clearInterval(clock) })
+useVisibleClock(props.config, () => { now.value = Date.now() }, 60 * 1000)
 
 const types = computed(() => Array.from(new Set(latest.value?.items.map(i => i.type) ?? [])).sort())
 const typeOptions = computed(() => [{ value: '', label: 'All categories' }, ...types.value.map(t => ({ value: t, label: t }))])

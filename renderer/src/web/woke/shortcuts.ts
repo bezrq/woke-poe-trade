@@ -24,7 +24,15 @@ import type { RunTimerWidget } from './campaign/run-timer'
 import { FARMING_TYPE, FARMING_LOOT_TARGET } from './farming/farming'
 import type { FarmingWidget } from './farming/farming'
 
-export function wokeShortcutsFor (widget: Widget, config: { woke?: { setupDone: boolean, off: string[] }, widgets: Widget[] }): ShortcutAction[] {
+export const HIDE_ALL_TARGET = 'woke-hide-all'
+
+// Shortcuts that don't belong to one widget.
+export function wokeGlobalShortcuts (config: { woke?: { hideAllHotkey?: string | null } }): ShortcutAction[] {
+  const key = config.woke?.hideAllHotkey
+  return key ? [{ shortcut: key, keepModKeys: true, action: { type: 'trigger-event', target: HIDE_ALL_TARGET } }] : []
+}
+
+export function wokeShortcutsFor (widget: Widget, config: { woke?: { setupDone: boolean, off: string[], hideAllHotkey?: string | null }, widgets: Widget[] }): ShortcutAction[] {
   // Modules that are switched off register no hotkeys.
   if (!isWidgetTypeOn(config, widget.wmType)) return []
   if (widget.wmType === REGEX_LIBRARY_TYPE) {

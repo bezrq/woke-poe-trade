@@ -112,7 +112,8 @@ export default {
 </script>
 
 <script setup lang="ts">
-import { inject, computed, shallowRef, watch, onUnmounted } from 'vue'
+import { inject, computed, shallowRef, watch } from 'vue'
+import { useVisibleClock } from '../shared/visible-clock'
 import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
 import { WPanel, WTabs, WSelect, WSegmented, WField, WPrice, WEmpty, WChip } from '../ui'
@@ -152,8 +153,7 @@ const league = computed(() => leagues.selectedId.value)
 const snapshot = shallowRef<Snapshot | null>(null)
 const expanded = shallowRef<string | null>(null)
 const now = shallowRef(Date.now())
-const clock = setInterval(() => { now.value = Date.now() }, 60 * 1000)
-onUnmounted(() => { clearInterval(clock) })
+useVisibleClock(props.config, () => { now.value = Date.now() }, 60 * 1000)
 
 async function load () {
   if (!league.value) { snapshot.value = null; return }

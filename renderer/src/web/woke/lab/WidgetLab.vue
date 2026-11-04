@@ -54,6 +54,7 @@ export default {
 
 <script setup lang="ts">
 import { inject, computed, shallowRef, watch, nextTick, onUnmounted } from 'vue'
+import { useVisibleClock } from '../shared/visible-clock'
 import { Host, MainProcess } from '@/web/background/IPC'
 import { AppConfig } from '@/web/Config'
 import type { WidgetManager } from '@/web/overlay/interfaces'
@@ -121,8 +122,7 @@ onUnmounted(() => { logListener.abort() })
 const overlayKey = computed(() => AppConfig().overlayKey)
 
 const now = shallowRef(Date.now())
-const clock = setInterval(() => { now.value = Date.now() }, 30 * 1000)
-onUnmounted(() => { clearInterval(clock) })
+useVisibleClock(props.config, () => { now.value = Date.now() }, 30 * 1000)
 const resetIn = computed(() => formatDuration(msUntilLabReset(now.value)))
 
 function urlFor (d: LabDifficulty): string {
