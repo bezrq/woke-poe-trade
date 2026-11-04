@@ -43,6 +43,11 @@
   --w-r-gem: #1ba29b;
   --w-r-currency: #aa9e82;
   --w-r-divination: #7fb5d6;
+  /* Socket colours */
+  --w-s-r: #c8463d;
+  --w-s-g: #59a64a;
+  --w-s-b: #4a78d0;
+  --w-s-w: #d9d4c8;
 
   /* Type */
   --w-head: FontinSmallCaps, FrizQuadrataC, Georgia, serif;

@@ -38,61 +38,9 @@
         </WEmpty>
       </WPanel>
 
-      <WPanel v-if="selectedBuild" :title="selectedBuild.name" width="23rem" max-height="70vh">
-        <template #actions>
-          <button @click="selected = null" class="w-icon-btn" title="Close"><i class="fas fa-times" /></button>
-        </template>
-        <template #toolbar>
-          <WButton size="sm" variant="primary" icon="fas fa-external-link-alt" @click="act(pobApi.open(config, selectedBuild.relPath))">Open in PoB</WButton>
-          <WButton size="sm" @click="act(pobApi.show(config, selectedBuild.relPath))">Show file</WButton>
-          <WButton size="sm" @click="setActive(selectedBuild.relPath)" :disabled="config.activeBuild === selectedBuild.relPath">
-            {{ config.activeBuild === selectedBuild.relPath ? 'Active build' : 'Make active' }}
-          </WButton>
-        </template>
-
-        <div class="pb-2" style="padding-left: var(--w-pad); padding-right: var(--w-pad);">
-          <div v-if="detailsError" class="w-down">{{ detailsError }}</div>
-          <template v-else-if="details">
-            <div class="w-dim pb-2">{{ describe(details) }}</div>
-            <div v-if="details.trees.length" class="pb-2">
-              <div :class="$style.heading">Passive trees</div>
-              <a v-for="t in details.trees" :key="t.title + t.url" :href="safeUrl(t.url)" target="_blank"
-                class="block w-trunc py-0.5 hover:underline" :class="t.isActive ? '' : 'w-dim'">
-                <i class="fas fa-external-link-alt text-xs w-faint" /> {{ t.title }}<span v-if="t.isActive" class="w-accent"> · active</span>
-              </a>
-            </div>
-            <div v-if="details.skills.length" class="pb-2">
-              <div :class="$style.heading">Gem setups</div>
-              <div v-for="(s, i) in details.skills" :key="i" :class="[$style.setup, { 'opacity-50': !s.enabled }]">
-                <div class="w-dim text-xs">
-                  {{ s.label || s.slot || `Group ${i + 1}` }}<span v-if="s.isMain" class="w-accent"> · main</span>
-                </div>
-                <div class="flex flex-wrap gap-x-2">
-                  <span v-for="(g, j) in s.gems" :key="j" class="w-rarity-gem" :class="{ 'line-through opacity-50': !g.enabled }">
-                    {{ g.name }}<span class="w-faint text-xs w-num" v-if="g.level != null"> {{ g.level }}/{{ g.quality ?? 0 }}</span>
-                  </span>
-                </div>
-              </div>
-            </div>
-            <div v-if="gems.length" class="pb-2">
-              <div :class="$style.heading" class="flex">
-                <span>Gems by level</span>
-                <span class="ml-auto normal-case tracking-normal">{{ charLevel != null ? `you are level ${charLevel}` : 'level unknown (campaign tracker reads it)' }}</span>
-              </div>
-              <div v-for="g in gems" :key="g.name" class="flex gap-2 items-baseline py-0.5" :class="{ 'opacity-50': g.when === 'later' }">
-                <span class="w-num w-faint text-xs" style="width: 1.6rem; text-align: right;">{{ g.requiredLevel }}</span>
-                <span class="w-rarity-gem w-trunc">{{ g.name }}</span>
-                <span v-if="g.when === 'soon'" class="w-accent text-xs whitespace-nowrap">soon</span>
-                <span class="ml-auto w-dim text-xs w-trunc" style="max-width: 55%;" :title="g.source ?? 'Not sold in the campaign: buy or drop'">{{ g.source ?? 'trade / drop' }}</span>
-              </div>
-            </div>
-            <div v-if="details.notes">
-              <div :class="$style.heading">Notes</div>
-              <div class="whitespace-pre-wrap w-dim">{{ details.notes }}</div>
-            </div>
-          </template>
-          <WEmpty v-else icon="fas fa-spinner fa-spin">Loading…</WEmpty>
-        </div>
+      <BuildDetail v-if="selectedBuild" :config="config" :entry="selectedBuild" :details="details" @close="selected = null" />
+      <WPanel v-if="selectedBuild && detailsError" title="Couldn't read the build" width="20rem">
+        <div class="w-down" style="padding: var(--w-pad);">{{ detailsError }}</div>
       </WPanel>
     </div>
   </Widget>
@@ -117,11 +65,10 @@ import { inject, computed, shallowRef, watch } from 'vue'
 import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
 import { WPanel, WField, WButton, WEmpty, WListItem } from '../ui'
-import { AppConfig } from '@/web/Config'
-import { CAMPAIGN_TYPE } from '../campaign/widget'
-import type { CampaignWidget } from '../campaign/widget'
-import { nextGems } from './gems'
-import { buildMatches, describe, pobApi, sortBuilds } from './widget'
+import { saveConfig } from '@/web/Config'
+import BuildDetail from './BuildDetail.vue'
+import { useActiveBuild } from './active'
+import { buildMatches, describe, migratePobWidget, pobApi, sortBuilds } from './widget'
 import type { PobBuildEntry, PobDetails } from './widget'
 
 const props = defineProps<{
@@ -138,8 +85,10 @@ if (props.config.wmFlags[0] === 'uninitialized') {
   props.config.pobExe = ''
   props.config.pinned = []
   props.config.activeBuild = null
+  props.config.followChars = {}
   wm.show(props.config.wmId)
 }
+migratePobWidget(props.config)
 
 const builds = shallowRef<PobBuildEntry[]>([])
 const dir = shallowRef('')
@@ -155,12 +104,23 @@ const importing = shallowRef(false)
 const importMsg = shallowRef('')
 const importOk = shallowRef(false)
 
-// Character level and class from the campaign tracker's Client.txt reading.
-const campaign = computed(() => AppConfig<CampaignWidget>(CAMPAIGN_TYPE)?.state)
-const charLevel = computed(() => campaign.value?.level ?? null)
-const gems = computed(() => details.value
-  ? nextGems(details.value, charLevel.value, campaign.value?.className || details.value.className)
-  : [])
+const active = useActiveBuild()
+
+// Follow the character Client.txt shows levelling: a build linked to that
+// name (or, failing that, one whose file name contains it) becomes active.
+watch(active.charName, (name) => {
+  if (!name) return
+  let rel: string | undefined = props.config.followChars[name]
+  if (!rel && name.length >= 4) {
+    const lower = name.toLowerCase()
+    rel = builds.value.find(b => b.name.toLowerCase().includes(lower))?.relPath
+    if (rel) props.config.followChars = { ...props.config.followChars, [name]: rel }
+  }
+  if (rel && rel !== props.config.activeBuild) {
+    props.config.activeBuild = rel
+    saveConfig()
+  }
+})
 
 async function doImport () {
   const input = importText.value.trim()
@@ -194,6 +154,8 @@ async function refresh () {
     const res = await pobApi.list(props.config)
     builds.value = res.builds
     dir.value = res.dir
+    // PoB may have saved the active build meanwhile.
+    active.reload()
   } catch (err) {
     builds.value = []
     error.value = (err as Error).message
@@ -233,31 +195,4 @@ function togglePin (relPath: string) {
     : [...props.config.pinned, relPath]
 }
 
-function setActive (relPath: string) {
-  props.config.activeBuild = relPath
-}
-
-// Tree links come from build files, which may be shared by others:
-// only web links are opened (window.open URLs go to the OS shell).
-function safeUrl (url: string) {
-  return /^https?:\/\//i.test(url) ? url : undefined
-}
-
-function act (p: Promise<unknown>) {
-  p.catch((err: Error) => { detailsError.value = err.message })
-}
 </script>
-
-<style module>
-.heading {
-  padding: 4px 0 2px;
-  font-size: 10.5px;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--w-faint);
-}
-.setup {
-  padding: 4px 0;
-  border-bottom: 1px solid var(--w-line-soft);
-}
-</style>
