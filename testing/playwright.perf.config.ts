@@ -9,5 +9,7 @@ export default defineConfig({
   workers: 1,
   retries: 0,
   reporter: [['list']],
-  outputDir: 'perf-results/test-results'
+  outputDir: 'perf-results/test-results',
+  // A trace snapshots the DOM on every action, which would be measured too.
+  use: { ...base.use, trace: 'off' }
 })

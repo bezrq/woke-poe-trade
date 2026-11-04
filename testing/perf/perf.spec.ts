@@ -126,7 +126,10 @@ test('every module on: startup, a map, a price check, memory', async ({ overlay,
     const probe = await readProbe(page)
     const per10s = (n: number) => n * 10_000 / WINDOW_MS
     const d = (name: string) => (after[name] ?? 0) - (before[name] ?? 0)
-    record(`${key}.wakeups`, `${label}: timer + frame callbacks / 10 s`, per10s(probe.timeouts + probe.intervals + probe.frames + probe.idleCallbacks), '', 'count')
+    record(`${key}.wakeups`, `${label}: timer callbacks / 10 s`, per10s(probe.timeouts + probe.intervals + probe.idleCallbacks), '', 'count')
+    // A few frames can come from something finishing as the window starts;
+    // an animation loop would be hundreds.
+    record(`${key}.frames`, `${label}: animation frames / 10 s`, per10s(probe.frames), '', 'count')
     record(`${key}.messages`, `${label}: messages app ↔ overlay / 10 s`, per10s(total(probe.sent) + total(probe.received)), '', 'count')
     record(`${key}.layouts`, `${label}: layouts / 10 s`, per10s(d('LayoutCount')), '', 'count')
     record(`${key}.styles`, `${label}: style recalcs / 10 s`, per10s(d('RecalcStyleCount')), '', 'count')
@@ -214,6 +217,7 @@ function report () {
       // Counts and sizes: 15% headroom. Times: 3x, since CI machines vary.
       const factor = m.kind === 'time' ? 3 : 1.15
       next[key] = Math.ceil(Math.max(m.value * factor, m.value + 2))
+      if (key.endsWith('.frames')) next[key] = Math.max(next[key], 30)
       // No headroom: any OCR worker loaded before a scan is a regression.
       if (key === 'memory.ocrWorkers') next[key] = m.value
     }

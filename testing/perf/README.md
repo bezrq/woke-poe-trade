@@ -7,7 +7,7 @@
 | --- | --- | --- |
 | Bundle | JS loaded at startup, all JS | size |
 | Startup | bundle evaluated, app on screen, page load → hotkeys registered | time |
-| In a map (mouse still, then moving at 125 Hz) | timer/frame callbacks, messages between app and overlay, layouts, style recalcs, overlay main-thread time | count (time for CPU) |
+| In a map (mouse still, then moving at 125 Hz) | timer callbacks, animation frames, messages between app and overlay, layouts, style recalcs, overlay main-thread time | count (time for CPU) |
 | Opening the overlay (Shift+Space) | main-thread work, style + layout | time |
 | Price check | item text → panel drawn (median of 5) | time |
 | Memory | OCR workers loaded before any scan, overlay JS heap after GC, DOM nodes, event listeners | count / size |
