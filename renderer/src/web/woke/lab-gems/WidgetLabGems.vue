@@ -14,6 +14,8 @@
             :options="[{ value: 'choose', label: 'I choose the version' }, { value: 'random', label: 'Random version' }]" />
           <WField v-model="config.minProfit" type="number" suffix="c profit min" style="width: 9rem;" />
         </template>
+        <WChip clickable :active="!!config.runner" title="Count the lab entry, the gem you insert and your run time"
+          @click="config.runner = !config.runner"><i class="fas fa-running" /> Runner</WChip>
       </template>
       <template #meta>
         <template v-if="snapshot">
@@ -24,7 +26,31 @@
         <span v-else>Waiting for poe.ninja prices (open the Market tracker once, or price check anything)…</span>
       </template>
 
+      <div v-if="config.runner" class="flex flex-wrap gap-2 items-center py-2" style="padding-left: var(--w-pad); padding-right: var(--w-pad); border-bottom: 1px solid var(--w-line);">
+        <WSelect :model-value="config.runnerLab ?? 'merciless'" title="Which lab you run"
+          :options="[{ value: 'merciless', label: 'Merciless (free entry)' }, { value: 'eternal', label: 'Eternal (Offering)' }]"
+          @update:model-value="config.runnerLab = $event === 'eternal' ? 'eternal' : 'merciless'" />
+        <WField :model-value="config.runnerGemCost ?? 1" type="number" suffix="c gem in" style="width: 7rem;"
+          title="What the gem you put in the font costs" @update:model-value="config.runnerGemCost = Number($event) || 0" />
+        <WField :model-value="config.runnerMinutes ?? 6" type="number" suffix="min / run" style="width: 7.5rem;"
+          @update:model-value="config.runnerMinutes = Number($event) || 0" />
+        <span class="w-dim text-xs">Entry <WPrice :chaos="entryCost" :divine="snapshot?.divine" /></span>
+        <span v-if="config.view === 'color' && bestRoll" class="ml-auto w-num" title="Best colour EV minus entry and gem, per run and per hour">
+          <span :class="runProfit >= 0 ? 'w-up' : 'w-down'">{{ fmt(runProfit) }}</span> / run
+          <template v-if="perHour != null"> · {{ fmt(perHour) }} / h</template>
+        </span>
+      </div>
+
       <template v-if="config.view === 'color'">
+        <div class="w-row w-row--head" :class="$style.stateGrid" title="Colour-roll EV for each level / quality you could bring">
+          <span>Bring</span><span class="text-right">Red</span><span class="text-right">Green</span><span class="text-right">Blue</span>
+        </div>
+        <button v-for="row in stateEvs" :key="row.state" class="w-row w-full text-left" :class="[$style.stateGrid, { [$style.current]: row.state === config.gemState }]"
+          @click="config.gemState = row.state">
+          <span>{{ stateLabel(row.state) }}</span>
+          <span v-for="c in (['r', 'g', 'b'] as const)" :key="c" class="text-right w-num" :class="row.state === bestState[c] ? 'w-up' : 'w-dim'"
+            :title="row.state === bestState[c] ? 'Best level / quality to bring for this colour' : undefined">{{ fmt(row.ev[c]) }}</span>
+        </button>
         <div v-for="(roll, i) in rolls" :key="roll.color" class="pb-1">
           <div class="w-row" :class="$style.poolGrid">
             <span :class="[$style.dot, $style[roll.color]]" />
@@ -33,7 +59,7 @@
             <span class="w-num text-right" :class="i === 0 ? 'w-up' : ''" title="Expected value of the best of the 3 offered gems">EV {{ fmt(roll.ev) }}</span>
           </div>
           <div v-for="g in roll.top" :key="g.name" class="w-row" :class="$style.gemGrid">
-            <span class="w-trunc w-rarity-gem">{{ g.name }}</span>
+            <span class="w-trunc w-rarity-gem"><i v-if="thin.has(g.name)" class="fas fa-exclamation-circle w-faint mr-1" :title="THIN_NOTE" />{{ g.name }}</span>
             <WPrice :chaos="g.chaos ?? 0" :divine="snapshot?.divine" />
           </div>
         </div>
@@ -53,11 +79,11 @@
               <span class="w-trunc">{{ p.baseName }} <i class="fas text-xs w-faint" :class="expanded === p.baseName ? 'fa-chevron-up' : 'fa-chevron-down'" /></span>
               <span class="text-right w-dim" title="Base gem price"><WPrice v-if="p.baseChaos != null" :chaos="p.baseChaos" :divine="snapshot?.divine" /><template v-else>?</template></span>
               <WPrice :chaos="value(p)" :divine="snapshot?.divine" />
-              <span class="text-right w-up w-num" title="Profit after buying the base gem">+<WPrice :chaos="profit(p)" :divine="snapshot?.divine" /></span>
+              <span class="text-right w-up w-num" :title="config.runner ? 'Profit after the base gem and the lab entry' : 'Profit after buying the base gem'">+<WPrice :chaos="profit(p)" :divine="snapshot?.divine" /></span>
             </button>
             <template v-if="expanded === p.baseName">
               <div v-for="v in p.variants" :key="v.name" class="w-row" :class="$style.gemGrid" style="padding-left: calc(var(--w-pad) + 18px);">
-                <span class="w-trunc w-rarity-gem">{{ v.name }}</span>
+                <span class="w-trunc w-rarity-gem"><i v-if="thin.has(v.name)" class="fas fa-exclamation-circle w-faint mr-1" :title="THIN_NOTE" />{{ v.name }}</span>
                 <WPrice :chaos="v.chaos" :divine="snapshot?.divine" />
               </div>
             </template>
@@ -89,13 +115,13 @@ export default {
 import { inject, computed, shallowRef, watch, onUnmounted } from 'vue'
 import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
-import { WPanel, WTabs, WSelect, WSegmented, WField, WPrice, WEmpty } from '../ui'
+import { WPanel, WTabs, WSelect, WSegmented, WField, WPrice, WEmpty, WChip } from '../ui'
 import { useLeagues } from '@/web/background/Leagues'
 import { useMarketCollector } from '../market/collector'
 import { latestSnapshots } from '../market/db'
 import { formatChaos } from '../market/analysis'
 import type { Snapshot } from '../market/types'
-import { GEM_STATES, colorRolls, gemPrices, pickProfit, pickValue, specificPicks } from './font'
+import { GEM_STATES, colorRolls, evByState, gemPrices, pickProfit, pickValue, specificPicks, thinGems } from './font'
 import type { GemColor, GemState, SpecificPick } from './font'
 import type { LabGemsWidget } from './widget'
 
@@ -151,8 +177,34 @@ const picks = computed(() => {
     .slice(0, 60)
 })
 
+const THIN_NOTE = 'Thin market: poe.ninja saw little trade on this gem, so its price may be fake.'
+const thin = computed(() => snapshot.value ? thinGems(snapshot.value.items, props.config.gemState) : new Set<string>())
+
+const stateEvs = computed(() => snapshot.value ? evByState(snapshot.value.items) : [])
+const bestState = computed(() => {
+  const best = { r: '', g: '', b: '' } as Record<GemColor, string>
+  for (const c of ['r', 'g', 'b'] as const) {
+    let top = -1
+    for (const row of stateEvs.value) if (row.ev[c] > top) { top = row.ev[c]; best[c] = row.state }
+  }
+  return best
+})
+
+// Runner mode costs
+const entryCost = computed(() => {
+  if ((props.config.runnerLab ?? 'merciless') !== 'eternal' || !snapshot.value) return 0
+  return snapshot.value.items.find(i => i.name === 'Offering to the Goddess')?.chaos ?? 0
+})
+const runCost = computed(() => props.config.runner ? entryCost.value + (props.config.runnerGemCost ?? 1) : 0)
+const bestRoll = computed(() => rolls.value.length ? Math.max(...rolls.value.map(r => r.ev)) : null)
+const runProfit = computed(() => (bestRoll.value ?? 0) - runCost.value)
+const perHour = computed(() => {
+  const min = props.config.runnerMinutes ?? 6
+  return min > 0 ? runProfit.value * 60 / min : null
+})
+
 function value (p: SpecificPick) { return pickValue(p, props.config.specificMode) }
-function profit (p: SpecificPick) { return pickProfit(p, props.config.specificMode) }
+function profit (p: SpecificPick) { return pickProfit(p, props.config.specificMode) - (props.config.runner ? entryCost.value : 0) }
 function toggle (name: string) { expanded.value = expanded.value === name ? null : name }
 function fmt (chaos: number) { return formatChaos(chaos, snapshot.value?.divine ?? null) }
 function pct (p: number) { return `${(p * 100).toFixed(1)}%` }
@@ -173,6 +225,8 @@ function ago (ts: number) {
 <style module>
 .poolGrid { grid-template-columns: 10px minmax(0, 1fr) auto 84px; }
 .gemGrid { grid-template-columns: minmax(0, 1fr) 76px; padding-left: calc(var(--w-pad) + 18px); }
+.stateGrid { grid-template-columns: minmax(0, 1fr) 64px 64px 64px; }
+.current { background: var(--w-accent-soft); }
 .pickGrid { grid-template-columns: 10px minmax(0, 1fr) 70px 70px 76px; }
 .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; flex: none; }
 .r { background: #d0533f; }

@@ -15,6 +15,11 @@
           ]" />
           <WSelect v-model="config.typeFilter" :options="typeOptions" style="max-width: 11rem;" />
           <WField v-model="config.minChaos" type="number" suffix="c min" style="width: 7rem;" />
+          <WSegmented v-model="unit" title="Measure moves in chaos or in divines" :options="[
+            { value: 'chaos', label: 'c' }, { value: 'div', label: 'div' }
+          ]" />
+          <WChip clickable :active="!!config.showThin" title="Include items poe.ninja barely saw trade on (easy to price-fix)"
+            @click="config.showThin = !config.showThin">Thin</WChip>
         </template>
         <div v-else class="relative grow">
           <WField v-model="addQuery" icon="fas fa-plus" placeholder="Add item to watchlist…" class="w-full" />
@@ -41,6 +46,11 @@
         <span v-else-if="league">Waiting for the first poe.ninja snapshot for {{ league }} (refreshes about every 30 min)…</span>
         <span v-else>Select a league in APT's price check settings to start collecting.</span>
         <span v-if="collector.lastError.value" class="w-down">{{ collector.lastError.value }}</span>
+        <template v-if="config.view === 'movers' && divMove != null">
+          <span class="w-faint">·</span>
+          <span :title="unit === 'chaos' ? 'Moves below include this divine swing. Switch to div to remove it.' : 'Moves below are measured in divines.'">
+            divine {{ divMove >= 0 ? '+' : '' }}{{ (divMove * 100).toFixed(1) }}% over {{ config.period }}</span>
+        </template>
       </template>
 
       <template v-if="config.view === 'movers'">
@@ -52,7 +62,8 @@
               class="w-icon-btn" :class="{ 'w-icon-btn--on': isWatched(m) }">
               <i :class="isWatched(m) ? 'fas fa-star' : 'far fa-star'" />
             </button>
-            <span class="w-trunc" :class="rarityClass(m.type)" :title="m.type">{{ m.name }}<span v-if="m.variant" class="w-dim ml-1">{{ m.variant }}</span></span>
+            <span class="w-trunc" :class="rarityClass(m.type)" :title="m.type">
+              <i v-if="isThin(m)" class="fas fa-exclamation-circle w-faint mr-1" :title="thinTitle(m)" />{{ m.name }}<span v-if="m.variant" class="w-dim ml-1">{{ m.variant }}</span></span>
             <WPrice :chaos="m.then" :divine="latest?.divine" :unit="unitFor(m)" class="w-dim" />
             <WPrice :chaos="m.now" :divine="latest?.divine" :unit="unitFor(m)" />
             <WDelta :value="m.change" class="text-right" />
@@ -66,10 +77,22 @@
           <button @click="toggleWatch(w.item)" title="Remove from watchlist" class="w-icon-btn w-icon-btn--on">
             <i class="fas fa-star" />
           </button>
-          <span class="w-trunc" :class="rarityClass(w.item.type)" :title="w.item.type">{{ w.item.name }}<span v-if="w.item.variant" class="w-dim ml-1">{{ w.item.variant }}</span></span>
+          <span class="w-trunc" :class="rarityClass(w.item.type)" :title="w.item.type">
+            <i v-if="w.thin" class="fas fa-exclamation-circle w-faint mr-1" :title="thinTitle({ gaps: w.gaps })" />{{ w.item.name }}<span v-if="w.item.variant" class="w-dim ml-1">{{ w.item.variant }}</span>
+            <button class="w-icon-btn ml-1" :class="{ 'w-icon-btn--on': hasAlert(w.item) }" :title="alertTitle(w.item)"
+              @click="alertKey = alertKey === key(w.item) ? null : key(w.item)"><i class="fas fa-bell text-xs" /></button>
+          </span>
           <WSpark :values="w.history" />
           <WPrice :chaos="w.now" :divine="latest?.divine" />
           <WDelta :value="w.change" title="Change since yesterday" class="text-right" />
+          <div v-if="alertKey === key(w.item)" class="flex flex-wrap gap-2 items-center py-1" style="grid-column: 2 / -1;">
+            <span class="w-dim text-xs">Alert when</span>
+            <WField :model-value="w.item.above ?? 0" type="number" suffix="c or more" style="width: 8rem;"
+              @update:model-value="setAlert(w.item, 'above', $event)" />
+            <WField :model-value="w.item.below ?? 0" type="number" suffix="c or less" style="width: 8rem;"
+              @update:model-value="setAlert(w.item, 'below', $event)" />
+            <span class="w-faint text-xs">0 = off</span>
+          </div>
         </div>
       </template>
 
@@ -102,11 +125,11 @@ import { useLeagues } from '@/web/background/Leagues'
 import { useMarketCollector } from './collector'
 import { dailyHistory, dailyRowsForDate, latestSnapshots, snapshotAtOrBefore } from './db'
 import { computeMovers } from './analysis'
-import { WPanel, WTabs, WSegmented, WSelect, WField, WPrice, WDelta, WSpark, WEmpty } from '../ui'
+import { WPanel, WTabs, WSegmented, WSelect, WField, WPrice, WDelta, WSpark, WEmpty, WChip } from '../ui'
 import type { Mover } from './analysis'
-import { itemKey, utcDate } from './types'
+import { isThin, itemKey, thinTitle, utcDate } from './types'
 import type { PriceItem, Snapshot } from './types'
-import { PERIOD_MS } from './widget'
+import { PERIOD_MS, checkAlert } from './widget'
 import type { WatchedItem } from './widget'
 
 const props = defineProps<{
@@ -134,7 +157,14 @@ const league = computed(() => leagues.selectedId.value)
 const latest = shallowRef<Snapshot | null>(null)
 const movers = shallowRef<Mover[]>([])
 const moversNote = shallowRef('')
-const watchRows = shallowRef<Array<{ item: WatchedItem, now: number | null, change: number | null, history: number[] }>>([])
+const watchRows = shallowRef<Array<{ item: WatchedItem, now: number | null, change: number | null, history: number[], thin: boolean, gaps?: number }>>([])
+const divMove = shallowRef<number | null>(null)
+const alertKey = shallowRef<string | null>(null)
+
+const unit = computed({
+  get: () => props.config.unit ?? 'chaos',
+  set: (v: string) => { props.config.unit = v === 'div' ? 'div' : 'chaos' }
+})
 const addQuery = shallowRef('')
 const now = shallowRef(Date.now())
 const clock = setInterval(() => { now.value = Date.now() }, 60 * 1000)
@@ -172,11 +202,17 @@ async function loadMovers () {
   if (!snap) { movers.value = []; moversNote.value = ''; return }
   const from = snap.ts - PERIOD_MS[props.config.period]
   let then: PriceItem[] = []
+  let divThen: number | null = null
   if (props.config.period === '7d') {
-    then = await dailyRowsForDate(snap.league, utcDate(from))
+    const rows = await dailyRowsForDate(snap.league, utcDate(from))
+    then = rows
+    divThen = rows.find(r => r.divine)?.divine ?? null
   } else {
-    then = (await snapshotAtOrBefore(snap.league, from))?.items ?? []
+    const prev = await snapshotAtOrBefore(snap.league, from)
+    then = prev?.items ?? []
+    divThen = prev?.divine ?? null
   }
+  divMove.value = (snap.divine && divThen) ? snap.divine / divThen - 1 : null
   if (!then.length) {
     movers.value = []
     moversNote.value = `Not enough history yet for ${props.config.period}. Keep the app running and check back later.`
@@ -186,7 +222,11 @@ async function loadMovers () {
   movers.value = computeMovers(snap.items, then, {
     minChaos: props.config.minChaos || 0,
     type: props.config.typeFilter || undefined,
-    limit: 50
+    limit: 50,
+    unit: unit.value as 'chaos' | 'div',
+    divNow: snap.divine,
+    divThen,
+    hideThin: !props.config.showThin
   })
   if (!movers.value.length) moversNote.value = 'No items match these filters.'
 }
@@ -194,23 +234,68 @@ async function loadMovers () {
 async function loadWatchlist () {
   const snap = latest.value
   if (!snap || !props.config.watchlist.length) { watchRows.value = []; return }
-  const current = new Map(snap.items.map(i => [itemKey(i), i.chaos]))
+  const current = new Map(snap.items.map(i => [itemKey(i), i]))
   const yesterday = utcDate(snap.ts - PERIOD_MS['24h'])
   watchRows.value = await Promise.all(props.config.watchlist.map(async item => {
     const history = (await dailyHistory(snap.league, item)).slice(-14)
-    const nowPrice = current.get(itemKey(item)) ?? null
+    const live = current.get(itemKey(item))
+    const nowPrice = live?.chaos ?? null
     const prev = history.find(r => r.date === yesterday)?.chaos
     return {
       item,
       now: nowPrice,
       change: (nowPrice != null && prev) ? nowPrice / prev - 1 : null,
-      history: history.map(r => r.chaos)
+      history: history.map(r => r.chaos),
+      thin: live ? isThin(live) : false,
+      gaps: live?.gaps
     }
   }))
 }
 
+// Fires a desktop notification once per threshold crossing.
+function checkAlerts (snap: Snapshot) {
+  const current = new Map(snap.items.map(i => [itemKey(i), i.chaos]))
+  for (const w of props.config.watchlist) {
+    if (!w.above && !w.below) continue
+    const price = current.get(itemKey(w)) ?? null
+    const { state, fire } = checkAlert(w, price)
+    if (fire && price != null) notify(w, price, state!)
+    if ((w.alertState ?? null) !== state) w.alertState = state
+  }
+}
+
+function notify (w: WatchedItem, price: number, state: 'above' | 'below') {
+  const limit = state === 'above' ? w.above : w.below
+  const body = `${Math.round(price * 10) / 10}c is ${state === 'above' ? 'at or above' : 'at or below'} your ${limit}c alert`
+  try {
+    if (typeof Notification === 'undefined') return
+    const show = () => { const n = new Notification(`${w.name}${w.variant ? ` (${w.variant})` : ''}`, { body, silent: false }); n.onclick = null }
+    if (Notification.permission === 'granted') show()
+    else if (Notification.permission !== 'denied') Notification.requestPermission().then(p => { if (p === 'granted') show() }).catch(() => {})
+  } catch {}
+}
+
+function hasAlert (w: WatchedItem) {
+  return !!(w.above || w.below)
+}
+
+function alertTitle (w: WatchedItem) {
+  if (!hasAlert(w)) return 'Set a price alert'
+  const parts = []
+  if (w.above) parts.push(`≥ ${w.above}c`)
+  if (w.below) parts.push(`≤ ${w.below}c`)
+  return `Alert at ${parts.join(' or ')}`
+}
+
+function setAlert (w: WatchedItem, side: 'above' | 'below', value: string | number) {
+  const n = Number(value)
+  w[side] = Number.isFinite(n) && n > 0 ? n : null
+  w.alertState = null
+}
+
 watch([league, collector.revision], loadLatest, { immediate: true })
-watch([latest, () => props.config.period, () => props.config.minChaos, () => props.config.typeFilter],
+watch(latest, (snap) => { if (snap) checkAlerts(snap) })
+watch([latest, () => props.config.period, () => props.config.minChaos, () => props.config.typeFilter, unit, () => props.config.showThin],
   () => { loadMovers().catch(() => {}) })
 watch([latest, () => props.config.watchlist.length], () => { loadWatchlist().catch(() => {}) })
 

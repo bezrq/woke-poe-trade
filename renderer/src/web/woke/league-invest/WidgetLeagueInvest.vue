@@ -54,7 +54,7 @@
         <template v-if="plan.length">
           <div class="w-group-label">Suggested split</div>
           <div v-for="line in plan" :key="key(line.opportunity)" class="w-row" :class="$style.planGrid">
-            <span class="w-trunc">{{ line.qty }}× {{ label(line.opportunity) }}</span>
+            <span class="w-trunc">{{ line.qty }}× {{ label(line.opportunity) }}<i v-if="line.thin" class="fas fa-exclamation-circle w-faint ml-1" :title="THIN_PLAN" /></span>
             <WPrice :chaos="line.cost" :divine="snapshot?.divine" class="w-dim" />
             <span class="w-num w-up text-right" title="Typical value at the end of the hold, in today's divines">≈ {{ fmtDiv(divOf(line.cost) * line.opportunity.median) }}</span>
           </div>
@@ -66,7 +66,7 @@
         </div>
         <div v-for="r in rows" :key="key(r.opportunity)" class="w-row" :class="$style.rankGrid">
           <span class="w-trunc" :title="r.opportunity.type">
-            {{ label(r.opportunity) }}<span class="w-faint text-xs ml-1">{{ r.opportunity.type }}</span>
+            <i v-if="r.thin || r.opportunity.reliability < THIN_RELIABILITY" class="fas fa-exclamation-circle w-faint mr-1" :title="THIN_ROW" />{{ label(r.opportunity) }}<span class="w-faint text-xs ml-1">{{ r.opportunity.type }}</span>
           </span>
           <WPrice :chaos="r.chaos" :divine="snapshot?.divine" title="Price now" />
           <span class="w-num w-up text-right" title="Median rise in divines across past leagues">×{{ r.opportunity.median.toFixed(r.opportunity.median >= 10 ? 0 : 1) }}</span>
@@ -104,11 +104,11 @@ import { useLeagues } from '@/web/background/Leagues'
 import { useMarketCollector } from '../market/collector'
 import { latestSnapshots } from '../market/db'
 import { formatChaos } from '../market/analysis'
-import { itemKey } from '../market/types'
+import { isThin, itemKey } from '../market/types'
 import type { Snapshot } from '../market/types'
 import { DumpImporter } from './dumps'
 import type { LeagueHistory } from './dumps'
-import { opportunityKey, planBudget, rankOpportunities } from './invest'
+import { THIN_RELIABILITY, opportunityKey, planBudget, rankOpportunities } from './invest'
 import type { Opportunity } from './invest'
 import { deleteLeague, loadLeagues, saveLeague } from './store'
 import { leagueDay, leagueStartDates } from './league-start'
@@ -183,11 +183,13 @@ function onDayInput (e: Event) {
 const live = computed(() => {
   const exact = new Map<string, number>()
   const byName = new Map<string, number>()
+  const thin = new Set<string>()
   for (const i of snapshot.value?.items ?? []) {
     exact.set(itemKey(i), i.chaos)
+    if (isThin(i)) thin.add(itemKey(i))
     if (!i.variant && !byName.has(i.name)) byName.set(i.name, i.chaos)
   }
-  return { exact, byName }
+  return { exact, byName, thin }
 })
 
 function livePrice (o: Opportunity): number | null {
@@ -208,10 +210,13 @@ const ranked = computed(() => {
     minReliability: 0.5,
     minBuyChaos: 5,
     bulkOnly: props.config.bulkOnly
-  }).map(opportunity => ({ opportunity, chaos: livePrice(opportunity) }))
+  }).map(opportunity => ({ opportunity, chaos: livePrice(opportunity), thin: live.value.thin.has(itemKey(opportunity)) }))
 })
 
 const rows = computed(() => ranked.value.slice(0, 60))
+
+const THIN_ROW = 'Thin market: few trades on poe.ninja now or in past leagues. Hard to buy or sell much without moving the price.'
+const THIN_PLAN = 'Thin market, so this line gets at most a third of a slot.'
 
 const plan = computed(() => {
   const divine = snapshot.value?.divine

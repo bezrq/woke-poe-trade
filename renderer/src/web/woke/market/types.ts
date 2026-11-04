@@ -51,6 +51,22 @@ export interface PriceItem {
   // '' when the item has no variant (gem level/quality, links, etc.)
   variant: string
   chaos: number
+  // Days out of poe.ninja's last 7 with no price (null or missing graph
+  // points). The dense feed has no listing counts, so this is the best
+  // available sign of a thin, easily price-fixed market. Missing on
+  // snapshots saved before it was recorded.
+  gaps?: number
+}
+
+// Thin market: poe.ninja had no price on 3+ of the last 7 days.
+export const THIN_GAPS = 3
+
+export function isThin (item: { gaps?: number }): boolean {
+  return (item.gaps ?? 0) >= THIN_GAPS
+}
+
+export function thinTitle (item: { gaps?: number }): string {
+  return `Thin market: poe.ninja recorded no price on ${item.gaps ?? 0} of the last 7 days, so this price is easy to fake.`
 }
 
 // One collected snapshot (kept for a couple of days for short-term movers).
@@ -70,6 +86,7 @@ export interface DailyRow {
   name: string
   variant: string
   chaos: number
+  gaps?: number
   // Divine Orb price in chaos on that day, for converting.
   divine: number | null
   ts: number

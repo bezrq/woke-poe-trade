@@ -10,4 +10,9 @@ export interface LabGemsWidget extends Widget {
   specificMode: SpecificMode
   topN: number
   minProfit: number
+  // Runner mode: count the lab entry, the gem you insert and your run time.
+  runner?: boolean
+  runnerLab?: 'merciless' | 'eternal'
+  runnerGemCost?: number
+  runnerMinutes?: number
 }

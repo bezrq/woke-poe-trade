@@ -158,11 +158,18 @@ export interface PlanLine {
   qty: number
   cost: number
   expected: number
+  // Thin market: spend was capped because few people trade it.
+  thin: boolean
 }
+
+// Past-league prices that were mostly low confidence, or a thin market now,
+// mean you can't buy (or later sell) much without moving the price.
+export const THIN_RELIABILITY = 0.8
+export const THIN_SLOT_SHARE = 1 / 3
 
 // Splits a budget evenly over the best `slots` items that a slot can afford.
 export function planBudget (
-  ranked: Array<{ opportunity: Opportunity, chaos: number | null }>,
+  ranked: Array<{ opportunity: Opportunity, chaos: number | null, thin?: boolean }>,
   budgetChaos: number,
   slots: number
 ): PlanLine[] {
@@ -172,16 +179,20 @@ export function planBudget (
   for (const r of ranked) {
     if (lines.length >= slots) break
     if (r.chaos == null || r.chaos <= 0 || r.chaos > perSlot) continue
-    const qty = Math.floor(perSlot / r.chaos)
+    const thin = !!r.thin || r.opportunity.reliability < THIN_RELIABILITY
+    const spend = thin ? perSlot * THIN_SLOT_SHARE : perSlot
+    const qty = Math.floor(spend / r.chaos)
     if (qty < 1) continue
-    // Only bulk items are worth buying more than a few of.
-    const capped = r.opportunity.bulk ? qty : Math.min(qty, 3)
+    // Only bulk items are worth buying more than a few of; thin non-bulk
+    // markets get one copy.
+    const capped = r.opportunity.bulk ? qty : Math.min(qty, thin ? 1 : 3)
     lines.push({
       opportunity: r.opportunity,
       chaos: r.chaos,
       qty: capped,
       cost: capped * r.chaos,
-      expected: capped * r.chaos * r.opportunity.median
+      expected: capped * r.chaos * r.opportunity.median,
+      thin
     })
   }
   return lines
