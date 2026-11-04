@@ -15,7 +15,7 @@ import type { MapScanWidget } from './map-mods/scan'
 import { isModuleOn, isWidgetTypeOn } from './modules'
 import { ESSENCE_SCAN_TYPE, essenceHotkeyTarget, essenceOnceTarget } from './essence-scan/widget'
 import type { EssenceScanWidget } from './essence-scan/widget'
-import { LOOT_FILTER_TYPE, LOOT_FILTER_SAMPLE_TARGET, editorHotkeyTarget } from './loot-filter/widget'
+import { LOOT_FILTER_TYPE, LOOT_FILTER_SAMPLE_TARGET, editorHotkeyTarget, strictnessHotkeyTarget } from './loot-filter/widget'
 import type { LootFilterWidget } from './loot-filter/widget'
 import { CAMPAIGN_TYPE, hotkeyTarget as campaignHotkeyTarget } from './campaign/widget'
 import type { CampaignWidget } from './campaign/widget'
@@ -131,6 +131,11 @@ export function wokeShortcutsFor (widget: Widget, config: { woke?: { setupDone: 
     }
     if (lf.editorHotkey) {
       actions.push({ shortcut: lf.editorHotkey, keepModKeys: true, action: { type: 'trigger-event', target: editorHotkeyTarget(widget.wmId) } })
+    }
+    // Strictness steps only mean something with NeverSink from GitHub.
+    if (lf.neversink?.on) {
+      if (lf.stricterHotkey) actions.push({ shortcut: lf.stricterHotkey, keepModKeys: true, action: { type: 'trigger-event', target: strictnessHotkeyTarget(widget.wmId, 'stricter') } })
+      if (lf.looserHotkey) actions.push({ shortcut: lf.looserHotkey, keepModKeys: true, action: { type: 'trigger-event', target: strictnessHotkeyTarget(widget.wmId, 'looser') } })
     }
     return actions
   }

@@ -16,7 +16,8 @@ import { AppTray } from './AppTray'
 import { OverlayVisibility } from './windowing/OverlayVisibility'
 import { GameLogWatcher } from './host-files/GameLogWatcher'
 import { HttpProxy } from './proxy'
-import { initWoke, initWokeOverlay } from './woke'
+import { initWoke, initWokeOverlay, registerWokeHandler } from './woke'
+import { gameFilterSetting } from './woke/neversink'
 import { perfMark } from './woke/perf'
 import { startCrashReporting, attachCrashLogger } from './woke/crash-reports'
 import { initSetup, maybeOpenSetup, openSetupWindow } from './woke/setup'
@@ -46,6 +47,7 @@ app.on('ready', async () => {
   const appUpdater = new AppUpdater(eventPipe)
   const _httpProxy = new HttpProxy(server, logger)
   initWoke(eventPipe, logger, poeWindow, gameLogWatcher)
+  registerWokeHandler('game-filter', async () => await gameFilterSetting(gameConfig.actualPath))
   initSetup(appUpdater)
   tray.onRunSetup = openSetupWindow
 

@@ -19,6 +19,8 @@ import { describeProblem, validateFilter } from './validate'
 import type { FilterProblem } from './validate'
 import { useFilterPrices } from './prices'
 import { publishActiveFilter } from './active-filter'
+import { LEVEL_NAMES, clampLevel, ladderTarget, pushArea } from './strictness'
+import { toast } from '../ui'
 
 // First line of every file the editor writes; marks a filter as ours.
 export const WOKE_MARK = '# WOKE-LOOT-FILTER-EDITOR'
@@ -80,17 +82,25 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
   // game drops the keys we'd type; wait until the zone has loaded.
   const RELOAD_AFTER_LOAD_MS = 4000
   let reloadTimer: ReturnType<typeof setTimeout> | undefined
+  // Area levels of the last few zones outside town, for the strictness ladder.
+  let recentAreas: number[] = []
   const logListener = Host.onEvent('MAIN->CLIENT::game-log', (e) => {
     for (const line of e.lines) {
       const ev = parseLogLine(line)
       if (ev?.kind !== 'area') continue
       const safe = /hideout|town/i.test(ev.areaId)
       inSafeZone.value = safe
-      if (!safe) areaLevel.value = ev.areaLevel
+      if (!safe) {
+        areaLevel.value = ev.areaLevel
+        recentAreas = pushArea(recentAreas, ev.areaLevel)
+      }
       clearTimeout(reloadTimer)
-      if (safe && pendingReload.value) {
+      if (safe) {
         reloadTimer = setTimeout(() => {
-          if (!pendingReload.value || inSafeZone.value !== true) return
+          if (inSafeZone.value !== true) return
+          // The ladder switches only here, in town or hideout, never mid-map.
+          if (followLadder()) return
+          if (!pendingReload.value) return
           pendingReload.value = false
           sendReload()
         }, RELOAD_AFTER_LOAD_MS)
@@ -204,7 +214,192 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
     }
   }
 
+  // ---- NeverSink from GitHub ----
+
+  // Download result for a newer version, checked against your changes before
+  // you're asked to update (E1).
+  const updateReady = shallowRef<{ version: string, ok: number, total: number } | null>(null)
+  const checking = ref(false)
+  // What the game has selected (production_Config.ini).
+  const gameFilter = shallowRef<{ name: string | null, loaded: boolean | null }>({ name: null, loaded: null })
+
+  async function readNeverSink (version: string | null, level: number): Promise<{ text: string, version: string }> {
+    const ns = cfg().neversink
+    if (version) {
+      try {
+        return { text: (await hostRequest<{ text: string }>('ns-read', { version, style: ns.style, level })).text, version }
+      } catch {}
+    }
+    // Not cached (first use, a new style, or a cleared cache): download.
+    const got = await hostRequest<{ version: string }>('ns-download', { style: ns.style })
+    return { text: (await hostRequest<{ text: string }>('ns-read', { version: got.version, style: ns.style, level })).text, version: got.version }
+  }
+
+  // Parses a text with everything applied, the way rebuild() does, to see how
+  // many of your changes would fit.
+  function fitOf (text: string): { ok: number, total: number } {
+    const d = parseFilter(text)
+    const input = buildInput.value
+    if (input) insertBuildBlocks(d, buildRuleBlocks(input, cfg().buildRules))
+    if (cfg().priceTiers.on) applyPriceMoves(d, cfg().priceTiers.moves)
+    const res = applyEdits(d, cfg().edits)
+    return { ok: res.filter(r => r.ok).length, total: res.length }
+  }
+
+  // Once a day: is there a newer NeverSink? If so, download it and check it
+  // against your changes; the editor then offers the update.
+  async function checkForUpdate (force = false) {
+    const ns = cfg().neversink
+    if (!ns.on || checking.value) return
+    if (!force && ns.checkedAt && Date.now() - ns.checkedAt < 20 * 3600 * 1000 && !(ns.latest && ns.latest !== ns.version)) return
+    checking.value = true
+    try {
+      const latest = await hostRequest<{ version: string, changes: string }>('ns-latest', {})
+      ns.latest = latest.version
+      ns.latestChanges = latest.changes
+      ns.checkedAt = Date.now()
+      if (!ns.version || latest.version === ns.version) { updateReady.value = null; return }
+      const got = await hostRequest<{ version: string }>('ns-download', { style: ns.style })
+      if (got.version === ns.version) { updateReady.value = null; return }
+      const { text } = await hostRequest<{ text: string }>('ns-read', { version: got.version, style: ns.style, level: ns.level })
+      updateReady.value = { version: got.version, ...fitOf(text) }
+    } catch (e) {
+      // Offline or GitHub down: try again next time, quietly (P13).
+      console.warn('[loot filter] NeverSink update check failed', e)
+    } finally {
+      checking.value = false
+    }
+  }
+
+  async function switchVersion (version: string | null) {
+    const ns = cfg().neversink
+    ns.version = version
+    await load()
+    if (doc.value) await save()
+  }
+
+  // Moves to the downloaded version. Returns Undo (back to the old version).
+  async function updateNeverSink (): Promise<() => void> {
+    const ready = updateReady.value
+    const ns = cfg().neversink
+    if (!ready) return () => {}
+    const before = ns.version
+    ns.prevVersion = before
+    updateReady.value = null
+    await switchVersion(ready.version)
+    hostRequest('ns-prune', { keep: 3 }).catch(() => {})
+    return () => { switchVersion(before).catch(() => {}) }
+  }
+
+  async function useGitHub (on: boolean) {
+    cfg().neversink.on = on
+    await load()
+    if (on) checkForUpdate(true).catch(() => {})
+  }
+
+  async function setStyle (style: string) {
+    const ns = cfg().neversink
+    if (ns.style === style) return
+    ns.style = style
+    // The pinned version may not exist in this style yet; read() downloads.
+    await load()
+  }
+
+  // Switches strictness, saves, and reloads in game (when safe). Returns Undo.
+  async function setLevel (level: number): Promise<(() => void) | null> {
+    const ns = cfg().neversink
+    if (!ns.on) return null
+    const before = ns.level
+    const next = clampLevel(level)
+    if (next === before) return null
+    ns.level = next
+    await load()
+    if (doc.value) await save()
+    return () => { setLevel(before).catch(() => {}) }
+  }
+
+  // Hotkey / button: one step, which pauses the ladder until you resume it.
+  async function stepLevel (dir: 1 | -1) {
+    const ns = cfg().neversink
+    if (!ns.on) {
+      toast('Strictness keys need NeverSink from GitHub. Turn it on in the loot filter editor.')
+      return
+    }
+    const next = clampLevel(ns.level + dir)
+    if (next === ns.level) {
+      toast(`Loot filter is already ${LEVEL_NAMES[next]}`)
+      return
+    }
+    const wasPaused = cfg().strictAuto.paused
+    if (cfg().strictAuto.on) cfg().strictAuto.paused = true
+    const undo = await setLevel(next)
+    toast(`Loot filter: ${LEVEL_NAMES[next]}${cfg().strictAuto.on && !wasPaused ? ' · auto strictness paused' : ''}`, {
+      undo: undo ? () => { cfg().strictAuto.paused = wasPaused; undo() } : undefined
+    })
+  }
+
+  function resumeLadder () {
+    cfg().strictAuto.paused = false
+    followLadder()
+  }
+
+  // In town or hideout: switch to what the ladder says for recent maps.
+  // Returns true when it started a switch (which reloads on its own).
+  function followLadder (): boolean {
+    const ns = cfg().neversink
+    if (!ns.on || !doc.value || saving.value) return false
+    const target = ladderTarget(cfg().strictAuto, recentAreas)
+    if (target == null || target === ns.level) return false
+    const top = Math.max(...recentAreas)
+    pendingReload.value = false
+    setLevel(target).then(undo => {
+      if (!undo) return
+      toast(`Loot filter: ${LEVEL_NAMES[target]}, for area level ${top} maps`, {
+        undo: () => { cfg().strictAuto.paused = true; undo() }
+      })
+    }).catch(() => {})
+    return true
+  }
+
+  async function readGameFilter () {
+    try {
+      gameFilter.value = await hostRequest<{ name: string | null, loaded: boolean | null }>('game-filter', {})
+    } catch {}
+  }
+  // The game's config file is only rewritten now and then, so after we've
+  // sent /itemfilter it may still name the old filter: don't nag about that.
+  const sentOver = ref<string | null>(null)
+  // The game's selected filter isn't the one we save to.
+  const wrongFilterInGame = computed(() => {
+    const name = gameFilter.value.name
+    if (!name || !doc.value || name === sentOver.value) return false
+    return stem(outputName(cfg())).toLowerCase() !== name.toLowerCase()
+  })
+
   async function load () {
+    if (cfg().neversink.on) {
+      loading.value = true
+      error.value = null
+      prices.wantPrices()
+      try {
+        const ns = cfg().neversink
+        const got = await readNeverSink(ns.version, ns.level)
+        ns.version = got.version
+        baseNeedsBackup.value = false
+        baseText.value = got.text
+        rebuild()
+        baseVersion.value = doc.value?.version ?? null
+        checkForUpdate().catch(() => {})
+      } catch (e) {
+        error.value = `Can't get NeverSink's filter from GitHub: ${(e as Error).message}`
+        baseText.value = null
+        doc.value = null
+      } finally {
+        loading.value = false
+      }
+      readGameFilter().catch(() => {})
+      return
+    }
     if (!cfg().sourceName) {
       await listFiles()
       // Pick the most recently changed NeverSink file as a starting point.
@@ -279,7 +474,9 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
     const d = doc.value!
     return [
       WOKE_MARK,
-      `# Made from "${cfg().sourceOnline ? `${cfg().sourceTitle} (online filter, this copy doesn't auto-update)` : cfg().sourceName}"${d.version ? ` (NeverSink ${d.version})` : ''} with ${cfg().edits.length} change(s)${buildBlockCount.value ? ` and ${buildBlockCount.value} build rule(s) for ${buildInput.value?.buildName ?? 'your build'}` : ''}.`,
+      cfg().neversink.on
+        ? `# Made from NeverSink ${d.version ?? ''} ${LEVEL_NAMES[cfg().neversink.level]}${cfg().neversink.style ? ` (${cfg().neversink.style.toLowerCase()} style)` : ''}, downloaded from GitHub, with ${cfg().edits.length} change(s).`
+        : `# Made from "${cfg().sourceOnline ? `${cfg().sourceTitle} (online filter, this copy doesn't auto-update)` : cfg().sourceName}"${d.version ? ` (NeverSink ${d.version})` : ''} with ${cfg().edits.length} change(s)${buildBlockCount.value ? ` and ${buildBlockCount.value} build rule(s) for ${buildInput.value?.buildName ?? 'your build'}` : ''}.`,
       '# This file is rewritten on every save from the loot filter editor; change it there.',
       ''
     ]
@@ -327,6 +524,7 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
       cfg().lastVersion = doc.value.version
       lastSaved.value = Date.now()
       if (cfg().reloadViaChat) reloadInGame()
+      setTimeout(() => { readGameFilter().catch(() => {}) }, 8000)
       return true
     } catch (e) {
       error.value = `Couldn't save: ${(e as Error).message}`
@@ -348,6 +546,7 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
   }
 
   function sendReload () {
+    sentOver.value = gameFilter.value.name
     MainProcess.sendEvent({
       name: 'CLIENT->MAIN::user-action',
       payload: { action: 'paste-in-chat', text: `/itemfilter ${stem(outputName(cfg()))}` }
@@ -369,6 +568,17 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
     resetPrices,
     editWithUndo,
     restore,
+    updateReady,
+    checking,
+    gameFilter,
+    wrongFilterInGame,
+    checkForUpdate,
+    updateNeverSink,
+    useGitHub,
+    setStyle,
+    setLevel,
+    stepLevel,
+    resumeLadder,
     buildInput,
     buildBlockCount,
     files,

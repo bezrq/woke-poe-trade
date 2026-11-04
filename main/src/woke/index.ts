@@ -5,6 +5,7 @@ import type { Logger } from '../RemoteLogger'
 import type { GameWindow } from '../windowing/GameWindow'
 import { importBuild, listBuilds, openBuild, readBuild, showBuild } from './pob-builds'
 import { listFilters, readFilter, writeFilter, showFilterFolder } from './loot-filter'
+import { cachedNeverSink, downloadNeverSink, latestNeverSink, pruneNeverSink, readNeverSink } from './neversink'
 import { ScreenScanner, MAP_SCAN, ESSENCE_SCAN, checkOcr, readAllEssenceLabels } from './map-scan'
 import { WokeHoverTracker } from './hover'
 import type { OverlayWindow } from '../windowing/OverlayWindow'
@@ -29,6 +30,11 @@ const handlers: Record<string, Handler> = {
   'filter-read': readFilter,
   'filter-write': writeFilter,
   'filter-folder': showFilterFolder,
+  'ns-latest': async () => await latestNeverSink(),
+  'ns-download': downloadNeverSink,
+  'ns-read': readNeverSink,
+  'ns-cached': async () => await cachedNeverSink(),
+  'ns-prune': pruneNeverSink,
   'perf-stats': async () => perfSnapshot(),
   'ocr-check': async () => checkOcr(),
   'hotkey-failures': async () => hotkeyFailures(),
