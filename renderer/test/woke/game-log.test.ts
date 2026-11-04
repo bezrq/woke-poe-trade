@@ -11,6 +11,7 @@ import type { RouteOptions } from '@/web/woke/campaign/route-parse'
 import { countNewMap, isMapArea, isMapSideArea, newSession, onZoneChange, maybeAutoPause, AUTO_PAUSE_MS } from '@/web/woke/farming/farming'
 import { mechanicForSpeaker } from '@/web/woke/mechanics/zone'
 import { BOSS_AREAS, bossAreaIds } from '@/web/woke/shared/boss-areas'
+import { arenaBosses, zoneKind } from '@/web/woke/shared/zone'
 import { BOSSES } from '@/web/woke/boss-runs/bosses'
 import { mechanicForZone } from '@/web/woke/mechanics/data'
 import { difficultyForAreaLevel, isPlazaArea, msUntilLabReset, PLAZA_ZONE, staleLayoutDate } from '@/web/woke/lab/lab'
@@ -138,6 +139,8 @@ describe('farming', () => {
     expect(isMapArea('MapWorldsElderArenaUber')).toBe(false)
     expect(isMapArea('MapWorldsCemetery')).toBe(true)
     expect(bossAreaIds('MapWorldsPrimordialBoss4')).toEqual(['eater', 'uber-eater'])
+    expect(zoneKind('MapWorldsPrimordialBoss4', '')).toBe('boss')
+    expect(arenaBosses('MapWorldsShapersRealm', "The Shaper's Realm")).toEqual(['shaper', 'uber-shaper'])
     // Every boss named exists in the boss list.
     const known = new Set(BOSSES.map(b => b.id))
     expect(Object.values(BOSS_AREAS).flat().filter(id => !known.has(id))).toEqual([])
@@ -197,6 +200,11 @@ describe('lab', () => {
     expect(difficultyForAreaLevel(33)).toBe('normal')
     expect(difficultyForAreaLevel(55)).toBe('cruel')
     expect(difficultyForAreaLevel(75)).toBe('uber')
+  })
+
+  it('a Trial of Ascendancy in a map is not the lab', () => {
+    expect(zoneKind('1_Labyrinth_Airlock', '')).toBe('lab')
+    expect(zoneKind('EndGame_Labyrinth_trials_spikes', '')).not.toBe('lab')
   })
 
   it('counts down to the daily reset (midnight UTC)', () => {

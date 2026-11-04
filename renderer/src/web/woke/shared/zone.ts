@@ -45,7 +45,8 @@ export function arenaBosses (areaId: string, name: string): string[] {
 export function zoneKind (areaId: string, name: string): ZoneKind {
   if ((name && BOSS_ARENAS[name]) || (areaId && bossAreaIds(areaId))) return 'boss'
   if (/hideout/i.test(areaId) || /hideout/i.test(name)) return 'hideout'
-  if (/labyrinth/i.test(areaId) || LAB_ZONES.has(name)) return 'lab'
+  // Trials of Ascendancy inside maps (EndGame_Labyrinth_trials_*) aren't the lab.
+  if ((/labyrinth/i.test(areaId) && !/_trials_/i.test(areaId)) || LAB_ZONES.has(name)) return 'lab'
   if (areaId && isTown(areaId)) return 'town'
   if (/^Map/i.test(areaId)) return 'map'
   if (areaId && actFromAreaId(areaId) != null) return 'campaign'
