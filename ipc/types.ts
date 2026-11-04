@@ -81,6 +81,7 @@ export type IpcEvent =
   // woke modules (see main/src/woke, renderer/src/web/woke)
   IpcWokeRequest |
   IpcWokeResponse |
+  IpcWokeEvent |
   IpcWokeHoverZones |
   IpcWokeHover
 
@@ -193,6 +194,13 @@ type IpcWokeRequest =
     id: number
     op: string
     args: unknown
+  }>
+
+// Pushed from main to the overlay, e.g. map scan readings.
+type IpcWokeEvent =
+  Event<'MAIN->CLIENT::woke-event', {
+    topic: string
+    data: unknown
   }>
 
 type IpcWokeResponse =
