@@ -11,15 +11,20 @@ import type { WidgetSpec } from '@/web/overlay/interfaces'
 import WidgetRegexLibrary from './regex-library/WidgetRegexLibrary.vue'
 import RegexLibraryEditor from './regex-library/regex-library-editor.vue'
 import { REGEX_LIBRARY_TYPE } from './regex-library/widget'
+import WidgetTradeSearches from './trade-searches/WidgetTradeSearches.vue'
+import TradeSearchesEditor from './trade-searches/trade-searches-editor.vue'
+import { TRADE_SEARCHES_TYPE } from './trade-searches/widget'
 
 type WidgetComponent = Component & { widget: WidgetSpec }
 
 export const wokeWidgets: WidgetComponent[] = [
-  WidgetRegexLibrary as unknown as WidgetComponent
+  WidgetRegexLibrary as unknown as WidgetComponent,
+  WidgetTradeSearches as unknown as WidgetComponent
 ]
 
 const editors: Record<string, Component> = {
-  [REGEX_LIBRARY_TYPE]: RegexLibraryEditor
+  [REGEX_LIBRARY_TYPE]: RegexLibraryEditor,
+  [TRADE_SEARCHES_TYPE]: TradeSearchesEditor
 }
 
 export function wokeSettingsFor (wmType: string | undefined): Component | undefined {

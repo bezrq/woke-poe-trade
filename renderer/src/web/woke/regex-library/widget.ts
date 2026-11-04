@@ -1,4 +1,7 @@
 import type { Widget, Anchor } from '@/web/overlay/widgets'
+import { importList, matchesQuery, nextId, str, strList } from '../shared/library'
+
+export { groupByCategory } from '../shared/library'
 
 export const REGEX_LIBRARY_TYPE = 'woke-regex-library'
 
@@ -21,13 +24,9 @@ export interface RegexLibraryWidget extends Widget {
   entries: RegexEntry[]
 }
 
-export function nextEntryId (entries: RegexEntry[]): number {
-  return Math.max(0, ...entries.map(e => e.id)) + 1
-}
-
 export function emptyEntry (entries: RegexEntry[]): RegexEntry {
   return {
-    id: nextEntryId(entries),
+    id: nextId(entries),
     name: '',
     text: '',
     category: '',
@@ -51,51 +50,23 @@ export function starterEntries (): RegexEntry[] {
 }
 
 export function matchesFilter (entry: RegexEntry, filter: string): boolean {
-  const q = filter.trim().toLowerCase()
-  if (!q) return true
-  return [entry.name, entry.text, entry.category, entry.notes, ...entry.tags]
-    .some(field => field.toLowerCase().includes(q))
+  return matchesQuery([entry.name, entry.text, entry.category, entry.notes, ...entry.tags], filter)
 }
 
-export function groupByCategory (entries: RegexEntry[]): Array<{ category: string, entries: RegexEntry[] }> {
-  const groups = new Map<string, RegexEntry[]>()
-  for (const entry of entries) {
-    const key = entry.category.trim() || 'Uncategorized'
-    const list = groups.get(key)
-    if (list) list.push(entry)
-    else groups.set(key, [entry])
-  }
-  return Array.from(groups, ([category, entries]) => ({ category, entries }))
-}
-
-// Import accepts either an array of entries or `{ entries: [...] }`.
-// Unknown fields are dropped; ids are reassigned after the existing ones.
+// Unknown fields are dropped; ids are assigned after the existing ones.
 export function parseImport (json: string, existing: RegexEntry[]): RegexEntry[] {
-  const data: unknown = JSON.parse(json)
-  const list = Array.isArray(data)
-    ? data
-    : (data && typeof data === 'object' && Array.isArray((data as { entries?: unknown }).entries))
-        ? (data as { entries: unknown[] }).entries
-        : null
-  if (!list) throw new Error('Expected a JSON array of entries')
-
-  let id = nextEntryId(existing)
-  const out: RegexEntry[] = []
-  for (const raw of list) {
-    if (!raw || typeof raw !== 'object') continue
-    const r = raw as Record<string, unknown>
-    if (typeof r.text !== 'string' || !r.text) continue
-    out.push({
+  let id = nextId(existing)
+  return importList(json)
+    .filter(r => typeof r.text === 'string' && r.text)
+    .map(r => ({
       id: id++,
-      name: typeof r.name === 'string' ? r.name : '',
-      text: r.text,
-      category: typeof r.category === 'string' ? r.category : '',
-      tags: Array.isArray(r.tags) ? r.tags.filter((t): t is string => typeof t === 'string') : [],
-      notes: typeof r.notes === 'string' ? r.notes : '',
+      name: str(r.name),
+      text: str(r.text),
+      category: str(r.category),
+      tags: strList(r.tags),
+      notes: str(r.notes),
       hotkey: null
-    })
-  }
-  return out
+    }))
 }
 
 export function exportEntries (entries: RegexEntry[]): string {
