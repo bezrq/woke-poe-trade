@@ -69,25 +69,85 @@ const SURE_SIMILARITY = 0.9
 // Words that start map mod lines; such a line with no match is suspicious.
 const MOD_LIKE = /^(monsters?|players?|rare|unique|area|buffs|auras|debuffs|the maven|#% (more|less|increased|reduced))/
 
+interface Known { matcher: string, norm: string }
+
+const CACHE_MAX = 2000
+// Words most map mods share; they don't narrow anything down.
+const COMMON = new Set(['increased', 'reduced', 'more', 'less', 'monsters', 'monster', 'area', 'this', 'have', 'with', 'from', 'found', 'players', 'player', 'chance', 'damage', 'additional'])
+
+function keyWords (norm: string): string[] {
+  return norm.split(' ').map(w => w.replace(/[#%']/g, '')).filter(w => w.length >= 4 && !COMMON.has(w))
+}
+
 export class TooltipMatcher {
-  private readonly known: Array<{ matcher: string, norm: string }>
+  // Known mods by the less common words in them, so a line is compared with
+  // the few dozen mods sharing a word with it instead of all ~500.
+  private readonly byWord = new Map<string, Known[]>()
+  // Mods without such a word: always compared.
+  private readonly plain: Known[] = []
+  // Mods the user rated: always compared, whatever words OCR got wrong.
+  private always: Known[] = []
+  private alwaysKey = ''
+  // The same tooltip is read many times (rerolls, re-hovers).
+  private readonly cache = new Map<string, { matcher: string, score: number } | null>()
 
   constructor (matchers: string[]) {
-    this.known = matchers.map(m => ({ matcher: m, norm: normalize(m) }))
+    for (const m of matchers) {
+      const k = { matcher: m, norm: normalize(m) }
+      const words = keyWords(k.norm)
+      if (!words.length) this.plain.push(k)
+      for (const w of new Set(words)) {
+        const list = this.byWord.get(w)
+        if (list) list.push(k)
+        else this.byWord.set(w, [k])
+      }
+    }
   }
 
-  matchLine (line: string): { matcher: string, roll?: number, score: number } | null {
-    const norm = normalize(line)
-    if (norm.length < 8) return null
+  // Mods with a rating in the active profile.
+  setAlwaysCheck (matchers: string[]) {
+    const key = matchers.slice().sort().join('\n')
+    if (key === this.alwaysKey) return
+    this.alwaysKey = key
+    this.always = matchers.map(m => ({ matcher: m, norm: normalize(m) }))
+    this.cache.clear()
+  }
+
+  private candidates (norm: string): Set<Known> {
+    const out = new Set<Known>(this.plain)
+    for (const w of keyWords(norm)) {
+      for (const k of this.byWord.get(w) ?? []) out.add(k)
+    }
+    return out
+  }
+
+  private best (norm: string): { matcher: string, score: number } | null {
+    const cached = this.cache.get(norm)
+    if (cached !== undefined) return cached
     let best: { matcher: string, score: number } | null = null
-    for (const k of this.known) {
+    const consider = (k: Known) => {
       // Cheap length filter before the edit distance.
-      if (Math.abs(k.norm.length - norm.length) > norm.length * (1 - MIN_SIMILARITY) + 2) continue
+      if (Math.abs(k.norm.length - norm.length) > norm.length * (1 - MIN_SIMILARITY) + 2) return
       const score = similarity(norm, k.norm)
       if (score >= MIN_SIMILARITY && (!best || score > best.score)) {
         best = { matcher: k.matcher, score }
       }
     }
+    for (const k of this.always) consider(k)
+    const near = this.candidates(norm)
+    for (const k of near) consider(k)
+    // OCR garbled every telling word: fall back to all mods. The cache keeps
+    // this to once per line.
+    if (!best) for (const list of this.byWord.values()) for (const k of list) if (!near.has(k)) consider(k)
+    if (this.cache.size >= CACHE_MAX) this.cache.clear()
+    this.cache.set(norm, best)
+    return best
+  }
+
+  matchLine (line: string): { matcher: string, roll?: number, score: number } | null {
+    const norm = normalize(line)
+    if (norm.length < 8) return null
+    const best = this.best(norm)
     if (!best) return null
     const num = /(\d+)/.exec(line)
     return { matcher: best.matcher, roll: num ? Number(num[1]) : undefined, score: best.score }

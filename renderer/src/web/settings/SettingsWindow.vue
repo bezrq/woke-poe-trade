@@ -143,6 +143,16 @@ export default defineComponent({
     const configWidget = computed(() => configClone.value?.widgets.find(w => w.wmId === selectedWmId.value))
 
     watch(() => props.config.wmFlags, (wmFlags) => {
+      // woke: open a general page by its name (e.g. the hotkey list).
+      const pageFlag = wmFlags.find(flag => flag.startsWith('settings::page='))
+      if (pageFlag) {
+        const page = menuByType().flat().find(c => c.name === pageFlag.slice('settings::page='.length))
+        if (page) {
+          selectedWmId.value = null
+          selectedComponent.value = page
+        }
+        wm.setFlag(props.config.wmId, pageFlag, false)
+      }
       const flagStr = wmFlags.find(flag => flag.startsWith('settings::widget='))
       if (flagStr) {
         const _wmId = Number(flagStr.split('=')[1])

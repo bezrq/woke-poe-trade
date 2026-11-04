@@ -2,10 +2,13 @@
   <Widget :config="config" move-handles="corners" :inline-edit="false" :readonly="true">
     <div class="flex gap-2 min-h-0 items-start">
       <!-- Collapsed: a small see-through icon; hovering it shows the glance card. -->
-      <div v-if="!config.expanded" ref="glanceEl" :class="$style.glanceRoot" data-w-panel>
-        <button v-if="!showGlance" type="button" :class="$style.icon" :title="`League mechanics: ${mech.label}`" @click="config.expanded = true">
+      <div v-if="!config.expanded && iconShown" ref="glanceEl" :class="$style.glanceRoot" data-w-panel>
+        <!-- Not a <button>, so it can be dragged; a click without dragging expands. -->
+        <span v-if="!showGlance" data-widget-drag :class="$style.icon"
+          :title="`League mechanics: ${mech.label}. Rest the mouse here for prices; with the overlay open, drag to move or click to expand.`"
+          @click="config.expanded = true">
           <i :class="mech.icon" />
-        </button>
+        </span>
 
         <WPanel v-else width="19rem" max-height="60vh">
           <template #title>{{ mech.label }}</template>
@@ -40,7 +43,7 @@
       </div>
 
       <!-- Expanded: rail of mechanics, prices, then scarabs and tips. -->
-      <WPanel v-else :title="config.wmTitle || 'League mechanics'" width="40rem" max-height="70vh" :scroll="false">
+      <WPanel v-else-if="config.expanded" :title="config.wmTitle || 'League mechanics'" width="40rem" max-height="70vh" :scroll="false">
         <template #actions>
           <button class="w-icon-btn" :class="{ 'w-icon-btn--on': config.autoSwitch }" @click="config.autoSwitch = !config.autoSwitch"
             :title="config.autoSwitch ? 'Switches mechanic when you enter its zone. Click to turn off.' : 'Click to switch mechanic when you enter its zone'">
@@ -189,7 +192,9 @@ if (props.config.wmFlags[0] === 'uninitialized') {
   // No 'invisible-on-blur': the icon stays on screen while you play.
   props.config.wmFlags = []
   props.config.wmTitle = 'League mechanics'
-  props.config.anchor = { pos: 'tl', x: 2, y: 30 }
+  // Above the stash and inventory panels, so the glance never covers them.
+  props.config.anchor = { pos: 'tl', x: 2, y: 8 }
+  props.config.posChecked = true
   props.config.tab = 'delve'
   props.config.expanded = false
   props.config.autoSwitch = true
@@ -197,6 +202,14 @@ if (props.config.wmFlags[0] === 'uninitialized') {
   props.config.betrayalStars = []
   props.config.betrayalOverrides = {}
   wm.show(props.config.wmId)
+}
+
+// Icons placed before: the old default spot (left edge, 30% down) is inside
+// the stash grid. Move it above, once.
+if (!props.config.posChecked) {
+  const a = props.config.anchor
+  if (a && a.pos === 'tl' && a.x < 30 && a.y >= 12 && a.y <= 85) props.config.anchor = { ...a, y: 8 }
+  props.config.posChecked = true
 }
 
 const prices = usePriceIndex()
@@ -219,8 +232,12 @@ function step (dir: number) {
 const zoneMech = shallowRef<string | null>(null)
 useMechanicZone((id) => {
   zoneMech.value = id
-  if (props.config.autoSwitch && !props.config.hidden.includes(id)) props.config.tab = id
+  if (id && props.config.autoSwitch && !props.config.hidden.includes(id)) props.config.tab = id
 })
+// The icon is contextual: it shows only in a zone with a mechanic (it used to
+// show the last or default tab, Delve, everywhere). With the overlay open it
+// always shows, so it can be moved or opened.
+const iconShown = computed(() => wm.active.value || (zoneMech.value != null && !props.config.hidden.includes(zoneMech.value)))
 
 // ---- Glance (hover) ----
 const glanceEl = shallowRef<HTMLElement | null>(null)
@@ -229,15 +246,19 @@ const glanceEl = shallowRef<HTMLElement | null>(null)
 const hovering = useHoverZone(glanceEl, {
   enabled: () => !props.config.expanded
 })
-// Small delay before closing so moving between icon and card doesn't flicker.
+// Opens only once the mouse rests on the icon, so sweeping past it while
+// moving items doesn't pop the card up. Small delay before closing so moving
+// between icon and card doesn't flicker.
+const OPEN_AFTER_MS = 400
+const CLOSE_AFTER_MS = 250
 const showGlance = shallowRef(false)
-let closeTimer: ReturnType<typeof setTimeout> | null = null
+let glanceTimer: ReturnType<typeof setTimeout> | null = null
 watch(hovering, (on) => {
-  if (closeTimer) { clearTimeout(closeTimer); closeTimer = null }
-  if (on) showGlance.value = true
-  else closeTimer = setTimeout(() => { showGlance.value = false }, 250)
+  if (glanceTimer) { clearTimeout(glanceTimer); glanceTimer = null }
+  if (on === showGlance.value) return
+  glanceTimer = setTimeout(() => { showGlance.value = on }, on ? OPEN_AFTER_MS : CLOSE_AFTER_MS)
 })
-onUnmounted(() => { if (closeTimer) clearTimeout(closeTimer) })
+onUnmounted(() => { if (glanceTimer) clearTimeout(glanceTimer) })
 
 function collapse () {
   props.config.expanded = false
@@ -337,6 +358,7 @@ function boardMatch (member: string, div: string, reward: string) {
   border: 1px solid var(--w-line);
   opacity: 0.55;
   transition: opacity 0.15s;
+  cursor: grab;
 }
 .icon:hover { opacity: 1; }
 .warn { color: var(--w-warn); padding: 6px var(--w-pad); font-size: 12px; }

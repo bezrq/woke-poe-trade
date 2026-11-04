@@ -140,6 +140,8 @@ const rolling = shallowRef(false)
 const locked = shallowRef(false)
 const rolls = shallowRef<Array<{ n: number, verdict: Verdict, juice: number }>>([])
 const message = shallowRef<string | null>(null)
+// Another scan mode has the screen; this one resumes when it stops.
+const paused = shallowRef(false)
 const entries = shallowRef<Entry[]>([])
 const current = shallowRef<Entry | null>(null)
 let nextId = 1
@@ -180,13 +182,16 @@ interface Reading { lines: string[], at: { x: number, y: number }, rolling?: boo
 
 function onReading (reading: Reading) {
   matcher ??= new TooltipMatcher(allAreaMods())
+  const cfg = mapMods.value
+  const profile = cfg ? activeProfile(cfg) : defaultProfile()
+  // Mods the user rated are always compared in full, never skipped by the
+  // first-word shortcut.
+  matcher.setAlwaysCheck([...Object.keys(profile.ratings ?? {}), ...Object.keys(profile.mins ?? {})])
   const scanned = matcher.parse(reading.lines)
   if (!scanned) {
     current.value = null
     return
   }
-  const cfg = mapMods.value
-  const profile = cfg ? activeProfile(cfg) : defaultProfile()
   const verdict = rateMods(scanned.mods, profile)
   const juice = juiceScore({ ...scanned.props, goodMods: verdict.good.length }, cfg?.weights ?? DEFAULT_JUICE_WEIGHTS)
   const flagged = [...verdict.deadly, ...verdict.warn, ...verdict.good]
@@ -225,9 +230,10 @@ function onReading (reading: Reading) {
 
 const events = MainProcess.onEvent('MAIN->CLIENT::woke-event', ({ topic, data }) => {
   if (topic !== 'map-scan') return
-  const d = data as { type: string, running?: boolean, rolling?: boolean, locked?: boolean, message?: string, reading?: Reading }
+  const d = data as { type: string, running?: boolean, paused?: boolean, rolling?: boolean, locked?: boolean, message?: string, reading?: Reading }
   if (d.type === 'state') {
     running.value = Boolean(d.running)
+    paused.value = Boolean(d.paused)
     const nowRolling = Boolean(d.rolling)
     if (nowRolling && !rolling.value) rolls.value = []
     rolling.value = nowRolling
@@ -244,7 +250,8 @@ const events = MainProcess.onEvent('MAIN->CLIENT::woke-event', ({ topic, data })
 async function toggle () {
   message.value = null
   try {
-    if (running.value) {
+    // Paused for the other scan mode: the hotkey takes the screen back.
+    if (running.value && !paused.value) {
       await hostRequest('map-scan-stop', null)
       running.value = false
       current.value = null
@@ -286,8 +293,8 @@ const hotkeys = MainProcess.onEvent('MAIN->CLIENT::widget-action', (e) => {
   else toggle()
 })
 
-hostRequest<{ running: boolean, rolling?: boolean }>('map-scan-status', null)
-  .then(s => { running.value = s.running; rolling.value = Boolean(s.rolling) })
+hostRequest<{ running: boolean, paused?: boolean, rolling?: boolean }>('map-scan-status', null)
+  .then(s => { running.value = s.running; paused.value = Boolean(s.paused); rolling.value = Boolean(s.rolling) })
   .catch(() => {})
 
 onUnmounted(() => {

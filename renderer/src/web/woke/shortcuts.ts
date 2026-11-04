@@ -12,7 +12,7 @@ import { MAP_MODS_TYPE, MAP_MODS_TARGET } from './map-mods/widget'
 import type { MapModsWidget } from './map-mods/widget'
 import { MAP_SCAN_TYPE, rollHotkeyTarget, scanHotkeyTarget } from './map-mods/scan'
 import type { MapScanWidget } from './map-mods/scan'
-import { isWidgetTypeOn } from './modules'
+import { isModuleOn, isWidgetTypeOn } from './modules'
 import { ESSENCE_SCAN_TYPE, essenceHotkeyTarget, essenceOnceTarget } from './essence-scan/widget'
 import type { EssenceScanWidget } from './essence-scan/widget'
 import { LOOT_FILTER_TYPE, LOOT_FILTER_SAMPLE_TARGET, editorHotkeyTarget } from './loot-filter/widget'
@@ -26,10 +26,20 @@ import type { FarmingWidget } from './farming/farming'
 
 export const HIDE_ALL_TARGET = 'woke-hide-all'
 
+// Default map check key, used until the Map mods widget exists.
+export const MAP_CHECK_DEFAULT_KEY = 'Alt + M'
+
 // Shortcuts that don't belong to one widget.
-export function wokeGlobalShortcuts (config: { woke?: { hideAllHotkey?: string | null } }): ShortcutAction[] {
+export function wokeGlobalShortcuts (config: { woke?: { setupDone: boolean, off: string[], hideAllHotkey?: string | null }, widgets: Widget[] }): ShortcutAction[] {
+  const out: ShortcutAction[] = []
   const key = config.woke?.hideAllHotkey
-  return key ? [{ shortcut: key, keepModKeys: true, action: { type: 'trigger-event', target: HIDE_ALL_TARGET } }] : []
+  if (key) out.push({ shortcut: key, keepModKeys: true, action: { type: 'trigger-event', target: HIDE_ALL_TARGET } })
+  // The map check works with the default profile before the Map mods widget
+  // has been added; once it exists, its own hotkey setting takes over.
+  if (isModuleOn(config, 'map-mods') && !config.widgets.some(w => w.wmType === MAP_MODS_TYPE)) {
+    out.push({ shortcut: MAP_CHECK_DEFAULT_KEY, action: { type: 'copy-item', target: MAP_MODS_TARGET, focusOverlay: true } })
+  }
+  return out
 }
 
 export function wokeShortcutsFor (widget: Widget, config: { woke?: { setupDone: boolean, off: string[], hideAllHotkey?: string | null }, widgets: Widget[] }): ShortcutAction[] {

@@ -11,6 +11,8 @@ import type { OverlayWindow } from '../windowing/OverlayWindow'
 import type { GameLogWatcher } from '../host-files/GameLogWatcher'
 import { readGameLogTail } from './game-log-tail'
 import { perfSnapshot, startProcessSampler } from './perf'
+import { hotkeyFailures } from './hotkey-failures'
+import { marketHandlers } from './market-store'
 
 type Handler = (args: any) => Promise<unknown> // eslint-disable-line @typescript-eslint/no-explicit-any
 
@@ -25,17 +27,22 @@ const handlers: Record<string, Handler> = {
   'filter-write': writeFilter,
   'filter-folder': showFilterFolder,
   'perf-stats': async () => perfSnapshot(),
-  'ocr-check': async () => checkOcr()
+  'ocr-check': async () => checkOcr(),
+  'hotkey-failures': async () => hotkeyFailures(),
+  ...marketHandlers
 }
 
 export function initWoke (server: ServerEvents, logger: Logger, poeWindow: GameWindow, gameLog: GameLogWatcher): void {
   handlers['game-log-tail'] = async (args) => await readGameLogTail(gameLog, args)
+  // Follow the running game's Client.txt (another drive, another Steam
+  // library) instead of a stale copy in a default folder.
+  poeWindow.onAttach(() => { gameLog.gameStarted().catch(() => {}) })
   for (const kind of [MAP_SCAN, ESSENCE_SCAN]) {
     const scanner = new ScreenScanner(server, logger, poeWindow, kind)
     handlers[`${kind.topic}-start`] = async () => await scanner.start()
     handlers[`${kind.topic}-stop`] = async () => scanner.stop()
     handlers[`${kind.topic}-reread`] = async () => scanner.reread()
-    handlers[`${kind.topic}-status`] = async () => ({ running: scanner.isRunning, rolling: scanner.isRolling })
+    handlers[`${kind.topic}-status`] = async () => ({ running: scanner.isRunning, paused: scanner.isPaused, rolling: scanner.isRolling })
     if (kind.canRoll) handlers[`${kind.topic}-roll`] = async () => await scanner.roll()
   }
   handlers['essence-scan-once'] = async () => await readAllEssenceLabels(poeWindow)

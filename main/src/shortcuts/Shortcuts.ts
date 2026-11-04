@@ -1,5 +1,6 @@
 import { screen, globalShortcut } from 'electron'
 import { uIOhook, UiohookKey, UiohookWheelEvent } from 'uiohook-napi'
+import { noteHotkeyFailures } from '../woke/hotkey-failures'
 import { isModKey, KeyToElectron, mergeTwoHotkeys } from '../../../ipc/KeyToCode'
 import { typeInChat, stashSearch } from './text-box'
 import { WidgetAreaTracker } from '../windowing/WidgetAreaTracker'
@@ -144,6 +145,8 @@ export class Shortcuts {
   }
 
   private register () {
+    // woke: keys another program holds, for the toolkit's clash warning.
+    const failed: string[] = []
     for (const entry of this.actions) {
       const isOk = globalShortcut.register(shortcutToElectron(entry.shortcut), () => {
         if (this.logKeys) {
@@ -219,12 +222,14 @@ export class Shortcuts {
 
       if (!isOk) {
         this.logger.write(`error [Shortcuts] Failed to register a shortcut "${entry.shortcut}". It is already registered by another application.`)
+        failed.push(entry.shortcut)
       }
 
       if (entry.action.type === 'test-only') {
         globalShortcut.unregister(shortcutToElectron(entry.shortcut))
       }
     }
+    noteHotkeyFailures(this.server, failed)
   }
 
   private unregister () {

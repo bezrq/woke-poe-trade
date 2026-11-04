@@ -25,6 +25,9 @@
       More <span :class="$style.count">{{ closedUnpinned.length }}</span> <i class="fas fa-chevron-down" />
     </button>
     <button :class="$style.iconBtn" title="Add a tool" @click="openPopup('add', $event)"><i class="fas fa-plus" /></button>
+    <button v-if="hotkeys.problems.value" :class="$style.warnBtn" :title="`${hotkeys.summary.value}. Click for the hotkey list.`" @click="openHotkeyList">
+      <i class="fas fa-exclamation-triangle" /> Hotkeys <span :class="$style.count">{{ hotkeys.problems.value }}</span>
+    </button>
     <textarea :class="$style.paste" rows="1" spellcheck="false"
       placeholder="Paste item (Ctrl V)" @input="$emit('paste', $event)" />
 
@@ -32,7 +35,7 @@
       <div v-if="popup" :class="$style.backdrop" @mousedown="closePopup" @contextmenu.prevent="closePopup" />
 
       <!-- right-click menu -->
-      <div v-if="popup?.kind === 'menu' && menuTab" :class="$style.menu" :style="popupStyle" @contextmenu.prevent>
+      <div v-if="popup?.kind === 'menu' && menuTab" ref="popupEl" :class="$style.menu" :style="popupStyle" @contextmenu.prevent>
         <div :class="$style.head">{{ menuTab.name }}</div>
         <button :class="$style.item" @click="toggle(menuTab); closePopup()">
           <i class="fas" :class="menuTab.open ? 'fa-eye-slash' : 'fa-eye'" />{{ menuTab.open ? 'Close' : 'Open' }}
@@ -67,7 +70,7 @@
       </div>
 
       <!-- More: added but not pinned -->
-      <div v-if="popup?.kind === 'more'" :class="$style.menu" :style="popupStyle" @contextmenu.prevent>
+      <div v-if="popup?.kind === 'more'" ref="popupEl" :class="$style.menu" :style="popupStyle" @contextmenu.prevent>
         <div :class="$style.head">Not pinned</div>
         <button v-for="tab in closedUnpinned" :key="tab.wmId" :class="$style.item"
           @click="show(tab); closePopup()" @contextmenu.prevent.stop="openMenu(tab, $event)">
@@ -78,7 +81,7 @@
       </div>
 
       <!-- Add a tool -->
-      <div v-if="popup?.kind === 'add'" :class="[$style.menu, $style.addList]" :style="popupStyle" @contextmenu.prevent>
+      <div v-if="popup?.kind === 'add'" ref="popupEl" :class="[$style.menu, $style.addList]" :style="popupStyle" @contextmenu.prevent>
         <div :class="$style.search">
           <i class="fas fa-search" />
           <input ref="searchInput" v-model="query" :class="$style.searchInput" placeholder="Find a tool"
@@ -107,6 +110,7 @@ import { registry } from '@/web/overlay/widget-registry'
 import { AppConfig } from '@/web/Config'
 import { isWidgetTypeOn } from '@/web/woke/modules'
 import { useI18n } from 'vue-i18n'
+import { useHotkeyHealth } from '../switchboard/hotkey-health'
 import { iconFor, allowsCopies, groupTypes } from './tools'
 import type { TabBarConfig } from './tools'
 
@@ -171,6 +175,16 @@ const pinnedTabs = computed(() => {
 })
 const openUnpinned = computed(() => tabs.value.filter(tab => !tab.pinned && tab.open))
 const closedUnpinned = computed(() => tabs.value.filter(tab => !tab.pinned && !tab.open))
+
+// Two actions on one key, or a key another program holds: either way one
+// of them silently does nothing, so say so where it's always seen.
+const hotkeys = useHotkeyHealth()
+function openHotkeyList () {
+  const settings = wm.widgets.value.find(w => w.wmType === 'settings')
+  if (!settings) return
+  wm.setFlag(settings.wmId, 'settings::page=Hotkey list', true)
+  wm.show(settings.wmId)
+}
 
 function show (tab: Pick<Tab, 'wmId'>) { wm.show(tab.wmId) }
 function close (tab: Pick<Tab, 'wmId'>) { wm.hide(tab.wmId) }
@@ -242,22 +256,42 @@ function setLabel (wmId: number, label: string) {
 }
 
 // popups
-const popup = ref<{ kind: 'menu' | 'more' | 'add', x: number, y: number, wmId?: number } | null>(null)
+// y: where the popup's top goes when it opens downward; above: where its
+// bottom goes when there is no room below and it opens upward instead.
+const popup = ref<{ kind: 'menu' | 'more' | 'add', x: number, y: number, above: number, up?: boolean, wmId?: number } | null>(null)
+const popupEl = ref<HTMLElement | null>(null)
 const menuTab = computed(() => tabs.value.find(tab => tab.wmId === popup.value?.wmId))
 const popupStyle = computed(() => {
   if (!popup.value) return {}
   const x = Math.min(popup.value.x, window.innerWidth - (popup.value.kind === 'add' ? 290 : 240))
-  return { left: `${Math.max(4, x)}px`, top: `${popup.value.y}px` }
+  const left = `${Math.max(4, x)}px`
+  return popup.value.up
+    ? { left, bottom: `${window.innerHeight - popup.value.above}px`, maxHeight: `${popup.value.above - 4}px`, overflowY: 'auto' as const }
+    : { left, top: `${popup.value.y}px` }
 })
+// Flip upward when the popup would run off the bottom of the screen and
+// there is more room above the click than below it.
+function placePopup () {
+  nextTick(() => {
+    const p = popup.value
+    const el = popupEl.value
+    if (!p || !el) return
+    const h = el.getBoundingClientRect().height
+    const roomBelow = window.innerHeight - p.y - 4
+    if (h > roomBelow && p.above > roomBelow) p.up = true
+  })
+}
 function openMenu (tab: Tab, e: MouseEvent) {
   confirmRemove.value = false
   renaming.value = false
-  popup.value = { kind: 'menu', x: e.clientX, y: e.clientY, wmId: tab.wmId }
+  popup.value = { kind: 'menu', x: e.clientX, y: e.clientY, above: e.clientY, wmId: tab.wmId }
+  placePopup()
 }
 function openPopup (kind: 'more' | 'add', e: MouseEvent) {
   if (popup.value?.kind === kind) { closePopup(); return }
   const r = (e.currentTarget as HTMLElement).getBoundingClientRect()
-  popup.value = { kind, x: r.left, y: r.bottom + 4 }
+  popup.value = { kind, x: r.left, y: r.bottom + 4, above: r.top - 4 }
+  placePopup()
   if (kind === 'add') {
     query.value = ''
     nextTick(() => searchInput.value?.focus())
@@ -317,6 +351,17 @@ function addFirstMatch () {
   font-family: var(--w-body);
   font-size: var(--w-text);
 }
+.warnBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 28px;
+  padding: 0 8px;
+  border-radius: var(--w-radius-sm);
+  color: var(--w-warn);
+  background: color-mix(in srgb, var(--w-warn) 14%, transparent);
+}
+.warnBtn:hover { background: color-mix(in srgb, var(--w-warn) 24%, transparent); }
 .sep { width: 1px; height: 20px; background: var(--w-line); margin: 0 3px; flex: none; }
 .tab {
   position: relative;

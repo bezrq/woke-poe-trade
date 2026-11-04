@@ -113,6 +113,8 @@ interface Entry {
 
 const running = shallowRef(false)
 const message = shallowRef<string | null>(null)
+// Another scan mode has the screen; this one resumes when it stops.
+const paused = shallowRef(false)
 const entries = shallowRef<Entry[]>([])
 const current = shallowRef<Entry | null>(null)
 let nextId = 1
@@ -222,9 +224,10 @@ function onReading (reading: { lines: string[], at: { x: number, y: number } }) 
 
 const events = MainProcess.onEvent('MAIN->CLIENT::woke-event', ({ topic, data }) => {
   if (topic !== 'essence-scan') return
-  const d = data as { type: string, running?: boolean, message?: string, reading?: { lines: string[], at: { x: number, y: number } } }
+  const d = data as { type: string, running?: boolean, paused?: boolean, message?: string, reading?: { lines: string[], at: { x: number, y: number } } }
   if (d.type === 'state') {
     running.value = Boolean(d.running)
+    paused.value = Boolean(d.paused)
     message.value = d.message ?? null
     if (!running.value) current.value = null
   } else if (d.type === 'clear') {
@@ -237,7 +240,8 @@ const events = MainProcess.onEvent('MAIN->CLIENT::woke-event', ({ topic, data })
 async function toggle () {
   message.value = null
   try {
-    if (running.value) {
+    // Paused for the other scan mode: the hotkey takes the screen back.
+    if (running.value && !paused.value) {
       await hostRequest('essence-scan-stop', null)
       running.value = false
       current.value = null
@@ -265,8 +269,8 @@ const hotkeys = MainProcess.onEvent('MAIN->CLIENT::widget-action', (e) => {
   else toggle()
 })
 
-hostRequest<{ running: boolean }>('essence-scan-status', null)
-  .then(s => { running.value = s.running })
+hostRequest<{ running: boolean, paused?: boolean }>('essence-scan-status', null)
+  .then(s => { running.value = s.running; paused.value = Boolean(s.paused) })
   .catch(() => {})
 
 onUnmounted(() => {

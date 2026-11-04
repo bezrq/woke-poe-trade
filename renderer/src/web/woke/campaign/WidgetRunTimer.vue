@@ -156,6 +156,7 @@ import { Host, MainProcess } from '@/web/background/IPC'
 import { AppConfig, saveConfig } from '@/web/Config'
 import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
+import { useVisibleClock } from '../shared/visible-clock'
 import { WPanel, WTabs, WChip, WEmpty } from '../ui'
 import { actLabel, parseLogLine } from './log-parse'
 import {
@@ -198,8 +199,8 @@ const docked = computed(() => {
 const tab = shallowRef<'splits' | 'history'>('splits')
 
 const now = shallowRef(Date.now())
-const clock = setInterval(() => { now.value = Date.now() }, 1000)
-onUnmounted(() => { clearInterval(clock) })
+// Ticks only while the widget is on screen.
+useVisibleClock(props.config, () => { now.value = Date.now() }, 1000)
 
 const run = computed(() => props.config.run)
 const total = computed(() => run.value ? runElapsed(run.value, now.value) : 0)
