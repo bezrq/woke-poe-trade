@@ -44,7 +44,7 @@
 </template>
 
 <script lang="ts">
-import { defineComponent } from 'vue'
+import { computed, defineComponent } from 'vue'
 import WHotkeyCell from '../ui/WHotkeyCell.vue'
 import { configProp, configModelValue } from '@/web/settings/utils'
 import type { LootFilterWidget } from './widget'
@@ -58,7 +58,14 @@ export default defineComponent({
       sampleHotkey: configModelValue(() => props.configWidget, 'sampleHotkey'),
       editorHotkey: configModelValue(() => props.configWidget, 'editorHotkey'),
       folder: configModelValue(() => props.configWidget, 'folder'),
-      fallbackAreaLevel: configModelValue(() => props.configWidget, 'fallbackAreaLevel'),
+      // A cleared box gives '' (read as area level 0); keep the last valid level.
+      fallbackAreaLevel: computed({
+        get: () => props.configWidget.fallbackAreaLevel,
+        set: (v: number | string) => {
+          const n = Number(v)
+          if (v !== '' && Number.isFinite(n) && n >= 1 && n <= 86) props.configWidget.fallbackAreaLevel = Math.round(n)
+        }
+      }),
       saveMode: configModelValue(() => props.configWidget, 'saveMode'),
       reloadViaChat: configModelValue(() => props.configWidget, 'reloadViaChat'),
       reloadWhenSafe: configModelValue(() => props.configWidget, 'reloadWhenSafe')
