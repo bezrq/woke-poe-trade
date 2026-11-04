@@ -5,6 +5,9 @@ import type { Config } from '@/web/Config'
 import type { Widget } from '@/web/overlay/widgets'
 import { MODULES, isModuleOn, isWidgetTypeOn } from '../modules'
 import { normalizeKey } from '../ui/hotkey-context'
+import { MAP_CHECK_DEFAULT_KEY } from '../shortcuts'
+import { MAP_MODS_TYPE, initMapModsWidget } from '../map-mods/widget'
+import type { MapModsWidget } from '../map-mods/widget'
 
 type W = Widget & Record<string, unknown>
 
@@ -119,6 +122,24 @@ export function hotkeyFields (config: Config): HotkeyField[] {
       set: (v) => { cmd.hotkey = v }
     })
   })
+  // Alt+M works before the Map mods widget exists (wokeGlobalShortcuts).
+  // Fixed until then: setting it places the widget.
+  if (isModuleOn(config, 'map-mods') && !find(MAP_MODS_TYPE)) {
+    out.push({
+      id: 'map-check-default',
+      label: 'Check the hovered map',
+      group: moduleNameFor(MAP_MODS_TYPE),
+      page: 'map-mods',
+      off: false,
+      get: () => MAP_CHECK_DEFAULT_KEY,
+      set: (v) => {
+        const w = { wmId: Math.max(0, ...config.widgets.map(_ => _.wmId)) + 1, wmType: MAP_MODS_TYPE, wmTitle: '', wmWants: 'hide', wmZorder: null, wmFlags: [] } as unknown as MapModsWidget
+        initMapModsWidget(w)
+        w.hotkey = v
+        config.widgets.push(w)
+      }
+    })
+  }
   for (const w of widgets) {
     const spec = WOKE_KEYS[w.wmType]
     const off = !isWidgetTypeOn(config, w.wmType)

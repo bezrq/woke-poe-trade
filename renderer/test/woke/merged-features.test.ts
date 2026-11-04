@@ -4,7 +4,7 @@ import { moveStashSearchToLibrary } from '@/web/woke/regex-library/apt-import'
 
 describe('Stash search strings move into the Regex library', () => {
   it('moves changed strings, skips untouched starters and duplicates, drops the widgets', () => {
-    const widgets: Array<Record<string, any> & { wmId: number, wmType: string }> = [
+    const widgets: Array<Record<string, unknown> & { wmId: number, wmType: string }> = [
       { wmId: 1, wmType: 'settings' },
       {
         wmId: 2,
@@ -32,7 +32,7 @@ describe('Stash search strings move into the Regex library', () => {
   })
 
   it('makes a library when there is none and leaves configs without stash search alone', () => {
-    const widgets: Array<Record<string, any> & { wmId: number, wmType: string }> = [
+    const widgets: Array<Record<string, unknown> & { wmId: number, wmType: string }> = [
       { wmId: 5, wmType: 'stash-search', wmTitle: 'Dump', entries: [{ id: 1, name: 'Six-link', text: '"Sockets: \\S-\\S-\\S-\\S-\\S-\\S"', hotkey: null }] }
     ]
     expect(moveStashSearchToLibrary(widgets)).toBe(1)
