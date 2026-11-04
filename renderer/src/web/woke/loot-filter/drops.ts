@@ -60,7 +60,8 @@ const TABLE: DropEntry[] = [
   { name: 'Orb of Annulment', cls: C, w: 1, h: 1, drop: 60, weight: 0.3 },
   { name: 'Exalted Orb', cls: C, w: 1, h: 1, drop: 35, weight: 0.3 },
   { name: 'Divine Orb', cls: C, w: 1, h: 1, drop: 35, weight: 0.25 },
-  { name: 'Stacked Deck', cls: DIV, w: 1, h: 1, drop: 30, weight: 1 },
+  // A currency item, not a card: filters list it under Stackable Currency.
+  { name: 'Stacked Deck', cls: C, w: 1, h: 1, drop: 30, weight: 1 },
   { name: 'Screaming Essence of Greed', cls: C, w: 1, h: 1, drop: 30, weight: 1.5, max: 75 },
   { name: 'Shrieking Essence of Wrath', cls: C, w: 1, h: 1, drop: 60, weight: 1.2 },
   { name: 'Deafening Essence of Hatred', cls: C, w: 1, h: 1, drop: 75, weight: 0.4 },
