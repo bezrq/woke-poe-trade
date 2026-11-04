@@ -34,9 +34,20 @@
     <div v-else-if="tab === 'rules'" :class="$style.layout">
       <!-- groups -->
       <div :class="$style.tree" class="w-scroll">
-        <template v-for="sec in tree" :key="sec.title">
+        <div class="flex items-center gap-2" :class="$style.rulesHead">
+          <span class="w-group-label">Your rules</span>
+          <span class="grow" />
+          <WButton size="sm" variant="ghost" icon="fas fa-plus" title="Make a rule from any conditions, above NeverSink's" @click="newOwnRule">New rule</WButton>
+        </div>
+        <WListItem v-if="config.rules.length" :active="selType === RULE_TYPE" @select="selectRules()">
+          <span class="flex justify-between gap-2 w-full min-w-0">
+            <span class="w-trunc">Rules you made</span>
+            <span class="w-faint text-xs w-num">{{ config.rules.length }}</span>
+          </span>
+        </WListItem>
+        <template v-for="sec in tree.filter(x => x.groups.some(g => g.type !== RULE_TYPE))" :key="sec.title">
           <div class="w-group-label w-trunc" :title="sec.title">{{ sec.title }}</div>
-          <WListItem v-for="g in sec.groups" :key="g.type" :active="g.type === selType" @select="selectGroup(g.type)"
+          <WListItem v-for="g in sec.groups.filter(x => x.type !== RULE_TYPE)" :key="g.type" :active="g.type === selType" @select="selectGroup(g.type)"
             @contextmenu="groupMenu($event, g.type)">
             <span class="flex justify-between gap-2 w-full min-w-0" :class="{ [$style.off]: g.hidden }">
               <span class="w-trunc">{{ shortName(g) }}</span>
@@ -60,6 +71,22 @@
           </WListItem>
         </template>
 
+        <template v-else-if="selType === RULE_TYPE">
+          <div class="flex items-center gap-2" :class="$style.groupHead">
+            <span :class="$style.groupTitle">Rules you made</span>
+            <span class="w-faint text-xs">top of the filter, first one wins</span>
+          </div>
+          <button v-for="r in config.rules" :key="r.id" class="w-focusable" :class="[$style.tierRow, { [$style.active]: r.id === editingRuleId, [$style.off]: !r.on || ruleProblem(r) }]"
+            @click="editingRuleId = r.id" @contextmenu="ruleMenu($event, r)">
+            <span :class="$style.tierName" :title="r.name">{{ r.name }}</span>
+            <LabelPreview :text="r.conditions.find(c => c.key === 'BaseType')?.values[0] ?? r.name" :style-override="r.patch" :visibility="r.visibility" style="max-width: 100%; overflow: hidden;" />
+            <span :class="$style.bases" class="w-trunc">
+              <span v-if="ruleProblem(r)" style="color: var(--w-warn);">{{ ruleProblem(r) }}</span>
+              <template v-else>{{ r.on ? '' : 'off · ' }}{{ ruleSummary(r) }}</template>
+            </span>
+          </button>
+        </template>
+
         <template v-else-if="group">
           <div class="flex items-center gap-2" :class="$style.groupHead">
             <span :class="$style.groupTitle" class="w-trunc">{{ groupName(group.type) }}</span>
@@ -67,8 +94,9 @@
             <span class="grow" />
             <WButton v-if="!isOwnGroup" size="sm" variant="ghost" @click="toggleGroup">{{ groupHiddenByMe ? 'Show group again' : 'Hide whole group' }}</WButton>
           </div>
-          <button v-for="t in group.tiers" :key="t.tier" class="w-focusable" :class="[$style.tierRow, { [$style.active]: t.tier === selTier, [$style.off]: t.disabled }]"
-            @click="selTier = t.tier; movingBase = null" @contextmenu="tierMenu($event, t)">
+          <button v-for="t in group.tiers" :key="t.tier" class="w-focusable" :class="[$style.tierRow, { [$style.active]: t.tier === selTier, [$style.off]: t.disabled, [$style.dropOk]: dragOver === t.tier }]"
+            @click="selTier = t.tier; picked = []" @contextmenu="tierMenu($event, t)"
+            @dragover="onDragOver(t, $event)" @dragleave="dragOver = dragOver === t.tier ? null : dragOver" @drop="onDrop(t, $event)">
             <span :class="$style.tierName" :title="t.tier">{{ t.tier.startsWith('#') ? 'rule' : t.tier }}</span>
             <LabelPreview :text="t.bases[0] ?? previewName(t)" :actions="firstLive(t).actions" :visibility="t.disabled ? 'Hide' : t.visibility" style="max-width: 100%; overflow: hidden;" />
             <span :class="$style.bases" class="w-trunc">
@@ -81,7 +109,11 @@
 
       <!-- selected tier -->
       <div :class="$style.side" class="w-scroll">
-        <template v-if="tier">
+        <template v-if="selType === RULE_TYPE">
+          <RuleBuilder v-if="editingRule" :key="editingRule.id" :store="store" :rule="editingRule" @delete="deleteRule(editingRule)" />
+          <WEmpty v-else icon="fas fa-sliders-h">Pick a rule to change it, or make a new one.</WEmpty>
+        </template>
+        <template v-else-if="tier">
           <div :class="$style.groupTitle">{{ tier.tier.startsWith('#') ? 'Rule' : tier.tier }}</div>
           <div class="text-xs w-faint">{{ tier.blocks.length > 1 ? `${tier.blocks.length} rules` : `line ${tier.blocks[0].line}` }}<span v-if="tier.disabled"> · commented out in the filter</span></div>
           <StyleEditor v-if="!tier.tier.startsWith('#')" :look="readStyle(firstLive(tier).actions)" :visibility="firstLive(tier).visibility"
@@ -92,10 +124,13 @@
           <template v-if="tier.bases.length && !isOwnGroup">
             <div class="w-group-label" style="padding: 8px 0 2px;">Items in this tier</div>
             <div class="flex flex-wrap gap-1">
-              <WChip v-for="b in tier.bases" :key="b" clickable :active="b === movingBase" @click="movingBase = movingBase === b ? null : b">{{ b }}</WChip>
+              <WChip v-for="b in tier.bases" :key="b" clickable :active="picked.includes(b)" draggable="true"
+                :title="'Drag onto a tier to move it. Shift-click to pick several.'"
+                @click="pickBase(b, $event)" @dragstart="onDragStart(b, $event)" @dragend="dragOver = null">{{ b }}</WChip>
             </div>
-            <div v-if="movingBase" class="flex items-center gap-2 text-sm" style="margin-top: 6px;">
-              <span class="w-dim">Move {{ movingBase }} to</span>
+            <div v-if="!picked.length" class="w-faint text-xs" style="margin-top: 4px;">Drag an item onto a tier in the middle to move it; shift-click to pick several.</div>
+            <div v-if="picked.length" class="flex items-center gap-2 text-sm" style="margin-top: 6px;">
+              <span class="w-dim">Move {{ picked.length > 1 ? `${picked.length} items` : picked[0] }} to</span>
               <select :class="$style.select" value="" aria-label="Target tier" @change="moveBase(($event.target as HTMLSelectElement).value)">
                 <option value="" disabled>tier…</option>
                 <option v-for="t in targets" :key="t" :value="t" :disabled="t === tier.tier">{{ t }}</option>
@@ -109,6 +144,7 @@
     </div>
 
     <PreviewTab v-else-if="tab === 'preview'" :store="store" :config="config" :anchor="panel?.el" @open-rule="openRule" />
+    <PresetsTab v-else-if="tab === 'presets'" :store="store" :config="config" />
     <PricesTab v-else-if="tab === 'prices'" :store="store" :config="config" :anchor="panel?.el" />
     <NeverSinkTab v-else-if="tab === 'neversink'" :store="store" :config="config" :anchor="panel?.el" />
 
@@ -156,6 +192,23 @@
           @update:model-value="v => v !== '' && store.replaceEdit(rehome(s.edit, homes(s.edit)[Number(v)]))" />
         <WButton size="sm" variant="ghost" icon="fas fa-undo" title="Drop this change (you can bring it back from the note)" @click="removeEdit(s.edit)">Drop</WButton>
       </div>
+      <div class="w-group-label" :class="$style.historyLabel">Share</div>
+      <div :class="$style.changeRow">
+        <i class="fas fa-share-alt w-dim" />
+        <span class="grow min-w-0 text-sm w-dim">Your changes, own rules and presets as one code, for a friend or your other PC.</span>
+        <WButton size="sm" :icon="copied === 'share' ? 'fas fa-check' : 'fas fa-copy'" @click="copyShareCode">{{ copied === 'share' ? 'Copied' : 'Copy code' }}</WButton>
+      </div>
+      <div :class="$style.changeRow">
+        <i class="fas fa-paste w-dim" />
+        <WField v-model="shareInput" placeholder="Paste a code (WOKEF1.…)" aria-label="Changes code" style="flex: 1; min-width: 0;" />
+        <WButton size="sm" :disabled="!shareInput.trim()" @click="readShareCode">Read</WButton>
+      </div>
+      <div v-if="shared" :class="$style.changeRow">
+        <i class="fas fa-box-open w-dim" />
+        <span class="grow min-w-0 text-sm">This code has {{ describeShared(shared) }}.</span>
+        <WButton size="sm" variant="ghost" @click="useShared('add')">Add to mine</WButton>
+        <WButton size="sm" variant="primary" @click="useShared('replace')">Replace mine</WButton>
+      </div>
       <template v-if="config.history.length">
         <div class="w-group-label" :class="$style.historyLabel">Earlier saves</div>
         <div v-for="h in config.history" :key="h.ts" :class="$style.changeRow">
@@ -188,10 +241,16 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { WPanel, WButton, WSelect, WField, WTabs, WListItem, WChip, WEmpty, WKbd, WBanner, WSkeleton, ago, openMenu, toast } from '../ui'
+import { WPanel, WButton, WSelect, WField, WTabs, WListItem, WChip, WEmpty, WKbd, WBanner, WSkeleton, ago, openMenu, toast, useCopy } from '../ui'
 import LabelPreview from './LabelPreview.vue'
 import PricesTab from './PricesTab.vue'
 import PreviewTab from './PreviewTab.vue'
+import PresetsTab from './PresetsTab.vue'
+import RuleBuilder from './RuleBuilder.vue'
+import { RULE_TYPE, newRule, ruleProblem, ruleSummary } from './rules'
+import type { OwnRule } from './rules'
+import { decodeChanges, describeShared, encodeChanges } from './share'
+import type { SharedChanges } from './share'
 import NeverSinkTab from './NeverSinkTab.vue'
 import { LEVEL_NAMES } from './strictness'
 import { describeProblem } from './validate'
@@ -199,7 +258,7 @@ import StyleEditor from './StyleEditor.vue'
 import type { LootFilterStore } from './store'
 import { outputName } from './widget'
 import type { LootFilterWidget } from './widget'
-import { OWN_RULE_TYPE, describeEdit, moveTargets, readStyle, rehome, rehomeOptions, slug } from './edits'
+import { OWN_RULE_TYPE, describeEdit, moveTargets, nextEditId, readStyle, rehome, rehomeOptions, slug } from './edits'
 import type { RehomeOption } from './edits'
 import type { FilterEdit, StylePatch } from './edits'
 import type { Visibility } from './parse'
@@ -219,11 +278,16 @@ const props = defineProps<{
 
 const emit = defineEmits<{ (e: 'close'): void }>()
 
-const tab = ref<'rules' | 'preview' | 'prices' | 'neversink' | 'build' | 'changes'>('rules')
+const tab = ref<'rules' | 'preview' | 'presets' | 'prices' | 'neversink' | 'build' | 'changes'>('rules')
 const search = ref('')
 const selType = ref<string | null>(null)
 const selTier = ref<string | null>(null)
-const movingBase = ref<string | null>(null)
+// Bases picked in the selected tier (shift-click adds), to move or drag.
+const picked = ref<string[]>([])
+const dragOver = ref<string | null>(null)
+// The own rule open in the rule builder.
+const editingRuleId = ref<number | null>(null)
+const editingRule = computed(() => props.config.rules.find(r => r.id === editingRuleId.value) ?? null)
 
 const tree = computed(() => props.store.doc.value ? buildTree(props.store.doc.value) : [])
 const allGroups = computed(() => tree.value.flatMap(s => s.groups))
@@ -237,6 +301,7 @@ const outName = computed(() => props.config.sourceName ? outputName(props.config
 const tabOptions = computed(() => [
   { value: 'rules', label: 'Rules' },
   { value: 'preview', label: 'Preview' },
+  { value: 'presets', label: 'Presets', count: Object.values(props.config.presets).filter(x => x.on).length || undefined },
   { value: 'prices', label: 'Prices', count: props.store.plan.value?.moves.length || undefined },
   { value: 'neversink', label: props.config.neversink.on ? `NeverSink · ${LEVEL_NAMES[props.config.neversink.level]}` : 'NeverSink', count: props.store.updateReady.value ? 1 : undefined },
   { value: 'build', label: 'Build', count: props.store.buildBlockCount.value || undefined },
@@ -349,7 +414,7 @@ const copyFrom = computed(() => group.value
 function selectGroup (type: string) {
   selType.value = type
   selTier.value = group.value?.tiers[0]?.tier ?? null
-  movingBase.value = null
+  picked.value = []
 }
 
 function openRule (rule: { type: string, tier: string | null }) {
@@ -362,7 +427,7 @@ function jumpTo (type: string, t: string, base?: string) {
   tab.value = 'rules'
   selType.value = type
   selTier.value = t
-  movingBase.value = base ?? null
+  picked.value = base ? [base] : []
 }
 
 watch(() => props.focus, (f) => {
@@ -371,7 +436,7 @@ watch(() => props.focus, (f) => {
 
 // Default selection once the filter loads.
 watch(tree, () => {
-  if (!selType.value || !group.value) {
+  if (!selType.value || (!group.value && selType.value !== RULE_TYPE)) {
     const first = allGroups.value.find(g => g.type === 'currency') ?? allGroups.value[0]
     if (first) selectGroup(first.type)
   }
@@ -401,10 +466,138 @@ function setTierVisibility (v: Visibility) {
   props.store.edit({ kind: 'visibility', type: selType.value, tier: selTier.value, visibility: v })
 }
 
-function moveBase (to: string) {
-  if (!movingBase.value || !selType.value || !selTier.value || !to) return
-  props.store.edit({ kind: 'move', type: selType.value, base: movingBase.value, from: selTier.value, to })
+function moveBases (bases: string[], to: string) {
+  const type = selType.value
+  const from = selTier.value
+  if (!bases.length || !type || !from || !to || to === from) return
+  const undo = props.store.editsWithUndo(bases.map(base => ({ kind: 'move' as const, type, base, from, to })))
+  toast(`Moved ${bases.length > 1 ? `${bases.length} items` : bases[0]} to ${to}`, { anchor: panel.value?.el, undo })
+  picked.value = []
   selTier.value = to
+}
+
+function moveBase (to: string) {
+  moveBases(picked.value, to)
+}
+
+function pickBase (b: string, e: MouseEvent) {
+  if (e.shiftKey) picked.value = picked.value.includes(b) ? picked.value.filter(x => x !== b) : [...picked.value, b]
+  else picked.value = picked.value.length === 1 && picked.value[0] === b ? [] : [b]
+}
+
+const DRAG_TYPE = 'application/x-woke-bases'
+
+function onDragStart (b: string, e: DragEvent) {
+  if (!picked.value.includes(b)) picked.value = [b]
+  e.dataTransfer?.setData(DRAG_TYPE, JSON.stringify(picked.value))
+  e.dataTransfer?.setData('text/plain', picked.value.join(', '))
+  if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move'
+}
+
+function canDrop (t: TierNode): boolean {
+  return t.tier !== selTier.value && targets.value.includes(t.tier)
+}
+
+function onDragOver (t: TierNode, e: DragEvent) {
+  if (!e.dataTransfer?.types.includes(DRAG_TYPE) || !canDrop(t)) return
+  e.preventDefault()
+  e.dataTransfer.dropEffect = 'move'
+  dragOver.value = t.tier
+}
+
+function onDrop (t: TierNode, e: DragEvent) {
+  dragOver.value = null
+  const raw = e.dataTransfer?.getData(DRAG_TYPE)
+  if (!raw || !canDrop(t)) return
+  e.preventDefault()
+  try { moveBases(JSON.parse(raw) as string[], t.tier) } catch {}
+}
+
+// ---- own rules ----
+
+function selectRules () {
+  search.value = ''
+  selType.value = RULE_TYPE
+  selTier.value = null
+  editingRuleId.value = editingRuleId.value ?? props.config.rules[0]?.id ?? null
+}
+
+function newOwnRule () {
+  const rule = newRule(nextEditId(), props.config.rules.length + 1)
+  const undo = props.store.changeWithUndo(c => { c.rules = [rule, ...c.rules] })
+  tab.value = 'rules'
+  selectRules()
+  editingRuleId.value = rule.id
+  toast('New rule at the top of your filter', { anchor: panel.value?.el, undo })
+}
+
+function deleteRule (r: OwnRule) {
+  const undo = props.store.changeWithUndo(c => { c.rules = c.rules.filter(x => x.id !== r.id) })
+  if (editingRuleId.value === r.id) editingRuleId.value = props.config.rules[0]?.id ?? null
+  toast(`Deleted ${r.name}`, { anchor: panel.value?.el, undo })
+}
+
+function moveRule (r: OwnRule, dir: -1 | 1) {
+  const list = [...props.config.rules]
+  const i = list.findIndex(x => x.id === r.id)
+  const j = i + dir
+  if (i < 0 || j < 0 || j >= list.length) return
+  ;[list[i], list[j]] = [list[j], list[i]]
+  props.config.rules = list
+}
+
+function ruleMenu (e: MouseEvent, r: OwnRule) {
+  openMenu(e, [
+    { label: r.on ? 'Switch off' : 'Switch on', icon: r.on ? 'fas fa-toggle-off' : 'fas fa-toggle-on', action: () => { r.on = !r.on } },
+    { label: 'Move up (wins over the ones below)', icon: 'fas fa-arrow-up', action: () => moveRule(r, -1) },
+    { label: 'Move down', icon: 'fas fa-arrow-down', action: () => moveRule(r, 1) },
+    { label: 'Duplicate', icon: 'fas fa-clone', action: () => { const copy: OwnRule = { ...JSON.parse(JSON.stringify(r)), id: nextEditId(), name: `${r.name} (copy)` }; props.config.rules = [...props.config.rules, copy]; editingRuleId.value = copy.id } },
+    { label: 'Delete', icon: 'fas fa-trash', action: () => deleteRule(r) }
+  ])
+}
+
+// ---- share ----
+
+const { copied, copy } = useCopy()
+const shareInput = ref('')
+const shared = ref<SharedChanges | null>(null)
+
+async function copyShareCode () {
+  const c = props.config
+  const code = await encodeChanges({ edits: c.edits, rules: c.rules, presets: c.presets, locks: c.priceTiers.locks })
+  if (!await copy(code, 'share')) toast('Couldn\'t copy to the clipboard', { anchor: panel.value?.el })
+}
+
+async function readShareCode () {
+  try {
+    shared.value = await decodeChanges(shareInput.value)
+  } catch (e) {
+    shared.value = null
+    toast((e as Error).message, { anchor: panel.value?.el })
+  }
+}
+
+function useShared (how: 'add' | 'replace') {
+  const s = shared.value
+  if (!s) return
+  const undo = props.store.changeWithUndo(c => {
+    // Fresh ids, so added changes never collide with yours.
+    const edits = s.edits.map(e => ({ ...e, id: nextEditId() }))
+    const rules = s.rules.map(r => ({ ...r, id: nextEditId() }))
+    if (how === 'replace') {
+      c.edits = edits
+      c.rules = rules
+      c.presets = s.presets
+      c.priceTiers.locks = s.locks
+    } else {
+      c.edits = [...c.edits, ...edits]
+      c.rules = [...c.rules, ...rules]
+      c.priceTiers.locks = [...new Set([...c.priceTiers.locks, ...s.locks])]
+    }
+  })
+  toast(how === 'replace' ? 'Replaced your changes with the code\'s' : `Added ${describeShared(s)}`, { anchor: panel.value?.el, undo })
+  shared.value = null
+  shareInput.value = ''
 }
 
 const groupHiddenByMe = computed(() => props.config.edits.some(e => e.kind === 'group' && e.type === selType.value))
@@ -492,6 +685,13 @@ function openFolder () {
 .tree {
   border-right: 1px solid var(--w-line);
   padding-bottom: 8px;
+}
+.rulesHead {
+  padding: 4px 6px 0 0;
+}
+.dropOk {
+  border-color: var(--w-accent) !important;
+  background: var(--w-accent-soft);
 }
 .mid {
   padding: 8px var(--w-pad);

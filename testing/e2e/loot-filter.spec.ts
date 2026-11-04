@@ -4,6 +4,7 @@ import fs from 'fs'
 import os from 'os'
 import path from 'path'
 import { test, expect, FIXTURES } from './harness'
+import type { FakeApp, Overlay } from './harness'
 
 const FILTER = process.env.WOKE_FILTER_FIXTURE ?? path.join(FIXTURES, 'filters', 'neversink-sample.filter')
 
@@ -22,10 +23,17 @@ const lootFilter = (folder: string) => ({
   sourceName: 'NeverSink.filter'
 })
 
-test('preview drops a pile of loot through the filter, and compares with NeverSink as it came', async ({ overlay }) => {
+// The editor's hotkey registers once the widget has mounted; on a busy CI
+// machine that can take a few seconds.
+async function openEditor (overlay: Overlay, fakeApp: FakeApp) {
+  await expect.poll(() => fakeApp.registeredHotkeys(), { timeout: 20_000 }).toContain('Alt+Shift+F')
+  await overlay.pressHotkey('Alt + Shift + F')
+}
+
+test('preview drops a pile of loot through the filter, and compares with NeverSink as it came', async ({ overlay, fakeApp }) => {
   const folder = filterFolder()
   await overlay.boot({ widgets: [lootFilter(folder)] })
-  await overlay.pressHotkey('Alt + Shift + F')
+  await openEditor(overlay, fakeApp)
   const page = overlay.page
   await page.getByRole('tab', { name: 'Preview' }).click()
   await expect(page.getByText(/\d+ of 40 shown/).first()).toBeVisible()
@@ -45,10 +53,10 @@ test('preview drops a pile of loot through the filter, and compares with NeverSi
   await overlay.snap('loot shower compared with NeverSink as it came')
 })
 
-test('style editor: NeverSink sound pack, beam and minimap pickers; a pack sound is copied into the filter folder on save', async ({ overlay }) => {
+test('style editor: NeverSink sound pack, beam and minimap pickers; a pack sound is copied into the filter folder on save', async ({ overlay, fakeApp }) => {
   const folder = filterFolder()
   await overlay.boot({ widgets: [lootFilter(folder)] })
-  await overlay.pressHotkey('Alt + Shift + F')
+  await openEditor(overlay, fakeApp)
   const page = overlay.page
   await page.getByRole('tab', { name: 'Rules' }).click()
   await page.getByRole('button', { name: 'Red beam' }).first().click()
@@ -62,4 +70,42 @@ test('style editor: NeverSink sound pack, beam and minimap pickers; a pack sound
     const out = path.join(folder, 'NeverSink (woke).filter')
     return fs.existsSync(out) ? fs.readFileSync(out, 'utf8') : ''
   }).toContain('CustomAlertSound "2currency.mp3" 300')
+})
+
+test('rule builder, drag and drop between tiers, and presets end up in the saved filter', async ({ overlay, fakeApp }) => {
+  const folder = filterFolder()
+  await overlay.boot({ widgets: [lootFilter(folder)] })
+  await openEditor(overlay, fakeApp)
+  const page = overlay.page
+
+  // A rule of your own: rare rings, big and purple.
+  await page.getByRole('button', { name: 'New rule' }).click()
+  const addClass = page.getByLabel('Add Item class')
+  await addClass.fill('Rings')
+  await addClass.press('Enter')
+  await page.getByLabel('Add a condition').selectOption('Rarity')
+  await page.getByRole('button', { name: 'Purple beam' }).click()
+  await expect(page.getByText(/Catches \d+ of \d+ test items/)).toBeVisible()
+  await overlay.snap('rule builder with a rare rings rule')
+
+  // Drag Chaos Orb from its tier onto another one.
+  await page.getByRole('button', { name: /^Currency\s*4$/ }).click()
+  await page.getByRole('button', { name: /t3chaos/ }).click()
+  await page.getByText('Chaos Orb', { exact: true }).last().dragTo(page.getByRole('button', { name: /t2divine/ }))
+  await expect(page.getByText('Moved Chaos Orb to t2divine')).toBeVisible()
+
+  // Presets.
+  await page.getByRole('tab', { name: /Presets/ }).click()
+  await page.getByRole('switch', { name: 'Show 6-socket items for the vendor' }).click()
+  await overlay.snap('presets tab')
+
+  await page.getByRole('button', { name: /^Save/ }).click()
+  const out = path.join(folder, 'NeverSink (woke).filter')
+  await expect.poll(() => fs.existsSync(out) ? fs.readFileSync(out, 'utf8') : '').toContain('$type->woke->rule')
+  const text = fs.readFileSync(out, 'utf8')
+  expect(text).toMatch(/\$type->woke->rule[^\n]*\n(\t[^\n]*\n)*\tClass == "Rings"/)
+  expect(text).toContain('PlayEffect Purple')
+  expect(text).toContain('$type->woke->preset $tier->sixsockets')
+  // Chaos Orb now listed in t2divine.
+  expect(text).toMatch(/\$tier->t2divine[^\n]*\n(\t[^\n]*\n)*\tBaseType == [^\n]*"Chaos Orb"/)
 })

@@ -7,6 +7,9 @@ import { DEFAULT_SAFETY_NET } from './safety'
 import type { SafetyNet } from './safety'
 import { clampLevel, defaultStrictnessAuto } from './strictness'
 import type { StrictnessAuto } from './strictness'
+import type { OwnRule } from './rules'
+import { defaultPresets, normalizePresets } from './presets'
+import type { Presets } from './presets'
 
 export const LOOT_FILTER_TYPE = 'woke-loot-filter'
 // copy-item target: sample the hovered item and open its rule card.
@@ -99,6 +102,9 @@ export interface LootFilterWidget extends Widget {
   history: SavePoint[]
   neversink: NeverSinkSource
   strictAuto: StrictnessAuto
+  // Rules from the rule builder, on top of NeverSink's.
+  rules: OwnRule[]
+  presets: Presets
   // One step stricter / looser (NeverSink from GitHub only).
   stricterHotkey: string | null
   looserHotkey: string | null
@@ -130,6 +136,8 @@ export function initLootFilterWidget (w: LootFilterWidget) {
   w.history = []
   w.neversink = defaultNeverSink()
   w.strictAuto = defaultStrictnessAuto()
+  w.rules = []
+  w.presets = defaultPresets()
   w.stricterHotkey = 'Alt + BracketRight'
   w.looserHotkey = 'Alt + BracketLeft'
 }
@@ -191,6 +199,9 @@ export function normalizeLootFilterWidget (w: LootFilterWidget) {
       ? sa!.ladder.map(x => ({ from: x.from, level: clampLevel(x.level) }))
       : da.ladder
   }
+  if (!Array.isArray(w.rules)) w.rules = []
+  w.rules = w.rules.filter(r => r && typeof r.id === 'number' && Array.isArray(r.conditions))
+  w.presets = normalizePresets(w.presets)
   if (w.stricterHotkey === undefined) w.stricterHotkey = 'Alt + BracketRight'
   if (w.looserHotkey === undefined) w.looserHotkey = 'Alt + BracketLeft'
 }

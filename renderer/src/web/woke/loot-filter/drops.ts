@@ -187,6 +187,33 @@ export function rollDrops (areaLevel: number, seed: number, count = 60): Drop[] 
   return out
 }
 
+// Every kind of drop in the table once per rarity it can have, for checking
+// what a rule catches (not weighted: a rare ring counts as much as a scroll).
+export function everyDrop (areaLevel: number): Drop[] {
+  const out: Drop[] = []
+  const r = rng(areaLevel)
+  for (const e of TABLE) {
+    if (e.map) {
+      for (const name of MAP_NAMES.slice(0, 3)) {
+        for (const rarity of ['Normal', 'Magic', 'Rare'] as const) {
+          const d = makeDrop(out.length, e, areaLevel, r)
+          d.facts = { ...d.facts, name, baseType: name, rarity }
+          d.label = name
+          out.push(d)
+        }
+      }
+      continue
+    }
+    const rarities: FilterRarity[] = e.gear ? ['Normal', 'Magic', 'Rare'] : [e.rarity ?? 'Normal']
+    for (const rarity of rarities) {
+      const d = makeDrop(out.length, e, areaLevel, r)
+      d.facts = { ...d.facts, rarity }
+      out.push(d)
+    }
+  }
+  return out
+}
+
 function makeDrop (id: number, e: DropEntry, areaLevel: number, r: () => number): Drop {
   const facts: ItemFacts = {
     name: e.name,

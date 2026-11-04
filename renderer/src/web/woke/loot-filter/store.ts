@@ -3,6 +3,8 @@ import { computed, onUnmounted, shallowRef, ref, watch } from 'vue'
 import { Host, MainProcess } from '@/web/background/IPC'
 import { hostRequest } from '../shared/host'
 import { customSoundsIn, installPackSounds } from './sounds'
+import { ruleBlocks } from './rules'
+import { applyPresetChanges, presetBlocks, presetsOn } from './presets'
 import { parseLogLine } from '../campaign/log-parse'
 import { parseFilter, serializeFilter } from './parse'
 import type { FilterDoc } from './parse'
@@ -60,6 +62,10 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
   const buildSig = computed(() => JSON.stringify(buildInput.value ? [buildInput.value, cfg().buildRules] : null))
   // Price moves and the safety net's current list are part of the file too.
   const safetyList = shallowRef<string>('')
+  // What the presets added (the cheap currency list follows prices) and how
+  // many of NeverSink's rules they adjusted.
+  const presetList = shallowRef<string>('')
+  const presetChanges = ref(0)
   // woke: with NeverSink from GitHub, the version, style and level are part
   // of the file as well (a new style used to read "saved" until you saved).
   const sourceSig = () => {
@@ -68,6 +74,9 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
   }
   const extraSig = () => {
     const parts: unknown[] = [cfg().priceTiers.on ? cfg().priceTiers.moves : [], cfg().safetyNet.on ? safetyList.value : '']
+    // Only when used, so turning these features on doesn't flag old saves.
+    if (cfg().rules.length) parts.push(cfg().rules)
+    if (presetsOn(cfg().presets)) parts.push(cfg().presets, presetList.value)
     const src = sourceSig()
     if (src.length) parts.push(src)
     return hash(JSON.stringify(parts))
@@ -142,10 +151,17 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
       insertBuildBlocks(next, blocks)
       buildCount = blocks.length
     }
+    // Presets' rules, then your own rules above them: yours win.
+    const presetTop = presetBlocks(next, cfg().presets, prices.lookup.value)
+    insertBuildBlocks(next, presetTop)
+    insertBuildBlocks(next, ruleBlocks(cfg().rules))
     // Price moves next: your own moves (edits) are applied after them and win.
     if (cfg().priceTiers.on && cfg().priceTiers.moves.length) applyPriceMoves(next, cfg().priceTiers.moves)
     const isNetEdit = (e: FilterEdit) => e.type === SAFETY_RULE_TYPE
     const results = new Map(applyEdits(next, cfg().edits.filter(e => !isNetEdit(e))).map(r => [r.edit.id, r]))
+    // Quiet mode, bigger labels, colour-blind colours: over NeverSink's rules
+    // as you left them.
+    const presetChanges = applyPresetChanges(next, cfg().presets)
     // The safety net goes on top, listing only what the rest still hides.
     // Restyles of the net apply after it exists.
     let netCount = 0
@@ -158,15 +174,22 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
       netList = JSON.stringify(bases)
     }
     for (const r of applyEdits(next, cfg().edits.filter(isNetEdit))) results.set(r.edit.id, r)
-    return { doc: next, results, buildCount, netCount, netList }
+    return { doc: next, results, buildCount, netCount, netList, presetChanges, presetSig: JSON.stringify(presetTop.map(b => b.conditions)) }
   }
+
+  // Own rules and presets as last built, to rebuild when the UI edits them.
+  let builtRulesSig = ''
+  const rulesSig = () => JSON.stringify([cfg().rules, cfg().presets])
 
   function rebuild () {
     if (baseText.value == null) { doc.value = null; return }
+    builtRulesSig = rulesSig()
     const c = compose(baseText.value)
     buildBlockCount.value = c.buildCount
     safetyCount.value = c.netCount
     safetyList.value = c.netList
+    presetChanges.value = c.presetChanges
+    presetList.value = c.presetSig
     statuses.value = cfg().edits.map(e => c.results.get(e.id)!)
     doc.value = c.doc
     publishActiveFilter(api)
@@ -518,6 +541,34 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
     return () => { cfg().edits = before; rebuild() }
   }
 
+  // Several edits as one step (a drag of several bases), one Undo.
+  function editsWithUndo (list: Array<NewFilterEdit | FilterEdit>): () => void {
+    const before = cfg().edits
+    let edits = before
+    for (const e of list) edits = addEdit(edits, { ...e, id: nextEditId() } as FilterEdit)
+    cfg().edits = edits
+    rebuild()
+    return () => { cfg().edits = before; rebuild() }
+  }
+
+  // Any change to the config (own rules, presets, an imported code) as one
+  // step with Undo: `change` mutates, the snapshot puts it back.
+  function changeWithUndo (change: (c: LootFilterWidget) => void): () => void {
+    const c = cfg()
+    const before = JSON.stringify({ edits: c.edits, rules: c.rules, presets: c.presets, locks: c.priceTiers.locks })
+    change(c)
+    rebuild()
+    return () => {
+      const b = JSON.parse(before)
+      const now = cfg()
+      now.edits = b.edits
+      now.rules = b.rules
+      now.presets = b.presets
+      now.priceTiers.locks = b.locks
+      rebuild()
+    }
+  }
+
   // Points a failed edit at a new group/tier (after a NeverSink update).
   function replaceEdit (next: FilterEdit) {
     cfg().edits = cfg().edits.map(e => e.id === next.id ? next : e)
@@ -617,6 +668,8 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
     })
   }
 
+  watch(rulesSig, (sig) => { if (baseText.value != null && sig !== builtRulesSig) rebuild() })
+
   // A new active build, or a rule switched on or off: show it right away.
   watch(buildSig, () => { if (baseText.value != null) rebuild() })
 
@@ -631,6 +684,9 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
     lockItem,
     resetPrices,
     editWithUndo,
+    editsWithUndo,
+    changeWithUndo,
+    presetChanges,
     compareDoc,
     restore,
     updateReady,
