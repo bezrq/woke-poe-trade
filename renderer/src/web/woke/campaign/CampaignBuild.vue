@@ -88,9 +88,9 @@ const picked = computed(() => details.value ? pickStage(skillSetsOf(details.valu
 const linkSet = computed(() => (picked.value?.byStage || (details.value?.skillSets?.length ?? 0) > 1) ? picked.value?.item.title ?? '' : '')
 const links = computed(() => picked.value
   ? linkGroups(picked.value.item.groups, props.maxLinks).map(g => ({
-    colours: linkColours(g),
-    names: orderedGems(g).map(x => gemData(x.name)?.name ?? x.name)
-  }))
+      colours: linkColours(g),
+      names: orderedGems(g).map(x => gemData(x.name)?.name ?? x.name)
+    }))
   : [])
 
 function markGot (names: string[]) {

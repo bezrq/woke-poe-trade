@@ -6,6 +6,7 @@ import { AppConfig } from '@/web/Config'
 import { isWidgetTypeOn } from '../modules'
 import { CAMPAIGN_TYPE } from '../campaign/widget'
 import type { CampaignWidget } from '../campaign/widget'
+import { reportProblem } from '../dock/health'
 import { POB_BUILDS_TYPE, pobApi } from './widget'
 import type { PobBuildsWidget, PobDetails } from './widget'
 
@@ -27,6 +28,10 @@ export const useActiveBuild = createGlobalState(() => {
   const charName = computed(() => campaign.value?.charName ?? '')
   // Class from Client.txt (ascendancy names work too), else the build's.
   const className = computed(() => campaign.value?.className || details.value?.ascendClassName || details.value?.className || '')
+
+  watch(error, (err) => {
+    reportProblem('pob-active-build', err ? `Can't read your active PoB build (${err}). Pick it again in PoB builds.` : null)
+  })
 
   watch([relPath, version], async ([path]) => {
     error.value = ''
