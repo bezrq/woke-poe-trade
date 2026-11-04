@@ -24,6 +24,9 @@ import { CAMPAIGN_TYPE } from './campaign/widget'
 import WidgetAtlas from './atlas/WidgetAtlas.vue'
 import AtlasEditor from './atlas/atlas-editor.vue'
 import { ATLAS_TYPE } from './atlas/widget'
+import WidgetLab from './lab/WidgetLab.vue'
+import LabEditor from './lab/lab-editor.vue'
+import { LAB_TYPE } from './lab/lab'
 
 type WidgetComponent = Component & { widget: WidgetSpec }
 
@@ -33,7 +36,8 @@ export const wokeWidgets: WidgetComponent[] = [
   WidgetMarketTracker as unknown as WidgetComponent,
   WidgetPobBuilds as unknown as WidgetComponent,
   WidgetCampaign as unknown as WidgetComponent,
-  WidgetAtlas as unknown as WidgetComponent
+  WidgetAtlas as unknown as WidgetComponent,
+  WidgetLab as unknown as WidgetComponent
 ]
 
 const editors: Record<string, Component> = {
@@ -41,7 +45,8 @@ const editors: Record<string, Component> = {
   [TRADE_SEARCHES_TYPE]: TradeSearchesEditor,
   [POB_BUILDS_TYPE]: PobBuildsEditor,
   [CAMPAIGN_TYPE]: CampaignEditor,
-  [ATLAS_TYPE]: AtlasEditor
+  [ATLAS_TYPE]: AtlasEditor,
+  [LAB_TYPE]: LabEditor
 }
 
 export function wokeSettingsFor (wmType: string | undefined): Component | undefined {
