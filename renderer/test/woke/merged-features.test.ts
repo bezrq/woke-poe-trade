@@ -1,5 +1,5 @@
 // Features that replaced a duplicate: the old data is carried over once.
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { moveStashSearchToLibrary } from '@/web/woke/regex-library/apt-import'
 
 describe('Stash search strings move into the Regex library', () => {
@@ -40,5 +40,44 @@ describe('Stash search strings move into the Regex library', () => {
     expect(widgets[0]).toMatchObject({ wmType: 'woke-regex-library', wmId: 6 })
     const none = [{ wmId: 1, wmType: 'settings' }]
     expect(moveStashSearchToLibrary(none)).toBe(0)
+  })
+})
+
+describe('one Client.txt stream for every module', () => {
+  it('replays the start-up tail after `since`, then live lines held meanwhile', async () => {
+    vi.resetModules()
+    let emit: (e: { lines: string[] }) => void = () => {}
+    let listeners = 0
+    vi.doMock('@/web/background/IPC', () => ({
+      Host: { onEvent: (_name: string, cb: typeof emit) => { listeners++; emit = cb; return { abort () {} } } }
+    }))
+    let release: (t: { path: string, lines: string[] }) => void = () => {}
+    vi.doMock('@/web/woke/campaign/log-tail', async (orig) => ({
+      ...(await orig<object>()),
+      logTail: () => new Promise(resolve => { release = resolve })
+    }))
+    const { followGameLog, onGameLog } = await import('@/web/woke/shared/game-log')
+
+    const got: Array<[string, boolean]> = []
+    const since = new Date(2026, 10, 4, 12, 0, 0).getTime()
+    followGameLog({ since: () => since, onLines: (lines, live) => { for (const l of lines) got.push([l.ev?.kind ?? 'other', live]) } })
+    const alsoLive: string[] = []
+    onGameLog(lines => { for (const l of lines) alsoLive.push(l.line) })
+    expect(listeners).toBe(1)
+
+    emit({ lines: ['2026/11/04 12:05:00 1 2 [INFO Client 1] : You have entered Lioneye\'s Watch.'] })
+    expect(got).toEqual([])
+    release({
+      path: 'Client.txt',
+      lines: [
+        '2026/11/04 11:59:00 1 2 [DEBUG Client 1] Generating level 1 area "1_1_1" with seed 1',
+        '2026/11/04 12:01:00 1 2 [DEBUG Client 1] Generating level 2 area "1_1_town" with seed 2'
+      ]
+    })
+    await new Promise(resolve => setTimeout(resolve, 0))
+    expect(got).toEqual([['area', false], ['zone', true]])
+    expect(alsoLive).toHaveLength(1)
+    vi.doUnmock('@/web/background/IPC')
+    vi.doUnmock('@/web/woke/campaign/log-tail')
   })
 })

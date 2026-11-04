@@ -131,7 +131,7 @@ export default {
 
 <script setup lang="ts">
 import { inject, computed, reactive, shallowRef, watch, onUnmounted } from 'vue'
-import { Host, MainProcess } from '@/web/background/IPC'
+import { MainProcess } from '@/web/background/IPC'
 import { AppConfig, saveConfig } from '@/web/Config'
 import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
@@ -141,7 +141,7 @@ import DockItem from '../dock/DockItem.vue'
 import { CURRENCY_ICONS } from '../ui/game-icons'
 import { hideWhilePlaying, tickWhile } from '../dock/dock'
 import { reportProblem } from '../dock/health'
-import { actFromAreaId, actLabel, parseLogLine } from './log-parse'
+import { actFromAreaId, actLabel } from './log-parse'
 import CampaignBuild from './CampaignBuild.vue'
 import type { LogEvent } from './log-parse'
 import { emptyState, migrateCampaign, parseHotkeyTarget } from './widget'
@@ -149,7 +149,8 @@ import type { CampaignWidget } from './widget'
 import { advanceOnEnter, resyncTo, stepsLeftInAct, upcoming, xpState } from './route-parse'
 import type { RouteStep } from './route-parse'
 import { bundledRoute, routeData } from './route-data'
-import { logTail, linesAfter } from './log-tail'
+import { followGameLog } from '../shared/game-log'
+import type { LogLine } from '../shared/game-log'
 import {
   RUN_TIMER_TYPE, comparisonRun, formatDelta, formatRunTime, headlineDelta, runElapsed, splitRows
 } from './run-timer'
@@ -356,14 +357,14 @@ function follow (c: SeenChar) {
 }
 
 const logMissing = shallowRef(false)
+// Replayed lines from the start-up read don't peek the next step.
 let caughtUp = false
-const queued: string[][] = []
 
-function applyLines (lines: string[], at: number) {
+function applyLines (lines: LogLine[]) {
   let changed = false
-  for (const line of lines) {
-    const ev = parseLogLine(line)
-    if (ev && apply(ev)) changed = true
+  let at = 0
+  for (const { ev, at: lineAt } of lines) {
+    if (ev && apply(ev)) { changed = true; at = lineAt }
   }
   if (changed) {
     now.value = Date.now()
@@ -373,19 +374,14 @@ function applyLines (lines: string[], at: number) {
   }
 }
 
-const logListener = Host.onEvent('MAIN->CLIENT::game-log', (e) => {
-  if (!caughtUp) { queued.push(e.lines); return }
-  applyLines(e.lines, Date.now())
-})
-
 // Catch up on what happened while the app was closed, then go live.
-logTail().then(tail => {
-  logMissing.value = tail.path == null
-  reportProblem('client-log', logMissing.value ? 'Client.txt not found, so the campaign tracker can\'t follow you. Set its path in Settings → General.' : null)
-  for (const { line, at } of linesAfter(tail, props.config.state.updatedAt)) applyLines([line], at)
-}).finally(() => {
-  caughtUp = true
-  for (const lines of queued.splice(0)) applyLines(lines, Date.now())
+followGameLog({
+  since: () => props.config.state.updatedAt,
+  onLines: (lines, live) => { caughtUp = live; applyLines(lines) },
+  onTail: (tail) => {
+    logMissing.value = tail.path == null
+    reportProblem('client-log', logMissing.value ? 'Client.txt not found, so the campaign tracker can\'t follow you. Set its path in Settings → General.' : null)
+  }
 })
 
 const hotkeys = MainProcess.onEvent('MAIN->CLIENT::widget-action', (e) => {
@@ -397,7 +393,6 @@ const hotkeys = MainProcess.onEvent('MAIN->CLIENT::widget-action', (e) => {
 })
 
 onUnmounted(() => {
-  logListener.abort()
   hotkeys.abort()
 })
 </script>

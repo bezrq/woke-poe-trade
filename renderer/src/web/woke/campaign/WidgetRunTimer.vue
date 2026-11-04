@@ -169,7 +169,7 @@ export default {
 
 <script setup lang="ts">
 import { inject, computed, shallowRef, onUnmounted } from 'vue'
-import { Host, MainProcess } from '@/web/background/IPC'
+import { MainProcess } from '@/web/background/IPC'
 import { AppConfig, saveConfig } from '@/web/Config'
 import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
@@ -177,14 +177,15 @@ import { useVisibleClock } from '../shared/visible-clock'
 import { WPanel, WTabs, WChip, WEmpty, toast } from '../ui'
 import DockItem from '../dock/DockItem.vue'
 import { hideWhilePlaying, tickWhile } from '../dock/dock'
-import { actLabel, parseLogLine } from './log-parse'
+import { actLabel } from './log-parse'
 import {
   applyRunEvent, comparisonRun, endRun, formatDelta, formatRunTime, headlineDelta, isComplete,
   migrateRunTimer, parseHotkeyTarget, pauseRun, personalBest, resumeRun, runElapsed, runTotal, splitRows, startRun, sumOfBest
 } from './run-timer'
 import { CAMPAIGN_TYPE } from './widget'
 import { isWidgetTypeOn } from '../modules'
-import { logTail, linesAfter } from './log-tail'
+import { followGameLog } from '../shared/game-log'
+import type { LogLine } from '../shared/game-log'
 import type { CampaignRun } from './run-timer'
 
 const props = defineProps<{
@@ -271,13 +272,12 @@ function formatDate (ts: number) {
   return new Date(ts).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
 }
 
-function applyLines (lines: string[], ts: number) {
+function applyLines (lines: LogLine[]) {
   let changed = false
-  for (const line of lines) {
-    const ev = parseLogLine(line)
-    if (ev && applyRunEvent(props.config, ev, ts)) changed = true
+  for (const { ev, at } of lines) {
+    if (ev && applyRunEvent(props.config, ev, at)) changed = true
   }
-  props.config.lastLogAt = ts
+  if (lines.length) props.config.lastLogAt = lines[lines.length - 1].at
   if (changed) {
     now.value = Date.now()
     // Log events arrive while the game has focus, when APT doesn't save config.
@@ -285,18 +285,10 @@ function applyLines (lines: string[], ts: number) {
   }
 }
 
-let caughtUp = false
-const queued: string[][] = []
-const logListener = Host.onEvent('MAIN->CLIENT::game-log', (e) => {
-  if (!caughtUp) { queued.push(e.lines); return }
-  applyLines(e.lines, Date.now())
-})
 // Splits reached while the app was closed, timed by the log's own clock.
-logTail().then(tail => {
-  for (const { line, at } of linesAfter(tail, props.config.lastLogAt)) applyLines([line], at)
-}).finally(() => {
-  caughtUp = true
-  for (const lines of queued.splice(0)) applyLines(lines, Date.now())
+followGameLog({
+  since: () => props.config.lastLogAt,
+  onLines: (lines) => applyLines(lines)
 })
 
 const hotkeys = MainProcess.onEvent('MAIN->CLIENT::widget-action', (e) => {
@@ -307,7 +299,6 @@ const hotkeys = MainProcess.onEvent('MAIN->CLIENT::widget-action', (e) => {
 })
 
 onUnmounted(() => {
-  logListener.abort()
   hotkeys.abort()
 })
 </script>

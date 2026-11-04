@@ -81,7 +81,7 @@ export default {
 
 <script setup lang="ts">
 import { computed, inject, nextTick, onUnmounted, reactive, shallowRef, watch } from 'vue'
-import { Host, MainProcess } from '@/web/background/IPC'
+import { MainProcess } from '@/web/background/IPC'
 import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
 import { WPanel, WTabs, WEmpty, WButton, WBanner, WSkeleton, WKbd, openMenu, toast, CURRENCY_ICONS } from '../ui'
@@ -92,6 +92,7 @@ import { usePriceIndex } from '../market/price-index'
 import { priceResolver } from '../boss-runs/calc'
 import { useLeagues } from '@/web/background/Leagues'
 import { logTail } from '../campaign/log-tail'
+import { onGameLog } from '../shared/game-log'
 import OfferRow from './OfferRow.vue'
 import { applyEvent, dismiss, front, markSent, markTraded, newBook, prune, queue, recordFor, skip } from './book'
 import type { Offer, TradeBook, TradeRecord } from './book'
@@ -224,8 +225,8 @@ function announce (o: Offer) {
 let replayed = false
 const seenLive = new Set<string>()
 
-const logListener = Host.onEvent('MAIN->CLIENT::game-log', (e) => {
-  for (const line of e.lines) {
+onGameLog((lines) => {
+  for (const { line } of lines) {
     if (seenAtStart.has(line)) continue
     if (!replayed) seenLive.add(line)
     handle(line, true)
@@ -341,7 +342,6 @@ function onCard (open: boolean) {
 }
 
 onUnmounted(() => {
-  logListener.abort()
   hotkeys.abort()
   clearInterval(clock)
 })

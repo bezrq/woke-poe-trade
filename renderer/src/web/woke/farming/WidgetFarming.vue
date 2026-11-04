@@ -175,7 +175,6 @@ export default {
 <script setup lang="ts">
 import { inject, computed, shallowRef, onUnmounted, watch, nextTick } from 'vue'
 import { useVisibleClock } from '../shared/visible-clock'
-import { Host } from '@/web/background/IPC'
 import { AppConfig, saveConfig } from '@/web/Config'
 import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
@@ -189,7 +188,7 @@ import { usePriceIndex } from '../market/price-index'
 import { formatChaos } from '../market/analysis'
 import { itemKey } from '../market/types'
 import type { PriceItem } from '../market/types'
-import { parseLogLine } from '../campaign/log-parse'
+import { onGameLog } from '../shared/game-log'
 import { useZone } from '../shared/zone'
 import DockItem from '../dock/DockItem.vue'
 import { CURRENCY_ICONS } from '../ui/game-icons'
@@ -478,12 +477,11 @@ function removeCost (line: CostLine) {
 
 // Zone changes: count newly generated maps, book map vs other time, and
 // resume an auto-paused session.
-const logListener = Host.onEvent('MAIN->CLIENT::game-log', (e) => {
+onGameLog((lines) => {
   const sess = props.config.session
   if (!sess) return
   let changed = false
-  for (const line of e.lines) {
-    const ev = parseLogLine(line)
+  for (const { ev } of lines) {
     if (ev?.kind === 'zone') {
       nameRun(sess, ev.name)
       continue
@@ -533,7 +531,6 @@ const itemListener = MainProcess.onEvent('MAIN->CLIENT::item-text', (e) => {
   saveConfig()
 })
 onUnmounted(() => { itemListener.abort() })
-onUnmounted(() => { logListener.abort() })
 </script>
 
 <style module>
