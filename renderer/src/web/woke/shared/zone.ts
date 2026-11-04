@@ -4,6 +4,7 @@ import { shallowReactive } from 'vue'
 import { Host } from '@/web/background/IPC'
 import { actFromAreaId, isTown, parseLogLine } from '../campaign/log-parse'
 import { lineTime, logTail } from '../campaign/log-tail'
+import { bossAreaIds } from './boss-areas'
 
 export type ZoneKind = 'campaign' | 'town' | 'hideout' | 'map' | 'lab' | 'boss' | 'other'
 
@@ -17,9 +18,8 @@ export interface ZoneState {
   enteredAt: number
 }
 
-// Pinnacle boss arenas by their "You have entered" name. Map ids for these
-// fights aren't consistent, so names are the dependable signal. Add names
-// here when a fight isn't recognised.
+// Pinnacle boss arenas by their "You have entered" name, next to the area
+// ids in boss-areas.ts. Add names here when a fight isn't recognised.
 export const BOSS_ARENAS: Record<string, string[]> = {
   "The Shaper's Realm": ['shaper', 'uber-shaper'],
   'Absence of Value and Meaning': ['uber-elder', 'uber-uber-elder'],
@@ -36,10 +36,17 @@ export const BOSS_ARENAS: Record<string, string[]> = {
 
 const LAB_ZONES = new Set(["Aspirants' Plaza", "Aspirant's Trial"])
 
+// Bosses an arena can hold, by its area id and its name.
+export function arenaBosses (areaId: string, name: string): string[] {
+  const ids = [...(bossAreaIds(areaId) ?? []), ...((name && BOSS_ARENAS[name]) || [])]
+  return [...new Set(ids)]
+}
+
 export function zoneKind (areaId: string, name: string): ZoneKind {
-  if (name && BOSS_ARENAS[name]) return 'boss'
+  if ((name && BOSS_ARENAS[name]) || (areaId && bossAreaIds(areaId))) return 'boss'
   if (/hideout/i.test(areaId) || /hideout/i.test(name)) return 'hideout'
-  if (/labyrinth/i.test(areaId) || LAB_ZONES.has(name)) return 'lab'
+  // Trials of Ascendancy inside maps (EndGame_Labyrinth_trials_*) aren't the lab.
+  if ((/labyrinth/i.test(areaId) && !/_trials_/i.test(areaId)) || LAB_ZONES.has(name)) return 'lab'
   if (areaId && isTown(areaId)) return 'town'
   if (/^Map/i.test(areaId)) return 'map'
   if (areaId && actFromAreaId(areaId) != null) return 'campaign'

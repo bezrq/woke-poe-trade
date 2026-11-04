@@ -15,6 +15,12 @@ export function ago (ts: number | null | undefined): string {
   return `${Math.floor(s / 86400)}d`
 }
 
+// For a sentence: "just now", "4m ago". (`ago` + " ago" read "just now ago".)
+export function agoPhrase (ts: number | null | undefined): string {
+  const a = ago(ts)
+  return !a || a === 'just now' ? a : `${a} ago`
+}
+
 export type Freshness = 'fresh' | 'aging' | 'stale'
 
 // fresh under `freshMin` minutes, stale past `staleMin`.

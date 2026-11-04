@@ -8,8 +8,11 @@ import { pickStage } from '@/web/woke/pob-builds/build-model'
 import { bundledRoute, routeData } from '@/web/woke/campaign/route-data'
 import { advanceOnEnter, resyncTo, DEFAULT_ROUTE_OPTIONS, xpMultiplier } from '@/web/woke/campaign/route-parse'
 import type { RouteOptions } from '@/web/woke/campaign/route-parse'
-import { countNewMap, isMapArea, newSession, onZoneChange, maybeAutoPause, AUTO_PAUSE_MS } from '@/web/woke/farming/farming'
+import { countNewMap, isMapArea, isMapSideArea, newSession, onZoneChange, maybeAutoPause, AUTO_PAUSE_MS } from '@/web/woke/farming/farming'
 import { mechanicForSpeaker } from '@/web/woke/mechanics/zone'
+import { BOSS_AREAS, bossAreaIds } from '@/web/woke/shared/boss-areas'
+import { arenaBosses, zoneKind } from '@/web/woke/shared/zone'
+import { BOSSES } from '@/web/woke/boss-runs/bosses'
 import { mechanicForZone } from '@/web/woke/mechanics/data'
 import { difficultyForAreaLevel, isPlazaArea, msUntilLabReset, PLAZA_ZONE, staleLayoutDate } from '@/web/woke/lab/lab'
 
@@ -113,6 +116,36 @@ describe('farming', () => {
     expect(s.otherMs).toBeGreaterThan(0)
   })
 
+  it('a Vaal side area is part of the map, not a new one', () => {
+    const s = newSession('x', 0)
+    let maps = 0
+    const enter = (areaId: string, seed: string, at: number) => {
+      const inMap = isMapArea(areaId)
+      onZoneChange(s, inMap || isMapSideArea(areaId), at)
+      if (inMap && countNewMap(s, areaId, seed)) maps++
+    }
+    enter('MapWorldsStrand', '11', 1000)
+    enter('MapSideArea_VaalTemple', '22', 2000)
+    enter('MapWorldsStrand', '11', 3000)
+    enter('HideoutFelled', '33', 4000)
+    expect(maps).toBe(1)
+    // The side area's time is map time.
+    expect(s.mapMs).toBe(3000)
+  })
+
+  it('a pinnacle boss fight is not a map', () => {
+    expect(isMapArea('MapWorldsShapersRealm')).toBe(false)
+    expect(isMapArea('MapWorldsPrimordialBoss3')).toBe(false)
+    expect(isMapArea('MapWorldsElderArenaUber')).toBe(false)
+    expect(isMapArea('MapWorldsCemetery')).toBe(true)
+    expect(bossAreaIds('MapWorldsPrimordialBoss4')).toEqual(['eater', 'uber-eater'])
+    expect(zoneKind('MapWorldsPrimordialBoss4', '')).toBe('boss')
+    expect(arenaBosses('MapWorldsShapersRealm', "The Shaper's Realm")).toEqual(['shaper', 'uber-shaper'])
+    // Every boss named exists in the boss list.
+    const known = new Set(BOSSES.map(b => b.id))
+    expect(Object.values(BOSS_AREAS).flat().filter(id => !known.has(id))).toEqual([])
+  })
+
   it('auto-pauses after idling, counting time only up to the limit', () => {
     const s = newSession('x', 0)
     onZoneChange(s, true, 1000)
@@ -167,6 +200,11 @@ describe('lab', () => {
     expect(difficultyForAreaLevel(33)).toBe('normal')
     expect(difficultyForAreaLevel(55)).toBe('cruel')
     expect(difficultyForAreaLevel(75)).toBe('uber')
+  })
+
+  it('a Trial of Ascendancy in a map is not the lab', () => {
+    expect(zoneKind('1_Labyrinth_Airlock', '')).toBe('lab')
+    expect(zoneKind('EndGame_Labyrinth_trials_spikes', '')).not.toBe('lab')
   })
 
   it('counts down to the daily reset (midnight UTC)', () => {

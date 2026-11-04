@@ -1,6 +1,7 @@
 import type { Widget, Anchor } from '@/web/overlay/widgets'
 import { BULK_TYPES } from '../league-invest/invest'
 import { itemKey } from '../market/types'
+import { isBossArea } from '../shared/boss-areas'
 import type { SavedLoot, SessionRecord } from '../analytics/types'
 
 export const FARMING_TYPE = 'woke-farming'
@@ -165,9 +166,18 @@ export function totals (
 }
 
 // Endgame maps are generated with an area id starting with "Map"
-// (e.g. "MapWorldsStrand"); hideouts, towns and campaign areas are not.
+// (e.g. "MapWorldsStrand"); hideouts, towns and campaign areas are not, and
+// neither are pinnacle boss arenas (MapWorldsShapersRealm...).
 export function isMapArea (areaId: string): boolean {
-  return /^Map/i.test(areaId) && !/hideout/i.test(areaId)
+  return /^Map/i.test(areaId) && !/hideout/i.test(areaId) && !isBossArea(areaId) && !isMapSideArea(areaId)
+}
+
+// Areas you reach from inside a map: Vaal side areas, abyssal depths, trials
+// of ascendancy, Settlers' fallen stars (prefixes as Exile-UI's map tracker
+// has them). Time there is map time, but they aren't new maps: counting the
+// side area also made the map count again on the way back.
+export function isMapSideArea (areaId: string): boolean {
+  return /^(MapSideArea|AbyssLeague|EndGame_Labyrinth_Trials|SettlersBossFallenStar)/i.test(areaId)
 }
 
 export function strategyStats (history: FarmingResult[]): Array<{ strategy: string, sessions: number, maps: number, hours: number, perHour: number, perMap: number }> {

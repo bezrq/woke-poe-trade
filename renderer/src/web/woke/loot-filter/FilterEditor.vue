@@ -214,7 +214,7 @@
         <div v-for="h in config.history" :key="h.ts" :class="$style.changeRow">
           <i class="fas fa-history w-dim" />
           <span class="grow min-w-0 w-trunc">{{ h.label }}</span>
-          <span class="w-faint text-xs w-num" :title="new Date(h.ts).toLocaleString()">{{ ago(h.ts) }} ago</span>
+          <span class="w-faint text-xs w-num" :title="new Date(h.ts).toLocaleString()">{{ agoPhrase(h.ts) }}</span>
           <WButton size="sm" variant="ghost" title="Put your changes back the way they were at this save" @click="restoreSave(h.ts)">Go back to this</WButton>
         </div>
       </template>
@@ -241,7 +241,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { WPanel, WButton, WSelect, WField, WTabs, WListItem, WChip, WEmpty, WKbd, WBanner, WSkeleton, ago, openMenu, toast, useCopy } from '../ui'
+import { WPanel, WButton, WSelect, WField, WTabs, WListItem, WChip, WEmpty, WKbd, WBanner, WSkeleton, agoPhrase, openMenu, toast, useCopy } from '../ui'
 import LabelPreview from './LabelPreview.vue'
 import PricesTab from './PricesTab.vue'
 import PreviewTab from './PreviewTab.vue'

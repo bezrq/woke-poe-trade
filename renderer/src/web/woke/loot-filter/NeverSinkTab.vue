@@ -5,7 +5,7 @@
         <WToggle :model-value="ns.on" @update:model-value="store.useGitHub($event)">Get NeverSink from GitHub and keep it up to date</WToggle>
         <span class="grow" />
         <span v-if="ns.on && ns.version" class="w-dim text-xs w-num">
-          Version {{ ns.version }}<template v-if="ns.checkedAt"> · checked {{ ago(ns.checkedAt) }} ago</template>
+          Version {{ ns.version }}<template v-if="ns.checkedAt"> · checked {{ agoPhrase(ns.checkedAt) }}</template>
         </span>
         <WButton v-if="ns.on" size="sm" variant="ghost" icon="fas fa-sync" :disabled="store.checking.value" @click="store.checkForUpdate(true)">Check now</WButton>
       </div>
@@ -70,7 +70,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { WButton, WKbd, WSelect, WToggle, ago, toast } from '../ui'
+import { WButton, WKbd, WSelect, WToggle, agoPhrase, toast } from '../ui'
 import type { LootFilterStore } from './store'
 import type { LootFilterWidget } from './widget'
 import { NEVERSINK_OUTPUT } from './widget'

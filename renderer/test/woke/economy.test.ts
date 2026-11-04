@@ -1,6 +1,7 @@
 // Economy modules: poe.ninja parsing and movers, trade listing insight,
 // essence corruption, boss run profit and league-start investments.
 import { describe, it, expect } from 'vitest'
+import { agoPhrase, nowMinute } from '@/web/woke/ui/format'
 import fs from 'fs'
 import path from 'path'
 import { FIXTURES } from '../helpers/game-data'
@@ -230,5 +231,14 @@ describe('league-start investments', () => {
 
   it('refuses a file that is not a poe.ninja dump', () => {
     expect(() => new DumpImporter().addCsv('a;b;c\n1;2;3')).toThrow(/poe.ninja dump/)
+  })
+})
+
+describe('data age', () => {
+  it('reads as a sentence: "just now", "4m ago"', () => {
+    nowMinute.value = Date.UTC(2026, 10, 4, 12, 0)
+    expect(agoPhrase(nowMinute.value - 10_000)).toBe('just now')
+    expect(agoPhrase(nowMinute.value - 4 * 60_000)).toBe('4m ago')
+    expect(agoPhrase(null)).toBe('')
   })
 })
