@@ -127,7 +127,7 @@ export default {
 <script setup lang="ts">
 import { inject, computed, shallowRef, onUnmounted } from 'vue'
 import { Host } from '@/web/background/IPC'
-import { AppConfig } from '@/web/Config'
+import { AppConfig, saveConfig } from '@/web/Config'
 import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
 import UiCheckbox from '@/web/ui/UiCheckbox.vue'
@@ -272,10 +272,13 @@ function removeCost (line: CostLine) {
 const logListener = Host.onEvent('MAIN->CLIENT::game-log', (e) => {
   const sess = props.config.session
   if (!sess || sess.runningSince == null || !props.config.autoCountMaps) return
+  const before = sess.maps
   for (const line of e.lines) {
     const ev = parseLogLine(line)
     if (ev?.kind === 'area' && isMapArea(ev.areaId)) sess.maps++
   }
+  // Config is otherwise saved only when the overlay loses focus.
+  if (sess.maps !== before) saveConfig()
 })
 onUnmounted(() => { logListener.abort() })
 </script>
