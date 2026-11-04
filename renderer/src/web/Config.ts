@@ -4,6 +4,7 @@ import { Host } from '@/web/background/IPC'
 import { HostConfig, ShortcutAction } from '@ipc/types'
 import type * as widget from './overlay/widgets'
 import type { StashSearchWidget } from './stash-search/widget'
+import { wokeShortcutsFor } from './woke/shortcuts'
 import type { ItemCheckWidget } from './item-check/widget'
 import type { ItemSearchWidget } from './item-search/widget'
 import { registry as widgetRegistry } from './overlay/widget-registry.js'
@@ -511,6 +512,7 @@ function getConfigForHost (): HostConfig {
     }
   }
   for (const widget of config.widgets) {
+    actions.push(...wokeShortcutsFor(widget))
     if (widget.wmType === 'stash-search') {
       const stashSearch = widget as StashSearchWidget
       if (!stashSearch.enableHotkeys) continue
