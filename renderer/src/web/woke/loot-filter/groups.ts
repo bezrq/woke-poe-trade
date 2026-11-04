@@ -3,6 +3,14 @@
 import type { FilterBlock, FilterDoc, Visibility } from './parse'
 import { OWN_RULE_TYPE } from './edits'
 import { BUILD_RULE_TYPE } from './build-rules'
+import { SAFETY_RULE_TYPE } from './safety'
+
+// Rule groups the editor adds on top of NeverSink's, by display name.
+const OWN_GROUPS: Record<string, string> = {
+  [OWN_RULE_TYPE]: 'Your own rules',
+  [BUILD_RULE_TYPE]: 'Your build',
+  [SAFETY_RULE_TYPE]: 'Safety net'
+}
 
 export interface TierNode {
   tier: string
@@ -29,8 +37,7 @@ export interface SectionNode {
 
 export function groupName (type: string | null): string {
   if (!type) return 'Untagged'
-  if (type === OWN_RULE_TYPE) return 'Your own rules'
-  if (type === BUILD_RULE_TYPE) return 'Your build'
+  if (OWN_GROUPS[type]) return OWN_GROUPS[type]
   return type.split('->').map(part => part.charAt(0).toUpperCase() + part.slice(1)).join(' › ')
 }
 
@@ -41,11 +48,12 @@ export function buildTree (doc: FilterDoc): SectionNode[] {
     const type = b.type ?? `untagged:${b.section}`
     let g = groups.get(type)
     if (!g) {
-      const title = b.type === OWN_RULE_TYPE ? 'Your own rules' : b.type === BUILD_RULE_TYPE ? 'Your build' : (b.section || 'Other')
+      const own = b.type != null && OWN_GROUPS[b.type] != null
+      const title = own ? OWN_GROUPS[b.type!] : (b.section || 'Other')
       let sec = sections.find(s => s.title === title)
       if (!sec) {
         sec = { title, groups: [] }
-        if (b.type === OWN_RULE_TYPE || b.type === BUILD_RULE_TYPE) sections.unshift(sec)
+        if (own) sections.unshift(sec)
         else sections.push(sec)
       }
       g = { type, section: title, tiers: [], blockCount: 0, hidden: true }

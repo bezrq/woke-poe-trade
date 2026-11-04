@@ -1,0 +1,294 @@
+// Economy tiering: re-sorts the price-driven NeverSink groups (currency,
+// cards, uniques, scarabs, essences...) from today's poe.ninja prices.
+//
+// The price bands come from the filter itself: each tier's band is centred on
+// the median price of the items NeverSink put there, and the boundary between
+// two tiers is the geometric mean of their medians. That keeps NeverSink's own
+// idea of what "t2 currency" means while following the league's prices.
+//
+// Guards so labels don't change for bad reasons:
+//  - items with gaps in their price history (thin, easy to fake) never move;
+//  - items you moved yourself are locked;
+//  - an item has to clear a boundary by a buffer (20%) before it moves, so a
+//    price sitting on a line doesn't flip back and forth every day;
+//  - groups whose tiers aren't ordered by price are left alone.
+import type { FilterBlock, FilterDoc } from './parse'
+import { applyEdits, blockHasBase, blocksOf } from './edits'
+import type { FilterEdit } from './edits'
+import type { PriceItem } from '../market/types'
+import { isThin } from '../market/types'
+
+export interface EconomyGroup {
+  // NeverSink's $type tag.
+  type: string
+  label: string
+  // poe.ninja overview types priced for this group.
+  ninja: string[]
+  // Bases hold several uniques; the price is judged over all of them.
+  unique?: boolean
+  // Extra non-`tN` tiers that take part, with their rank.
+  extraTiers?: Record<string, number>
+}
+
+const UNIQUE_TYPES = ['UniqueArmour', 'UniqueWeapon', 'UniqueAccessory', 'UniqueJewel', 'UniqueFlask', 'UniqueRelic', 'UniqueTincture']
+
+export const ECONOMY_GROUPS: EconomyGroup[] = [
+  { type: 'currency', label: 'Currency', ninja: ['Currency'] },
+  { type: 'divination', label: 'Divination cards', ninja: ['DivinationCard'] },
+  { type: 'uniques', label: 'Uniques', ninja: UNIQUE_TYPES, unique: true, extraTiers: { hideable: 4 } },
+  { type: 'fragments->scarabs', label: 'Scarabs', ninja: ['Scarab'] },
+  { type: 'fragments', label: 'Fragments', ninja: ['Fragment'] },
+  { type: 'currency->essence', label: 'Essences', ninja: ['Essence'] },
+  { type: 'currency->fossil', label: 'Fossils', ninja: ['Fossil'] },
+  { type: 'currency->oil', label: 'Oils', ninja: ['Oil'] },
+  { type: 'currency->deliriumorbs', label: 'Delirium orbs', ninja: ['DeliriumOrb'] },
+  { type: 'currency->trial->omen', label: 'Omens', ninja: ['Omen'] },
+  { type: 'currency->trial->tattoo', label: 'Tattoos', ninja: ['Tattoo'] },
+  { type: 'currency->incubators', label: 'Incubators', ninja: ['Incubator'] },
+  { type: 'currency->resonator', label: 'Resonators', ninja: ['Resonator'] },
+  { type: 'currency->ducats', label: 'Ducats', ninja: ['Ducat'] }
+]
+
+export interface PricePoint {
+  chaos: number
+  thin: boolean
+  // For uniques: which unique set the price.
+  note?: string
+}
+
+// Price of a base type in one group, or null when poe.ninja has none.
+export type PriceLookup = (group: EconomyGroup, base: string) => PricePoint | null
+
+export type UniqueRule = 'max' | 'min'
+
+// Builds a lookup from a price snapshot. `uniquesOnBase` lists the uniques
+// that use a base (from APT's item data); passed in so tests can stub it.
+export function priceLookup (
+  items: PriceItem[],
+  uniquesOnBase: (base: string) => string[],
+  rule: UniqueRule = 'max'
+): PriceLookup {
+  // One price per (type, name): the plain variant, or the cheapest one
+  // (6-link and relic variants of uniques are not what drops).
+  const byName = new Map<string, PriceItem>()
+  for (const i of items) {
+    if (/\b[56]L\b|links?/i.test(i.variant)) continue
+    const key = `${i.type}\u0000${i.name}`
+    const prev = byName.get(key)
+    if (!prev || (!i.variant && prev.variant) || (Boolean(i.variant) === Boolean(prev.variant) && i.chaos < prev.chaos)) byName.set(key, i)
+  }
+  const find = (types: string[], name: string) => {
+    for (const t of types) {
+      const hit = byName.get(`${t}\u0000${name}`)
+      if (hit) return hit
+    }
+    return undefined
+  }
+  return (group, base) => {
+    if (!group.unique) {
+      const hit = find(group.ninja, base)
+      return hit ? { chaos: hit.chaos, thin: isThin(hit) } : null
+    }
+    const priced = uniquesOnBase(base).map(name => find(group.ninja, name)).filter((x): x is PriceItem => Boolean(x))
+    if (!priced.length) return null
+    // "max": the base is worth what its best unique is worth, so a valuable
+    // unique is never hidden because it shares a base with junk.
+    const pick = priced.reduce((a, b) => (rule === 'max' ? b.chaos > a.chaos : b.chaos < a.chaos) ? b : a)
+    return { chaos: pick.chaos, thin: isThin(pick), note: priced.length > 1 ? `${pick.name}, 1 of ${priced.length}` : pick.name }
+  }
+}
+
+// ---- tiers ----
+
+// Rank of a tier inside a price group (1 = most valuable), or null when the
+// tier isn't a price tier (restex, exhide, tnew, t3stackedex, t4c...).
+export function tierRank (tier: string, siblings: string[], group?: EconomyGroup): number | null {
+  if (group?.extraTiers?.[tier] != null) return group.extraTiers[tier]
+  const m = /^t(\d+)([a-z]*)$/.exec(tier)
+  if (!m) return null
+  const n = Number(m[1])
+  if (!m[2]) return n
+  if (/stack|ex$|boss|^c$/.test(m[2])) return null
+  // "t4c" next to a plain "t4" is a variant tier, not the price tier.
+  if (siblings.includes(`t${n}`)) return null
+  // Two suffixed tiers with one number (t3annul, t3foo): ambiguous.
+  if (siblings.filter(s => new RegExp(`^t${n}[a-z]+$`).test(s)).length > 1) return null
+  return n
+}
+
+function baseTypeValues (b: FilterBlock): string[] {
+  return b.conditions.find(c => c.key === 'BaseType' && c.op === '==')?.values ?? []
+}
+
+export interface TierBand {
+  tier: string
+  rank: number
+  // Median price of its priced items (null: none priced, so it can't anchor).
+  median: number | null
+  priced: number
+  bases: string[]
+}
+
+export interface PriceMove {
+  type: string
+  base: string
+  from: string
+  to: string
+  chaos: number
+  note?: string
+}
+
+export interface PriceSkip {
+  type: string
+  base: string
+  tier: string
+  chaos: number
+  // Where the price alone would have put it.
+  wanted: string
+  reason: 'thin' | 'locked'
+}
+
+export interface GroupReport {
+  group: EconomyGroup
+  bands: TierBand[]
+  // Why the group was left alone.
+  skipped?: string
+}
+
+export interface RetierPlan {
+  moves: PriceMove[]
+  skipped: PriceSkip[]
+  groups: GroupReport[]
+}
+
+export interface PlanOptions {
+  // `${type}|${base}` keys of items the user placed by hand.
+  locked?: Set<string>
+  buffer?: number
+  groups?: EconomyGroup[]
+}
+
+export const lockKey = (type: string, base: string) => `${type}|${base}`
+
+function median (values: number[]): number {
+  const s = [...values].sort((a, b) => a - b)
+  const mid = s.length >> 1
+  return s.length % 2 ? s[mid] : Math.sqrt(s[mid - 1] * s[mid])
+}
+
+export function planRetier (doc: FilterDoc, lookup: PriceLookup, opts: PlanOptions = {}): RetierPlan {
+  const buffer = opts.buffer ?? 0.2
+  const locked = opts.locked ?? new Set<string>()
+  const plan: RetierPlan = { moves: [], skipped: [], groups: [] }
+
+  for (const group of opts.groups ?? ECONOMY_GROUPS) {
+    const blocks = blocksOf(doc, group.type).filter(b => !b.disabled && b.tier && baseTypeValues(b).length)
+    if (!blocks.length) continue
+    const tierNames = [...new Set(blocks.map(b => b.tier!))]
+    const bands: TierBand[] = []
+    const home = new Map<string, TierBand>()
+    for (const tier of tierNames) {
+      const rank = tierRank(tier, tierNames, group)
+      if (rank == null) continue
+      bands.push({ tier, rank, median: null, priced: 0, bases: [] })
+    }
+    bands.sort((a, b) => a.rank - b.rank)
+    // A base belongs to the most valuable price tier that lists it.
+    for (const band of bands) {
+      for (const b of blocks) {
+        if (b.tier !== band.tier) continue
+        for (const base of baseTypeValues(b)) {
+          if (home.has(base)) continue
+          home.set(base, band)
+          band.bases.push(base)
+        }
+      }
+    }
+    const prices = new Map<string, PricePoint>()
+    for (const base of home.keys()) {
+      const p = lookup(group, base)
+      if (p && p.chaos > 0) prices.set(base, p)
+    }
+    for (const band of bands) {
+      const values = band.bases.map(b => prices.get(b)).filter(p => p && !p.thin).map(p => p!.chaos)
+      band.priced = values.length
+      band.median = values.length ? median(values) : null
+    }
+    const report: GroupReport = { group, bands }
+    plan.groups.push(report)
+
+    // Anchors: priced tiers, most valuable first, with falling medians.
+    // A tier that breaks the order isn't sorted by price and is left out.
+    const anchors: TierBand[] = []
+    for (const band of bands) {
+      if (band.median == null) continue
+      const prev = anchors[anchors.length - 1]
+      if (prev && band.median >= prev.median!) continue
+      anchors.push(band)
+    }
+    if (anchors.length < 2) {
+      report.skipped = 'Not enough priced tiers to compare'
+      continue
+    }
+    // boundary[i] sits between anchors[i] and anchors[i + 1].
+    const boundary = anchors.slice(0, -1).map((a, i) => Math.sqrt(a.median! * anchors[i + 1].median!))
+    const bandFor = (chaos: number) => {
+      const i = boundary.findIndex(b => chaos >= b)
+      return i < 0 ? anchors.length - 1 : i
+    }
+
+    for (const [base, price] of prices) {
+      const band = home.get(base)!
+      const cur = anchors.indexOf(band)
+      if (cur < 0) continue
+      const up = bandFor(price.chaos / (1 + buffer))
+      const down = bandFor(price.chaos * (1 + buffer))
+      const target = up < cur ? up : (down > cur ? down : cur)
+      if (target === cur) continue
+      const to = anchors[target].tier
+      if (locked.has(lockKey(group.type, base))) {
+        plan.skipped.push({ type: group.type, base, tier: band.tier, chaos: price.chaos, wanted: to, reason: 'locked' })
+      } else if (price.thin) {
+        plan.skipped.push({ type: group.type, base, tier: band.tier, chaos: price.chaos, wanted: to, reason: 'thin' })
+      } else {
+        plan.moves.push({ type: group.type, base, from: band.tier, to, chaos: price.chaos, note: price.note })
+      }
+    }
+  }
+  plan.moves.sort((a, b) => b.chaos - a.chaos)
+  return plan
+}
+
+// ---- stored moves ----
+
+// Folds new moves into the stored list. A move back to where NeverSink had
+// the item drops the entry.
+export function mergeMoves (stored: PriceMove[], next: PriceMove[]): PriceMove[] {
+  const out = [...stored]
+  for (const m of next) {
+    const i = out.findIndex(o => o.type === m.type && o.base === m.base)
+    if (i < 0) { out.push(m); continue }
+    const first = out[i].from
+    if (first === m.to) out.splice(i, 1)
+    else out[i] = { ...m, from: first }
+  }
+  return out
+}
+
+// Applies stored price moves to a fresh parse. Moves whose base or tier is
+// gone (a NeverSink update) are dropped quietly: the next plan redoes them.
+export function applyPriceMoves (doc: FilterDoc, moves: PriceMove[]): number {
+  const edits: FilterEdit[] = moves
+    .filter(m => blocksOf(doc, m.type).some(b => blockHasBase(b, m.base)))
+    .map((m, i) => ({ id: -1 - i, kind: 'move', type: m.type, base: m.base, from: m.from, to: m.to }))
+  return applyEdits(doc, edits).filter(s => s.ok).length
+}
+
+// Keys of items the user moved or gave their own rule.
+export function lockedByEdits (edits: FilterEdit[], extra: string[] = []): Set<string> {
+  const out = new Set(extra)
+  for (const e of edits) {
+    if (e.kind === 'move') out.add(lockKey(e.type, e.base))
+  }
+  return out
+}

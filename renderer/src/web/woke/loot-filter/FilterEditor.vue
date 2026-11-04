@@ -108,6 +108,8 @@
       </div>
     </div>
 
+    <PricesTab v-else-if="tab === 'prices'" :store="store" :config="config" :anchor="panel?.el" />
+
     <!-- build rules -->
     <div v-else-if="tab === 'build'" :class="$style.changes" class="w-scroll">
       <WEmpty v-if="!buildInput" icon="fas fa-user-cog">
@@ -134,6 +136,12 @@
 
     <!-- changes -->
     <div v-else :class="$style.changes" class="w-scroll">
+      <div v-if="store.problems.value.length" :class="$style.problems">
+        <div v-for="(p, i) in store.problems.value.slice(0, 6)" :key="i" class="text-sm">
+          <i class="fas fa-exclamation-triangle" style="color: var(--w-down);" /> {{ describeProblem(p) }}
+          <WButton v-if="p.block.type && p.block.tier" size="sm" variant="ghost" @click="jumpTo(p.block.type!, p.block.tier!)">Open rule</WButton>
+        </div>
+      </div>
       <WEmpty v-if="!config.edits.length" icon="fas fa-pen">No changes yet. Sample an item with <WKbd v-if="config.sampleHotkey" :keys="config.sampleHotkey" /> or edit a tier here.</WEmpty>
       <div v-for="s in store.statuses.value" :key="s.edit.id" :class="[$style.changeRow, { [$style.failed]: !s.ok }]">
         <i :class="iconFor(s.edit.kind)" class="w-dim" />
@@ -146,6 +154,15 @@
           @update:model-value="v => v !== '' && store.replaceEdit(rehome(s.edit, homes(s.edit)[Number(v)]))" />
         <WButton size="sm" variant="ghost" icon="fas fa-undo" title="Drop this change (you can bring it back from the note)" @click="removeEdit(s.edit)">Drop</WButton>
       </div>
+      <template v-if="config.history.length">
+        <div class="w-group-label" :class="$style.historyLabel">Earlier saves</div>
+        <div v-for="h in config.history" :key="h.ts" :class="$style.changeRow">
+          <i class="fas fa-history w-dim" />
+          <span class="grow min-w-0 w-trunc">{{ h.label }}</span>
+          <span class="w-faint text-xs w-num" :title="new Date(h.ts).toLocaleString()">{{ ago(h.ts) }} ago</span>
+          <WButton size="sm" variant="ghost" title="Put your changes back the way they were at this save" @click="restoreSave(h.ts)">Go back to this</WButton>
+        </div>
+      </template>
     </div>
 
     <template #footer>
@@ -169,8 +186,10 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { WPanel, WButton, WSelect, WField, WTabs, WListItem, WChip, WEmpty, WKbd, WBanner, WSkeleton, openMenu, toast } from '../ui'
+import { WPanel, WButton, WSelect, WField, WTabs, WListItem, WChip, WEmpty, WKbd, WBanner, WSkeleton, ago, openMenu, toast } from '../ui'
 import LabelPreview from './LabelPreview.vue'
+import PricesTab from './PricesTab.vue'
+import { describeProblem } from './validate'
 import StyleEditor from './StyleEditor.vue'
 import type { LootFilterStore } from './store'
 import { outputName } from './widget'
@@ -195,7 +214,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{ (e: 'close'): void }>()
 
-const tab = ref<'rules' | 'build' | 'changes'>('rules')
+const tab = ref<'rules' | 'prices' | 'build' | 'changes'>('rules')
 const search = ref('')
 const selType = ref<string | null>(null)
 const selTier = ref<string | null>(null)
@@ -212,6 +231,7 @@ const outName = computed(() => props.config.sourceName ? outputName(props.config
 
 const tabOptions = computed(() => [
   { value: 'rules', label: 'Rules' },
+  { value: 'prices', label: 'Prices', count: props.store.plan.value?.moves.length || undefined },
   { value: 'build', label: 'Build', count: props.store.buildBlockCount.value || undefined },
   { value: 'changes', label: 'Changes', count: props.config.edits.length }
 ])
@@ -263,6 +283,7 @@ const banner = computed(() => {
     return `NeverSink ${s.baseVersion.value} found (you last saved against ${props.config.lastVersion}). ${total - failed} of ${total} changes reapplied${failed ? `, ${failed} need a new home under Changes` : ''}. Save to update the game's copy.`
   }
   if (failed) return `${failed} change${failed > 1 ? 's need' : ' needs'} a new home in this filter version. See Changes.`
+  if (s.problems.value.length) return 'The game would reject this filter as it is. See Changes for the rule to fix.'
   return null
 })
 
@@ -382,6 +403,11 @@ function tierMenu (ev: MouseEvent, t: TierNode) {
   ])
 }
 
+function restoreSave (ts: number) {
+  const undo = props.store.restore(ts)
+  toast('Changes are back the way they were at that save', { anchor: panel.value?.el, undo })
+}
+
 function iconFor (kind: FilterEdit['kind']): string {
   switch (kind) {
     case 'move': return 'fas fa-exchange-alt'
@@ -492,6 +518,16 @@ function openFolder () {
   gap: 10px;
   padding: 6px var(--w-pad);
   border-bottom: 1px solid var(--w-line-soft);
+}
+.problems {
+  padding: 6px var(--w-pad);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border-bottom: 1px solid var(--w-line-soft);
+}
+.historyLabel {
+  padding: 12px var(--w-pad) 4px;
 }
 .failed {
   background: rgba(224, 103, 90, 0.08);
