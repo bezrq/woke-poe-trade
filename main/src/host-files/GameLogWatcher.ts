@@ -1,4 +1,5 @@
 import { promises as fs, watchFile, unwatchFile } from 'fs'
+import { execFile } from 'child_process'
 import path from 'path'
 import { app } from 'electron'
 import { guessFileLocation } from './utils'
@@ -16,8 +17,25 @@ const POSSIBLE_PATH =
     path.join(app.getPath('home'), 'Library/Caches/com.GGG.PathOfExile/Logs/Client.txt')
   ] : []
 
+const FIND_GAME_RETRY_MS = 15 * 1000
+
+// woke: the game can be installed anywhere (another Steam library, another
+// drive), so ask the running game where it is.
+function runningGameLog (): Promise<string | null> {
+  if (process.platform !== 'win32') return Promise.resolve(null)
+  return new Promise((resolve) => {
+    execFile('powershell', ['-NoProfile', '-NonInteractive', '-Command',
+      '(Get-Process PathOfExile* -ErrorAction SilentlyContinue | Select-Object -First 1).Path'
+    ], { windowsHide: true, timeout: 10_000 }, (err, stdout) => {
+      const exe = err ? '' : stdout.trim()
+      resolve(exe ? path.join(path.dirname(exe), 'logs', 'Client.txt') : null)
+    })
+  })
+}
+
 export class GameLogWatcher {
   private _wantedPath: string | null = null
+  private _findGameTimer: ReturnType<typeof setTimeout> | undefined
   get actualPath () { return this._state?.path ?? null }
   private _state: {
     offset: number
@@ -34,6 +52,7 @@ export class GameLogWatcher {
 
   // woke: stop tailing when no enabled module reads the log.
   async stop () {
+    clearTimeout(this._findGameTimer)
     this._wantedPath = null
     if (this._state) {
       unwatchFile(this._state.path)
@@ -45,6 +64,7 @@ export class GameLogWatcher {
 
   async restart (logFile: string) {
     if (this._wantedPath !== logFile) {
+      clearTimeout(this._findGameTimer)
       this._wantedPath = logFile
       if (this._state) {
         unwatchFile(this._state.path)
@@ -56,10 +76,16 @@ export class GameLogWatcher {
     }
 
     if (!logFile.length) {
-      const guessedPath = await guessFileLocation(POSSIBLE_PATH)
+      const guessedPath = await runningGameLog() ?? await guessFileLocation(POSSIBLE_PATH)
+      if (this._wantedPath !== logFile) return
       if (guessedPath != null) {
         logFile = guessedPath
       } else {
+        // Game isn't running yet.
+        this._findGameTimer = setTimeout(() => {
+          this._wantedPath = null
+          this.restart('')
+        }, FIND_GAME_RETRY_MS)
         return
       }
     }

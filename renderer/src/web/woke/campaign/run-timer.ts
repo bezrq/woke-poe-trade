@@ -13,6 +13,41 @@ export const LAST_ACT = 10
 export const START_AREA_ID = '1_1_1' // The Twilight Strand
 export const HISTORY_LIMIT = 30
 
+// A boss or key zone inside an act, timed on the first entry into its zone.
+export interface SubSplitDef {
+  id: string
+  act: number
+  label: string
+  // "You have entered …" zone names that count as reaching it.
+  zones: string[]
+}
+
+export const SUB_SPLITS: SubSplitDef[] = [
+  { id: 'brutus', act: 1, label: 'Brutus', zones: ["The Warden's Quarters"] },
+  { id: 'merveil', act: 1, label: 'Merveil', zones: ["Merveil's Lair"] },
+  { id: 'weaver', act: 2, label: 'The Weaver', zones: ["The Weaver's Nest"] },
+  { id: 'oversoul', act: 2, label: 'Vaal Oversoul', zones: ['Pyramid Apex'] },
+  { id: 'dominus', act: 3, label: 'Dominus', zones: ['Tower Rooftop'] },
+  { id: 'kaom', act: 4, label: 'Kaom', zones: ['Caldera of the King'] },
+  { id: 'daresso', act: 4, label: 'Daresso', zones: ['The Ring of Blades'] },
+  { id: 'malachai', act: 4, label: 'Malachai', zones: ['The Black Core'] },
+  { id: 'avarius', act: 5, label: 'Avarius', zones: ['Sanctum of Innocence'] },
+  { id: 'kitava5', act: 5, label: 'Kitava', zones: ['Cathedral Apex'] },
+  { id: 'tukohama', act: 6, label: 'Tukohama', zones: ["Tukohama's Keep"] },
+  { id: 'brine-king', act: 6, label: 'Brine King', zones: ["The Brine King's Throne", "The Bring King's Throne"] },
+  { id: 'arakaali', act: 7, label: 'Arakaali', zones: ["Arakaali's Web"] },
+  { id: 'doedre8', act: 8, label: 'Doedre', zones: ['The Cauldron'] },
+  { id: 'shakari', act: 9, label: 'Shakari', zones: ['The Sand Pit'] },
+  { id: 'garukhan', act: 9, label: 'Garukhan', zones: ['Shrine of the Winds'] },
+  { id: 'trinity', act: 9, label: 'Depraved Trinity', zones: ['The Black Heart'] },
+  { id: 'kitava10', act: 10, label: 'Kitava', zones: ['Altar of Hunger'] }
+]
+
+export interface RunMark {
+  id: string
+  totalMs: number
+}
+
 export interface RunSplit {
   act: number
   // Run time when the act was finished (the first entry into the next act).
@@ -34,6 +69,8 @@ export interface CampaignRun {
   className: string
   level: number | null
   splits: RunSplit[]
+  // Sub-splits reached so far (missing on runs saved before sub-splits).
+  marks?: RunMark[]
   finished: boolean
   endedAt: number | null
 }
@@ -48,6 +85,12 @@ export interface RunTimerWidget extends Widget {
   expanded: boolean
   // Run to race against; null = personal best.
   compareTo: number | null
+  // Time bosses and key zones inside each act.
+  subSplits: boolean
+  hotkeyPause: string | null
+  hotkeySplits: string | null
+  // Time of the last Client.txt line applied, to catch up after a restart.
+  lastLogAt: number
   run: CampaignRun | null
   history: CampaignRun[]
 }
@@ -65,9 +108,26 @@ export function newRun (now: number): CampaignRun {
     className: '',
     level: null,
     splits: [],
+    marks: [],
     finished: false,
     endedAt: null
   }
+}
+
+// Fills settings added after the widget was first placed.
+export function migrateRunTimer (w: RunTimerWidget) {
+  if (w.subSplits === undefined) w.subSplits = true
+  if (w.hotkeyPause === undefined) w.hotkeyPause = null
+  if (w.hotkeySplits === undefined) w.hotkeySplits = null
+}
+
+export function hotkeyTarget (wmId: number, action: 'pause' | 'splits'): string {
+  return `woke-run-timer:${wmId}:${action}`
+}
+
+export function parseHotkeyTarget (target: string): { wmId: number, action: 'pause' | 'splits' } | null {
+  const m = /^woke-run-timer:(\d+):(pause|splits)$/.exec(target)
+  return m ? { wmId: Number(m[1]), action: m[2] as 'pause' | 'splits' } : null
 }
 
 export function runElapsed (run: CampaignRun, now: number): number {
@@ -140,7 +200,7 @@ export function startRun (w: Pick<RunTimerWidget, 'run' | 'history'>, now: numbe
 
 // Applies one Client.txt event. Returns true when anything changed.
 export function applyRunEvent (
-  w: Pick<RunTimerWidget, 'run' | 'history' | 'autoStart' | 'charName'>,
+  w: Pick<RunTimerWidget, 'run' | 'history' | 'autoStart' | 'charName'> & { subSplits?: boolean },
   ev: LogEvent,
   now: number
 ): boolean {
@@ -174,6 +234,12 @@ export function applyRunEvent (
   if (ev.kind === 'zone') {
     run.zone = ev.name
     run.zoneSinceMs = runElapsed(run, now)
+    if (w.subSplits !== false) {
+      const def = SUB_SPLITS.find(d => d.act === run.act && d.zones.includes(ev.name))
+      if (def && !markAt(run, def.id)) {
+        run.marks = [...(run.marks ?? []), { id: def.id, totalMs: run.zoneSinceMs }]
+      }
+    }
     return true
   }
   if (ev.kind === 'level') {
@@ -193,6 +259,10 @@ export function applyRunEvent (
 
 export function splitAt (run: CampaignRun, act: number): RunSplit | undefined {
   return run.splits.find(s => s.act === act)
+}
+
+export function markAt (run: CampaignRun, id: string): RunMark | undefined {
+  return run.marks?.find(m => m.id === id)
 }
 
 // Time spent in one act (segment), or null if the run has no split for it.
@@ -249,6 +319,14 @@ export function sumOfBest (runs: CampaignRun[]): number | null {
   return total
 }
 
+export interface MarkRow {
+  id: string
+  label: string
+  totalMs: number | null
+  cmpTotalMs: number | null
+  deltaMs: number | null
+}
+
 export interface SplitRow {
   act: number
   state: 'done' | 'current' | 'todo'
@@ -261,6 +339,26 @@ export interface SplitRow {
   deltaMs: number | null
   // Faster than this act's best time in every earlier run.
   gold: boolean
+  // Sub-splits in this act that this run or the comparison run reached.
+  marks: MarkRow[]
+}
+
+function markRows (run: CampaignRun | null, cmp: CampaignRun | null, act: number): MarkRow[] {
+  const rows: MarkRow[] = []
+  for (const def of SUB_SPLITS) {
+    if (def.act !== act) continue
+    const mine = run ? markAt(run, def.id) : undefined
+    const theirs = cmp ? markAt(cmp, def.id) : undefined
+    if (!mine && !theirs) continue
+    rows.push({
+      id: def.id,
+      label: def.label,
+      totalMs: mine?.totalMs ?? null,
+      cmpTotalMs: theirs?.totalMs ?? null,
+      deltaMs: mine && theirs ? mine.totalMs - theirs.totalMs : null
+    })
+  }
+  return rows
 }
 
 export function splitRows (run: CampaignRun | null, cmp: CampaignRun | null, history: CampaignRun[], now: number): SplitRow[] {
@@ -283,7 +381,8 @@ export function splitRows (run: CampaignRun | null, cmp: CampaignRun | null, his
         cmpTotalMs: cmpSplit?.totalMs ?? null,
         cmpSegmentMs: cmpSeg,
         deltaMs: cmpSplit ? s.totalMs - cmpSplit.totalMs : null,
-        gold: seg != null && prevBest != null && seg < prevBest
+        gold: seg != null && prevBest != null && seg < prevBest,
+        marks: markRows(run, cmp, act)
       })
     } else if (run && !run.finished && act === run.act) {
       const total = runElapsed(run, now)
@@ -298,7 +397,8 @@ export function splitRows (run: CampaignRun | null, cmp: CampaignRun | null, his
         cmpSegmentMs: cmpSeg,
         // Only show a live delta once you're already behind the comparison.
         deltaMs: cmpSplit && total > cmpSplit.totalMs ? total - cmpSplit.totalMs : null,
-        gold: false
+        gold: false,
+        marks: markRows(run, cmp, act)
       })
     } else {
       rows.push({
@@ -310,7 +410,8 @@ export function splitRows (run: CampaignRun | null, cmp: CampaignRun | null, his
         cmpTotalMs: cmpSplit?.totalMs ?? null,
         cmpSegmentMs: cmpSeg,
         deltaMs: null,
-        gold: false
+        gold: false,
+        marks: markRows(null, cmp, act)
       })
     }
   }
@@ -318,10 +419,14 @@ export function splitRows (run: CampaignRun | null, cmp: CampaignRun | null, his
 }
 
 // Delta shown on the strip: live when you're behind on the current act,
-// otherwise the delta at the last finished act.
+// then the last sub-split reached in this act, otherwise the delta at the
+// last finished act.
 export function headlineDelta (rows: SplitRow[]): number | null {
   const current = rows.find(r => r.state === 'current')
   if (current?.deltaMs != null) return current.deltaMs
+  // The latest boss reached in this act is fresher than the last act split.
+  const mark = current?.marks.filter(m => m.deltaMs != null).pop()
+  if (mark) return mark.deltaMs
   const done = rows.filter(r => r.state === 'done' && r.deltaMs != null)
   return done.length ? done[done.length - 1].deltaMs : null
 }

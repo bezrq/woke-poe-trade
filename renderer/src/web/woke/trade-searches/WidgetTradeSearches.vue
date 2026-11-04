@@ -16,6 +16,7 @@
             :title="tooltip(entry)" @select="open(entry, 'overlay')">
             <i v-if="isLiveSearch(entry.url)" class="fas fa-bolt w-accent" title="Live search" />
             <span class="w-trunc">{{ entry.name || entry.url }}</span>
+            <WChip v-if="otherLeague(entry)" :title="`Saved in ${otherLeague(entry)}. Opens in ${league}.`">{{ otherLeague(entry) }} → now</WChip>
             <WKbd v-if="config.enableHotkeys && entry.hotkeyOverlay" :keys="entry.hotkeyOverlay" class="ml-auto" />
             <template #actions>
               <button @click="open(entry, 'external')" class="w-icon-btn" title="Open in your browser">
@@ -34,8 +35,11 @@
       </WPanel>
 
       <WPanel v-if="openEntry" :title="openEntry.name || openEntry.url" :scroll="false" max-height="none"
-        style="width: 60vw; height: 75vh;">
+        :class="{ [$style.flash]: flashing }" style="width: 60vw; height: 75vh;">
         <template #actions>
+          <WChip v-if="isLiveSearch(openEntry.url)" clickable :active="!!config.liveAlert" class="mr-1"
+            :title="config.liveAlert ? 'Beeps when a new result appears. Click to turn off.' : 'Beep and flash when a new result appears on this page'"
+            @click="config.liveAlert = !config.liveAlert"><i class="fas fa-bell" /> Ping</WChip>
           <span class="w-faint text-xs whitespace-nowrap mr-1">{{ overlayKey }} to interact</span>
           <button @click="open(openEntry, 'external')" class="w-icon-btn" title="Open in your browser">
             <i class="fas fa-external-link-alt" />
@@ -72,7 +76,8 @@ import { AppConfig, pushHostConfig } from '@/web/Config'
 import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
 import { WPanel, WField, WChip, WKbd, WEmpty, WListItem } from '../ui'
-import { groupByCategory, isLiveSearch, isValidUrl, matchesFilter, parseHotkeyTarget } from './widget'
+import { useLeagues } from '@/web/background/Leagues'
+import { groupByCategory, isLiveSearch, isValidUrl, leagueOf, matchesFilter, parseHotkeyTarget, withLeague } from './widget'
 import type { OpenTarget, TradeSearchEntry } from './widget'
 
 const props = defineProps<{
@@ -92,7 +97,56 @@ if (props.config.wmFlags[0] === 'uninitialized') {
 
 const filter = shallowRef('')
 const openId = shallowRef<number | null>(null)
-const webviewEl = shallowRef<HTMLElement & { src: string } | null>(null)
+const webviewEl = shallowRef<HTMLElement & { src: string, executeJavaScript?: (code: string) => Promise<unknown> } | null>(null)
+const leagues = useLeagues()
+const league = computed(() => leagues.selectedId.value)
+
+// Saved league differs from the current one (and we'll rewrite it).
+function otherLeague (entry: TradeSearchEntry): string | null {
+  if (props.config.followLeague === false || !league.value) return null
+  const saved = leagueOf(entry.url)
+  return saved && saved !== league.value ? saved : null
+}
+
+function urlFor (entry: TradeSearchEntry): string {
+  return props.config.followLeague === false ? entry.url : withLeague(entry.url, league.value)
+}
+
+// Live-search ping: counts result rows on the page that's already open (no
+// extra requests) and beeps when the count goes up.
+const flashing = shallowRef(false)
+let lastCount = -1
+const ROWS_JS = "document.querySelectorAll('.resultset > .row[data-id]').length"
+const livePoll = setInterval(async () => {
+  const el = webviewEl.value
+  if (!props.config.liveAlert || !openEntry.value || !isLiveSearch(openEntry.value.url) || !el?.executeJavaScript) {
+    lastCount = -1
+    return
+  }
+  try {
+    const n = Number(await el.executeJavaScript(ROWS_JS))
+    if (lastCount >= 0 && n > lastCount) ping()
+    lastCount = n
+  } catch {}
+}, 1500)
+onUnmounted(() => { clearInterval(livePoll) })
+
+function ping () {
+  flashing.value = true
+  setTimeout(() => { flashing.value = false }, 900)
+  try {
+    const ctx = new AudioContext()
+    const osc = ctx.createOscillator()
+    const gain = ctx.createGain()
+    osc.frequency.value = 880
+    gain.gain.setValueAtTime(0.15, ctx.currentTime)
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35)
+    osc.connect(gain).connect(ctx.destination)
+    osc.start()
+    osc.stop(ctx.currentTime + 0.35)
+    osc.onended = () => { ctx.close().catch(() => {}) }
+  } catch {}
+}
 
 const openEntry = computed(() => props.config.entries.find(e => e.id === openId.value))
 const groups = computed(() => groupByCategory(
@@ -110,15 +164,17 @@ watch(openEntry, (entry) => {
 
 function open (entry: TradeSearchEntry, where: OpenTarget) {
   // Only http(s): the host passes window.open URLs to the OS shell.
-  if (!isValidUrl(entry.url)) return
+  const url = urlFor(entry)
+  if (!isValidUrl(url)) return
   if (where === 'external' || !Host.isElectron) {
-    window.open(entry.url)
+    window.open(url)
     return
   }
   openId.value = entry.id
+  lastCount = -1
   wm.show(props.config.wmId)
   nextTick(() => {
-    if (webviewEl.value) webviewEl.value.src = entry.url
+    if (webviewEl.value) webviewEl.value.src = url
   })
 }
 
@@ -139,3 +195,7 @@ function tooltip (entry: TradeSearchEntry) {
     .filter(Boolean).join('\n')
 }
 </script>
+
+<style module>
+.flash { box-shadow: 0 0 0 2px var(--w-accent); transition: box-shadow 0.2s; }
+</style>

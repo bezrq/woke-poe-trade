@@ -1,6 +1,6 @@
 <template>
   <div @mousedown="handleMouseDown">
-    <div :class="[$style.widget, { 'opacity-75': isMoving }]" :style="widgetPosition">
+    <div ref="widgetEl" :class="[$style.widget, { 'opacity-75': isMoving, [$style.draggable]: moveHandles !== 'none' }]" :style="widgetPosition">
       <slot :isEditing="isEditing" :isMoving="isMoving" />
       <div class="absolute px-1" :style="actionsPosition" style="background: rgba(0,0,0,0.01);">
         <div :class="$style.actionsPanel">
@@ -52,6 +52,15 @@ function useRemovable (remove: () => void) {
   }
 
   return { startRemoveTimer, cancelRemoveTimer, isRemoving }
+}
+
+const DRAG_START_PX = 4
+
+// The click that ends a drag shouldn't also press whatever is under the cursor.
+function swallowNextClick () {
+  const swallow = (e: Event) => { e.stopPropagation(); e.preventDefault() }
+  document.addEventListener('click', swallow, { capture: true, once: true })
+  setTimeout(() => document.removeEventListener('click', swallow, { capture: true }))
 }
 
 export default defineComponent({
@@ -198,6 +207,41 @@ export default defineComponent({
       }
     }
 
+    // woke: drag a widget directly instead of going through its Move handles.
+    // Woke panels drag by their title bar; other widgets by any part that isn't a control.
+    const widgetEl = ref<HTMLElement | null>(null)
+
+    function startDrag (e: MouseEvent) {
+      if (e.button !== 0 || props.moveHandles === 'none' || isMoving.value || !widgetEl.value) return
+      const target = e.target as Element
+      if (target.closest('button, a, input, select, textarea, label, [role="button"]')) return
+      if (target.closest('.w-surface') && !target.closest('[data-widget-drag]')) return
+      e.preventDefault()
+
+      const rect = widgetEl.value.getBoundingClientRect()
+      const { x: startX, y: startY } = props.config.anchor
+      let dragged = false
+
+      function onMove (ev: MouseEvent) {
+        const dx = ev.clientX - e.clientX
+        const dy = ev.clientY - e.clientY
+        if (!dragged && Math.hypot(dx, dy) < DRAG_START_PX) return
+        dragged = true
+        // Keeps the whole widget on screen.
+        const x = Math.min(Math.max(dx, -rect.left), window.innerWidth - rect.right)
+        const y = Math.min(Math.max(dy, -rect.top), window.innerHeight - rect.bottom)
+        props.config.anchor.x = startX + x / window.innerWidth * 100
+        props.config.anchor.y = startY + y / window.innerHeight * 100
+      }
+      function onUp () {
+        document.removeEventListener('mousemove', onMove)
+        document.removeEventListener('mouseup', onUp)
+        if (dragged) swallowNextClick()
+      }
+      document.addEventListener('mousemove', onMove)
+      document.addEventListener('mouseup', onUp)
+    }
+
     function updatePosition (e: MouseEvent) {
       props.config.anchor.x = Math.min(Math.max(e.clientX / window.innerWidth, 0), 1) * 100
       props.config.anchor.y = Math.min(Math.max(e.clientY / window.innerHeight, 0), 1) * 100
@@ -213,11 +257,13 @@ export default defineComponent({
       moverPosition,
       widgetPosition,
       actionsPosition,
-      handleMouseDown () {
+      widgetEl,
+      handleMouseDown (e: MouseEvent) {
         // @TODO: why null check?
         if (props.config.wmId != null) {
           wm.bringToTop(props.config.wmId)
         }
+        startDrag(e)
       },
       startMove,
       isMoving,
@@ -261,6 +307,10 @@ export default defineComponent({
       display: none;
     }
   }
+}
+
+.draggable :global([data-widget-drag]) {
+  cursor: move;
 }
 
 .actionsPanel {

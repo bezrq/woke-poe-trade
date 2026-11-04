@@ -9,7 +9,7 @@
 
         <WPanel v-else width="19rem" max-height="60vh">
           <template #title>{{ mech.label }}</template>
-          <template #actions>
+          <template v-if="wm.active.value" #actions>
             <button class="w-icon-btn" title="Previous mechanic" @click="step(-1)"><i class="fas fa-chevron-left" /></button>
             <button class="w-icon-btn" title="Next mechanic" @click="step(1)"><i class="fas fa-chevron-right" /></button>
             <button class="w-icon-btn" title="Expand" @click="config.expanded = true"><i class="fas fa-expand-alt" /></button>
@@ -61,7 +61,7 @@
                   <i :class="row.starred ? 'fas fa-star' : 'far fa-star'" />
                 </button>
                 <span class="w-trunc">{{ row.member }}</span>
-                <span class="w-trunc w-dim" :title="row.bestName ? `Best: ${row.bestName}` : undefined">{{ row.reward }}</span>
+                <span class="w-trunc w-dim" :title="rewardTitle(row)">{{ row.reward }}</span>
                 <WPrice :chaos="row.chaos" :divine="divine" class="justify-end" :class="{ 'w-up': isHot(row.chaos) }" />
               </div>
             </template>
@@ -191,10 +191,10 @@ useMechanicZone((id) => {
 
 // ---- Glance (hover) ----
 const glanceEl = shallowRef<HTMLElement | null>(null)
+// Read-only over the game: making it clickable would pull the whole overlay up
+// and take focus from the game. Its buttons appear when the overlay is open.
 const hovering = useHoverZone(glanceEl, {
-  enabled: () => !props.config.expanded,
-  // Once the card is showing, resting on it makes it clickable.
-  activate: () => showGlance.value
+  enabled: () => !props.config.expanded
 })
 // Small delay before closing so moving between icon and card doesn't flicker.
 const showGlance = shallowRef(false)
@@ -237,7 +237,7 @@ const slots = computed(() => MEMBERS.flatMap(member => DIVISIONS.map((_, di) => 
   const key = slotKey(member, di)
   const reward = rewardText(member, di)
   const priced = priceReward(reward, items.value)
-  return { key, member, di, reward, chaos: priced.chaos ?? null, bestName: priced.bestName, starred: props.config.betrayalStars.includes(key) }
+  return { key, member, di, reward, chaos: priced.chaos ?? null, bestName: priced.bestName, upTo: priced.upTo, count: priced.count, starred: props.config.betrayalStars.includes(key) }
 })))
 const slotByKey = computed(() => new Map(slots.value.map(s => [s.key, s])))
 
@@ -245,6 +245,12 @@ const hotCut = computed(() => {
   const vals = slots.value.map(s => s.chaos).filter((c): c is number => c != null).sort((a, b) => b - a)
   return vals.length ? vals[Math.max(0, Math.ceil(vals.length * 0.1) - 1)] : Infinity
 })
+function rewardTitle (row: { bestName?: string, upTo?: number, count?: number, chaos: number | null }) {
+  if (!row.bestName || row.upTo == null) return undefined
+  if ((row.count ?? 1) <= 1) return row.bestName
+  return `Typical value (median of ${row.count} possible items). Up to ${Math.round(row.upTo)}c: ${row.bestName}`
+}
+
 function boardPrice (m: string, di: number) { return slotByKey.value.get(slotKey(m, di))?.chaos ?? null }
 function isHot (chaos: number | null) { return chaos != null && chaos >= hotCut.value }
 

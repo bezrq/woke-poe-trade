@@ -4,6 +4,7 @@
 
 import type { PriceItem } from '../market/types'
 import { priceGroup } from './data'
+import { isThin } from '../market/types'
 import type { PriceGroup } from './data'
 
 export const DIVISIONS = ['Transportation', 'Fortification', 'Research', 'Intervention'] as const
@@ -57,14 +58,26 @@ function pricing (reward: string): PriceGroup | null {
 export interface PricedReward {
   // Best matching item and its price, if poe.ninja has one.
   bestName?: string
+  // Typical value (median of the possible items).
   chaos?: number
+  // Most valuable possible item.
+  upTo?: number
+  count?: number
 }
 
+// A reward like "Fossils" gives one of many items, so it's worth what the
+// typical one sells for (median, thin markets left out), not the best one.
+// The best is kept as an "up to".
 export function priceReward (reward: string, items: PriceItem[]): PricedReward {
   const group = pricing(reward)
   if (!group) return {}
-  const [best] = priceGroup({ ...group, limit: 1 }, items)
-  return best ? { bestName: best.item.name, chaos: best.chaos } : {}
+  const rows = priceGroup({ ...group, limit: 500 }, items)
+  if (!rows.length) return {}
+  const solid = rows.filter(r => !isThin(r.item))
+  const pool = (solid.length ? solid : rows).map(r => r.chaos).sort((a, b) => a - b)
+  const mid = pool.length >> 1
+  const median = pool.length % 2 ? pool[mid] : (pool[mid - 1] + pool[mid]) / 2
+  return { bestName: rows[0].item.name, upTo: rows[0].chaos, chaos: median, count: rows.length }
 }
 
 export function slotKey (member: string, division: number): string {

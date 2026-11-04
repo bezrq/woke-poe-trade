@@ -49,7 +49,12 @@
               <span class="w-dim">Loot</span><span class="w-num">{{ fmt(t.loot) }}</span>
               <span class="w-dim">Spent</span><span class="w-num">{{ fmt(t.cost) }}</span>
               <span class="w-dim">Map cost</span><span class="w-num">{{ fmt(t.costPerMap) }}</span>
+              <template v-if="mapShare != null">
+                <span class="w-dim" title="Share of session time spent inside maps (from Client.txt)">In maps</span><span class="w-num">{{ Math.round(mapShare * 100) }}%</span>
+              </template>
             </div>
+            <div v-if="s.autoPaused" class="text-xs w-dim"><i class="fas fa-pause-circle" /> Paused after 5 minutes without a zone change. Resumes when you change zone.</div>
+            <div v-if="config.lootHotkey" class="text-xs w-faint">Hover an item in game and press <WKbd :keys="config.lootHotkey" /> to add it.</div>
             <div v-if="t.missingPrices" class="text-xs" style="color: var(--w-warn);">{{ t.missingPrices }} item(s) have no price and count as 0.</div>
             <ui-checkbox v-model="config.autoCountMaps" class="text-sm">Count maps from Client.txt</ui-checkbox>
 
@@ -68,7 +73,7 @@
                 <button class="w-icon-btn" @click="changeQty(line, -1)"><i class="fas fa-minus text-xs" /></button>
                 <span class="text-center w-num">{{ line.qty }}</span>
                 <button class="w-icon-btn" @click="changeQty(line, 1)"><i class="fas fa-plus text-xs" /></button>
-                <span class="text-right w-dim w-num">{{ linePrice(line) }}</span>
+                <span class="text-right w-dim w-num">{{ lootPrice(line) }}</span>
               </div>
               <label class="flex items-center gap-2 w-dim pt-2">
                 Other loot
@@ -142,7 +147,9 @@ import { AppConfig, saveConfig } from '@/web/Config'
 import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
 import UiCheckbox from '@/web/ui/UiCheckbox.vue'
-import { WPanel, WTabs, WField, WButton, WEmpty } from '../ui'
+import { WPanel, WTabs, WField, WButton, WEmpty, WKbd } from '../ui'
+import { MainProcess } from '@/web/background/IPC'
+import { parseClipboard } from '@/parser'
 import { usePriceIndex } from '../market/price-index'
 import { formatChaos } from '../market/analysis'
 import { itemKey } from '../market/types'
@@ -150,7 +157,7 @@ import type { PriceItem } from '../market/types'
 import { parseLogLine } from '../campaign/log-parse'
 import { ATLAS_TYPE } from '../atlas/widget'
 import type { AtlasWidget } from '../atlas/widget'
-import { elapsed, formatHms, isMapArea, lineValue, newSession, strategyStats, totals } from './farming'
+import { FARMING_LOOT_TARGET, elapsed, formatHms, isMapArea, lineValue, maybeAutoPause, newSession, onZoneChange, sellPrice, sellRules, strategyStats, totals } from './farming'
 import type { CostLine, LootLine, PricedRef } from './farming'
 
 const props = defineProps<{
@@ -180,13 +187,18 @@ const tab = shallowRef<'session' | 'costs' | 'history'>('session')
 
 const prices = usePriceIndex()
 const now = shallowRef(Date.now())
-const clock = setInterval(() => { now.value = Date.now() }, 1000)
+const clock = setInterval(() => {
+  now.value = Date.now()
+  const sess = props.config.session
+  if (sess && props.config.autoPause !== false && maybeAutoPause(sess, now.value)) saveConfig()
+}, 1000)
 onUnmounted(() => { clearInterval(clock) })
 
 const s = computed(() => props.config.session)
 const price = (r: PricedRef) => prices.price(r)
+const rules = computed(() => sellRules(props.config))
 const t = computed(() => s.value
-  ? totals(s.value, props.config.costs, price, now.value)
+  ? totals(s.value, props.config.costs, price, now.value, rules.value)
   : { costPerMap: 0, cost: 0, loot: 0, profit: 0, perHour: null, perMap: null, missingPrices: 0 })
 const costPerMap = computed(() => lineValue(props.config.costs, price).total)
 const stats = computed(() => strategyStats(props.config.history))
@@ -205,6 +217,27 @@ function key (r: PricedRef) { return itemKey(r) }
 
 function fmt (chaos: number) {
   return formatChaos(chaos, prices.snapshot.value?.divine ?? null)
+}
+
+// Share of time in maps, including the zone you're in right now.
+const mapShare = computed(() => {
+  const sess = s.value
+  if (!sess || sess.lastZoneAt == null) return null
+  let map = sess.mapMs ?? 0
+  let other = sess.otherMs ?? 0
+  if (sess.runningSince != null) {
+    const span = now.value - Math.max(sess.lastZoneAt, sess.runningSince)
+    if (sess.inMap) map += span
+    else other += span
+  }
+  return map + other > 60_000 ? map / (map + other) : null
+})
+
+function lootPrice (line: PricedRef & { qty: number }) {
+  const p = sellPrice(line, price(line), rules.value)
+  if (p == null) return 'no price'
+  if (p === 0) return 'junk'
+  return fmt(p * line.qty)
 }
 
 function linePrice (line: PricedRef & { qty: number }) {
@@ -231,7 +264,7 @@ function end () {
   const sess = props.config.session
   if (!sess) return
   const nowTs = Date.now()
-  const tt = totals(sess, props.config.costs, price, nowTs)
+  const tt = totals(sess, props.config.costs, price, nowTs, rules.value)
   if (sess.maps || sess.loot.length || sess.extraChaos) {
     props.config.history.push({
       strategy: sess.strategy || props.config.strategy,
@@ -280,18 +313,45 @@ function removeCost (line: CostLine) {
   props.config.costs = props.config.costs.filter(c => c !== line)
 }
 
-// Count each newly generated map instance while a session is running.
+// Zone changes: count newly generated maps, book map vs other time, and
+// resume an auto-paused session.
 const logListener = Host.onEvent('MAIN->CLIENT::game-log', (e) => {
   const sess = props.config.session
-  if (!sess || sess.runningSince == null || !props.config.autoCountMaps) return
-  const before = sess.maps
+  if (!sess) return
+  let changed = false
   for (const line of e.lines) {
     const ev = parseLogLine(line)
-    if (ev?.kind === 'area' && isMapArea(ev.areaId)) sess.maps++
+    if (ev?.kind !== 'area') continue
+    const inMap = isMapArea(ev.areaId)
+    onZoneChange(sess, inMap, Date.now())
+    if (inMap && sess.runningSince != null && props.config.autoCountMaps) sess.maps++
+    changed = true
   }
   // Config is otherwise saved only when the overlay loses focus.
-  if (sess.maps !== before) saveConfig()
+  if (changed) saveConfig()
 })
+
+// Hotkey: add the hovered item (copied by APT) to the session's loot.
+const itemListener = MainProcess.onEvent('MAIN->CLIENT::item-text', (e) => {
+  if (e.target !== FARMING_LOOT_TARGET) return
+  const sess = props.config.session
+  if (!sess) return
+  const parsed = parseClipboard(e.clipboard).unwrapOr(null)
+  if (!parsed) return
+  const name = parsed.info.refName
+  const snap = prices.snapshot.value
+  const candidates = snap?.items.filter(i => i.name === name) ?? []
+  const gemState = parsed.gemLevel != null ? `${parsed.gemLevel}${parsed.quality ? `/${parsed.quality}` : ''}` : ''
+  const match = candidates.find(i => i.variant === gemState) ?? candidates.find(i => !i.variant) ?? candidates[0]
+  const ref = match ?? { type: '', name, variant: '' }
+  const qty = parsed.stackSize?.value ?? 1
+  const k = itemKey(ref)
+  const line = sess.loot.find(l => itemKey(l) === k)
+  if (line) line.qty += qty
+  else sess.loot.push({ type: ref.type, name: ref.name, variant: ref.variant, qty })
+  saveConfig()
+})
+onUnmounted(() => { itemListener.abort() })
 onUnmounted(() => { logListener.abort() })
 </script>
 

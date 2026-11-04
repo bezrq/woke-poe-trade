@@ -6,6 +6,26 @@
         <WButton size="sm" :variant="running ? 'default' : 'primary'" @click="toggle">{{ running ? 'Stop' : 'Start' }}</WButton>
       </template>
       <div v-if="message" class="w-warn text-xs px-3 pt-2">{{ message }}</div>
+      <div v-else-if="setupProblem" class="w-warn text-xs px-3 pt-2" :title="setupProblem">
+        <i class="fas fa-exclamation-triangle" /> {{ setupProblem }}
+      </div>
+      <div v-if="rolling" :class="$style.roll">
+        <div class="flex items-center gap-2">
+          <i class="fas fa-dice" />
+          <span class="font-semibold">Rolling</span>
+          <span class="w-dim text-xs">{{ locked ? 'locked on tooltip' : 'hover the map…' }}</span>
+          <span class="flex-1" />
+          <span class="w-num">{{ rolls.length }}</span><span class="w-dim text-xs">rerolls</span>
+        </div>
+        <div v-if="rolls.length" class="flex flex-wrap gap-1">
+          <span v-for="r in rolls.slice(-14)" :key="r.n" :class="[$style.rollTag, $style[r.verdict]]"
+            :title="`Reroll ${r.n}: ${VERDICT_LABEL[r.verdict]}, juice ${r.juice}`">{{ r.n }}</span>
+        </div>
+        <div class="w-dim text-xs">
+          <template v-if="config.rollHotkey"><WKbd :keys="config.rollHotkey" /> again to stop rolling.</template>
+          <WButton v-else size="sm" @click="roll">Stop rolling</WButton>
+        </div>
+      </div>
       <div :class="$style.tally">
         <div><span class="w-num w-up">{{ tally.run }}</span><span class="w-dim">run</span></div>
         <div><span class="w-num" style="color: var(--w-warn);">{{ tally.careful }}</span><span class="w-dim">careful</span></div>
@@ -18,35 +38,44 @@
         <span class="w-num w-accent">{{ e.juice }}</span>
       </div>
       <WEmpty v-if="!entries.length" icon="fas fa-crosshairs">
-        <template v-if="running">Hover your maps. Each one gets a verdict, and rerolls are re-read.</template>
+        <template v-if="rolling">Hover the map you're rerolling.</template>
+        <template v-else-if="running">Hover your maps. Each one gets a verdict, and rerolls are re-read.</template>
         <template v-else-if="config.hotkey">Press <WKbd :keys="config.hotkey" /> in game to start scanning.</template>
         <template v-else>Start scanning, then hover your maps.</template>
+        <div v-if="!rolling && config.rollHotkey" class="text-xs mt-1">Rerolling one map? Hover it and press <WKbd :keys="config.rollHotkey" />.</div>
       </WEmpty>
       <template #footer>
         <span class="flex-1">{{ entries.length }} scanned · profile {{ profileName }}</span>
         <button v-if="entries.length" type="button" class="w-icon-btn" title="Clear" @click="clear"><i class="fas fa-eraser" /></button>
       </template>
     </WPanel>
-  </Widget>
-  <Teleport to="body">
-    <div v-if="running" :class="$style.layer">
-      <span v-for="e in entries" :key="e.id" :class="[$style.marker, $style[e.verdict]]"
-        :style="{ left: `${e.at.x * 100}%`, top: `${e.at.y * 100}%` }" />
-      <div v-if="current" :class="[$style.badge, $style[current.verdict], { [$style.flash]: current.flash }]"
-        :style="badgeStyle">
-        <div class="flex items-center gap-2">
-          <span :class="$style.tag">{{ VERDICT_LABEL[current.verdict] }}</span>
-          <span class="flex-1" />
-          <span class="w-dim text-xs">Juice</span>
-          <span class="w-num w-accent font-semibold">{{ current.juice }}</span>
-        </div>
-        <div v-if="current.flash" class="w-up text-xs font-semibold">This reroll passes. Stop here.</div>
-        <div v-for="m in current.flagged" :key="m.matcher" class="flex items-center gap-1 text-xs">
-          <span :class="[$style.dot, $style[m.rating]]" /><span>{{ m.label }}</span>
+    <Teleport to="body">
+      <div v-if="running" :class="$style.layer">
+        <span v-for="e in entries" :key="e.id" :class="[$style.marker, $style[e.verdict]]"
+          :style="{ left: `${e.at.x * 100}%`, top: `${e.at.y * 100}%` }" />
+        <div v-if="current" :class="[$style.badge, $style[current.verdict], { [$style.flash]: current.flash }]"
+          :style="badgeStyle">
+          <div class="flex items-center gap-2">
+            <span :class="$style.tag">{{ VERDICT_LABEL[current.verdict] }}</span>
+            <span class="flex-1" />
+            <span class="w-dim text-xs">Juice</span>
+            <span class="w-num w-accent font-semibold">{{ current.juice }}</span>
+          </div>
+          <div v-if="current.flash" class="w-up text-xs font-semibold">
+            {{ current.rollN ? `Stop: reroll ${current.rollN} passes.` : 'This reroll passes. Stop here.' }}
+          </div>
+          <div v-if="current.unsure" class="w-warn text-xs">
+            Couldn't read {{ current.unsure }} line{{ current.unsure > 1 ? 's' : '' }} clearly.
+            <template v-if="exactKey">Press <WKbd :keys="exactKey" /> for an exact read.</template>
+            <template v-else>Use the Map mods hotkey for an exact read.</template>
+          </div>
+          <div v-for="m in current.flagged" :key="m.matcher" class="flex items-center gap-1 text-xs">
+            <span :class="[$style.dot, $style[m.rating]]" /><span>{{ m.label }}</span>
+          </div>
         </div>
       </div>
-    </div>
-  </Teleport>
+    </Teleport>
+  </Widget>
 </template>
 
 <script lang="ts">
@@ -87,20 +116,29 @@ if (props.config.wmFlags[0] === 'uninitialized') {
 }
 normalizeMapScanWidget(props.config)
 
-const VERDICT_LABEL: Record<Verdict, string> = { skip: 'SKIP', careful: 'CARE', run: 'RUN' }
+// 'unsure': would be a run, but some lines were read with low confidence.
+type ShownVerdict = Verdict | 'unsure'
+const VERDICT_LABEL: Record<ShownVerdict, string> = { skip: 'SKIP', careful: 'CARE', run: 'RUN', unsure: '?' }
 
 interface Entry {
   id: number
   at: { x: number, y: number }
-  verdict: Verdict
+  verdict: ShownVerdict
   juice: number
   label: string
   rerolls: number
   flash: boolean
+  // Reroll number while rolling.
+  rollN?: number
+  // Number of lines read with low confidence; a "run" isn't trusted then.
+  unsure: number
   flagged: Array<{ matcher: string, label: string, rating: ModRating }>
 }
 
 const running = shallowRef(false)
+const rolling = shallowRef(false)
+const locked = shallowRef(false)
+const rolls = shallowRef<Array<{ n: number, verdict: Verdict, juice: number }>>([])
 const message = shallowRef<string | null>(null)
 const entries = shallowRef<Entry[]>([])
 const current = shallowRef<Entry | null>(null)
@@ -112,13 +150,19 @@ const tally = computed(() => {
   const t = { run: 0, careful: 0, skip: 0 }
   for (const e of entries.value) {
     if (e.verdict === 'run') t.run++
-    else if (e.verdict === 'careful') t.careful++
+    else if (e.verdict === 'careful' || e.verdict === 'unsure') t.careful++
     else t.skip++
   }
   return t
 })
 
 const mapMods = computed(() => findMapModsConfig())
+const exactKey = computed(() => mapMods.value?.hotkey ?? null)
+
+const setupProblem = shallowRef<string | null>(null)
+hostRequest<{ ok: boolean, message: string | null }>('ocr-check', null)
+  .then(c => { setupProblem.value = c.ok ? null : c.message })
+  .catch(() => {})
 const profileName = computed(() => mapMods.value ? activeProfile(mapMods.value).name : 'default')
 
 const badgeStyle = computed(() => {
@@ -132,7 +176,9 @@ const badgeStyle = computed(() => {
   return { left: `${e.at.x * 100}%`, top: `${e.at.y * 100 + 3}%` }
 })
 
-function onReading (reading: { lines: string[], at: { x: number, y: number } }) {
+interface Reading { lines: string[], at: { x: number, y: number }, rolling?: boolean }
+
+function onReading (reading: Reading) {
   matcher ??= new TooltipMatcher(allAreaMods())
   const scanned = matcher.parse(reading.lines)
   if (!scanned) {
@@ -153,14 +199,22 @@ function onReading (reading: { lines: string[], at: { x: number, y: number } }) 
   const list = entries.value.slice()
   const idx = list.findIndex(e => Math.hypot(e.at.x - reading.at.x, (e.at.y - reading.at.y)) < SAME_SLOT)
   const prev = idx >= 0 ? list[idx] : null
+  let rollN: number | undefined
+  if (reading.rolling) {
+    rollN = rolls.value.length + 1
+    rolls.value = [...rolls.value, { n: rollN, verdict: verdict.verdict, juice: juice.score }]
+  }
+  const passes = verdict.verdict === 'run' && (rollN != null || Boolean(prev && prev.verdict !== 'run'))
   const entry: Entry = {
     id: nextId++,
     at: prev?.at ?? reading.at,
-    verdict: verdict.verdict,
+    verdict: verdict.verdict === 'run' && scanned.weak.length ? 'unsure' : verdict.verdict,
     juice: juice.score,
     label,
     rerolls: prev ? prev.rerolls + 1 : 0,
-    flash: Boolean(props.config.alertOnPass && prev && prev.verdict !== 'run' && verdict.verdict === 'run'),
+    unsure: scanned.weak.length,
+    flash: Boolean(props.config.alertOnPass && passes && !scanned.weak.length),
+    rollN,
     flagged
   }
   if (idx >= 0) list.splice(idx, 1)
@@ -171,9 +225,13 @@ function onReading (reading: { lines: string[], at: { x: number, y: number } }) 
 
 const events = MainProcess.onEvent('MAIN->CLIENT::woke-event', ({ topic, data }) => {
   if (topic !== 'map-scan') return
-  const d = data as { type: string, running?: boolean, message?: string, reading?: { lines: string[], at: { x: number, y: number } } }
+  const d = data as { type: string, running?: boolean, rolling?: boolean, locked?: boolean, message?: string, reading?: Reading }
   if (d.type === 'state') {
     running.value = Boolean(d.running)
+    const nowRolling = Boolean(d.rolling)
+    if (nowRolling && !rolling.value) rolls.value = []
+    rolling.value = nowRolling
+    locked.value = Boolean(d.locked)
     message.value = d.message ?? null
     if (!running.value) current.value = null
   } else if (d.type === 'clear') {
@@ -201,19 +259,35 @@ async function toggle () {
   }
 }
 
+// Rolling mode on/off (starts scanning if needed).
+async function roll () {
+  message.value = null
+  try {
+    const s = await hostRequest<{ running: boolean, rolling: boolean }>('map-scan-roll', null)
+    running.value = s.running
+    if (s.rolling) wm.show(props.config.wmId)
+  } catch (err) {
+    message.value = err instanceof Error ? err.message : String(err)
+    wm.show(props.config.wmId)
+  }
+}
+
 function clear () {
   entries.value = []
+  rolls.value = []
   current.value = null
   hostRequest('map-scan-reread', null).catch(() => {})
 }
 
 const hotkeys = MainProcess.onEvent('MAIN->CLIENT::widget-action', (e) => {
-  if (parseScanHotkeyTarget(e.target) !== props.config.wmId) return
-  toggle()
+  const t = parseScanHotkeyTarget(e.target)
+  if (t?.wmId !== props.config.wmId) return
+  if (t.roll) roll()
+  else toggle()
 })
 
-hostRequest<{ running: boolean }>('map-scan-status', null)
-  .then(s => { running.value = s.running })
+hostRequest<{ running: boolean, rolling?: boolean }>('map-scan-status', null)
+  .then(s => { running.value = s.running; rolling.value = Boolean(s.rolling) })
   .catch(() => {})
 
 onUnmounted(() => {
@@ -225,6 +299,26 @@ onUnmounted(() => {
 <style module>
 .led { width: 8px; height: 8px; border-radius: 4px; background: var(--w-faint); align-self: center; margin-right: 4px; }
 .led.on { background: var(--w-up); }
+.roll {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 8px var(--w-pad);
+  border-bottom: 1px solid var(--w-line);
+  background: color-mix(in srgb, var(--w-accent) 8%, transparent);
+}
+.rollTag {
+  min-width: 20px;
+  text-align: center;
+  font-size: 10.5px;
+  font-family: var(--w-num);
+  border-radius: var(--w-radius-sm);
+  color: var(--w-accent-fg);
+  background: var(--w-faint);
+}
+.rollTag.run { background: var(--w-up); }
+.rollTag.careful { background: var(--w-warn); }
+.rollTag.skip { background: var(--w-down); }
 .tally {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -246,6 +340,8 @@ onUnmounted(() => {
   padding: 0 4px;
 }
 .run .tag { background: var(--w-up); }
+.unsure .tag { background: var(--w-warn); }
+.marker.unsure { border-color: var(--w-warn); border-style: dashed; }
 .careful .tag { background: var(--w-warn); }
 .skip .tag { background: var(--w-down); }
 

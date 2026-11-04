@@ -22,6 +22,10 @@ export interface TradeSearchesWidget extends Widget {
   anchor: Anchor
   enableHotkeys: boolean
   entries: TradeSearchEntry[]
+  // Open saved searches in the league picked in APT's settings (default on).
+  followLeague?: boolean
+  // Beep and flash when an open live search shows a new result (default off).
+  liveAlert?: boolean
 }
 
 export type OpenTarget = 'overlay' | 'external'
@@ -88,3 +92,35 @@ export function exportEntries (entries: TradeSearchEntry[]): string {
     entries.map(({ name, url, category, tags, notes }) => ({ name, url, category, tags, notes })),
     null, 2)
 }
+
+// Official trade URLs carry the league: /trade/search/<League>/<id>, or
+// /trade/exchange/<League>/<id> for bulk. Search ids keep working in a new
+// league, so swapping the segment revives last league's saved searches.
+const LEAGUE_IN_URL = /(\/trade\/(?:search|exchange)\/)([^/?#]+)/
+
+export function leagueOf (url: string): string | null {
+  const m = LEAGUE_IN_URL.exec(url)
+  if (!m) return null
+  try { return decodeURIComponent(m[2]) } catch { return m[2] }
+}
+
+export function withLeague (url: string, league: string | null | undefined): string {
+  if (!league) return url
+  return url.replace(LEAGUE_IN_URL, (_all, head: string) => head + encodeURIComponent(league))
+}
+
+// A readable name for a link saved from price check: the item name or base
+// type from the `?q=` query, if there is one.
+export function nameFromTradeUrl (url: string): string {
+  try {
+    const q = new URL(url).searchParams.get('q')
+    if (!q) return ''
+    const query = (JSON.parse(q) as { query?: { name?: unknown, type?: unknown } }).query
+    const pick = (v: unknown) => typeof v === 'string' ? v : (v && typeof (v as { option?: unknown }).option === 'string') ? (v as { option: string }).option : ''
+    return [pick(query?.name), pick(query?.type)].filter(Boolean).join(' ')
+  } catch {
+    return ''
+  }
+}
+
+export const SAVED_FROM_PRICE_CHECK = 'Saved from price check'

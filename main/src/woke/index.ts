@@ -3,11 +3,13 @@
 import type { ServerEvents } from '../server'
 import type { Logger } from '../RemoteLogger'
 import type { GameWindow } from '../windowing/GameWindow'
-import { listBuilds, openBuild, readBuild, showBuild } from './pob-builds'
+import { importBuild, listBuilds, openBuild, readBuild, showBuild } from './pob-builds'
 import { listFilters, readFilter, writeFilter, showFilterFolder } from './loot-filter'
-import { ScreenScanner, MAP_SCAN, ESSENCE_SCAN } from './map-scan'
+import { ScreenScanner, MAP_SCAN, ESSENCE_SCAN, checkOcr, readAllEssenceLabels } from './map-scan'
 import { WokeHoverTracker } from './hover'
 import type { OverlayWindow } from '../windowing/OverlayWindow'
+import type { GameLogWatcher } from '../host-files/GameLogWatcher'
+import { readGameLogTail } from './game-log-tail'
 import { perfSnapshot, startProcessSampler } from './perf'
 
 type Handler = (args: any) => Promise<unknown> // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -17,21 +19,26 @@ const handlers: Record<string, Handler> = {
   'pob-read': readBuild,
   'pob-open': openBuild,
   'pob-show': showBuild,
+  'pob-import': importBuild,
   'filter-list': listFilters,
   'filter-read': readFilter,
   'filter-write': writeFilter,
   'filter-folder': showFilterFolder,
-  'perf-stats': async () => perfSnapshot()
+  'perf-stats': async () => perfSnapshot(),
+  'ocr-check': async () => checkOcr()
 }
 
-export function initWoke (server: ServerEvents, logger: Logger, poeWindow: GameWindow): void {
+export function initWoke (server: ServerEvents, logger: Logger, poeWindow: GameWindow, gameLog: GameLogWatcher): void {
+  handlers['game-log-tail'] = async (args) => await readGameLogTail(gameLog, args)
   for (const kind of [MAP_SCAN, ESSENCE_SCAN]) {
     const scanner = new ScreenScanner(server, logger, poeWindow, kind)
     handlers[`${kind.topic}-start`] = async () => await scanner.start()
     handlers[`${kind.topic}-stop`] = async () => scanner.stop()
     handlers[`${kind.topic}-reread`] = async () => scanner.reread()
-    handlers[`${kind.topic}-status`] = async () => ({ running: scanner.isRunning })
+    handlers[`${kind.topic}-status`] = async () => ({ running: scanner.isRunning, rolling: scanner.isRolling })
+    if (kind.canRoll) handlers[`${kind.topic}-roll`] = async () => await scanner.roll()
   }
+  handlers['essence-scan-once'] = async () => await readAllEssenceLabels(poeWindow)
 
   server.onEventAnyClient('CLIENT->MAIN::woke-request', ({ id, op, args }) => {
     const handler = handlers[op]

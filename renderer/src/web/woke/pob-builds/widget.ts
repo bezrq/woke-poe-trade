@@ -69,7 +69,9 @@ export const pobApi = {
   open: (cfg: PobBuildsWidget, relPath: string) =>
     hostRequest<void>('pob-open', { dir: dirArg(cfg), relPath, pobExe: cfg.pobExe || undefined }),
   show: (cfg: PobBuildsWidget, relPath: string) =>
-    hostRequest<void>('pob-show', { dir: dirArg(cfg), relPath })
+    hostRequest<void>('pob-show', { dir: dirArg(cfg), relPath }),
+  import: async (cfg: PobBuildsWidget, input: string) =>
+    hostRequest<{ relPath: string }>('pob-import', { dir: dirArg(cfg), input })
 }
 
 export function buildMatches (b: PobBuildEntry, query: string): boolean {

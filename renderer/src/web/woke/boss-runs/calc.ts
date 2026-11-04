@@ -162,6 +162,10 @@ function dropList (boss: Boss, prefs: BossPrefs): BossDrop[] {
   return list
 }
 
+// With this many logged kills, your own drop rates replace the community
+// ones (rates are per patch and community samples age quickly).
+export const OWN_RATE_KILLS = 20
+
 export function evaluateBoss (
   boss: Boss,
   prefs: BossPrefs,
@@ -190,6 +194,8 @@ export function evaluateBoss (
     let rateSource: RateSource = 'none'
     if (custom[d.name] != null) {
       chance = custom[d.name]; rateSource = 'custom'
+    } else if (kills.length >= OWN_RATE_KILLS) {
+      chance = mine.get(d.name) ?? 0; rateSource = 'mine'
     } else if (d.chance != null) {
       chance = d.chance; rateSource = 'community'
     } else if (kills.length) {

@@ -13,6 +13,10 @@ export interface MapModProfile {
   // Stash regex settings: minimum map stats and what to highlight.
   mins: Partial<Record<MinStat, number>>
   highlight: 'good' | 'bad'
+  // Any one minimum is enough (OR) instead of all of them.
+  minsAny?: boolean
+  // When the search is over 250 characters, leave out the least important mods.
+  autoTrim?: boolean
 }
 
 export interface JuiceWeights {
@@ -121,8 +125,28 @@ export const PRESETS: MapModPreset[] = [
       'Monsters steal Power, Frenzy and Endurance charges on Hit'
     ]
   },
-  { id: 'cannot-stun', label: 'Monsters unstunnable', matchers: ['Monsters cannot be Stunned'] }
+  { id: 'cannot-stun', label: 'Monsters unstunnable', matchers: ['Monsters cannot be Stunned'] },
+  {
+    // Tier 17 only.
+    id: 't17-killers',
+    label: 'T17 run-killers',
+    matchers: [
+      'Rare Monsters have Volatile Cores',
+      'Rare Monsters have #% chance to have a Volatile Core',
+      'Players are assaulted by Bloodstained Sawblades',
+      "Monsters' Action Speed cannot be modified to below Base Value",
+      'Area contains Drowning Orbs',
+      'The Maven interferes with Players',
+      'Area contains Runes of the Searing Exarch',
+      'Monsters gain #% of their Physical Damage as Extra Damage of a random Element'
+    ]
+  }
 ]
+
+// Mods in a preset are the well-known run-killers; auto-trim keeps them longest.
+export function modPriority (matcher: string): number {
+  return PRESETS.some(p => p.matchers.includes(matcher)) ? 1 : 0
+}
 
 // Copy of `ratings` with `matchers` set to `rating` ('ok' removes them).
 export function withRating (ratings: Record<string, ModRating>, matchers: string[], rating: ModRating): Record<string, ModRating> {

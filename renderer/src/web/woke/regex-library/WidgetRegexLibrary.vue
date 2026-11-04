@@ -11,12 +11,13 @@
 
       <template v-for="group in groups" :key="group.category">
         <div class="w-group-label">{{ group.category }}</div>
-        <WListItem v-for="entry in group.entries" :key="entry.id" :title="tooltip(entry)" @select="stashSearch(entry.text)">
-          <span class="w-trunc">{{ entry.name || entry.text }}</span>
+        <WListItem v-for="entry in group.entries" :key="entry.id" :title="tooltip(entry)" @select="stashSearch(effectiveText(entry))">
+          <span class="w-trunc">{{ entry.name || effectiveText(entry) }}</span>
+          <WChip v-if="entry.negate && canNegate(entry.text)" title="Highlights items WITHOUT this">not</WChip>
           <WChip v-for="tag in entry.tags.slice(0, 2)" :key="tag">{{ tag }}</WChip>
-          <span v-if="entry.text.length > MAX_SEARCH_LENGTH" class="w-down text-xs shrink-0">{{ entry.text.length }}/{{ MAX_SEARCH_LENGTH }}</span>
+          <span v-if="effectiveText(entry).length > MAX_SEARCH_LENGTH" class="w-down text-xs shrink-0" title="Too long: the game cuts the search off at 250 characters">{{ effectiveText(entry).length }}/{{ MAX_SEARCH_LENGTH }}</span>
           <WKbd v-if="entry.hotkey && config.enableHotkeys" :keys="entry.hotkey" class="ml-auto" />
-          <template v-if="entry.name" #sub>{{ entry.text }}</template>
+          <template v-if="entry.name" #sub>{{ effectiveText(entry) }}</template>
           <template #actions>
             <button @click="copy(entry)" class="w-icon-btn" :class="{ 'w-up': copiedId === entry.id }" title="Copy to clipboard">
               <i :class="copiedId === entry.id ? 'fas fa-check' : 'far fa-copy'" />
@@ -68,7 +69,7 @@ import { pushHostConfig } from '@/web/Config'
 import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
 import { WPanel, WField, WChip, WKbd, WEmpty, WListItem } from '../ui'
-import { MAX_SEARCH_LENGTH, groupByCategory, matchesFilter } from './widget'
+import { MAX_SEARCH_LENGTH, canNegate, effectiveText, groupByCategory, matchesFilter } from './widget'
 import type { RegexEntry } from './widget'
 
 const props = defineProps<{
@@ -105,14 +106,14 @@ function stashSearch (text: string) {
 
 async function copy (entry: RegexEntry) {
   try {
-    await navigator.clipboard.writeText(entry.text)
+    await navigator.clipboard.writeText(effectiveText(entry))
     copiedId.value = entry.id
     setTimeout(() => { if (copiedId.value === entry.id) copiedId.value = null }, 1200)
   } catch {}
 }
 
 function tooltip (entry: RegexEntry) {
-  return [entry.text, entry.tags.length ? `Tags: ${entry.tags.join(', ')}` : '', entry.notes]
+  return [effectiveText(entry), entry.tags.length ? `Tags: ${entry.tags.join(', ')}` : '', entry.notes]
     .filter(Boolean).join('\n')
 }
 </script>

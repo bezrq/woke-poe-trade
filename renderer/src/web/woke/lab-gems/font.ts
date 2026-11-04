@@ -2,6 +2,7 @@
 // GemCheck's processGems (MIT, https://github.com/Lebedevsd/GemCheck); the
 // net-profit and random-variant figures are ours.
 import { TRANSFIGURED_GEMS } from './gem-colors'
+import { isThin } from '../market/types'
 import type { PriceItem } from '../market/types'
 
 export type GemColor = 'r' | 'g' | 'b'
@@ -56,6 +57,30 @@ export function gemPrices (items: PriceItem[], state: GemState): Map<string, num
     if (prev == null || item.chaos < prev) out.set(item.name, item.chaos)
   }
   return out
+}
+
+// Gem names whose price (the cheapest listing used above) comes from a thin
+// market on poe.ninja. Shown with a warning icon, not dropped.
+export function thinGems (items: PriceItem[], state: GemState): Set<string> {
+  const cheapest = new Map<string, PriceItem>()
+  for (const item of items) {
+    if (item.type !== 'SkillGem' || item.variant !== state) continue
+    const prev = cheapest.get(item.name)
+    if (!prev || item.chaos < prev.chaos) cheapest.set(item.name, item)
+  }
+  const out = new Set<string>()
+  for (const [name, item] of cheapest) if (isThin(item)) out.add(name)
+  return out
+}
+
+// Colour-roll EV for every gem state, to see which level/quality to bring.
+export function evByState (items: PriceItem[]): Array<{ state: GemState, ev: Record<GemColor, number> }> {
+  return GEM_STATES.map(state => {
+    const rolls = colorRolls(gemPrices(items, state), 1)
+    const ev = { r: 0, g: 0, b: 0 } as Record<GemColor, number>
+    for (const roll of rolls) ev[roll.color] = roll.ev
+    return { state, ev }
+  })
 }
 
 export function colorRolls (prices: Map<string, number>, topN: number): ColorRoll[] {

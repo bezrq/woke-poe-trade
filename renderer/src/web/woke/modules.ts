@@ -36,14 +36,14 @@ export const MODULES: ModuleDef[] = [
   { id: 'market', name: 'Market tracker', description: 'Movers and watchlist from poe.ninja', group: 'economy', widgetTypes: ['woke-market-tracker'], needs: ['poll'] },
   { id: 'league-invest', name: 'Investments', description: 'League-start buys ranked from past leagues', group: 'economy', widgetTypes: ['woke-league-invest'], needs: ['poll', 'network'] },
   { id: 'lab-gems', name: 'Lab gems', description: 'Divine Font gem values by colour', group: 'economy', widgetTypes: ['woke-lab-gems'], needs: ['poll'] },
-  { id: 'farming', name: 'Farming profit', description: 'Session profit per hour', group: 'economy', widgetTypes: ['woke-farming'], needs: ['log', 'prices'] },
+  { id: 'farming', name: 'Farming profit', description: 'Session profit per hour', group: 'economy', widgetTypes: ['woke-farming'], needs: ['log', 'prices', 'hotkeys'] },
   { id: 'boss-runs', name: 'Boss runs', description: 'Profit per boss kill', group: 'economy', widgetTypes: ['woke-boss-runs'], needs: ['prices'] },
 
   { id: 'map-mods', name: 'Map mods', description: 'Danger strip on price check and map regex', group: 'mapping', widgetTypes: ['woke-map-mods'], needs: ['hotkeys'] },
   { id: 'map-scan', name: 'Map scan', description: 'Reads map tooltips on screen', group: 'mapping', widgetTypes: ['woke-map-scan'], needs: ['ocr', 'hotkeys'] },
   { id: 'essence-scan', name: 'Essence scan', description: 'Reads essence monoliths and flags MEDS', group: 'mapping', widgetTypes: ['woke-essence-scan'], needs: ['ocr', 'hotkeys', 'prices'] },
   { id: 'loot-filter', name: 'Loot filter editor', description: 'Edit the NeverSink rule for a sampled item', group: 'mapping', widgetTypes: ['woke-loot-filter'], needs: ['log', 'hotkeys'] },
-  { id: 'atlas', name: 'Atlas strategies', description: 'Tree, scarabs and regex per strategy', group: 'mapping', widgetTypes: ['woke-atlas-strategies'], needs: ['network'] },
+  { id: 'atlas', name: 'Atlas strategies', description: 'Tree, scarabs and regex per strategy', group: 'mapping', widgetTypes: ['woke-atlas-strategies'], needs: ['network', 'prices'] },
   { id: 'mechanics', name: 'League mechanics', description: 'Picks and Betrayal board for the zone', group: 'mapping', widgetTypes: ['woke-mechanics'], needs: ['log', 'prices'] },
 
   { id: 'campaign', name: 'Campaign tracker', description: 'Next steps for the act you are in', group: 'campaign', widgetTypes: ['woke-campaign'], needs: ['log'] },

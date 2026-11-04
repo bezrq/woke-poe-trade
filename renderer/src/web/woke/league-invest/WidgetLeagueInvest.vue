@@ -2,6 +2,7 @@
   <Widget :config="config" move-handles="corners" :inline-edit="false" :readonly="true">
     <WPanel :title="config.wmTitle || 'League investments'" width="36rem" max-height="80vh">
       <template #actions>
+        <WChip clickable :active="showChanged" title="Items a patch changed this league" @click="showChanged = !showChanged"><i class="fas fa-exclamation-triangle" /> Changed {{ changed.length }}</WChip>
         <WChip clickable :active="showData" @click="showData = !showData"><i class="fas fa-database" /> Past leagues {{ histories.length }}</WChip>
       </template>
       <template #toolbar>
@@ -24,11 +25,21 @@
         <template v-if="snapshot?.divine"><span class="w-faint">·</span><span class="inline-flex items-center gap-1"><img src="/images/divine.png" class="w-4 h-4"> = {{ Math.round(snapshot.divine) }}c</span></template>
       </template>
 
+      <div v-if="showChanged" :class="$style.data">
+        <div class="w-dim pb-1">
+          Items a patch changed this league (drop rates, crafting use, new sources). Their past-league history is unreliable.
+          One per line; part of a name works too (e.g. "Scarab of", "Delirium Orb"). Lines starting with # are ignored.
+        </div>
+        <textarea :value="config.changedItems ?? ''" rows="5" :class="$style.textarea" placeholder="# 3.xx changes&#10;Scarab of"
+          @change="config.changedItems = ($event.target as HTMLTextAreaElement).value" />
+        <label class="flex items-center gap-2 pt-1 w-dim"><input v-model="config.hideChanged" type="checkbox"> Hide changed items instead of flagging them</label>
+      </div>
       <div v-if="showData || !histories.length" :class="$style.data">
         <div class="w-dim pb-2">
           Import poe.ninja league dumps from
           <a href="https://poe.ninja/poe1/data" target="_blank" class="w-accent hover:underline">poe.ninja/poe1/data</a>
           (the .zip, or the &lt;League&gt;.items.csv and .currency.csv files). Only challenge softcore leagues are kept.
+          A few past leagues ship with the app; your own imports of the same league replace them.
         </div>
         <div class="flex items-center gap-2 pb-2">
           <WButton variant="primary" size="sm" icon="fas fa-file-import" :disabled="importing" @click="fileInput?.click()">
@@ -40,7 +51,8 @@
         <div v-for="h in histories" :key="h.league" class="w-row px-0" style="grid-template-columns: minmax(0, 1fr) auto 22px;">
           <span class="w-trunc">{{ h.league }}</span>
           <span class="w-faint text-xs">from {{ h.start }} · {{ h.days }} days · {{ h.items.length }} items</span>
-          <button class="w-icon-btn" title="Remove" @click="remove(h.league)"><i class="fas fa-times" /></button>
+          <span v-if="!h.imported" class="w-faint text-xs" title="Ships with the app">built in</span>
+          <button v-else class="w-icon-btn" title="Remove" @click="remove(h.league)"><i class="fas fa-times" /></button>
         </div>
       </div>
 
@@ -54,7 +66,7 @@
         <template v-if="plan.length">
           <div class="w-group-label">Suggested split</div>
           <div v-for="line in plan" :key="key(line.opportunity)" class="w-row" :class="$style.planGrid">
-            <span class="w-trunc">{{ line.qty }}× {{ label(line.opportunity) }}</span>
+            <span class="w-trunc">{{ line.qty }}× {{ label(line.opportunity) }}<i v-if="line.thin" class="fas fa-exclamation-circle w-faint ml-1" :title="THIN_PLAN" /></span>
             <WPrice :chaos="line.cost" :divine="snapshot?.divine" class="w-dim" />
             <span class="w-num w-up text-right" title="Typical value at the end of the hold, in today's divines">≈ {{ fmtDiv(divOf(line.cost) * line.opportunity.median) }}</span>
           </div>
@@ -66,10 +78,12 @@
         </div>
         <div v-for="r in rows" :key="key(r.opportunity)" class="w-row" :class="$style.rankGrid">
           <span class="w-trunc" :title="r.opportunity.type">
-            {{ label(r.opportunity) }}<span class="w-faint text-xs ml-1">{{ r.opportunity.type }}</span>
+            <i v-if="r.changed" class="fas fa-exclamation-triangle mr-1" style="color: var(--w-warn);" title="Changed this league: past leagues may not apply" />
+            <i v-if="r.thin || r.opportunity.reliability < THIN_RELIABILITY" class="fas fa-exclamation-circle w-faint mr-1" :title="THIN_ROW" />{{ label(r.opportunity) }}<span class="w-faint text-xs ml-1">{{ r.opportunity.type }}</span>
+            <span v-if="mixed(r.opportunity)" class="text-xs ml-1" style="color: var(--w-warn);" :title="perLeague(r.opportunity)">mixed</span>
           </span>
           <WPrice :chaos="r.chaos" :divine="snapshot?.divine" title="Price now" />
-          <span class="w-num w-up text-right" title="Median rise in divines across past leagues">×{{ r.opportunity.median.toFixed(r.opportunity.median >= 10 ? 0 : 1) }}</span>
+          <span class="w-num w-up text-right" :title="`Median rise in divines across past leagues\n${perLeague(r.opportunity)}`">×{{ r.opportunity.median.toFixed(r.opportunity.median >= 10 ? 0 : 1) }}</span>
           <span class="w-num w-dim text-right" title="Leagues where it rose ≥10% / leagues with data">{{ hits(r.opportunity) }}/{{ r.opportunity.leagues.length }}</span>
           <span class="w-num text-right" title="Share of days it went up">{{ Math.round(r.opportunity.upDays * 100) }}%</span>
         </div>
@@ -104,16 +118,17 @@ import { useLeagues } from '@/web/background/Leagues'
 import { useMarketCollector } from '../market/collector'
 import { latestSnapshots } from '../market/db'
 import { formatChaos } from '../market/analysis'
-import { itemKey } from '../market/types'
+import { isThin, itemKey } from '../market/types'
 import type { Snapshot } from '../market/types'
 import { DumpImporter } from './dumps'
 import type { LeagueHistory } from './dumps'
-import { opportunityKey, planBudget, rankOpportunities } from './invest'
+import { THIN_RELIABILITY, opportunityKey, planBudget, rankOpportunities } from './invest'
 import type { Opportunity } from './invest'
-import { deleteLeague, loadLeagues, saveLeague } from './store'
+import { allLeagues, deleteLeague, saveLeague } from './store'
 import { leagueDay, leagueStartDates } from './league-start'
 import { readZip } from './zip'
 import type { LeagueInvestWidget } from './widget'
+import { changedMatchers, isChanged } from './widget'
 
 const props = defineProps<{
   config: LeagueInvestWidget
@@ -149,7 +164,7 @@ const importError = shallowRef(false)
 const fileInput = shallowRef<HTMLInputElement | null>(null)
 
 async function reloadHistories () {
-  try { histories.value = await loadLeagues() } catch { histories.value = [] }
+  try { histories.value = await allLeagues() } catch { histories.value = [] }
 }
 reloadHistories()
 
@@ -183,11 +198,13 @@ function onDayInput (e: Event) {
 const live = computed(() => {
   const exact = new Map<string, number>()
   const byName = new Map<string, number>()
+  const thin = new Set<string>()
   for (const i of snapshot.value?.items ?? []) {
     exact.set(itemKey(i), i.chaos)
+    if (isThin(i)) thin.add(itemKey(i))
     if (!i.variant && !byName.has(i.name)) byName.set(i.name, i.chaos)
   }
-  return { exact, byName }
+  return { exact, byName, thin }
 })
 
 function livePrice (o: Opportunity): number | null {
@@ -208,10 +225,33 @@ const ranked = computed(() => {
     minReliability: 0.5,
     minBuyChaos: 5,
     bulkOnly: props.config.bulkOnly
-  }).map(opportunity => ({ opportunity, chaos: livePrice(opportunity) }))
+  }).map(opportunity => ({
+    opportunity,
+    chaos: livePrice(opportunity),
+    thin: live.value.thin.has(itemKey(opportunity)),
+    changed: isChanged(opportunity.name, changed.value)
+  })).filter(r => !(r.changed && props.config.hideChanged))
 })
 
 const rows = computed(() => ranked.value.slice(0, 60))
+const showChanged = shallowRef(false)
+const changed = computed(() => changedMatchers(props.config.changedItems))
+
+// Past leagues disagree: it fell in one and rose well in another.
+function mixed (o: Opportunity) {
+  return o.multiples.length >= 2 && Math.min(...o.multiples) < 1 && Math.max(...o.multiples) >= 1.2
+}
+
+function perLeague (o: Opportunity) {
+  return o.leagues.map((l, i) => {
+    const m = o.multiples[i]
+    const pct = Math.round((m - 1) * 100)
+    return `${l}: ${pct >= 0 ? '+' : ''}${pct}%`
+  }).join('\n')
+}
+
+const THIN_ROW = 'Thin market: few trades on poe.ninja now or in past leagues. Hard to buy or sell much without moving the price.'
+const THIN_PLAN = 'Thin market, so this line gets at most a third of a slot.'
 
 const plan = computed(() => {
   const divine = snapshot.value?.divine
@@ -293,6 +333,16 @@ function fmtDiv (div: number) { return `${div.toFixed(div >= 10 ? 0 : 1)} div` }
 .data {
   padding: 4px var(--w-pad) 10px;
   border-bottom: 1px solid var(--w-line);
+}
+.textarea {
+  width: 100%;
+  padding: 4px 8px;
+  font-size: 12px;
+  color: var(--w-fg);
+  background: var(--w-panel-2);
+  border: 1px solid var(--w-line);
+  border-radius: var(--w-radius-sm);
+  resize: vertical;
 }
 .dayInput {
   width: 3rem;

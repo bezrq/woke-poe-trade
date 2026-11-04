@@ -15,8 +15,13 @@ const GREY_MAX = hsvToU8(360, 14, 100)
 
 export interface ScanOptions {
   cursor: { x: number, y: number }
-  // Left edge of the image within the game window, when main sent a strip.
+  // Top-left of the image within the game window, when main sent a crop.
   originX?: number
+  originY?: number
+  // Game window height, when the image is a crop shorter than the window.
+  refHeight?: number
+  // Search the whole image, not a band around the cursor (locked rolling).
+  whole?: boolean
   // OCR only when this frame's signature equals `stableSig` (unchanged for
   // two frames, so not mid-animation) and differs from `lastReadSig`.
   stableSig: string | null
@@ -49,10 +54,12 @@ export function scanTooltip (img: ImageData, opts: ScanOptions): ScanResult {
   let elapsed = 0
   const H = img.height
   const W = img.width
+  // Sizes scale with the game window, not with the crop we were sent.
+  const refH = opts.refHeight ?? H
   // Tooltips open beside the hovered item, left or right of it.
-  const halfW = Math.round(H * 0.6)
-  const x0 = Math.max(0, Math.min(W - 1, opts.cursor.x - halfW))
-  const x1 = Math.max(x0 + 1, Math.min(W, opts.cursor.x + halfW))
+  const halfW = Math.round(refH * 0.6)
+  const x0 = opts.whole ? 0 : Math.max(0, Math.min(W - 1, opts.cursor.x - halfW))
+  const x1 = opts.whole ? W : Math.max(x0 + 1, Math.min(W, opts.cursor.x + halfW))
 
   const full = Bindings.cvMatFromImage(img)
   const area = full.roi(new cv.Rect(x0, 0, x1 - x0, H))
@@ -63,16 +70,16 @@ export function scanTooltip (img: ImageData, opts: ScanOptions): ScanResult {
     cv.inRange(hsv, blueMin, blueMax, blue)
   })
 
-  const minPixels = Math.round((H / 1080) * (H / 1080) * 400)
+  const minPixels = Math.round((refH / 1080) * (refH / 1080) * 400)
   const count = cv.countNonZero(blue)
   if (count < minPixels) {
     hsv.delete(); blue.delete(); area.delete(); full.delete()
     return { sig: null, elapsed }
   }
 
-  const box = cv.boundingRect(blue)
+  const box = maskBounds(blue.data as Uint8Array, blue.cols, blue.rows)
   // Include the property lines above the mods (tier, quantity, pack size...).
-  const lineH = Math.round(H * 0.0185)
+  const lineH = Math.round(refH * 0.0185)
   const top = Math.max(0, box.y - lineH * 12)
   const left = Math.max(0, box.x - lineH)
   const right = Math.min(blue.cols, box.x + box.width + lineH)
@@ -88,7 +95,7 @@ export function scanTooltip (img: ImageData, opts: ScanOptions): ScanResult {
   let bits = ''
   for (let i = 0; i < small.data.length; i++) bits += small.data[i] > 40 ? '1' : '0'
   small.delete()
-  const sig = `${Math.round(((opts.originX ?? 0) + x0 + box.x) / 8)},${Math.round(box.y / 8)}:${hashBits(bits)}`
+  const sig = `${Math.round(((opts.originX ?? 0) + x0 + box.x) / 8)},${Math.round(((opts.originY ?? 0) + box.y) / 8)}:${hashBits(bits)}`
 
   const result: ScanResult = {
     sig,
@@ -117,6 +124,27 @@ export function scanTooltip (img: ImageData, opts: ScanOptions): ScanResult {
 
   hsv.delete(); blue.delete(); area.delete(); full.delete()
   return result
+}
+
+// Smallest rect holding every set pixel. APT's OCR files ship a reduced opencv
+// without cv.boundingRect. The mask must have at least one set pixel.
+function maskBounds (data: Uint8Array, cols: number, rows: number) {
+  let x0 = cols
+  let x1 = -1
+  let y0 = rows
+  let y1 = -1
+  for (let y = 0; y < rows; y++) {
+    const off = y * cols
+    for (let x = 0; x < cols; x++) {
+      if (data[off + x]) {
+        if (x < x0) x0 = x
+        if (x > x1) x1 = x
+        if (y < y0) y0 = y
+        y1 = y
+      }
+    }
+  }
+  return new cv.Rect(x0, y0, x1 - x0 + 1, y1 - y0 + 1)
 }
 
 function hashBits (s: string): string {

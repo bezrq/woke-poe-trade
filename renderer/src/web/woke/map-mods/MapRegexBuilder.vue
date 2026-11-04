@@ -14,8 +14,35 @@
         <WButton size="sm" variant="primary" :icon="copied ? 'fas fa-check' : 'far fa-copy'" :disabled="!regex.text" @click="copy">Copy</WButton>
         <WButton size="sm" icon="fas fa-search" :disabled="!regex.text" @click="paste" title="Type it into the open stash's search box">Stash</WButton>
       </div>
-      <div v-if="regex.tooLong" class="w-down text-xs w-full">Too long for the game's search box. Remove some mods or minimums.</div>
+      <div class="flex items-center gap-2 w-full text-xs">
+        <WChip clickable :active="!!profile.autoTrim" @click="profile.autoTrim = !profile.autoTrim"
+          title="When the search is too long, leave out wanted mods first, then avoided mods that aren't in a Quick preset, longest first">
+          <i class="fas fa-cut" /> Auto-trim to fit
+        </WChip>
+        <span v-if="regex.tooLong" class="w-down">
+          Too long by {{ regex.length - MAX_SEARCH_LENGTH }}. Biggest: {{ costliest }}
+        </span>
+        <span v-else-if="regex.dropped.length" class="w-warn" :title="regex.dropped.join('\n')">
+          Left out {{ regex.dropped.length }} to fit: {{ regex.dropped.slice(0, 3).join(', ') }}{{ regex.dropped.length > 3 ? '…' : '' }}
+        </span>
+      </div>
       <div v-if="regex.missing.length" class="w-warn text-xs w-full">No unique text found for: {{ regex.missing.join(', ') }}</div>
+      <div v-if="pickGroups.length || minChips.length" :class="$style.picks">
+        <div v-for="g in pickGroups" :key="g.rating" :class="$style.pickRow">
+          <span :class="[$style.pickHead, $style[g.rating]]">{{ g.label }}</span>
+          <span v-for="c in g.chips" :key="c.matcher" :class="[$style.chip, $style[g.rating]]">
+            <button type="button" :class="$style.chipText" :title="`Show “${c.matcher}” in the list`" @click="jumpTo(c.matcher)">{{ c.label }}</button>
+            <button type="button" :class="$style.chipX" :aria-label="`Remove ${c.label}`" title="Remove" @click="setRating(c.matcher, 'ok')">×</button>
+          </span>
+        </div>
+        <div v-if="minChips.length" :class="$style.pickRow">
+          <span :class="$style.pickHead">Min</span>
+          <span v-for="c in minChips" :key="c.key" :class="[$style.chip, $style.min]">
+            <span :class="$style.chipText">{{ c.label }}</span>
+            <button type="button" :class="$style.chipX" :aria-label="`Remove minimum ${c.label}`" title="Remove" @click="setMin(c.key, 0)">×</button>
+          </span>
+        </div>
+      </div>
       <div class="flex flex-wrap gap-1 w-full">
         <span class="w-dim text-xs self-center mr-1">Quick:</span>
         <button v-for="p in presets" :key="p.preset.id" type="button"
@@ -28,13 +55,26 @@
       </div>
     </template>
     <div v-for="m in visible" :key="m" :class="$style.row">
-      <span class="flex-1 min-w-0" :class="{ 'w-dim': !profile.ratings[m] }">{{ m }}</span>
+      <span class="flex-1 min-w-0" :class="{ 'w-dim': !profile.ratings[m] }">
+        {{ m }}<span v-if="t17.has(m)" :class="$style.t17">T17</span>
+      </span>
+      <span v-if="regex.tokens[m]" :class="$style.cost"
+        :title="`Shortened to &quot;${regex.tokens[m]}&quot;, costs ${tokenCost(regex.tokens[m])} characters`">
+        <code>{{ regex.tokens[m] }}</code> {{ tokenCost(regex.tokens[m]) }}
+      </span>
+      <span v-else-if="regex.dropped.includes(m)" class="w-warn text-xs" title="Left out by auto-trim">trimmed</span>
       <WSegmented :model-value="profile.ratings[m] ?? 'ok'" :options="RATING_OPTIONS"
         @update:model-value="setRating(m, $event as ModRating)" />
     </div>
     <WEmpty v-if="!visible.length" icon="fas fa-search">No mods match.</WEmpty>
     <div v-if="hiddenCount" class="w-dim text-xs p-2 text-center">{{ hiddenCount }} more. Search to narrow the list.</div>
     <template #footer>
+      <div class="flex items-center gap-2 text-xs w-full">
+        <span class="w-dim">A map needs</span>
+        <WSegmented :model-value="profile.minsAny ? 'any' : 'all'" :options="MINS_MODE_OPTIONS"
+          @update:model-value="profile.minsAny = $event === 'any'" />
+        <span class="w-dim">of these minimums</span>
+      </div>
       <div :class="$style.mins">
         <label v-for="key in MIN_KEYS" :key="key" class="flex flex-col gap-1">
           <span class="w-dim">Min {{ MIN_LABELS[key].toLowerCase() }}</span>
@@ -50,12 +90,12 @@
 import { computed, shallowRef, watch } from 'vue'
 import { MainProcess } from '@/web/background/IPC'
 import { pushHostConfig } from '@/web/Config'
-import { WPanel, WButton, WField, WSegmented, WSelect, WTabs, WEmpty } from '../ui'
-import { PRESETS, applyPreset, nextPresetRating, presetRating, withRating } from './rules'
+import { WPanel, WButton, WChip, WField, WSegmented, WSelect, WTabs, WEmpty } from '../ui'
+import { PRESETS, applyPreset, nextPresetRating, presetRating, shortLabel, withRating } from './rules'
 import type { MapModPreset, ModRating } from './rules'
-import { MAX_SEARCH_LENGTH, MIN_LABELS } from './regex'
+import { MAX_SEARCH_LENGTH, MIN_LABELS, tokenCost } from './regex'
 import type { MinStat } from './regex'
-import { allAreaMods, profileRegex } from './data'
+import { allAreaMods, profileRegex, tier17Mods } from './data'
 import { activeProfile } from './widget'
 import type { MapModsWidget } from './widget'
 
@@ -70,6 +110,10 @@ const RATING_OPTIONS = [
 const HIGHLIGHT_OPTIONS = [
   { value: 'good', label: 'Highlight good' },
   { value: 'bad', label: 'Highlight bad' }
+]
+const MINS_MODE_OPTIONS = [
+  { value: 'all', label: 'all' },
+  { value: 'any', label: 'any one' }
 ]
 const MIN_KEYS: MinStat[] = ['quantity', 'rarity', 'packSize', 'quality', 'currency', 'scarabs', 'maps', 'divCards']
 const MAX_ROWS = 200
@@ -96,8 +140,11 @@ const filterOptions = computed(() => [
   { value: 'all', label: 'All' },
   { value: 'picked', label: 'Picked', count: Object.keys(profile.value.ratings).length },
   { value: 'danger', label: 'Danger' },
-  { value: 'reward', label: 'Reward' }
+  { value: 'reward', label: 'Reward' },
+  { value: 't17', label: 'T17' }
 ])
+
+const t17 = computed(() => tier17Mods())
 
 const filtered = computed(() => {
   const q = search.value.trim().toLowerCase()
@@ -107,6 +154,7 @@ const filtered = computed(() => {
     if (filter.value === 'picked') return ratings[m] != null
     if (filter.value === 'danger') return isDanger(m)
     if (filter.value === 'reward') return !isDanger(m)
+    if (filter.value === 't17') return t17.value.has(m)
     return true
   })
 })
@@ -114,6 +162,48 @@ const visible = computed(() => filtered.value.slice(0, MAX_ROWS))
 const hiddenCount = computed(() => Math.max(0, filtered.value.length - MAX_ROWS))
 
 const regex = computed(() => profileRegex(profile.value))
+
+// Everything picked, at a glance above the list.
+const PICK_GROUPS: Array<{ rating: ModRating, label: string }> = [
+  { rating: 'deadly', label: 'Avoid' },
+  { rating: 'warn', label: 'Careful' },
+  { rating: 'good', label: 'Want' }
+]
+const MIN_SHORT: Record<MinStat, string> = {
+  quantity: 'quant',
+  rarity: 'rarity',
+  packSize: 'pack',
+  quality: 'quality',
+  currency: 'currency',
+  scarabs: 'scarabs',
+  maps: 'maps',
+  divCards: 'div cards'
+}
+const pickGroups = computed(() => {
+  const ratings = profile.value.ratings
+  return PICK_GROUPS.map(g => ({
+    ...g,
+    chips: Object.keys(ratings)
+      .filter(m => ratings[m] === g.rating)
+      .map(m => ({ matcher: m, label: shortLabel(m) }))
+      .sort((a, b) => a.label.localeCompare(b.label))
+  })).filter(g => g.chips.length)
+})
+const minChips = computed(() => MIN_KEYS
+  .filter(key => (profile.value.mins[key] ?? 0) > 0)
+  .map(key => ({ key, label: `${MIN_SHORT[key]} ${profile.value.mins[key]!}%` })))
+
+function jumpTo (matcher: string) {
+  filter.value = 'all'
+  search.value = matcher
+}
+
+// The three picked mods that cost the most characters.
+const costliest = computed(() => Object.entries(regex.value.tokens)
+  .sort((a, b) => b[1].length - a[1].length)
+  .slice(0, 3)
+  .map(([m, t]) => `${m.replace(/#/g, 'N')} (${tokenCost(t)})`)
+  .join(', '))
 
 // Keep the stored text in sync so the paste hotkey uses the latest regex.
 let pushTimer: ReturnType<typeof setTimeout> | undefined
@@ -194,6 +284,41 @@ function paste () {
   border-color: color-mix(in srgb, var(--w-down) 50%, transparent);
   background: color-mix(in srgb, var(--w-down) 14%, transparent);
 }
+.picks {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  max-height: 9.5rem;
+  overflow-y: auto;
+  padding: 6px 8px;
+  border-radius: var(--w-radius-sm);
+  background: var(--w-panel-2);
+  border: 1px solid var(--w-line);
+}
+.pickRow { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.pickHead { width: 52px; flex: none; font-size: 11px; color: var(--w-accent); }
+.pickHead.deadly { color: var(--w-down); }
+.pickHead.warn { color: var(--w-warn); }
+.pickHead.good { color: var(--w-up); }
+.chip {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11.5px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--chip) 48%, transparent);
+  background: color-mix(in srgb, var(--chip) 13%, transparent);
+  color: var(--chip);
+  --chip: var(--w-accent);
+}
+.chip.deadly { --chip: var(--w-down); }
+.chip.warn { --chip: var(--w-warn); }
+.chip.good { --chip: var(--w-up); }
+.chip.min { font-family: var(--w-num); background: transparent; }
+.chipText { padding: 1px 2px 1px 8px; color: inherit; background: none; border: 0; font: inherit; }
+button.chipText:hover { text-decoration: underline; }
+.chipX { padding: 0 6px 0 3px; color: inherit; background: none; border: 0; font: inherit; opacity: 0.7; }
+.chipX:hover { opacity: 1; }
 .row {
   display: flex;
   align-items: center;
@@ -202,6 +327,20 @@ function paste () {
   font-size: 12.5px;
 }
 .row:nth-child(odd) { background: var(--w-panel-2); }
+.cost {
+  font-size: 11px;
+  color: var(--w-dim);
+  white-space: nowrap;
+  font-family: var(--w-num);
+}
+.t17 {
+  margin-left: 6px;
+  font-size: 10px;
+  padding: 0 4px;
+  border-radius: 3px;
+  color: var(--w-warn);
+  border: 1px solid color-mix(in srgb, var(--w-warn) 45%, transparent);
+}
 .mins {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));

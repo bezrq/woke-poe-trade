@@ -11,6 +11,7 @@
       </select>
     </div>
     <div class="text-gray-400 text-sm">Pressing the overlay hotkey again closes the layout.</div>
+    <ui-checkbox v-model="autoOpen">Open the layout when I enter Aspirant's Plaza (difficulty from the area level)</ui-checkbox>
     <label class="flex flex-col gap-1">
       <span>Lab notes</span>
       <textarea v-model="notes" rows="4" class="bg-gray-900 rounded px-1"
@@ -31,7 +32,7 @@
 </template>
 
 <script lang="ts">
-import { defineComponent } from 'vue'
+import { computed, defineComponent } from 'vue'
 import HotkeyInput from '@/web/settings/HotkeyInput.vue'
 import { configProp, configModelValue } from '@/web/settings/utils'
 import { DEFAULT_LAB_URLS, DIFFICULTIES, labLabel } from './lab'
@@ -43,6 +44,10 @@ export default defineComponent({
   props: configProp<LabWidget>(),
   setup (props) {
     return {
+      autoOpen: computed({
+        get: () => props.configWidget.autoOpen !== false,
+        set: (v: boolean) => { props.configWidget.autoOpen = v }
+      }),
       DIFFICULTIES,
       DEFAULT_LAB_URLS,
       labLabel,

@@ -1,8 +1,9 @@
 <template>
   <Widget :config="config" move-handles="corners" :inline-edit="false" :readonly="true">
     <div class="flex flex-col items-start gap-1">
-      <!-- HUD strip: always on while the run is going -->
-      <div :class="$style.strip">
+      <!-- HUD strip: always on while the run is going. The campaign tracker
+           shows run time in its own strip, so the timer docks under it. -->
+      <div v-if="!docked" :class="$style.strip">
         <template v-if="run">
           <span :class="$style.where" class="w-head-font w-accent w-trunc">
             {{ run.finished ? (isComplete(run) ? 'Campaign done' : 'Run ended') : actLabel(run.act) }}<template v-if="!run.finished && run.zone"> · {{ run.zone }}</template>
@@ -38,10 +39,21 @@
       </div>
 
       <!-- Splits panel -->
-      <WPanel v-if="config.expanded" width="21rem" max-height="60vh">
+      <div v-if="docked && !config.expanded && wm.active.value" :class="$style.strip" class="w-faint">Run timer · shown in the campaign tracker strip</div>
+      <WPanel v-if="config.expanded" width="21rem" max-height="60vh" :style="docked ? 'margin-top: 2.4rem' : ''">
         <template #title>
           <template v-if="run">Run<template v-if="run.charName"> · {{ run.charName }}<span class="w-dim"> ({{ run.className }})</span></template></template>
           <template v-else>Campaign runs</template>
+        </template>
+        <template v-if="docked" #actions>
+          <button v-if="!run || run.finished" class="w-icon-btn" title="Start a run now" @click="start"><i class="fas fa-play text-xs" /></button>
+          <template v-else>
+            <button class="w-icon-btn" :title="run.runningSince != null ? 'Pause' : 'Resume'" @click="togglePause">
+              <i class="fas text-xs" :class="run.runningSince != null ? 'fa-pause' : 'fa-play'" />
+            </button>
+            <button class="w-icon-btn" title="End run (in act 10 this counts as finished)" @click="end"><i class="fas fa-flag-checkered text-xs" /></button>
+          </template>
+          <button class="w-icon-btn" title="Close" @click="config.expanded = false"><i class="fas fa-times text-xs" /></button>
         </template>
         <template #tabs>
           <WTabs v-model="tab" :options="[{ value: 'splits', label: 'Splits' }, { value: 'history', label: 'Past runs', count: config.history.length }]" />
@@ -62,22 +74,32 @@
           <div class="w-row w-row--head" :class="$style.grid">
             <span>Act</span><span class="text-right">Act</span><span class="text-right">Total</span><span class="text-right">±</span>
           </div>
-          <div v-for="r in rows" :key="r.act" class="w-row" :class="[$style.grid, r.state === 'current' && $style.now, r.state === 'todo' && 'w-faint']">
-            <span class="w-trunc">
-              {{ actLabel(r.act) }}
-              <span v-if="r.state === 'current'" class="w-faint">now</span>
-              <span v-else-if="r.level != null && r.state === 'done'" class="w-faint">lv {{ r.level }}</span>
-            </span>
-            <span class="text-right w-num" :class="r.gold ? $style.gold : (r.state === 'done' ? 'w-dim' : '')">
-              {{ r.segmentMs != null ? formatRunTime(r.segmentMs) : '—' }}
-            </span>
-            <span class="text-right w-num" :class="r.state !== 'done' && 'w-faint'">
-              {{ r.totalMs != null ? formatRunTime(r.totalMs) : (r.cmpTotalMs != null ? formatRunTime(r.cmpTotalMs) : '—') }}
-            </span>
-            <span class="text-right w-num" :class="r.deltaMs == null ? 'w-faint' : (r.deltaMs <= 0 ? 'w-up' : 'w-down')">
-              {{ r.deltaMs != null ? formatDelta(r.deltaMs) : '—' }}
-            </span>
-          </div>
+          <template v-for="r in rows" :key="r.act">
+            <div class="w-row" :class="[$style.grid, r.state === 'current' && $style.now, r.state === 'todo' && 'w-faint']">
+              <span class="w-trunc">
+                {{ actLabel(r.act) }}
+                <span v-if="r.state === 'current'" class="w-faint">now</span>
+                <span v-else-if="r.level != null && r.state === 'done'" class="w-faint">lv {{ r.level }}</span>
+              </span>
+              <span class="text-right w-num" :class="r.gold ? $style.gold : (r.state === 'done' ? 'w-dim' : '')">
+                {{ r.segmentMs != null ? formatRunTime(r.segmentMs) : '—' }}
+              </span>
+              <span class="text-right w-num" :class="r.state !== 'done' && 'w-faint'">
+                {{ r.totalMs != null ? formatRunTime(r.totalMs) : (r.cmpTotalMs != null ? formatRunTime(r.cmpTotalMs) : '—') }}
+              </span>
+              <span class="text-right w-num" :class="r.deltaMs == null ? 'w-faint' : (r.deltaMs <= 0 ? 'w-up' : 'w-down')">
+                {{ r.deltaMs != null ? formatDelta(r.deltaMs) : '—' }}
+              </span>
+            </div>
+            <div v-for="m in (config.subSplits ? r.marks : [])" :key="m.id" class="w-row" :class="[$style.grid, $style.mark, m.totalMs == null && 'w-faint']">
+              <span class="w-trunc">{{ m.label }}</span>
+              <span />
+              <span class="text-right w-num">{{ m.totalMs != null ? formatRunTime(m.totalMs) : (m.cmpTotalMs != null ? formatRunTime(m.cmpTotalMs) : '—') }}</span>
+              <span class="text-right w-num" :class="m.deltaMs == null ? 'w-faint' : (m.deltaMs <= 0 ? 'w-up' : 'w-down')">
+                {{ m.deltaMs != null ? formatDelta(m.deltaMs) : '—' }}
+              </span>
+            </div>
+          </template>
         </template>
 
         <template v-else>
@@ -130,16 +152,19 @@ export default {
 
 <script setup lang="ts">
 import { inject, computed, shallowRef, onUnmounted } from 'vue'
-import { Host } from '@/web/background/IPC'
-import { saveConfig } from '@/web/Config'
+import { Host, MainProcess } from '@/web/background/IPC'
+import { AppConfig, saveConfig } from '@/web/Config'
 import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
 import { WPanel, WTabs, WChip, WEmpty } from '../ui'
 import { actLabel, parseLogLine } from './log-parse'
 import {
   applyRunEvent, comparisonRun, endRun, formatDelta, formatRunTime, headlineDelta, isComplete,
-  pauseRun, personalBest, resumeRun, runElapsed, runTotal, splitRows, startRun, sumOfBest
+  migrateRunTimer, parseHotkeyTarget, pauseRun, personalBest, resumeRun, runElapsed, runTotal, splitRows, startRun, sumOfBest
 } from './run-timer'
+import { CAMPAIGN_TYPE } from './widget'
+import { isWidgetTypeOn } from '../modules'
+import { logTail, linesAfter } from './log-tail'
 import type { CampaignRun } from './run-timer'
 
 const props = defineProps<{
@@ -160,6 +185,15 @@ if (props.config.wmFlags[0] === 'uninitialized') {
   props.config.history = []
   wm.show(props.config.wmId)
 }
+migrateRunTimer(props.config)
+if (!props.config.lastLogAt) props.config.lastLogAt = Date.now()
+
+// The campaign tracker shows run time in its strip; then this widget only
+// shows the splits panel.
+const docked = computed(() => {
+  const cfg = AppConfig()
+  return isWidgetTypeOn(cfg, CAMPAIGN_TYPE) && cfg.widgets.some(w => w.wmType === CAMPAIGN_TYPE && w.wmWants === 'show')
+})
 
 const tab = shallowRef<'splits' | 'history'>('splits')
 
@@ -209,20 +243,45 @@ function formatDate (ts: number) {
   return new Date(ts).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
 }
 
-const logListener = Host.onEvent('MAIN->CLIENT::game-log', (e) => {
+function applyLines (lines: string[], ts: number) {
   let changed = false
-  const ts = Date.now()
-  for (const line of e.lines) {
+  for (const line of lines) {
     const ev = parseLogLine(line)
     if (ev && applyRunEvent(props.config, ev, ts)) changed = true
   }
+  props.config.lastLogAt = ts
   if (changed) {
-    now.value = ts
+    now.value = Date.now()
     // Log events arrive while the game has focus, when APT doesn't save config.
     saveConfig()
   }
+}
+
+let caughtUp = false
+const queued: string[][] = []
+const logListener = Host.onEvent('MAIN->CLIENT::game-log', (e) => {
+  if (!caughtUp) { queued.push(e.lines); return }
+  applyLines(e.lines, Date.now())
 })
-onUnmounted(() => { logListener.abort() })
+// Splits reached while the app was closed, timed by the log's own clock.
+logTail().then(tail => {
+  for (const { line, at } of linesAfter(tail, props.config.lastLogAt)) applyLines([line], at)
+}).finally(() => {
+  caughtUp = true
+  for (const lines of queued.splice(0)) applyLines(lines, Date.now())
+})
+
+const hotkeys = MainProcess.onEvent('MAIN->CLIENT::widget-action', (e) => {
+  const parsed = parseHotkeyTarget(e.target)
+  if (!parsed || parsed.wmId !== props.config.wmId) return
+  if (parsed.action === 'pause') togglePause()
+  else props.config.expanded = !props.config.expanded
+})
+
+onUnmounted(() => {
+  logListener.abort()
+  hotkeys.abort()
+})
 </script>
 
 <style module>
@@ -260,5 +319,7 @@ onUnmounted(() => { logListener.abort() })
 .histGrid { grid-template-columns: minmax(0, 1fr) 4.4rem 3.8rem 22px; }
 .now { background: var(--w-accent-soft); box-shadow: inset 2px 0 0 var(--w-accent); }
 .gold { color: var(--w-warn); }
+.mark { min-height: 22px; font-size: 11.5px; color: var(--w-dim); }
+.mark > span:first-child { padding-left: 14px; }
 .pbChip { color: var(--w-warn); margin-left: 4px; }
 </style>
