@@ -1,0 +1,224 @@
+{
+ "result": [
+  {
+   "id": "it00",
+   "item": {
+    "ilvl": 84,
+    "corrupted": false
+   },
+   "listing": {
+    "indexed": "2026-11-01T12:00:00Z",
+    "price": {
+     "type": "~price",
+     "amount": 1,
+     "currency": "divine"
+    },
+    "account": {
+     "name": "seller0#1234",
+     "lastCharacterName": "SellerChar0",
+     "online": {
+      "league": "Testleague"
+     }
+    }
+   }
+  },
+  {
+   "id": "it01",
+   "item": {
+    "ilvl": 84,
+    "corrupted": false
+   },
+   "listing": {
+    "indexed": "2026-11-02T12:00:00Z",
+    "price": {
+     "type": "~price",
+     "amount": 1,
+     "currency": "divine"
+    },
+    "account": {
+     "name": "seller1#1234",
+     "lastCharacterName": "SellerChar1",
+     "online": {
+      "league": "Testleague"
+     }
+    }
+   }
+  },
+  {
+   "id": "it02",
+   "item": {
+    "ilvl": 84,
+    "corrupted": false
+   },
+   "listing": {
+    "indexed": "2026-11-03T12:00:00Z",
+    "price": {
+     "type": "~price",
+     "amount": 150,
+     "currency": "chaos"
+    },
+    "account": {
+     "name": "seller2#1234",
+     "lastCharacterName": "SellerChar2",
+     "online": {
+      "league": "Testleague"
+     }
+    }
+   }
+  },
+  {
+   "id": "it03",
+   "item": {
+    "ilvl": 84,
+    "corrupted": false
+   },
+   "listing": {
+    "indexed": "2026-11-04T12:00:00Z",
+    "price": {
+     "type": "~price",
+     "amount": 160,
+     "currency": "chaos"
+    },
+    "account": {
+     "name": "seller3#1234",
+     "lastCharacterName": "SellerChar3",
+     "online": {
+      "league": "Testleague"
+     }
+    }
+   }
+  },
+  {
+   "id": "it04",
+   "item": {
+    "ilvl": 84,
+    "corrupted": false
+   },
+   "listing": {
+    "indexed": "2026-11-01T12:00:00Z",
+    "price": {
+     "type": "~price",
+     "amount": 170,
+     "currency": "chaos"
+    },
+    "account": {
+     "name": "seller4#1234",
+     "lastCharacterName": "SellerChar4",
+     "online": {
+      "league": "Testleague"
+     }
+    }
+   }
+  },
+  {
+   "id": "it05",
+   "item": {
+    "ilvl": 84,
+    "corrupted": false
+   },
+   "listing": {
+    "indexed": "2026-11-02T12:00:00Z",
+    "price": {
+     "type": "~price",
+     "amount": 1.2,
+     "currency": "divine"
+    },
+    "account": {
+     "name": "seller5#1234",
+     "lastCharacterName": "SellerChar5",
+     "online": {
+      "league": "Testleague"
+     }
+    }
+   }
+  },
+  {
+   "id": "it06",
+   "item": {
+    "ilvl": 84,
+    "corrupted": false
+   },
+   "listing": {
+    "indexed": "2026-11-03T12:00:00Z",
+    "price": {
+     "type": "~price",
+     "amount": 1.3,
+     "currency": "divine"
+    },
+    "account": {
+     "name": "seller6#1234",
+     "lastCharacterName": "SellerChar6",
+     "online": {
+      "league": "Testleague"
+     }
+    }
+   }
+  },
+  {
+   "id": "it07",
+   "item": {
+    "ilvl": 84,
+    "corrupted": false
+   },
+   "listing": {
+    "indexed": "2026-11-04T12:00:00Z",
+    "price": {
+     "type": "~price",
+     "amount": 250,
+     "currency": "chaos"
+    },
+    "account": {
+     "name": "seller7#1234",
+     "lastCharacterName": "SellerChar7",
+     "online": {
+      "league": "Testleague"
+     }
+    }
+   }
+  },
+  {
+   "id": "it08",
+   "item": {
+    "ilvl": 84,
+    "corrupted": false
+   },
+   "listing": {
+    "indexed": "2026-11-01T12:00:00Z",
+    "price": {
+     "type": "~price",
+     "amount": 2,
+     "currency": "divine"
+    },
+    "account": {
+     "name": "seller8#1234",
+     "lastCharacterName": "SellerChar8",
+     "online": {
+      "league": "Testleague"
+     }
+    }
+   }
+  },
+  {
+   "id": "it09",
+   "item": {
+    "ilvl": 84,
+    "corrupted": false
+   },
+   "listing": {
+    "indexed": "2026-11-02T12:00:00Z",
+    "price": {
+     "type": "~price",
+     "amount": 3,
+     "currency": "divine"
+    },
+    "account": {
+     "name": "seller9#1234",
+     "lastCharacterName": "SellerChar9",
+     "online": {
+      "league": "Testleague"
+     }
+    }
+   }
+  }
+ ]
+}

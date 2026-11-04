@@ -26,3 +26,10 @@ yarn-error.log*
 # vitepress
 docs/.vitepress/dist
 docs/.vitepress/cache
+
+# woke test harness (testing/)
+testing/.cache
+testing/fake-host/dist
+testing/test-results
+testing/report
+testing/screens-out

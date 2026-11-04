@@ -1,0 +1,24 @@
+Item Class: Maps
+Rarity: Rare
+Grim Hollow
+Map (Tier 16)
+--------
+Map Area: Cemetery
+Item Quantity: +64% (augmented)
+Item Rarity: +38% (augmented)
+Monster Pack Size: +22% (augmented)
+--------
+Item Level: 83
+--------
+Monster Level: 83
+--------
+{ Prefix Modifier "Twinned" }
+Area contains two Unique Bosses
+{ Suffix Modifier "of Exposure" }
+Players have -20% to all maximum Resistances
+{ Suffix Modifier "of Stasis" }
+Players cannot Regenerate Life, Mana or Energy Shield
+{ Prefix Modifier "Hexproof" }
+Monsters are Hexproof
+--------
+Travel to this Map by using it in a personal Map Device. Maps can only be used once.

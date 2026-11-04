@@ -1,0 +1,30 @@
+Item Class: Maps
+Rarity: Rare
+Shrouded Vale
+Map (Tier 16)
+--------
+Map Area: Strand
+Item Quantity: +87% (augmented)
+Item Rarity: +45% (augmented)
+Monster Pack Size: +29% (augmented)
+More Currency: +12% (augmented)
+Quality: +20% (augmented)
+--------
+Item Level: 83
+--------
+Monster Level: 83
+--------
+{ Prefix Modifier "Abhorrent" }
+Area is inhabited by Abominations
+{ Prefix Modifier "Searing" }
+Monsters deal 110% extra Physical Damage as Fire
+{ Suffix Modifier "of Temporal Chains" }
+Players are Cursed with Temporal Chains
+{ Prefix Modifier "Titan's" }
+Monsters have 70% increased Area of Effect
+{ Prefix Modifier "Protected" }
+Monsters have +40% chance to Suppress Spell Damage
+{ Suffix Modifier "of Smothering" }
+Players have 60% less Recovery Rate of Life and Energy Shield
+--------
+Travel to this Map by using it in a personal Map Device. Maps can only be used once.

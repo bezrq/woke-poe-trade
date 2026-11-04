@@ -75,7 +75,9 @@ export const usePoeninja = createGlobalState(() => {
   }
 
   function selectedLeagueToUrl (): string {
-    const league = leagues.selectedId.value!
+    // woke: prices can arrive before the league list does; selectedId is
+    // undefined until then (found by the fake-game tests).
+    const league = leagues.selected.value?.id ?? leagues.selectedId.value ?? ''
     switch (league) {
       case 'Standard': return 'standard'
       case 'Hardcore': return 'hardcore'

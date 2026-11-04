@@ -1,0 +1,23 @@
+{
+  "synthetic": true,
+  "cursor": {
+    "x": 538,
+    "y": 278
+  },
+  "kind": "map",
+  "tier": 16,
+  "props": {
+    "quantity": 87,
+    "rarity": 45,
+    "packSize": 29,
+    "currency": 12
+  },
+  "mods": [
+    "Area is inhabited by Abominations",
+    "Monsters deal #% extra Physical Damage as Fire",
+    "Players are Cursed with Temporal Chains",
+    "Monsters have #% increased Area of Effect",
+    "Monsters have #% chance to Suppress Spell Damage",
+    "Players have #% less Recovery Rate of Life and Energy Shield"
+  ]
+}

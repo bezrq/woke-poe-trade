@@ -1,0 +1,56 @@
+# Leveling a new Witch through act 1 into act 2, as Client.txt logs it
+# (English client). Includes the noise around the lines the toolkit reads:
+# instance connections, chat, trade whispers, AFK and shader messages.
+2026/11/04 18:00:01 210931453 cff94598 [INFO Client 21088] [WINDOW] Path of Exile has started.
+2026/11/04 18:00:22 210952031 1a4f3d1 [INFO Client 21088] Connecting to instance server at 159.65.86.12:6112
+2026/11/04 18:00:23 210953102 d0f8a73f [DEBUG Client 21088] Got Instance Details from login server
+2026/11/04 18:00:24 210954119 2caa1679 [DEBUG Client 21088] Generating level 1 area "1_1_1" with seed 2743729514
+2026/11/04 18:00:26 210956882 cff94598 [INFO Client 21088] : You have entered The Twilight Strand.
+2026/11/04 18:00:41 210971004 cff94598 [INFO Client 21088] [SHADER] Delay: ON
+2026/11/04 18:01:12 211002121 cff94598 [INFO Client 21088] : WokeTester (Witch) is now level 2
+2026/11/04 18:01:40 211030090 cff94598 [INFO Client 21088] #SomeoneElse: anyone selling a 6 link?
+2026/11/04 18:02:05 211055011 cff94598 [INFO Client 21088] : WokeTester (Witch) is now level 3
+2026/11/04 18:02:30 211080213 1a4f3d1 [INFO Client 21088] Connecting to instance server at 159.65.86.12:6112
+2026/11/04 18:02:31 211081313 2caa1679 [DEBUG Client 21088] Generating level 13 area "1_1_town" with seed 1
+2026/11/04 18:02:33 211083400 cff94598 [INFO Client 21088] : You have entered Lioneye's Watch.
+2026/11/04 18:03:01 211111020 2caa1679 [DEBUG Client 21088] Generating level 2 area "1_1_2" with seed 99482211
+2026/11/04 18:03:03 211113002 cff94598 [INFO Client 21088] : You have entered The Coast.
+2026/11/04 18:04:20 211190040 cff94598 [INFO Client 21088] : WokeTester (Witch) is now level 4
+2026/11/04 18:04:44 211214440 2caa1679 [DEBUG Client 21088] Generating level 4 area "1_1_3" with seed 18882210
+2026/11/04 18:04:46 211216440 cff94598 [INFO Client 21088] : You have entered The Mud Flats.
+2026/11/04 18:06:02 211292031 cff94598 [INFO Client 21088] @From TradeBot: Hi, I would like to buy your Tabula Rasa listed for 5 chaos
+2026/11/04 18:06:50 211340700 2caa1679 [DEBUG Client 21088] Generating level 5 area "1_1_4_1" with seed 3311029
+2026/11/04 18:06:52 211342700 cff94598 [INFO Client 21088] : You have entered The Submerged Passage.
+2026/11/04 18:07:31 211381400 cff94598 [INFO Client 21088] : WokeTester (Witch) is now level 5
+2026/11/04 18:08:40 211450400 2caa1679 [DEBUG Client 21088] Generating level 6 area "1_1_4_0" with seed 1200443
+2026/11/04 18:08:42 211452400 cff94598 [INFO Client 21088] : You have entered The Flooded Depths.
+2026/11/04 18:09:30 211500400 2caa1679 [DEBUG Client 21088] Generating level 6 area "1_1_5" with seed 87123311
+2026/11/04 18:09:32 211502400 cff94598 [INFO Client 21088] : You have entered The Ledge.
+2026/11/04 18:10:10 211540010 cff94598 [INFO Client 21088] : WokeTester (Witch) is now level 7
+2026/11/04 18:11:00 211590400 2caa1679 [DEBUG Client 21088] Generating level 7 area "1_1_6" with seed 7711221
+2026/11/04 18:11:02 211592400 cff94598 [INFO Client 21088] : You have entered The Climb.
+2026/11/04 18:12:20 211670400 2caa1679 [DEBUG Client 21088] Generating level 8 area "1_1_7_1" with seed 5521100
+2026/11/04 18:12:22 211672400 cff94598 [INFO Client 21088] : You have entered The Lower Prison.
+2026/11/04 18:12:58 211708100 cff94598 [INFO Client 21088] : AFK mode is now ON. Autoreply "This player is AFK."
+2026/11/04 18:13:30 211740400 cff94598 [INFO Client 21088] : AFK mode is now OFF.
+2026/11/04 18:14:00 211770400 2caa1679 [DEBUG Client 21088] Generating level 9 area "1_1_7_2" with seed 5521101
+2026/11/04 18:14:02 211772400 cff94598 [INFO Client 21088] : You have entered The Upper Prison.
+2026/11/04 18:15:10 211840400 cff94598 [INFO Client 21088] : You have entered The Warden's Quarters.
+2026/11/04 18:15:50 211880400 cff94598 [INFO Client 21088] : WokeTester (Witch) is now level 9
+2026/11/04 18:16:40 211930400 2caa1679 [DEBUG Client 21088] Generating level 10 area "1_1_8" with seed 640011
+2026/11/04 18:16:42 211932400 cff94598 [INFO Client 21088] : You have entered Prisoner's Gate.
+2026/11/04 18:18:40 212050400 2caa1679 [DEBUG Client 21088] Generating level 11 area "1_1_9" with seed 450012
+2026/11/04 18:18:42 212052400 cff94598 [INFO Client 21088] : You have entered The Ship Graveyard.
+2026/11/04 18:19:15 212085400 cff94598 [INFO Client 21088] : WokeTester (Witch) is now level 10
+2026/11/04 18:21:00 212190400 2caa1679 [DEBUG Client 21088] Generating level 12 area "1_1_11_1" with seed 330019
+2026/11/04 18:21:02 212192400 cff94598 [INFO Client 21088] : You have entered The Cavern of Wrath.
+2026/11/04 18:22:40 212290400 2caa1679 [DEBUG Client 21088] Generating level 13 area "1_1_11_2" with seed 330020
+2026/11/04 18:22:42 212292400 cff94598 [INFO Client 21088] : You have entered The Cavern of Anger.
+2026/11/04 18:23:20 212330400 cff94598 [INFO Client 21088] : WokeTester (Witch) is now level 12
+2026/11/04 18:24:00 212370400 cff94598 [INFO Client 21088] : You have entered Merveil's Lair.
+2026/11/04 18:25:30 212460400 1a4f3d1 [INFO Client 21088] Connecting to instance server at 159.65.86.12:6112
+2026/11/04 18:25:31 212461400 2caa1679 [DEBUG Client 21088] Generating level 15 area "1_2_town" with seed 1
+2026/11/04 18:25:33 212463400 cff94598 [INFO Client 21088] : You have entered The Forest Encampment.
+2026/11/04 18:26:10 212500400 2caa1679 [DEBUG Client 21088] Generating level 13 area "1_2_1" with seed 2291102
+2026/11/04 18:26:12 212502400 cff94598 [INFO Client 21088] : You have entered The Southern Forest.
+2026/11/04 18:26:40 212530400 cff94598 [INFO Client 21088] : WokeTester (Witch) is now level 13

@@ -25,16 +25,42 @@ export class ConfigStore {
     return contents
   }
 
-  private async save (contents: string, tmp: boolean) {
+  // woke: saves come in bursts (the run timer catching up on Client.txt saves
+  // once per line). Overlapping fs.writeFile calls on one file could leave it
+  // as a mix of two saves, invalid JSON, and the next start then fell back to
+  // default settings. Writes now run one at a time, newest contents only, and
+  // replace the file in one step (write a temp file, then rename).
+  private pending: string | null = null
+  private writing: Promise<void> = Promise.resolve()
+
+  private save (contents: string, tmp: boolean) {
     if (process.env.VITE_DEV_SERVER_URL) return
 
     if (tmp && !this.isTmpFile) {
       this.cfgPath += '.tmp'
       this.isTmpFile = true
     }
+    this.pending = contents
+    this.writing = this.writing.then(() => this.flush())
+  }
+
+  private async flush () {
+    const contents = this.pending
+    if (contents == null) return
+    this.pending = null
+    const target = this.cfgPath
     try {
-      await fs.mkdir(path.dirname(this.cfgPath), { recursive: true })
-      await fs.writeFile(this.cfgPath, contents)
+      await fs.mkdir(path.dirname(target), { recursive: true })
+      const partial = `${target}.writing`
+      await fs.writeFile(partial, contents)
+      try {
+        await fs.rename(partial, target)
+      } catch {
+        // Windows can refuse the rename while something (antivirus, backup)
+        // has the file open; a plain write is still one writer at a time.
+        await fs.writeFile(target, contents)
+        await fs.rm(partial, { force: true })
+      }
     } catch {
       app.exit(1)
     }

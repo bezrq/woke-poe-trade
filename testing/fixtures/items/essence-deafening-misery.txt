@@ -1,0 +1,11 @@
+Item Class: Stackable Currency
+Rarity: Currency
+Deafening Essence of Misery
+--------
+Stack Size: 3/9
+--------
+Upgrades a normal item to rare with one guaranteed property
+Properties restricted to level 82 and below.
+--------
+Right click this item then left click a normal item to apply it.
+Shift click to unstack.

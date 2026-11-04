@@ -134,6 +134,13 @@ export class Shortcuts {
     this.actions = actions.filter(action =>
       !duplicates.has(action.shortcut) ||
       action.action.type === 'toggle-overlay')
+    // woke: hotkeys used to register only on the next game focus change, so
+    // settings that arrived while the game had focus (e.g. the app starting
+    // with the game already focused) left new hotkeys dead until an alt-tab.
+    if (this.poeWindow.isActive) {
+      this.unregister()
+      this.register()
+    }
   }
 
   private getOcrWorker () {

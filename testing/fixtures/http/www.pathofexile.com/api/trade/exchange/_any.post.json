@@ -1,0 +1,163 @@
+{
+ "id": "exq123",
+ "complexity": null,
+ "result": {
+  "ex00": {
+   "id": "ex00",
+   "item": null,
+   "listing": {
+    "indexed": "2026-11-04T19:00:00Z",
+    "account": {
+     "name": "seller0#1234",
+     "lastCharacterName": "SellerChar0",
+     "online": {
+      "league": "Testleague"
+     }
+    },
+    "offers": [
+     {
+      "exchange": {
+       "currency": "chaos",
+       "amount": 178,
+       "whisper": ""
+      },
+      "item": {
+       "currency": "divine",
+       "amount": 1,
+       "stock": 20,
+       "id": "ex00",
+       "whisper": ""
+      }
+     }
+    ],
+    "whisper": ""
+   }
+  },
+  "ex01": {
+   "id": "ex01",
+   "item": null,
+   "listing": {
+    "indexed": "2026-11-04T19:00:00Z",
+    "account": {
+     "name": "seller1#1234",
+     "lastCharacterName": "SellerChar1",
+     "online": {
+      "league": "Testleague"
+     }
+    },
+    "offers": [
+     {
+      "exchange": {
+       "currency": "chaos",
+       "amount": 180,
+       "whisper": ""
+      },
+      "item": {
+       "currency": "divine",
+       "amount": 1,
+       "stock": 7,
+       "id": "ex01",
+       "whisper": ""
+      }
+     }
+    ],
+    "whisper": ""
+   }
+  },
+  "ex02": {
+   "id": "ex02",
+   "item": null,
+   "listing": {
+    "indexed": "2026-11-04T19:00:00Z",
+    "account": {
+     "name": "seller2#1234",
+     "lastCharacterName": "SellerChar2",
+     "online": {
+      "league": "Testleague"
+     }
+    },
+    "offers": [
+     {
+      "exchange": {
+       "currency": "chaos",
+       "amount": 181,
+       "whisper": ""
+      },
+      "item": {
+       "currency": "divine",
+       "amount": 1,
+       "stock": 40,
+       "id": "ex02",
+       "whisper": ""
+      }
+     }
+    ],
+    "whisper": ""
+   }
+  },
+  "ex03": {
+   "id": "ex03",
+   "item": null,
+   "listing": {
+    "indexed": "2026-11-04T19:00:00Z",
+    "account": {
+     "name": "seller3#1234",
+     "lastCharacterName": "SellerChar3",
+     "online": {
+      "league": "Testleague",
+      "status": "afk"
+     }
+    },
+    "offers": [
+     {
+      "exchange": {
+       "currency": "chaos",
+       "amount": 182,
+       "whisper": ""
+      },
+      "item": {
+       "currency": "divine",
+       "amount": 1,
+       "stock": 3,
+       "id": "ex03",
+       "whisper": ""
+      }
+     }
+    ],
+    "whisper": ""
+   }
+  },
+  "ex04": {
+   "id": "ex04",
+   "item": null,
+   "listing": {
+    "indexed": "2026-11-04T19:00:00Z",
+    "account": {
+     "name": "seller4#1234",
+     "lastCharacterName": "SellerChar4",
+     "online": {
+      "league": "Testleague"
+     }
+    },
+    "offers": [
+     {
+      "exchange": {
+       "currency": "chaos",
+       "amount": 185,
+       "whisper": ""
+      },
+      "item": {
+       "currency": "divine",
+       "amount": 1,
+       "stock": 12,
+       "id": "ex04",
+       "whisper": ""
+      }
+     }
+    ],
+    "whisper": ""
+   }
+  }
+ },
+ "total": 5
+}

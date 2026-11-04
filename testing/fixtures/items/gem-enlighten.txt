@@ -1,0 +1,16 @@
+Item Class: Support Gems
+Rarity: Gem
+Enlighten Support
+--------
+Support, Exceptional
+Level: 3 (Max)
+Cost & Reservation Multiplier: 100%
+--------
+Requirements:
+Level: 60
+--------
+Supports any skill gem. Once this gem reaches level 2 or above, will apply a mana multiplier to supported gems. Cannot support triggered skills.
+--------
+Experience: 1/1
+--------
+This is a Support Gem. It does not grant a bonus to your character, but to skills in sockets connected to it. Place into an item socket connected to a socket containing the Skill Gem you wish to augment. Right click to remove from a socket.

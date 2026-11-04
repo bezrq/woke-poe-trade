@@ -1,0 +1,19 @@
+{
+  "synthetic": true,
+  "cursor": {
+    "x": 700,
+    "y": 640
+  },
+  "kind": "essence-all",
+  "labels": [
+    [
+      "Screaming Essence of Scorn",
+      "Deafening Essence of Dread"
+    ],
+    [
+      "Wailing Essence of Anger",
+      "Deafening Essence of Contempt",
+      "Essence of Horror"
+    ]
+  ]
+}
