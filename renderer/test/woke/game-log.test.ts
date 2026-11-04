@@ -205,6 +205,11 @@ describe('lab', () => {
   it('a Trial of Ascendancy in a map is not the lab', () => {
     expect(zoneKind('1_Labyrinth_Airlock', '')).toBe('lab')
     expect(zoneKind('EndGame_Labyrinth_trials_spikes', '')).not.toBe('lab')
+    // Hubs that work like a town (Exile-UI's town check).
+    expect(zoneKind('HeistHub', '')).toBe('town')
+    expect(zoneKind('Menagerie', '')).toBe('town')
+    expect(zoneKind('SanctumFoyer_1_1', '')).toBe('town')
+    expect(zoneKind('HeistDungeon1', '')).not.toBe('town')
   })
 
   it('counts down to the daily reset (midnight UTC)', () => {

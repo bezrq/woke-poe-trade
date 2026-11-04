@@ -2,7 +2,7 @@
 // module, so dock icons can show only where they're useful.
 import { shallowReactive } from 'vue'
 import { Host } from '@/web/background/IPC'
-import { actFromAreaId, isTown, parseLogLine } from '../campaign/log-parse'
+import { actFromAreaId, isTownLike, parseLogLine } from '../campaign/log-parse'
 import { lineTime, logTail } from '../campaign/log-tail'
 import { bossAreaIds } from './boss-areas'
 
@@ -47,7 +47,7 @@ export function zoneKind (areaId: string, name: string): ZoneKind {
   if (/hideout/i.test(areaId) || /hideout/i.test(name)) return 'hideout'
   // Trials of Ascendancy inside maps (EndGame_Labyrinth_trials_*) aren't the lab.
   if ((/labyrinth/i.test(areaId) && !/_trials_/i.test(areaId)) || LAB_ZONES.has(name)) return 'lab'
-  if (areaId && isTown(areaId)) return 'town'
+  if (areaId && isTownLike(areaId)) return 'town'
   if (/^Map/i.test(areaId)) return 'map'
   if (areaId && actFromAreaId(areaId) != null) return 'campaign'
   return 'other'

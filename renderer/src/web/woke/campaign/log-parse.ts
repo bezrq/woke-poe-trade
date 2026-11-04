@@ -35,6 +35,13 @@ export function isTown (areaId: string): boolean {
   return /_town$/i.test(areaId)
 }
 
+// Safe hubs that work like a town (stash, no monsters): hideouts, Rogue
+// Harbour, the Menagerie, the Sanctum foyer and the abyss hub. Same list as
+// Exile-UI's town check.
+export function isTownLike (areaId: string): boolean {
+  return isTown(areaId) || /hideout|heisthub|menagerie|sanctumfoyer|abyss_hub/i.test(areaId)
+}
+
 export function actLabel (act: number | null): string {
   if (act == null) return ''
   return act === 11 ? 'Epilogue' : `Act ${act}`

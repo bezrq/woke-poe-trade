@@ -5,7 +5,7 @@ import { hostRequest } from '../shared/host'
 import { customSoundsIn, installPackSounds } from './sounds'
 import { ruleBlocks } from './rules'
 import { applyPresetChanges, presetBlocks, presetsOn } from './presets'
-import { parseLogLine } from '../campaign/log-parse'
+import { isTownLike, parseLogLine } from '../campaign/log-parse'
 import { parseFilter, serializeFilter } from './parse'
 import type { FilterDoc } from './parse'
 import { addEdit, applyEdits, nextEditId } from './edits'
@@ -109,7 +109,7 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
     for (const line of e.lines) {
       const ev = parseLogLine(line)
       if (ev?.kind !== 'area') continue
-      const safe = /hideout|town/i.test(ev.areaId)
+      const safe = /town/i.test(ev.areaId) || isTownLike(ev.areaId)
       inSafeZone.value = safe
       if (!safe) {
         areaLevel.value = ev.areaLevel
