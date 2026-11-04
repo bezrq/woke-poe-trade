@@ -6,7 +6,7 @@
       :item="item">
       <woke-dust-chip v-if="item.dustEquivalent" :amount="item.dustEquivalent" />
     </filter-name>
-    <woke-roll-presets :stats="itemStats" @apply="searchAfterPreset" />
+    <woke-roll-presets :stats="itemStats" :item="item" @apply="searchAfterPreset" />
     <price-prediction v-if="showPredictedPrice" class="mb-4"
       :item="item" />
     <price-trend v-else

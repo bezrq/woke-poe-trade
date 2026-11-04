@@ -152,6 +152,7 @@
 .w-faint { color: var(--w-faint); }
 .w-up { color: var(--w-up); }
 .w-down { color: var(--w-down); }
+.w-warn { color: var(--w-warn); }
 .w-accent { color: var(--w-accent); }
 .w-trunc { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .w-head-font { font-family: var(--w-head); letter-spacing: var(--w-head-track); }
