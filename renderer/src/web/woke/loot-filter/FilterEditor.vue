@@ -242,6 +242,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { WPanel, WButton, WSelect, WField, WTabs, WListItem, WChip, WEmpty, WKbd, WBanner, WSkeleton, agoPhrase, openMenu, toast, useCopy } from '../ui'
+import { copyText } from '../ui/copy'
 import LabelPreview from './LabelPreview.vue'
 import PricesTab from './PricesTab.vue'
 import PreviewTab from './PreviewTab.vue'
@@ -630,7 +631,7 @@ function tierMenu (ev: MouseEvent, t: TierNode) {
   const shown = firstLive(t).visibility !== 'Hide' && !t.disabled
   openMenu(ev, [
     { label: shown ? 'Hide this tier' : 'Show this tier', icon: shown ? 'fas fa-eye-slash' : 'fas fa-eye', action: () => props.store.edit({ kind: 'visibility', type, tier: t.tier, visibility: shown ? 'Hide' : 'Show' }) },
-    ...(t.bases.length ? [{ label: 'Copy item names', icon: 'far fa-copy', action: () => { navigator.clipboard.writeText(t.bases.join('\n')).catch(() => {}) } }] : [])
+    ...(t.bases.length ? [{ label: 'Copy item names', icon: 'far fa-copy', action: () => { copyText(t.bases.join('\n')) } }] : [])
   ])
 }
 

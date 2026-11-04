@@ -136,11 +136,12 @@ import { inject, computed, shallowRef, watch } from 'vue'
 import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
 import { WPanel, WField, WSegmented, WChip, WButton, WPrice, WEmpty, WIcon, WSkeleton, openMenu, toast } from '../ui'
+import { copyText } from '../ui/copy'
 import { ninjaIcon } from '../ui/game-icons'
 import { useLeagues } from '@/web/background/Leagues'
 import { useMarketCollector } from '../market/collector'
 import { latestSnapshots } from '../market/db'
-import { formatChaos } from '../market/analysis'
+import { formatAmount, formatChaos } from '../ui/format'
 import { isThin, itemKey } from '../market/types'
 import type { Snapshot } from '../market/types'
 import { DumpImporter } from './dumps'
@@ -379,7 +380,7 @@ function art (o: Opportunity) {
 
 function rowMenu (e: MouseEvent, o: Opportunity, isChangedNow: boolean) {
   openMenu(e, [
-    { label: 'Copy name', icon: 'far fa-copy', action: () => { navigator.clipboard.writeText(o.name).catch(() => {}) } },
+    { label: 'Copy name', icon: 'far fa-copy', action: () => { copyText(o.name) } },
     ...(isChangedNow
       ? []
       : [{
@@ -401,7 +402,7 @@ function label (o: Opportunity) {
 }
 function divOf (chaos: number) { return chaos / (snapshot.value?.divine || 1) }
 function fmt (chaos: number) { return formatChaos(chaos, snapshot.value?.divine ?? null) }
-function fmtDiv (div: number) { return `${div.toFixed(div >= 10 ? 0 : 1)} div` }
+function fmtDiv (div: number) { return `${formatAmount(div)} div` }
 </script>
 
 <style module>

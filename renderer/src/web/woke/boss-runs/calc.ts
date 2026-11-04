@@ -1,4 +1,5 @@
 import { VARIABLE_ITEMS } from './bosses'
+import { formatClock } from '../ui/format'
 import type { Boss, BossDrop } from './bosses'
 import type { PriceItem } from '../market/types'
 
@@ -285,9 +286,7 @@ export function luck (r: BossResult, runs = 4000): Luck {
 }
 
 export function formatRunTime (seconds: number): string {
-  const m = Math.floor(seconds / 60)
-  const s = Math.round(seconds % 60)
-  return `${m}:${String(s).padStart(2, '0')}`
+  return formatClock(Math.round(seconds) * 1000)
 }
 
 // Accepts "4:30", "4.5" (minutes) or "270s".

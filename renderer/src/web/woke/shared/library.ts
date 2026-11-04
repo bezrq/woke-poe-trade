@@ -48,3 +48,6 @@ export function str (value: unknown): string {
 export function strList (value: unknown): string[] {
   return Array.isArray(value) ? value.filter((t): t is string => typeof t === 'string') : []
 }
+
+// PoE's in-game search box accepts at most 250 characters (50 before 3.21).
+export const MAX_SEARCH_LENGTH = 250

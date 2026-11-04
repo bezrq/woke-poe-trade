@@ -1,20 +1,41 @@
-// Pinnacle boss arenas by area id (the "Generating level N area" line), the
-// ids Exile-UI's map tracker uses. Most are Map* ids, so without this list a
-// boss fight counted as a map in a farming session. Kept apart from zone.ts
-// so farming.ts can use it without the IPC import.
-export const BOSS_AREAS: Record<string, string[]> = {
-  mapworldsshapersrealm: ['shaper', 'uber-shaper'],
-  mapworldselderarena: [],
-  mapworldselderarenauber: ['uber-elder', 'uber-uber-elder'],
-  mapworldsprimordialboss1: [],
-  mapworldsprimordialboss2: [],
-  mapworldsprimordialboss3: ['exarch', 'uber-exarch'],
-  mapworldsprimordialboss4: ['eater', 'uber-eater'],
-  mavenboss: ['maven', 'uber-maven'],
-  mavenhub: ['feared'],
-  atlasexilesboss5: ['uber-sirus'],
-  synthesis_mapboss: ['uber-cortex']
+// Pinnacle boss arenas: one table by area id (the "Generating level N area"
+// line, the ids Exile-UI's map tracker uses) and by the "You have entered"
+// name, with the Boss runs entries each can hold. Most area ids are Map*
+// ids, so without this a boss fight counted as a map in a farming session.
+// No IPC imports, so farming.ts can use it. Add a row (or a name) when a
+// fight isn't recognised. bosses [] = a boss fight with no Boss runs entry.
+interface Arena {
+  areaIds: string[]
+  names: string[]
+  bosses: string[]
 }
+
+const ARENAS: Arena[] = [
+  { areaIds: ['MapWorldsShapersRealm'], names: ["The Shaper's Realm"], bosses: ['shaper', 'uber-shaper'] },
+  { areaIds: ['MapWorldsElderArena'], names: [], bosses: [] },
+  { areaIds: ['MapWorldsElderArenaUber'], names: ['Absence of Value and Meaning'], bosses: ['uber-elder', 'uber-uber-elder'] },
+  { areaIds: ['MapWorldsPrimordialBoss1'], names: [], bosses: [] },
+  { areaIds: ['MapWorldsPrimordialBoss2'], names: [], bosses: [] },
+  { areaIds: ['MapWorldsPrimordialBoss3'], names: ['Absence of Patience and Wisdom'], bosses: ['exarch', 'uber-exarch'] },
+  { areaIds: ['MapWorldsPrimordialBoss4'], names: ['Absence of Symmetry and Harmony'], bosses: ['eater', 'uber-eater'] },
+  // The Maven's own fight.
+  { areaIds: ['MavenBoss'], names: ['Absence of Mercy and Empathy'], bosses: ['maven', 'uber-maven'] },
+  // Maven's Invitations, not the Maven fight.
+  { areaIds: ['MavenHub'], names: ["The Maven's Crucible"], bosses: ['feared'] },
+  { areaIds: ['AtlasExilesBoss5'], names: ['Eye of the Storm'], bosses: ['uber-sirus'] },
+  { areaIds: ['Synthesis_MapBoss'], names: ['Cortex'], bosses: ['uber-cortex'] },
+  { areaIds: [], names: ['The Feared'], bosses: ['feared'] },
+  // The Infinite Hunger and The Black Star.
+  { areaIds: [], names: ['Seething Chyme', 'Polaric Void'], bosses: [] }
+]
+
+// By lower-cased area id.
+export const BOSS_AREAS: Record<string, string[]> = Object.fromEntries(
+  ARENAS.flatMap(a => a.areaIds.map(id => [id.toLowerCase(), a.bosses])))
+
+// By "You have entered" name.
+export const BOSS_ARENAS: Record<string, string[]> = Object.fromEntries(
+  ARENAS.flatMap(a => a.names.map(n => [n, a.bosses])))
 
 export function bossAreaIds (areaId: string): string[] | undefined {
   return BOSS_AREAS[areaId.toLowerCase()]

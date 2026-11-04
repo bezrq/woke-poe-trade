@@ -100,7 +100,8 @@ import type { Offer, TradeBook, TradeRecord } from './book'
 import { DEFAULT_REPLIES, parseHotkeyTarget, replyText } from './widget'
 import type { ReplyId } from './widget'
 import { offerLabel, parseTradeLine, priceLabel } from './whispers'
-import { bulkDelta, formatValue, priceChaos } from './value'
+import { bulkDelta, priceChaos } from './value'
+import { formatChaos } from '../ui/format'
 import { tradeTotals, tradesInRange, useTradeLog } from './log-store'
 
 const props = defineProps<{
@@ -140,7 +141,7 @@ const px = computed(() => {
 function valueText (o: Offer): string | null {
   const c = priceChaos(o.price, px.value)
   if (c == null) return null
-  const text = formatValue(c, divine.value)
+  const text = formatChaos(c, divine.value)
   // "120 div" next to a price of "120 div" says nothing.
   return text === priceLabel(o.price) ? null : text
 }
@@ -360,7 +361,7 @@ const today = computed(() => tradeTotals(tradesInRange(leagueTrades.value, 'toda
 const league = computed(() => tradeTotals(leagueTrades.value))
 const net = (t: { sold: number, spent: number }) => t.sold - t.spent
 function money (chaos: number): string {
-  return formatValue(chaos, divine.value) || '0 c'
+  return formatChaos(chaos, divine.value)
 }
 function signed (chaos: number): string {
   return `${chaos >= 0 ? '+' : '−'}${money(Math.abs(chaos))}`

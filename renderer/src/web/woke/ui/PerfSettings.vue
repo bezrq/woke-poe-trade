@@ -91,6 +91,7 @@ export default {
 </script>
 
 <script setup lang="ts">
+import { useCopy } from './copy'
 import { computed, onUnmounted, shallowRef, watch } from 'vue'
 import { hostRequest } from '../shared/host'
 import { rendererPerf } from '../shared/perf'
@@ -117,7 +118,7 @@ watch(advanced, v => { try { localStorage.setItem(ADVANCED_KEY, v ? '1' : '0') }
 const main = shallowRef<MainPerf | null>(null)
 const renderer = shallowRef(rendererPerf())
 const error = shallowRef('')
-const copied = shallowRef(false)
+const { copied, copy } = useCopy(1500)
 
 async function refresh () {
   renderer.value = rendererPerf()
@@ -198,13 +199,7 @@ function reportText () {
 }
 
 async function copyReport () {
-  try {
-    await navigator.clipboard.writeText(reportText())
-    copied.value = true
-    setTimeout(() => { copied.value = false }, 1500)
-  } catch (err) {
-    error.value = `Copy failed: ${String(err)}`
-  }
+  if (!await copy(reportText())) error.value = 'Copy failed: the clipboard refused it'
 }
 </script>
 

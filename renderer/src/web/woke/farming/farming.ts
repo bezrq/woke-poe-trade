@@ -259,14 +259,6 @@ export function maybeAutoPause (s: FarmingSession, now: number): boolean {
   return true
 }
 
-export function formatHms (ms: number): string {
-  const s = Math.floor(ms / 1000)
-  const h = Math.floor(s / 3600)
-  const m = Math.floor((s % 3600) / 60)
-  const sec = s % 60
-  return `${h}:${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`
-}
-
 // --- Map runs (for Session analytics) ---
 
 export function currentRun (s: FarmingSession): LiveRun | null {

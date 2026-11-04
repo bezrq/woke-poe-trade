@@ -4,7 +4,9 @@ import { effectScope, shallowReactive } from 'vue'
 import { actFromAreaId, isTownLike } from '../campaign/log-parse'
 import type { LogEvent } from '../campaign/log-parse'
 import { followGameLog } from './game-log'
-import { bossAreaIds } from './boss-areas'
+import { BOSS_ARENAS, bossAreaIds } from './boss-areas'
+
+export { BOSS_ARENAS }
 
 export type ZoneKind = 'campaign' | 'town' | 'hideout' | 'map' | 'lab' | 'boss' | 'other'
 
@@ -16,27 +18,6 @@ export interface ZoneState {
   kind: ZoneKind | null
   // When the current instance was generated (ms), 0 if unknown.
   enteredAt: number
-}
-
-// Pinnacle boss arenas by their "You have entered" name, next to the area
-// ids in boss-areas.ts (pairs as Client.txt logs them, e.g.
-// MapWorldsPrimordialBoss3 -> "Absence of Patience and Wisdom"). Add names
-// here when a fight isn't recognised. [] = a boss fight with no boss runs entry.
-export const BOSS_ARENAS: Record<string, string[]> = {
-  "The Shaper's Realm": ['shaper', 'uber-shaper'],
-  'Absence of Value and Meaning': ['uber-elder', 'uber-uber-elder'],
-  'Eye of the Storm': ['uber-sirus'],
-  // The Maven's own fight (MavenBoss).
-  'Absence of Mercy and Empathy': ['maven', 'uber-maven'],
-  // Maven's Invitations (MavenHub), not the Maven fight.
-  "The Maven's Crucible": ['feared'],
-  'Absence of Patience and Wisdom': ['exarch', 'uber-exarch'],
-  'Absence of Symmetry and Harmony': ['eater', 'uber-eater'],
-  // The Infinite Hunger and The Black Star.
-  'Seething Chyme': [],
-  'Polaric Void': [],
-  'Cortex': ['uber-cortex'],
-  'The Feared': ['feared']
 }
 
 const LAB_ZONES = new Set(["Aspirants' Plaza", "Aspirant's Trial"])

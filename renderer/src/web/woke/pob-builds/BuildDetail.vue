@@ -155,6 +155,7 @@
 <script setup lang="ts">
 import { computed, shallowRef, watch } from 'vue'
 import { WPanel, WButton, WEmpty, WTabs, WChip, WKbd, toast } from '../ui'
+import { useCopy } from '../ui/copy'
 import { SAVE_MESSAGE, saveToRegexLibrary } from '../regex-library/save'
 import { AppConfig, saveConfig } from '@/web/Config'
 import { useLeagues } from '@/web/background/Leagues'
@@ -257,16 +258,10 @@ const regex = computed(() => socketRegex(mainColours.value))
 
 watch(() => props.entry.relPath, () => { viewSet.value = null; viewItemSet.value = null })
 
-const copied = shallowRef(false)
+const { copied, copy } = useCopy(1500)
 async function copyRegex () {
   if (!regex.value) return
-  try {
-    await navigator.clipboard.writeText(regex.value.regex)
-    copied.value = true
-    setTimeout(() => { copied.value = false }, 1500)
-  } catch (err) {
-    error.value = `Couldn't copy: ${(err as Error).message}`
-  }
+  if (!await copy(regex.value.regex)) error.value = "Couldn't copy to the clipboard"
 }
 
 function socketDots (sockets: string): GemColour[][] {

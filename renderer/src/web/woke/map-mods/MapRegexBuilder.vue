@@ -92,6 +92,7 @@ import { computed, shallowRef, watch } from 'vue'
 import { MainProcess } from '@/web/background/IPC'
 import { pushHostConfig } from '@/web/Config'
 import { WPanel, WButton, WChip, WField, WSegmented, WSelect, WTabs, WEmpty, toast } from '../ui'
+import { useCopy } from '../ui/copy'
 import { SAVE_MESSAGE, saveToRegexLibrary } from '../regex-library/save'
 import { PRESETS, applyPreset, nextPresetRating, presetRating, shortLabel, withRating } from './rules'
 import type { MapModPreset, ModRating } from './rules'
@@ -230,13 +231,9 @@ function setMin (key: MinStat, value: string | number) {
   profile.value.mins = { ...profile.value.mins, [key]: n > 0 ? Math.min(999, Math.floor(n)) : undefined }
 }
 
-const copied = shallowRef(false)
+const { copied, copy: copyText } = useCopy(1200)
 async function copy () {
-  try {
-    await navigator.clipboard.writeText(regex.value.text)
-    copied.value = true
-    setTimeout(() => { copied.value = false }, 1200)
-  } catch {}
+  await copyText(regex.value.text)
 }
 
 function saveToLibrary () {

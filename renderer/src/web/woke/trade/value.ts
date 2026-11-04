@@ -22,9 +22,3 @@ export function bulkDelta (o: { bulk: boolean, item: string, qty: number, price:
   if (paid == null || one == null || one <= 0 || o.qty <= 0) return null
   return paid / (one * o.qty) - 1
 }
-
-export function formatValue (chaos: number | null, divine: number | null): string {
-  if (chaos == null) return ''
-  if (divine && Math.abs(chaos) >= divine) return `${+(chaos / divine).toFixed(1)} div`
-  return `${Math.round(chaos)} c`
-}

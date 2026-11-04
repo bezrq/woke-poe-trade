@@ -80,9 +80,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onUnmounted, shallowRef, toRef, watch } from 'vue'
+import { computed, onUnmounted, toRef, watch } from 'vue'
 import { ParsedItem } from '@/parser'
 import { WPrice, WSpark } from '../ui'
+import { useCopy } from '../ui/copy'
 import NinjaLine from './NinjaLine.vue'
 import PriceStrip from './PriceStrip.vue'
 import PriceHistoryChart from './PriceHistoryChart.vue'
@@ -192,15 +193,9 @@ const notes = computed(() => {
   ]
 })
 
-const copied = shallowRef<string | null>(null)
-let copiedTimer: ReturnType<typeof setTimeout> | undefined
+const { copied, copy: copyText } = useCopy(1500)
 async function copy (n: { key: string, text: string }) {
-  try {
-    await navigator.clipboard.writeText(n.text)
-    copied.value = n.key
-    clearTimeout(copiedTimer)
-    copiedTimer = setTimeout(() => { copied.value = null }, 1500)
-  } catch {}
+  await copyText(n.text, n.key)
 }
 </script>
 

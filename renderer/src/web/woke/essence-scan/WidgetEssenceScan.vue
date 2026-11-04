@@ -101,6 +101,7 @@ import { computed, inject, onUnmounted, shallowRef } from 'vue'
 import { MainProcess } from '@/web/background/IPC'
 import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
+import { formatChaos } from '../ui/format'
 import { WPanel, WButton, WEmpty, WKbd, WPrice, toast } from '../ui'
 import { hostRequest } from '../shared/host'
 import DockItem from '../dock/DockItem.vue'
@@ -166,7 +167,7 @@ function rate (lines: string[]): PricedMonolith | null {
 }
 
 function fmt (c: number) {
-  return `${c >= 10 ? Math.round(c) : c.toFixed(1)}c`
+  return formatChaos(c, null)
 }
 
 function estimateTitle (r: PricedMonolith) {

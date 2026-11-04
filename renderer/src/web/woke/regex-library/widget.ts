@@ -5,8 +5,7 @@ export { groupByCategory } from '../shared/library'
 
 export const REGEX_LIBRARY_TYPE = 'woke-regex-library'
 
-// PoE's in-game search box accepts at most 250 characters.
-export const MAX_SEARCH_LENGTH = 250
+export { MAX_SEARCH_LENGTH } from '../shared/library'
 
 export interface RegexEntry {
   id: number

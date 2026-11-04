@@ -2,6 +2,7 @@
 // set fit your level or act, the link colours you need, the gems to buy in
 // this town, and the facts the price check and the loot filter use.
 // Pure functions; no Vue, no app data imports.
+import { MAX_SEARCH_LENGTH } from '../shared/library'
 import { baseClass, CLASS_NAMES, gemData } from './gems'
 import type { GemColour, GemSource } from './gems'
 import type { PobDetails, PobGem, PobItem, PobItemSet, PobSkillGroup, PobSkillSet } from './widget'
@@ -134,10 +135,6 @@ function permutations (letters: string[]): string[] {
   return [...out]
 }
 
-// The game's search box takes at most 250 characters (it was 50 before 3.21),
-// like the map and regex library searches.
-export const SEARCH_LIMIT = 250
-
 function exactRegex (colours: GemColour[]): string | null {
   if (colours.some(c => c === 'w')) return null
   return permutations(colours).map(p => p.split('').join('-')).join('|')
@@ -166,7 +163,7 @@ export function socketRegex (colours: GemColour[]): SocketSearch | null {
   const top = Math.min(colours.length, 4)
   for (let n = top; n >= Math.min(3, top); n--) {
     const exact = exactRegex(colours.slice(0, n))
-    if (exact && exact.length <= SEARCH_LIMIT) return { regex: exact, size: n, exact: true }
+    if (exact && exact.length <= MAX_SEARCH_LENGTH) return { regex: exact, size: n, exact: true }
   }
   for (let n = top; n >= Math.min(3, top); n--) {
     const part = colours.slice(0, n)

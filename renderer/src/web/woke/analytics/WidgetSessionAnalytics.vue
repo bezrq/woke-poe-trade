@@ -224,9 +224,11 @@ export default {
 import { inject, computed, shallowRef, watch } from 'vue'
 import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
+import { formatDuration } from '../ui/format'
 import { AppConfig } from '@/web/Config'
 import { useLeagues } from '@/web/background/Leagues'
 import { WPanel, WTabs, WSegmented, WButton, WEmpty, WChip, WSpark, WIcon, WBanner, WSkeleton, openMenu, toast } from '../ui'
+import { copyText } from '../ui/copy'
 import { ninjaIcon } from '../ui/game-icons'
 import { usePriceIndex } from '../market/price-index'
 import { hostRequest } from '../shared/host'
@@ -239,7 +241,7 @@ import { tradeTotals, tradesInRange, useTradeLog } from '../trade/log-store'
 import { isModuleOn } from '../modules'
 import { useVisibleClock } from '../shared/visible-clock'
 import {
-  MIN_UNITS_FOR_RANGE, buildRow, chanceBetter, exportRows, filterSessions, formatDuration, formatSessionDate,
+  MIN_UNITS_FOR_RANGE, buildRow, chanceBetter, exportRows, filterSessions, formatSessionDate,
   inRange, isBigDrop, mapTileRows, perHour, rateFor, runProfit, sessionTotals, sessionUnits, sortRows, strategyRows
 } from './stats'
 import type { StrategyRow, Unit } from './stats'
@@ -492,7 +494,7 @@ function sessionMenu (e: MouseEvent, s: SessionRecord) {
 function strategyMenu (e: MouseEvent, row: StrategyRow) {
   openMenu(e, [
     ...(row.kind === 'maps' ? [{ label: 'Sessions', icon: 'fas fa-history', action: () => openSessionsFor(row.strategy) }] : []),
-    { label: 'Copy name', icon: 'far fa-copy', action: () => { navigator.clipboard.writeText(row.strategy).catch(() => {}) } }
+    { label: 'Copy name', icon: 'far fa-copy', action: () => { copyText(row.strategy) } }
   ])
 }
 

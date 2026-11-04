@@ -82,10 +82,3 @@ export function msUntilLabReset (now: number): number {
   const DAY = 24 * 60 * 60 * 1000
   return DAY - (now % DAY)
 }
-
-export function formatDuration (ms: number): string {
-  const totalMin = Math.max(0, Math.floor(ms / 60000))
-  const h = Math.floor(totalMin / 60)
-  const m = totalMin % 60
-  return h ? `${h}h ${m}m` : `${m}m`
-}

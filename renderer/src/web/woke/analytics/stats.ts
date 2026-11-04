@@ -288,12 +288,6 @@ export function isBigDrop (run: MapRun, s: SessionRecord): boolean {
   return value >= floor && value > Math.max(typical, 1) * 8
 }
 
-export function formatDuration (ms: number): string {
-  const m = Math.round(ms / 60_000)
-  if (m < 60) return `${m}m`
-  return `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, '0')}m`
-}
-
 export function formatSessionDate (ts: number): string {
   const d = new Date(ts)
   const day = d.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' }).replace(/,/g, '')

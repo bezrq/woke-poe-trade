@@ -95,6 +95,7 @@ import { AppConfig, pushHostConfig } from '@/web/Config'
 import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
 import { WPanel, WField, WChip, WKbd, WEmpty, WListItem, WButton, openMenu, toast } from '../ui'
+import { copyText } from '../ui/copy'
 import DockItem from '../dock/DockItem.vue'
 import { hideWhilePlaying } from '../dock/dock'
 import { useLeagues } from '@/web/background/Leagues'
@@ -248,9 +249,7 @@ onUnmounted(() => { hotkeyController.abort() })
 const panel = shallowRef<InstanceType<typeof WPanel> | null>(null)
 
 function copyLink (entry: TradeSearchEntry) {
-  navigator.clipboard.writeText(urlFor(entry))
-    .then(() => toast('Copied the trade link', { anchor: panel.value?.el, ms: 1800 }))
-    .catch(() => {})
+  copyText(urlFor(entry)).then(ok => { if (ok) toast('Copied the trade link', { anchor: panel.value?.el, ms: 1800 }) })
 }
 
 // No "are you sure": remove now, offer Undo (P9).

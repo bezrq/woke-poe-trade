@@ -25,10 +25,10 @@
           <div v-else class="w-dim">Route finished. Good luck in maps.</div>
           <div v-if="note" :class="$style.callout" class="whitespace-pre-wrap">{{ note }}</div>
           <div v-if="timer" class="flex gap-2 w-num" :class="$style.build">
-            <span class="w-dim">Run</span> {{ formatRunTime(timer.total) }}
+            <span class="w-dim">Run</span> {{ formatClock(timer.total) }}
             <span v-if="timer.delta != null" :class="timer.delta <= 0 ? 'w-up' : 'w-down'">{{ formatDelta(timer.delta) }}</span>
             <span v-if="timer.paused" style="color: var(--w-warn);">paused</span>
-            <span v-if="timer.act" class="ml-auto w-dim">act {{ formatRunTime(timer.act) }}</span>
+            <span v-if="timer.act" class="ml-auto w-dim">act {{ formatClock(timer.act) }}</span>
           </div>
           <CampaignBuild :config="config" :show-tree="false" :max-links="1" />
         </div>
@@ -63,7 +63,7 @@
           </template>
           <template v-if="timer">
             <span :class="$style.sep" />
-            <span><span :class="$style.k">Run</span> <span class="w-num">{{ formatRunTime(timer.total) }}</span></span>
+            <span><span :class="$style.k">Run</span> <span class="w-num">{{ formatClock(timer.total) }}</span></span>
             <span v-if="timer.delta != null" class="w-num" :class="timer.delta <= 0 ? 'w-up' : 'w-down'">{{ formatDelta(timer.delta) }}</span>
             <span v-if="timer.paused" class="w-num" style="color: var(--w-warn);">paused</span>
           </template>
@@ -135,6 +135,7 @@ import { MainProcess } from '@/web/background/IPC'
 import { AppConfig, saveConfig } from '@/web/Config'
 import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
+import { formatClock } from '../ui/format'
 import { useVisibleClock } from '../shared/visible-clock'
 import RouteParts from './RouteParts.vue'
 import DockItem from '../dock/DockItem.vue'
@@ -151,7 +152,7 @@ import { bundledRoute, routeData } from './route-data'
 import { followGameLog } from '../shared/game-log'
 import type { LogLine } from '../shared/game-log'
 import {
-  RUN_TIMER_TYPE, comparisonRun, formatDelta, formatRunTime, headlineDelta, runElapsed, splitRows
+  RUN_TIMER_TYPE, comparisonRun, formatDelta, headlineDelta, runElapsed, splitRows
 } from './run-timer'
 import type { RunTimerWidget } from './run-timer'
 import { isWidgetTypeOn } from '../modules'
