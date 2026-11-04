@@ -15,6 +15,7 @@
     </div>
     <FullscreenImage v-if="image"
       :class="$style.screenshot" :src="image" />
+    <WokeMapStrip :item="item" class="m-2" />
     <div :class="$style.body">
       <div v-if="item.mapArea && MEMORY_MAPS.includes(item.mapArea.refName)"
         :class="$style.mavenReminder">
@@ -47,6 +48,7 @@ import { prepareMapStat } from './prepare-map-stats'
 import { type MapCheckConfig, isOutdated } from './common.js'
 
 import MapStatButton from './MapStatButton.vue'
+import WokeMapStrip from '@/web/woke/map-mods/MapModStrip.vue'
 import FullscreenImage from '@/web/ui/FullscreenImage.vue'
 
 const props = defineProps<{

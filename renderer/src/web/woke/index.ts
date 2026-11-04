@@ -33,6 +33,9 @@ import WidgetLab from './lab/WidgetLab.vue'
 import LabEditor from './lab/lab-editor.vue'
 import { LAB_TYPE } from './lab/lab'
 import WidgetFarming from './farming/WidgetFarming.vue'
+import WidgetMapMods from './map-mods/WidgetMapMods.vue'
+import MapModsEditor from './map-mods/map-mods-editor.vue'
+import { MAP_MODS_TYPE } from './map-mods/widget'
 import WidgetLabGems from './lab-gems/WidgetLabGems.vue'
 import WidgetLeagueInvest from './league-invest/WidgetLeagueInvest.vue'
 import WidgetBossRuns from './boss-runs/WidgetBossRuns.vue'
@@ -49,6 +52,7 @@ export const wokeWidgets: WidgetComponent[] = [
   WidgetAtlas as unknown as WidgetComponent,
   WidgetLab as unknown as WidgetComponent,
   WidgetFarming as unknown as WidgetComponent,
+  WidgetMapMods as unknown as WidgetComponent,
   WidgetLabGems as unknown as WidgetComponent,
   WidgetLeagueInvest as unknown as WidgetComponent,
   WidgetBossRuns as unknown as WidgetComponent
@@ -61,7 +65,8 @@ const editors: Record<string, Component> = {
   [CAMPAIGN_TYPE]: CampaignEditor,
   [RUN_TIMER_TYPE]: RunTimerEditor,
   [ATLAS_TYPE]: AtlasEditor,
-  [LAB_TYPE]: LabEditor
+  [LAB_TYPE]: LabEditor,
+  [MAP_MODS_TYPE]: MapModsEditor
 }
 
 export function wokeSettingsFor (wmType: string | undefined): Component | undefined {

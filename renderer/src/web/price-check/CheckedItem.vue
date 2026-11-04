@@ -1,5 +1,6 @@
 <template>
   <div v-if="show" class="p-4 layout-column min-h-0">
+    <woke-map-strip :item="item" class="mb-2" />
     <filter-name
       :filters="itemFilters"
       :item="item" />
@@ -67,6 +68,7 @@ import PricePrediction from './price-prediction/PricePrediction.vue'
 import StackValue from './expected-value/StackValue.vue'
 import DustValue from './expected-value/DustValue.vue'
 import FilterName from './filters/FilterName.vue'
+import WokeMapStrip from '@/web/woke/map-mods/MapModStrip.vue'
 import { CATEGORY_TO_TRADE_ID, createTradeRequest } from './trade/pathofexile-trade'
 import { AppConfig } from '@/web/Config'
 import { FilterPreset } from './filters/interfaces'
@@ -78,6 +80,7 @@ let _showSupportLinksCounter = 0
 export default defineComponent({
   name: 'CheckedItem',
   components: {
+    WokeMapStrip,
     PricePrediction,
     TradeListing,
     TradeBulk,
