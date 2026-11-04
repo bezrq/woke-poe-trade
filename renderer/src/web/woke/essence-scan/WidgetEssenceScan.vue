@@ -15,7 +15,7 @@
         <div v-if="config.hotkey" class="w-faint text-xs px-3 py-1"><WKbd :keys="config.hotkey" /> to stop</div>
       </template>
     </DockItem>
-    <WPanel :title="config.wmTitle || 'Essence scan'" icon="essence" width="19rem">
+    <WPanel ref="panel" :title="config.wmTitle || 'Essence scan'" icon="essence" width="19rem">
       <template #actions>
         <button type="button" class="w-icon-btn" title="Read every essence on screen once" @click="readOnce"><i class="fas fa-expand" /></button>
         <span :class="[$style.led, { [$style.on]: running }]" />
@@ -36,7 +36,7 @@
       </WEmpty>
       <template #footer>
         <span class="flex-1 w-trunc">{{ entries.length }} read · flag {{ flagText }}</span>
-        <button v-if="entries.length" type="button" class="w-icon-btn" title="Clear" @click="clear"><i class="fas fa-eraser" /></button>
+        <button v-if="entries.length" type="button" class="w-icon-btn" title="Clear (Undo in the note)" @click="clear"><i class="fas fa-eraser" /></button>
       </template>
     </WPanel>
     <Teleport to="body">
@@ -101,7 +101,7 @@ import { computed, inject, onUnmounted, shallowRef } from 'vue'
 import { MainProcess } from '@/web/background/IPC'
 import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
-import { WPanel, WButton, WEmpty, WKbd, WPrice } from '../ui'
+import { WPanel, WButton, WEmpty, WKbd, WPrice, toast } from '../ui'
 import { hostRequest } from '../shared/host'
 import DockItem from '../dock/DockItem.vue'
 import { mechanicIcon } from '../ui/game-icons'
@@ -288,11 +288,14 @@ async function toggle () {
   }
 }
 
+const panel = shallowRef<InstanceType<typeof WPanel> | null>(null)
 function clear () {
+  const before = { entries: entries.value, seen: seenCorrupt.value }
   entries.value = []
   seenCorrupt.value = new Set()
   current.value = null
   hostRequest('essence-scan-reread', null).catch(() => {})
+  toast('Scan list cleared', { anchor: panel.value?.el, undo: () => { entries.value = before.entries; seenCorrupt.value = before.seen } })
 }
 
 const hotkeys = MainProcess.onEvent('MAIN->CLIENT::widget-action', (e) => {

@@ -19,12 +19,13 @@
         </div>
       </template>
     </DockItem>
-    <WPanel :title="config.wmTitle || 'Farming profit'" icon="chaos" width="27rem">
+    <WPanel ref="panel" :title="config.wmTitle || 'Farming profit'" icon="chaos" width="27rem"
+      :updated="prices.snapshot.value?.ts ?? null" :fresh-min="40" :stale-min="180">
       <template #tabs>
         <WTabs v-model="tab" :options="tabs.map(t => ({ value: t.id, label: t.label }))" />
       </template>
-      <template v-if="!prices.snapshot.value" #meta>
-        <span style="color: var(--w-warn);"><i class="fas fa-exclamation-triangle" /> Waiting for poe.ninja prices. They load on their own within a minute or two.</span>
+      <template v-if="!prices.snapshot.value" #banner>
+        <WBanner tone="info">Waiting for poe.ninja prices. They load on their own within a minute or two.</WBanner>
       </template>
 
       <div class="flex flex-col gap-2 py-2" style="padding-left: var(--w-pad); padding-right: var(--w-pad);">
@@ -91,14 +92,14 @@
               <WField v-model="lootQuery" icon="fas fa-plus" placeholder="Add loot… (e.g. Divine Orb)" class="w-full" />
               <div v-if="lootResults.length" class="w-surface absolute left-0 right-0 z-10 mt-1 py-1">
                 <button v-for="item in lootResults" :key="key(item)" @click="addLoot(item)" class="w-row w-full text-left" style="grid-template-columns: minmax(0,1fr) auto;">
-                  <span class="w-trunc">{{ item.name }}<span v-if="item.variant" class="w-dim ml-1">{{ item.variant }}</span></span>
+                  <span class="w-trunc flex items-center gap-1"><WIcon :src="art(item)" fallback="fas fa-coins" />{{ item.name }}<span v-if="item.variant" class="w-dim ml-1">{{ item.variant }}</span></span>
                   <span class="w-dim w-num text-xs">{{ fmt(item.chaos) }}</span>
                 </button>
               </div>
             </div>
             <div>
               <div v-for="line in s.loot" :key="key(line)" class="w-row px-0" :class="$style.lineGrid">
-                <span class="w-trunc">{{ line.name }}<span v-if="line.variant" class="w-dim ml-1">{{ line.variant }}</span></span>
+                <span class="w-trunc flex items-center gap-1"><WIcon :src="art(line)" fallback="fas fa-coins" />{{ line.name }}<span v-if="line.variant" class="w-dim ml-1">{{ line.variant }}</span></span>
                 <button class="w-icon-btn" @click="changeQty(line, -1)"><i class="fas fa-minus text-xs" /></button>
                 <span class="text-center w-num">{{ line.qty }}</span>
                 <button class="w-icon-btn" @click="changeQty(line, 1)"><i class="fas fa-plus text-xs" /></button>
@@ -119,17 +120,17 @@
             <WField v-model="costQuery" icon="fas fa-plus" placeholder="Add an input…" class="w-full" />
             <div v-if="costResults.length" class="w-surface absolute left-0 right-0 z-10 mt-1 py-1">
               <button v-for="item in costResults" :key="key(item)" @click="addCost(item)" class="w-row w-full text-left" style="grid-template-columns: minmax(0,1fr) auto;">
-                <span class="w-trunc">{{ item.name }}<span v-if="item.variant" class="w-dim ml-1">{{ item.variant }}</span></span>
+                <span class="w-trunc flex items-center gap-1"><WIcon :src="art(item)" fallback="fas fa-coins" />{{ item.name }}<span v-if="item.variant" class="w-dim ml-1">{{ item.variant }}</span></span>
                 <span class="w-dim w-num text-xs">{{ fmt(item.chaos) }}</span>
               </button>
             </div>
           </div>
           <div>
             <div v-for="line in config.costs" :key="key(line)" class="w-row px-0" :class="$style.costGrid">
-              <span class="w-trunc">{{ line.name }}<span v-if="line.variant" class="w-dim ml-1">{{ line.variant }}</span></span>
+              <span class="w-trunc flex items-center gap-1"><WIcon :src="art(line)" fallback="fas fa-coins" />{{ line.name }}<span v-if="line.variant" class="w-dim ml-1">{{ line.variant }}</span></span>
               <input v-model.number="line.qty" type="number" min="0" step="1" :class="$style.input" class="w-full">
               <span class="text-right w-dim w-num">{{ linePrice(line) }}</span>
-              <button class="w-icon-btn" @click="removeCost(line)" title="Remove"><i class="fas fa-times" /></button>
+              <button class="w-icon-btn" @click="removeCost(line)" title="Remove (Undo in the note)"><i class="fas fa-times" /></button>
             </div>
             <div class="pt-2 flex justify-between"><span class="w-dim">Per map</span><span class="w-num w-accent">{{ fmt(costPerMap) }}</span></div>
           </div>
@@ -149,7 +150,7 @@
               <span class="text-right w-num" :class="row.perHour >= 0 ? 'w-up' : 'w-down'">{{ fmt(row.perHour) }}</span>
               <span class="text-right w-num">{{ fmt(row.perMap) }}</span>
             </div>
-            <WButton variant="danger" size="sm" class="mt-2" @click="clearHistory">Clear history</WButton>
+            <WButton variant="ghost" size="sm" icon="fas fa-trash" class="mt-2" title="Undo in the note" @click="clearHistory">Clear history</WButton>
           </div>
         </template>
       </div>
@@ -179,7 +180,8 @@ import { AppConfig, saveConfig } from '@/web/Config'
 import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
 import UiCheckbox from '@/web/ui/UiCheckbox.vue'
-import { WPanel, WTabs, WField, WButton, WEmpty, WKbd } from '../ui'
+import { WPanel, WTabs, WField, WButton, WEmpty, WKbd, WIcon, WBanner, toast } from '../ui'
+import { ninjaIcon } from '../ui/game-icons'
 import { MainProcess } from '@/web/background/IPC'
 import { parseClipboard } from '@/parser'
 import { usePriceIndex } from '../market/price-index'
@@ -433,8 +435,14 @@ function end () {
   tab.value = 'history'
 }
 
+const panel = shallowRef<InstanceType<typeof WPanel> | null>(null)
+function art (x: { type: string, name: string }) { return ninjaIcon(x.type, x.name) ?? undefined }
+
+// No "are you sure": clear now, offer Undo (P9).
 function clearHistory () {
+  const before = props.config.history
   props.config.history = []
+  toast('History cleared', { anchor: panel.value?.el, undo: () => { props.config.history = before } })
 }
 
 function addLoot (item: PriceItem) {
@@ -460,7 +468,9 @@ function addCost (item: PriceItem) {
 }
 
 function removeCost (line: CostLine) {
-  props.config.costs = props.config.costs.filter(c => c !== line)
+  const before = props.config.costs
+  props.config.costs = before.filter(c => c !== line)
+  toast(`Removed ${line.name}`, { anchor: panel.value?.el, undo: () => { props.config.costs = before } })
 }
 
 // Zone changes: count newly generated maps, book map vs other time, and
