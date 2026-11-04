@@ -40,6 +40,26 @@ describe('drop pile', () => {
     expect(new Set(decks.map(d => d.facts.itemClass))).toEqual(new Set(['Stackable Currency']))
   })
 
+  // Every drop is an item the game still has (APT's item data; shards and
+  // maps aren't listed there), with its real size.
+  it('drops only real items, at their real size', () => {
+    const data = new Map<string, { w?: number, h?: number }>()
+    for (const line of fs.readFileSync(path.join(__dirname, '../../public/data/en/items.ndjson'), 'utf8').split('\n')) {
+      if (!line) continue
+      const item = JSON.parse(line) as { name: string, namespace: string, w?: number, h?: number }
+      if (item.namespace !== 'AREA' && !data.has(item.name)) data.set(item.name, item)
+    }
+    const wrong = new Set<string>()
+    for (const d of rollDrops(83, 7, 5000).concat(rollDrops(40, 7, 3000))) {
+      const f = d.facts
+      if (f.itemClass === 'Maps' || f.baseType === 'Transmutation Shard') continue
+      const item = data.get(f.baseType!)
+      if (!item) wrong.add(`${f.baseType}: not in the game`)
+      else if (item.w && (item.w !== f.width || (item.h ?? 1) !== f.height)) wrong.add(`${f.baseType}: ${f.width}x${f.height}, is ${item.w}x${item.h ?? 1}`)
+    }
+    expect([...wrong]).toEqual([])
+  })
+
   it('drops what the area level allows', () => {
     const acts = rollDrops(45, 3, 400)
     expect(acts.some(d => d.facts.itemClass === 'Maps')).toBe(false)
