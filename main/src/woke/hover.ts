@@ -64,6 +64,9 @@ export class WokeHoverTracker {
   }
 
   private readonly handleMouseMove = (e: UiohookMouseEvent) => {
+    // Something handed focus back to the game (a trade reply typed into
+    // chat): resting on the zone again makes it clickable again.
+    if (this.activatedByUs && !this.overlay.isInteractable) this.activatedByUs = false
     let inActivateZone = false
     for (const zone of this.flat) {
       const inside = contains(zone.rect, e.x, e.y)

@@ -32,6 +32,7 @@ import WidgetLeagueInvest from './league-invest/WidgetLeagueInvest.vue'
 import WidgetBossRuns from './boss-runs/WidgetBossRuns.vue'
 import WidgetLootFilter from './loot-filter/WidgetLootFilter.vue'
 import WidgetSessionAnalytics from './analytics/WidgetSessionAnalytics.vue'
+import WidgetTrade from './trade/WidgetTrade.vue'
 
 type WidgetComponent = Component & { widget: WidgetSpec }
 
@@ -54,7 +55,8 @@ export const wokeWidgets: WidgetComponent[] = [
   WidgetLeagueInvest as unknown as WidgetComponent,
   WidgetBossRuns as unknown as WidgetComponent,
   WidgetLootFilter as unknown as WidgetComponent,
-  WidgetSessionAnalytics as unknown as WidgetComponent
+  WidgetSessionAnalytics as unknown as WidgetComponent,
+  WidgetTrade as unknown as WidgetComponent
 ]
 
 export { wokeSettingsFor } from './editors'

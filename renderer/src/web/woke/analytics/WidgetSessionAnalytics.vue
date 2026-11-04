@@ -88,6 +88,13 @@
               <div v-if="selectedRow.kind === 'boss'" class="text-xs w-faint">From your Boss runs kill log at today's prices, with your run time from there.</div>
             </div>
           </template>
+          <!-- Trading (from the trade assistant's sales log) -->
+          <div v-if="trading" :class="$style.trading" data-analytics="trading">
+            <span class="w-accent font-medium"><i class="fas fa-handshake mr-1" />Trading</span>
+            <span class="w-dim">sold <span class="w-num w-up">{{ num(trading.sold) }}</span> ({{ trading.sales }})</span>
+            <span class="w-dim">spent <span class="w-num w-down">{{ num(trading.spent) }}</span> ({{ trading.buys }})</span>
+            <span class="ml-auto w-num" :class="trading.sold - trading.spent >= 0 ? 'w-up' : 'w-down'">{{ num(trading.sold - trading.spent, true) }} {{ unitLabel }}</span>
+          </div>
         </template>
 
         <!-- ===== Sessions (B1) ===== -->
@@ -228,6 +235,8 @@ import { BOSS_RUNS_TYPE } from '../boss-runs/widget'
 import type { BossRunsWidget } from '../boss-runs/widget'
 import { evaluateBoss, priceResolver } from '../boss-runs/calc'
 import { useSessionStore } from './store'
+import { tradeTotals, tradesInRange, useTradeLog } from '../trade/log-store'
+import { isModuleOn } from '../modules'
 import {
   MIN_UNITS_FOR_RANGE, buildRow, chanceBetter, exportRows, filterSessions, formatDuration, formatSessionDate,
   inRange, isBigDrop, mapTileRows, perHour, rateFor, runProfit, sessionTotals, sessionUnits, sortRows, strategyRows
@@ -267,6 +276,25 @@ store.load()
 
 const prices = usePriceIndex()
 const divineNow = computed(() => prices.snapshot.value?.divine ?? null)
+
+// Trading: sales and purchases from the trade assistant, in the same range.
+const tradeLog = useTradeLog()
+if (isModuleOn(AppConfig(), 'trade')) tradeLog.load()
+const trading = computed(() => {
+  const list = tradesInRange(tradeLog.trades.value, props.config.range, leagues.selectedId.value ?? '', now.value)
+  if (!list.length) return null
+  // Each trade at the divine rate it happened at (today's for old ones).
+  let sold = 0
+  let spent = 0
+  for (const t of list) {
+    const rate = props.config.unit === 'div' ? (t.divine ?? divineNow.value) : 1
+    if (!rate || t.chaos == null) continue
+    if (t.dir === 'sell') sold += t.chaos / rate
+    else spent += t.chaos / rate
+  }
+  const counts = tradeTotals(list)
+  return { sold, spent, sales: counts.sales, buys: counts.buys }
+})
 const leagues = useLeagues()
 const league = computed(() => leagues.selectedId.value ?? '')
 const unitLabel = computed(() => props.config.unit === 'div' ? 'div' : 'c')
@@ -542,4 +570,5 @@ const tiles = computed(() => mapTileRows(inView.value, props.config.unit, divine
   border-radius: var(--w-r-sm);
 }
 .input:focus { outline: none; border-color: var(--w-accent); }
+.trading { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; padding: 6px 0 2px; border-top: 1px solid var(--w-line); font-size: 12px; }
 </style>

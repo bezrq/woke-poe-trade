@@ -32,6 +32,7 @@ const ICONS: Record<string, string> = {
   'woke-lab': 'fa-dungeon',
   'woke-pob-builds': 'fa-diagram-project',
   'woke-trade-searches': 'fa-star',
+  'woke-trade': 'fa-handshake',
   'woke-regex-library': 'fa-code'
 }
 
