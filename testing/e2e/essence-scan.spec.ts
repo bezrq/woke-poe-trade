@@ -6,7 +6,7 @@ import { test, expect, FIXTURES, haveOcr } from './harness'
 
 test.skip(!haveOcr, 'OCR files missing: npm run get:ocr')
 
-test('Alt+E reads a monolith with Misery and Envy: CORRUPT, with the flagged essences', async ({ overlay }) => {
+test('Alt+E reads a monolith with Misery and Scorn: CORRUPT, with the flagged essences', async ({ overlay }) => {
   await overlay.boot({ widgets: [{ wmType: 'woke-essence-scan', wmWants: 'show' }] })
   await overlay.showScreen('screens/essence-monolith.png')
   const { cursor } = JSON.parse(fs.readFileSync(path.join(FIXTURES, 'screens/essence-monolith.json'), 'utf8'))
@@ -17,7 +17,7 @@ test('Alt+E reads a monolith with Misery and Envy: CORRUPT, with the flagged ess
   // and a dock icon counting monoliths worth corrupting.
   const card = overlay.page.getByText('CORRUPT', { exact: true }).filter({ visible: true })
   await expect(card).toBeVisible({ timeout: 20_000 })
-  for (const name of ['Misery', 'Greed', 'Envy']) {
+  for (const name of ['Misery', 'Rage', 'Scorn']) {
     await expect(overlay.page.locator('body')).toContainText(name)
   }
   await expect(overlay.dockIcon('essence-scan')).toContainText('1')

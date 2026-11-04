@@ -99,6 +99,10 @@ export async function readNeverSink (args: { version: string, style?: string, le
   return { text: await fs.readFile(file, 'utf8') }
 }
 
+export function compareVersions (a: string, b: string): number {
+  return a.localeCompare(b, 'en', { numeric: true, sensitivity: 'base' })
+}
+
 // Cached versions (newest first) with the styles each has.
 export async function cachedNeverSink (): Promise<Array<{ version: string, styles: string[] }>> {
   let versions: string[]
@@ -114,8 +118,10 @@ export async function cachedNeverSink (): Promise<Array<{ version: string, style
       out.push({ version, styles })
     } catch {}
   }
-  const key = (v: string) => v.split(/[.]/).map(p => p.padStart(6, '0')).join('.')
-  return out.sort((a, b) => key(b.version).localeCompare(key(a.version)))
+  // woke: numeric compare, so a hotfix letter sorts inside its version
+  // (8.20.1e before 8.20.2). Padding made "1e" sort above "2", and pruning
+  // then deleted the newest version.
+  return out.sort((a, b) => compareVersions(b.version, a.version))
 }
 
 // Keeps the newest `keep` versions so the cache doesn't grow forever.
