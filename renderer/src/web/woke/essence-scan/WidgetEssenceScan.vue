@@ -1,5 +1,20 @@
 <template>
   <Widget :config="config" move-handles="corners" :inline-edit="false">
+    <DockItem id="essence-scan" icon="fas fa-flask" title="Essence scan" :show="running || paused || !!message"
+      :led="message ? 'error' : paused ? 'warn' : running ? 'on' : null" :badge="unseenCorrupt || null"
+      :wm-id="config.wmId" card-width="18rem" @open-change="onCard">
+      <template #card>
+        <div v-if="message" class="w-warn text-xs px-3 pt-2">{{ message }}</div>
+        <div v-else-if="paused" class="w-dim text-xs px-3 pt-2">Paused while the map scan runs. It resumes when that stops.</div>
+        <div v-for="e in recent.slice(0, 5)" :key="e.id" :class="[$style.entry, $style[e.rated.verdict]]">
+          <span :class="$style.tag">{{ VERDICT_LABEL[e.rated.verdict] }}</span>
+          <span class="flex-1 w-trunc">{{ entryLabel(e) }}</span>
+          <WPrice :chaos="e.rated.totalChaos || null" :divine="divine" />
+        </div>
+        <div v-if="!entries.length" class="w-dim text-xs px-3 py-2">Hover an essence monolith.</div>
+        <div v-if="config.hotkey" class="w-faint text-xs px-3 py-1"><WKbd :keys="config.hotkey" /> to stop</div>
+      </template>
+    </DockItem>
     <WPanel :title="config.wmTitle || 'Essence scan'" width="19rem">
       <template #actions>
         <button type="button" class="w-icon-btn" title="Read every essence on screen once" @click="readOnce"><i class="fas fa-expand" /></button>
@@ -88,6 +103,8 @@ import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
 import { WPanel, WButton, WEmpty, WKbd, WPrice } from '../ui'
 import { hostRequest } from '../shared/host'
+import DockItem from '../dock/DockItem.vue'
+import { hideWhilePlaying } from '../dock/dock'
 import { usePriceIndex } from '../market/price-index'
 import { parseMonolith, rateMonolith, shortEssenceName } from './essences'
 import type { EssenceVerdict, PricedMonolith } from './essences'
@@ -101,6 +118,7 @@ if (props.config.wmFlags[0] === 'uninitialized') {
   wm.show(props.config.wmId)
 }
 normalizeEssenceScanWidget(props.config)
+hideWhilePlaying(props.config)
 
 const VERDICT_LABEL: Record<EssenceVerdict, string> = { corrupt: 'CORRUPT', open: 'OPEN', done: 'DONE' }
 
@@ -118,6 +136,14 @@ const paused = shallowRef(false)
 const entries = shallowRef<Entry[]>([])
 const current = shallowRef<Entry | null>(null)
 let nextId = 1
+
+// Badge: monoliths worth corrupting since the dock card was last opened.
+const seenCorrupt = shallowRef(0)
+const corruptCount = computed(() => entries.value.filter(e => e.rated.verdict === 'corrupt').length)
+const unseenCorrupt = computed(() => Math.max(0, corruptCount.value - seenCorrupt.value))
+function onCard (open: boolean) {
+  if (open) seenCorrupt.value = corruptCount.value
+}
 
 const prices = usePriceIndex()
 const divine = computed(() => prices.snapshot.value?.divine ?? null)
@@ -258,6 +284,7 @@ async function toggle () {
 
 function clear () {
   entries.value = []
+  seenCorrupt.value = 0
   current.value = null
   hostRequest('essence-scan-reread', null).catch(() => {})
 }

@@ -1,5 +1,23 @@
 <template>
   <Widget :config="config" move-handles="corners" :inline-edit="false" :readonly="true">
+    <!-- During a session, in maps and hideout: an icon with divines per hour
+         (the map clock while you're in a map). -->
+    <DockItem ref="dockRef" id="farming" icon="fas fa-coins" title="Farming" :show="dockShow" :badge="dockBadge"
+      :tone="t.profit < 0 ? 'down' : 'up'" :led="s && s.runningSince == null ? 'warn' : null" :wm-id="config.wmId"
+      card-width="18rem" @open-change="cardShown = $event">
+      <template #card>
+        <div v-if="s" class="flex flex-col gap-0.5 w-num" style="padding: 6px var(--w-pad) 8px;">
+          <div v-if="s.strategy" class="w-head-font w-accent w-trunc">{{ s.strategy }}</div>
+          <div v-if="mapClock != null" class="flex justify-between"><span class="w-dim">This map</span><span>{{ formatHms(mapClock) }}</span></div>
+          <div class="flex justify-between"><span class="w-dim">Profit</span><span :class="t.profit >= 0 ? 'w-up' : 'w-down'">{{ fmt(t.profit) }}</span></div>
+          <div class="flex justify-between"><span class="w-dim">Per hour</span><span>{{ t.perHour != null ? fmt(t.perHour) : '—' }}</span></div>
+          <div class="flex justify-between"><span class="w-dim">Maps</span><span>{{ s.maps }}<span v-if="t.perMap != null" class="w-dim"> · {{ fmt(t.perMap) }} each</span></span></div>
+          <div class="flex justify-between"><span class="w-dim">Time</span><span>{{ formatHms(elapsed(s, now)) }}<span v-if="mapShare != null" class="w-dim"> · {{ Math.round(mapShare * 100) }}% in maps</span></span></div>
+          <div v-if="s.runningSince == null" class="text-xs" style="color: var(--w-warn);">Paused<template v-if="s.autoPaused">; resumes when you change zone</template></div>
+          <div v-if="config.lootHotkey" class="text-xs w-faint">Hover loot and press <WKbd :keys="config.lootHotkey" /> to add it</div>
+        </div>
+      </template>
+    </DockItem>
     <WPanel :title="config.wmTitle || 'Farming profit'" width="27rem">
       <template #tabs>
         <WTabs v-model="tab" :options="tabs.map(t => ({ value: t.id, label: t.label }))" />
@@ -156,6 +174,9 @@ import { formatChaos } from '../market/analysis'
 import { itemKey } from '../market/types'
 import type { PriceItem } from '../market/types'
 import { parseLogLine } from '../campaign/log-parse'
+import { useZone } from '../shared/zone'
+import DockItem from '../dock/DockItem.vue'
+import { tickWhile } from '../dock/dock'
 import { ATLAS_TYPE } from '../atlas/widget'
 import type { AtlasWidget } from '../atlas/widget'
 import { FARMING_LOOT_TARGET, countNewMap, elapsed, formatHms, isMapArea, lineValue, maybeAutoPause, newSession, onZoneChange, sellPrice, sellRules, strategyStats, totals } from './farming'
@@ -196,6 +217,28 @@ useVisibleClock(props.config, () => {
 }, 1000, 15000)
 
 const s = computed(() => props.config.session)
+
+// ---- dock icon ----
+const zone = useZone()
+const inMapNow = computed(() => zone.kind === 'map')
+const dockShow = computed(() => !!s.value && (inMapNow.value || zone.kind === 'hideout' || zone.kind === 'town'))
+const cardShown = shallowRef(false)
+const dockRef = shallowRef<InstanceType<typeof DockItem> | null>(null)
+// The badge's map clock ticks while you're in a map; the card ticks while open.
+onUnmounted(tickWhile(() => dockShow.value && (cardShown.value || (inMapNow.value && s.value?.runningSince != null)),
+  () => { now.value = Date.now() }, 1000))
+const mapClock = computed(() => {
+  const sess = s.value
+  if (!sess || !inMapNow.value || !sess.inMap || sess.lastZoneAt == null) return null
+  return Math.max(0, now.value - Math.max(sess.lastZoneAt, sess.runningSince ?? sess.lastZoneAt))
+})
+const dockBadge = computed(() => {
+  if (mapClock.value != null) return formatHms(mapClock.value).replace(/^0:/, '')
+  const ph = t.value.perHour
+  if (ph == null) return null
+  const div = prices.snapshot.value?.divine
+  return div ? `${(ph / div).toFixed(1)}d` : `${Math.round(ph)}c`
+})
 const price = (r: PricedRef) => prices.price(r)
 const rules = computed(() => sellRules(props.config))
 const t = computed(() => s.value
@@ -325,7 +368,12 @@ const logListener = Host.onEvent('MAIN->CLIENT::game-log', (e) => {
     if (ev?.kind !== 'area') continue
     const inMap = isMapArea(ev.areaId)
     onZoneChange(sess, inMap, Date.now())
-    if (inMap && sess.runningSince != null && props.config.autoCountMaps && countNewMap(sess, ev.areaId, ev.seed)) sess.maps++
+    if (inMap && sess.runningSince != null && props.config.autoCountMaps && countNewMap(sess, ev.areaId, ev.seed)) {
+      sess.maps++
+      now.value = Date.now()
+      const per = t.value.perMap
+      setTimeout(() => dockRef.value?.peek(`Map ${sess.maps}` + (per != null ? ` · ${fmt(per)} per map so far` : '')), 1500)
+    }
     changed = true
   }
   // Config is otherwise saved only when the overlay loses focus.

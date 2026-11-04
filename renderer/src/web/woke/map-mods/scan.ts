@@ -27,7 +27,8 @@ export function parseScanHotkeyTarget (target: string): { wmId: number, roll: bo
 
 export function initMapScanWidget (w: MapScanWidget) {
   w.wmTitle = 'Map scan'
-  w.wmFlags = []
+  // The panel shows with the overlay open; while you play, its dock icon does.
+  w.wmFlags = ['invisible-on-blur']
   w.anchor = { pos: 'tr', x: 98, y: 12 }
   w.hotkey = 'Alt + S'
   w.rollHotkey = 'Alt + R'

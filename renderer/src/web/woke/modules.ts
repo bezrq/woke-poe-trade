@@ -6,6 +6,7 @@
 // module with a placed widget needs them.
 //
 // Kept free of Vue component and widget imports: Config.ts imports this file.
+import type { DockConfig } from './dock/dock'
 import type { ShortcutAction } from '@ipc/types'
 
 export type ModuleGroup = 'economy' | 'mapping' | 'campaign' | 'builds' | 'apt'
@@ -81,6 +82,8 @@ export interface WokeModulesConfig {
   off: string[]
   // Hides (and shows again) every toolkit panel at once.
   hideAllHotkey?: string | null
+  // Icon dock position and switches (dock/dock.ts).
+  dock?: DockConfig
 }
 
 interface ConfigLike {

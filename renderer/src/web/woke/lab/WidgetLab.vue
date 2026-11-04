@@ -1,5 +1,21 @@
 <template>
   <Widget :config="config" move-handles="corners" :inline-edit="false">
+    <!-- In the lab: an icon (letter = difficulty) whose card shows the layout. -->
+    <DockItem ref="dockRef" id="lab" icon="fas fa-dungeon" title="Labyrinth" :show="inLab" :badge="labDiff ? labLabel(labDiff)[0] : null"
+      :wm-id="config.wmId" card-width="34rem" @open-change="now = Date.now()">
+      <template #card>
+        <div class="flex justify-between w-dim text-xs" style="padding: 4px var(--w-pad);">
+          <span>{{ labDiff ? labLabel(labDiff) + ' Labyrinth' : 'Labyrinth' }}</span>
+          <span title="Labs reset at midnight UTC"><i class="far fa-clock" /> resets in {{ resetIn }}</span>
+        </div>
+        <img v-if="peekImg" :src="peekImg" :class="$style.cardImg" alt="Today's layout">
+        <div v-else-if="peekError" class="w-dim text-xs" style="padding: 6px var(--w-pad);">Couldn't load the layout ({{ peekError }}). Open the overlay and click the icon for poelab's page.</div>
+        <div v-else-if="peekDiff" class="w-dim text-xs" style="padding: 6px var(--w-pad);">Loading today's layout from poelab…</div>
+        <div v-else class="w-dim text-xs" style="padding: 6px var(--w-pad);">Enter Aspirant's Plaza to load the layout.</div>
+        <div v-if="peekImg && staleOf(peekImg)" class="text-xs" style="color: var(--w-warn); padding: 2px var(--w-pad);">Today's layout isn't posted yet. This one is from {{ staleOf(peekImg) }}.</div>
+        <div v-if="config.notes.trim()" class="whitespace-pre-wrap w-dim text-xs" style="padding: 4px var(--w-pad);">{{ config.notes }}</div>
+      </template>
+    </DockItem>
     <div class="flex gap-2 min-h-0 items-start">
       <WPanel :title="config.wmTitle || 'Labyrinth'" width="14rem">
         <template #meta>
@@ -61,7 +77,10 @@ import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
 import { WPanel, WKbd, WListItem } from '../ui'
 import { DEFAULT_LAB_URLS, DIFFICULTIES, FIND_LAYOUT_JS, PLAZA_ZONE, dateInUrl, difficultyForAreaLevel, formatDuration, labLabel, msUntilLabReset, parseHotkeyTarget } from './lab'
-import { parseLogLine } from '../campaign/log-parse'
+import { useZone } from '../shared/zone'
+import { hostRequest } from '../shared/host'
+import DockItem from '../dock/DockItem.vue'
+import { hideWhilePlaying } from '../dock/dock'
 import type { LabDifficulty, OpenTarget } from './lab'
 
 const props = defineProps<{
@@ -106,19 +125,37 @@ watch(webviewEl, (el, old) => {
   el?.addEventListener('did-stop-loading', onPageLoaded)
 })
 
-// Entering Aspirant's Plaza opens that difficulty's layout.
-let lastAreaLevel: number | null = null
-const logListener = Host.onEvent('MAIN->CLIENT::game-log', (e) => {
-  for (const line of e.lines) {
-    const ev = parseLogLine(line)
-    if (ev?.kind === 'area') lastAreaLevel = ev.areaLevel
-    else if (ev?.kind === 'zone' && ev.name === PLAZA_ZONE && lastAreaLevel != null && props.config.autoOpen !== false) {
-      const d = difficultyForAreaLevel(lastAreaLevel)
-      if (openDiff.value !== d) open(d, 'overlay')
-    }
+// In the lab, the dock icon shows the layout; nothing opens over the game.
+// Entering Aspirant's Plaza loads that difficulty's layout in the background.
+const zone = useZone()
+const inLab = computed(() => zone.kind === 'lab')
+const labDiff = computed<LabDifficulty | null>(() => inLab.value && zone.areaLevel != null ? difficultyForAreaLevel(zone.areaLevel) : null)
+const peekDiff = shallowRef<LabDifficulty | null>(null)
+const peekImg = shallowRef<string | null>(null)
+const peekError = shallowRef<string | null>(null)
+const dockRef = shallowRef<InstanceType<typeof DockItem> | null>(null)
+watch(() => [zone.name, labDiff.value] as const, async ([name, d]) => {
+  if (name !== PLAZA_ZONE || !d || props.config.autoOpen === false) return
+  if (peekDiff.value === d && peekImg.value) return
+  peekImg.value = null
+  peekError.value = null
+  peekDiff.value = d
+  try {
+    const img = await hostRequest<string | null>('lab-layout-image', { url: urlFor(d) }, 20_000)
+    if (peekDiff.value !== d) return
+    if (img) {
+      peekImg.value = img
+      dockRef.value?.peek(`${labLabel(d)} lab · today's layout is ready here`)
+    } else peekError.value = 'no layout on the page'
+  } catch (err) {
+    if (peekDiff.value === d) peekError.value = err instanceof Error ? err.message : String(err)
   }
 })
-onUnmounted(() => { logListener.abort() })
+function staleOf (url: string) {
+  const d = dateInUrl(url)
+  const today = new Date(now.value).toISOString().slice(0, 10)
+  return d && d < today ? d : null
+}
 const overlayKey = computed(() => AppConfig().overlayKey)
 
 const now = shallowRef(Date.now())
@@ -130,6 +167,9 @@ function urlFor (d: LabDifficulty): string {
   return /^https?:\/\//i.test(url) ? url : DEFAULT_LAB_URLS[d]
 }
 
+// The window shows only with the overlay open, except a layout you opened
+// yourself (hotkey or click), which stays up until you close it.
+hideWhilePlaying(props.config)
 watch(openDiff, (d) => {
   wm.setFlag(props.config.wmId, 'invisible-on-blur', !d)
 })
@@ -163,6 +203,8 @@ onUnmounted(() => { hotkeys.abort() })
 
 <style module>
 .imgWrap { background: #000; }
+.cardImg { display: block; width: 100%; height: auto; background: #000; }
+
 .fit { max-width: 100%; max-height: 100%; margin: auto; display: block; cursor: zoom-in; }
 .full { max-width: none; cursor: zoom-out; }
 </style>
