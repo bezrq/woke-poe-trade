@@ -15,6 +15,7 @@ import { hotkeyFailures } from './hotkey-failures'
 import { marketHandlers } from './market-store'
 import { labLayoutImage } from './lab-layout'
 import { sessionHandlers } from './session-store'
+import { browsePath, pathStat } from './settings-files'
 
 type Handler = (args: any) => Promise<unknown> // eslint-disable-line @typescript-eslint/no-explicit-any
 
@@ -32,6 +33,8 @@ const handlers: Record<string, Handler> = {
   'ocr-check': async () => checkOcr(),
   'hotkey-failures': async () => hotkeyFailures(),
   'lab-layout-image': labLayoutImage,
+  'path-stat': pathStat,
+  'browse-path': browsePath,
   ...marketHandlers,
   ...sessionHandlers
 }
