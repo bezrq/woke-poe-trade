@@ -1,6 +1,6 @@
 import { computed, Ref } from 'vue'
 import { usePoeninja } from '@/web/background/Prices'
-import { buildInsight, InsightListing } from './insight'
+import { buildInsight, InsightListing, InsightOptions } from './insight'
 
 // Trade API currency ids we can value through poe.ninja, besides chaos and divine.
 const NINJA_CURRENCY: Record<string, string> = {
@@ -20,17 +20,20 @@ export function useInsight (listings: Ref<InsightListing[]>) {
 
   const divine = computed(() => ninja.xchgRate.value)
 
-  const insight = computed(() => {
-    const used = new Set(listings.value.map(l => l.priceCurrency))
+  // Rates for every convertible currency; re-read when poe.ninja reloads,
+  // which also refreshes the divine rate.
+  const options = computed<InsightOptions>(() => {
     const otherRates: Record<string, number> = {}
-    for (const id of used) {
-      const name = NINJA_CURRENCY[id]
-      if (!name) continue
-      const found = ninja.findPriceByQuery({ ns: 'ITEM', name, variant: undefined })
-      if (found && found.chaos > 0) otherRates[id] = found.chaos
+    if (divine.value != null) {
+      for (const [id, name] of Object.entries(NINJA_CURRENCY)) {
+        const found = ninja.findPriceByQuery({ ns: 'ITEM', name, variant: undefined })
+        if (found && found.chaos > 0) otherRates[id] = found.chaos
+      }
     }
-    return buildInsight(listings.value, { divine: divine.value, otherRates })
+    return { divine: divine.value, otherRates }
   })
 
-  return { insight, divine }
+  const insight = computed(() => buildInsight(listings.value, options.value))
+
+  return { insight, divine, options }
 }

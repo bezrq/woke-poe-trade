@@ -21,6 +21,15 @@
       :divine="divine"
       :loading="!list || !slowdownReady"
       :total="list ? list.total : null" />
+    <price-drivers v-if="improved && list"
+      :key="list.id"
+      :item="item"
+      :filters="filters"
+      :stats="stats"
+      :insight="insight"
+      :options="insightOptions"
+      :divine="divine"
+      :ready="slowdownReady" />
     <div class="layout-column overflow-y-auto overflow-x-hidden">
       <table class="table-stripped w-full">
         <thead>
@@ -112,6 +121,7 @@ import { artificialSlowdown } from './artificial-slowdown'
 import OnlineFilter from './OnlineFilter.vue'
 import TradeLinks from './TradeLinks.vue'
 import PriceVerdict from '@/web/woke/price-insight/PriceVerdict.vue'
+import PriceDrivers from '@/web/woke/price-insight/PriceDrivers.vue'
 import PriceViewToggle from '@/web/woke/price-insight/PriceViewToggle.vue'
 import { priceView } from '@/web/woke/price-insight/view'
 import { useInsight } from '@/web/woke/price-insight/useInsight'
@@ -221,7 +231,7 @@ function useTradeApi () {
 }
 
 export default defineComponent({
-  components: { OnlineFilter, TradeLinks, UiErrorBox, PriceVerdict, PriceViewToggle },
+  components: { OnlineFilter, TradeLinks, UiErrorBox, PriceVerdict, PriceDrivers, PriceViewToggle },
   emits: ['reset'],
   props: {
     filters: {
@@ -247,7 +257,7 @@ export default defineComponent({
     const { error, searchResult, groupedResults, search } = useTradeApi()
 
     // woke: improved view reads the same listings, nothing extra is requested
-    const { insight, divine } = useInsight(groupedResults)
+    const { insight, divine, options: insightOptions } = useInsight(groupedResults)
 
     const showBrowser = inject<(url: string) => void>('builtin-browser')!
 
@@ -264,6 +274,7 @@ export default defineComponent({
       list: searchResult,
       improved: computed(() => priceView.value === 'improved'),
       insight,
+      insightOptions,
       divine,
       ignoredTitle (id: string) {
         const reason = priceView.value === 'improved' ? insight.value.dropped.get(id) : undefined
