@@ -75,7 +75,10 @@ function pick (item: MenuEntry) {
 
 function move (dir: 1 | -1) {
   const items = menu.value?.items ?? []
-  for (let n = 0, i = hl.value; n < items.length; n++) {
+  // Nothing highlighted yet: Down starts at the top, Up at the bottom (it
+  // used to skip the last item).
+  const start = hl.value < 0 ? (dir === 1 ? -1 : items.length) : hl.value
+  for (let n = 0, i = start; n < items.length; n++) {
     i = (i + dir + items.length) % items.length
     const it = items[i]
     if (!('separator' in it) && !it.disabled) { hl.value = i; return }
