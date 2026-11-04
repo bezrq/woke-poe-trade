@@ -1,0 +1,102 @@
+name: Tests
+
+# Runs on every pull request: unit tests, type checks, and the fake-game
+# tests (the real app driven by a fake Path of Exile; see testing/README.md).
+on:
+  pull_request:
+  push:
+    branches:
+      - 'master'
+  workflow_dispatch:
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit:
+    name: Unit tests, lint, types
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+    - uses: actions/checkout@v6
+    - uses: actions/setup-node@v6
+      with:
+        node-version: 22
+        cache: npm
+        cache-dependency-path: |
+          renderer/package-lock.json
+          main/package-lock.json
+    - run: npm ci
+      working-directory: ./renderer
+    - run: npm run lint
+      working-directory: ./renderer
+    - name: Type check (app + tests)
+      run: npm run typecheck:test
+      working-directory: ./renderer
+    - name: Unit tests
+      run: npm test
+      working-directory: ./renderer
+    # Only the TypeScript is checked here; the native modules and Electron
+    # itself aren't needed for that.
+    - run: npm ci --ignore-scripts
+      working-directory: ./main
+      env:
+        ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+    - name: Type check (main)
+      run: npx tsc --noEmit
+      working-directory: ./main
+
+  game:
+    name: Fake-game tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+    - uses: actions/checkout@v6
+    - uses: actions/setup-node@v6
+      with:
+        node-version: 22
+        cache: npm
+        cache-dependency-path: |
+          renderer/package-lock.json
+          main/package-lock.json
+          testing/package-lock.json
+    - run: npm ci
+      working-directory: ./renderer
+    - name: Build the overlay
+      run: npx vite build
+      working-directory: ./renderer
+    # main's code runs in the fake app with Electron and the native hooks
+    # replaced by the fake game, so their install scripts are skipped.
+    - run: npm ci --ignore-scripts
+      working-directory: ./main
+      env:
+        ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+    - run: npm ci
+      working-directory: ./testing
+    - name: Cache OCR files
+      uses: actions/cache@v4
+      with:
+        path: testing/.cache/cv-ocr
+        key: cv-ocr-v3.20.10007
+    - name: Get OCR files (opencv + tesseract, from APT's release)
+      run: npm run get:ocr
+      working-directory: ./testing
+    - name: Install Chromium
+      run: npx playwright install --with-deps chromium
+      working-directory: ./testing
+    - name: OCR tests
+      run: npm run test:main
+      working-directory: ./testing
+    - name: Overlay tests on the fake game
+      run: npx playwright test
+      working-directory: ./testing
+    - name: Upload report (screenshots of every scenario)
+      if: ${{ !cancelled() }}
+      uses: actions/upload-artifact@v7
+      with:
+        name: fake-game-report
+        path: |
+          testing/report
+          testing/test-results
+        retention-days: 14

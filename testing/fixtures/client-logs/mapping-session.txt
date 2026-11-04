@@ -1,0 +1,33 @@
+# A mapping session: hideout -> Strand map -> portal out to sell -> back into
+# the SAME map instance (same seed: must not count as a new map) -> a second
+# map with Einhar (Bestiary) talking -> Azurite Mine (Delve) -> hideout.
+2026/11/04 20:00:00 300000000 1a4f3d1 [INFO Client 21088] Connecting to instance server at 159.65.86.12:6112
+2026/11/04 20:00:01 300001000 2caa1679 [DEBUG Client 21088] Generating level 68 area "HideoutLuxurious" with seed 1
+2026/11/04 20:00:03 300003000 cff94598 [INFO Client 21088] : You have entered Luxurious Hideout.
+2026/11/04 20:01:00 300060000 1a4f3d1 [INFO Client 21088] Connecting to instance server at 159.65.86.12:6112
+2026/11/04 20:01:01 300061000 2caa1679 [DEBUG Client 21088] Generating level 83 area "MapWorldsStrand" with seed 3912385001
+2026/11/04 20:01:03 300063000 cff94598 [INFO Client 21088] : You have entered Strand.
+2026/11/04 20:03:30 300210000 1a4f3d1 [INFO Client 21088] Connecting to instance server at 159.65.86.12:6112
+2026/11/04 20:03:31 300211000 2caa1679 [DEBUG Client 21088] Generating level 68 area "HideoutLuxurious" with seed 1
+2026/11/04 20:03:33 300213000 cff94598 [INFO Client 21088] : You have entered Luxurious Hideout.
+2026/11/04 20:04:10 300250000 cff94598 [INFO Client 21088] @From TradeBot: Hi, I would like to buy your Divine Orb listed for 180 chaos
+2026/11/04 20:04:40 300280000 1a4f3d1 [INFO Client 21088] Connecting to instance server at 159.65.86.12:6112
+2026/11/04 20:04:41 300281000 2caa1679 [DEBUG Client 21088] Generating level 83 area "MapWorldsStrand" with seed 3912385001
+2026/11/04 20:04:43 300283000 cff94598 [INFO Client 21088] : You have entered Strand.
+2026/11/04 20:06:00 300360000 1a4f3d1 [INFO Client 21088] Connecting to instance server at 159.65.86.12:6112
+2026/11/04 20:06:01 300361000 2caa1679 [DEBUG Client 21088] Generating level 68 area "HideoutLuxurious" with seed 1
+2026/11/04 20:06:03 300363000 cff94598 [INFO Client 21088] : You have entered Luxurious Hideout.
+2026/11/04 20:07:00 300420000 1a4f3d1 [INFO Client 21088] Connecting to instance server at 159.65.86.12:6112
+2026/11/04 20:07:01 300421000 2caa1679 [DEBUG Client 21088] Generating level 83 area "MapWorldsCemetery" with seed 4100229978
+2026/11/04 20:07:03 300423000 cff94598 [INFO Client 21088] : You have entered Cemetery.
+2026/11/04 20:07:40 300460000 cff94598 [INFO Client 21088] Einhar, Beastmaster: Haha! You are ready to catch some beasts, exile!
+2026/11/04 20:09:20 300560000 1a4f3d1 [INFO Client 21088] Connecting to instance server at 159.65.86.12:6112
+2026/11/04 20:09:21 300561000 2caa1679 [DEBUG Client 21088] Generating level 68 area "HideoutLuxurious" with seed 1
+2026/11/04 20:09:23 300563000 cff94598 [INFO Client 21088] : You have entered Luxurious Hideout.
+2026/11/04 20:10:00 300600000 1a4f3d1 [INFO Client 21088] Connecting to instance server at 159.65.86.12:6112
+2026/11/04 20:10:01 300601000 2caa1679 [DEBUG Client 21088] Generating level 68 area "Delve_Main" with seed 1
+2026/11/04 20:10:03 300603000 cff94598 [INFO Client 21088] : You have entered Azurite Mine.
+2026/11/04 20:10:20 300620000 cff94598 [INFO Client 21088] Niko, Master of the Depths: Ah, the Crawler is ready.
+2026/11/04 20:11:00 300660000 1a4f3d1 [INFO Client 21088] Connecting to instance server at 159.65.86.12:6112
+2026/11/04 20:11:01 300661000 2caa1679 [DEBUG Client 21088] Generating level 68 area "HideoutLuxurious" with seed 1
+2026/11/04 20:11:03 300663000 cff94598 [INFO Client 21088] : You have entered Luxurious Hideout.

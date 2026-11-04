@@ -1,0 +1,7 @@
+[
+  { "id": "Standard", "realm": "pc", "rules": [] },
+  { "id": "Testleague", "realm": "pc", "rules": [] },
+  { "id": "Hardcore", "realm": "pc", "rules": [{ "id": "Hardcore" }] },
+  { "id": "Hardcore Testleague", "realm": "pc", "rules": [{ "id": "Hardcore" }] },
+  { "id": "SSF Testleague", "realm": "pc", "rules": [{ "id": "NoParties" }] }
+]

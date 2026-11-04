@@ -1,0 +1,20 @@
+{
+  "name": "woke-testing",
+  "private": true,
+  "type": "module",
+  "description": "Automated in-game testing: fake game + app host, recorded fixtures, OCR and overlay end-to-end tests",
+  "scripts": {
+    "build:host": "node fake-host/build.mjs",
+    "get:ocr": "node tools/get-ocr-files.mjs",
+    "test:main": "npm run build:host && vitest run",
+    "test:e2e": "npm run build:host && playwright test",
+    "test": "npm run test:main && playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0",
+    "@types/pngjs": "^6.0.5",
+    "esbuild": "0.21.5",
+    "pngjs": "^7.0.0",
+    "vitest": "2.1.9"
+  }
+}

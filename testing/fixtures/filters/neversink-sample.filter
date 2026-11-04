@@ -1,0 +1,88 @@
+#===============================================================================================================
+# NeverSink's Indepth Loot Filter - for Path of Exile
+#===============================================================================================================
+# VERSION:  8.17.3
+# TYPE:     1-REGULAR
+# STYLE:    DEFAULT
+# AUTHOR:   NeverSink
+# (A small hand-made sample in NeverSink's format, for the toolkit's tests.)
+
+#===============================================================================================================
+# [[0100]] Global overriding rules
+#===============================================================================================================
+
+Show # $type->decorator->craftingrare $tier->corruptedrare
+	Corrupted True
+	Rarity Rare
+	SetBorderColor 210 0 0
+	Continue
+
+#===============================================================================================================
+# [[1100]] Rings
+#===============================================================================================================
+
+Show # %D5 $type->rings $tier->rare
+	ItemLevel >= 75
+	Rarity Rare
+	Class == "Rings"
+	SetFontSize 40
+	SetTextColor 255 255 119 255
+	SetBorderColor 255 255 119 255
+	SetBackgroundColor 0 0 0 255
+
+#===============================================================================================================
+# [[3400]] Maps
+#===============================================================================================================
+
+Show # %H7 $type->maps $tier->t16
+	MapTier >= 16
+	Class == "Maps"
+	SetFontSize 45
+	SetTextColor 0 0 0 255
+	SetBackgroundColor 235 235 235 255
+	PlayAlertSound 1 300
+	MinimapIcon 0 White Square
+
+Show # %D3 $type->maps $tier->low
+	Class == "Maps"
+	SetFontSize 35
+
+#===============================================================================================================
+# [[4000]] Currency
+#===============================================================================================================
+
+# [4001] Regular currency
+Show # %H7 $type->currency $tier->t1exalted
+	Class == "Stackable Currency"
+	BaseType == "Divine Orb" "Mirror of Kalandra"
+	SetFontSize 45
+	SetTextColor 255 0 0 255
+	SetBorderColor 255 0 0 255
+	SetBackgroundColor 255 255 255 255
+	PlayAlertSound 6 300
+	PlayEffect Red
+	MinimapIcon 0 Red Star
+
+Show # %H5 $type->currency $tier->t2divine
+	Class == "Stackable Currency"
+	BaseType == "Exalted Orb" "Orb of Annulment"
+	SetFontSize 45
+	SetTextColor 255 255 255 255
+	PlayEffect Yellow
+
+Show # %D4 $type->currency $tier->t3chaos
+	Class == "Stackable Currency"
+	BaseType == "Chaos Orb" "Orb of Alchemy" "Orb of Scouring"
+	SetFontSize 40
+
+Hide # $type->currency $tier->t9scrolls
+	Class == "Stackable Currency"
+	BaseType == "Portal Scroll" "Scroll of Wisdom"
+	SetFontSize 18
+
+#===============================================================================================================
+# [[9900]] Hide everything else
+#===============================================================================================================
+
+Hide # $type->restex $tier->hideall
+	SetFontSize 18

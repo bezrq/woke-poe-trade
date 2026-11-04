@@ -1,0 +1,185 @@
+// Economy modules: poe.ninja parsing and movers, trade listing insight,
+// essence corruption, boss run profit and league-start investments.
+import { describe, it, expect } from 'vitest'
+import fs from 'fs'
+import path from 'path'
+import { FIXTURES } from '../helpers/game-data'
+import { parseDenseChunks, findDivinePrice } from '@/web/woke/market/parse'
+import { computeMovers } from '@/web/woke/market/analysis'
+import { CATEGORY_TYPES } from '@/web/woke/market/types'
+import type { PriceItem } from '@/web/woke/market/types'
+import { buildInsight } from '@/web/woke/price-insight/insight'
+import type { InsightListing } from '@/web/woke/price-insight/insight'
+import { parseMonolith, rateMonolith, MEDS } from '@/web/woke/essence-scan/essences'
+import { BOSSES } from '@/web/woke/boss-runs/bosses'
+import { evaluateBoss, priceResolver, observedRates, parseRunTime, formatRunTime } from '@/web/woke/boss-runs/calc'
+import type { BossPrefs } from '@/web/woke/boss-runs/calc'
+import { DumpImporter } from '@/web/woke/league-invest/dumps'
+import { rankOpportunities } from '@/web/woke/league-invest/invest'
+
+describe('poe.ninja', () => {
+  // The recorded dense overview the fake app serves (tools/make-ninja-fixture.mjs).
+  const dense = JSON.parse(fs.readFileSync(path.join(FIXTURES, 'http/poe.ninja/poe1/api/economy/current/dense/overviews.json'), 'utf8'))
+
+  const URL_OF = Object.fromEntries(Object.entries(CATEGORY_TYPES).map(([url, type]) => [type, url]))
+
+  it('parses the dense overview the way APT stores it', () => {
+    const chunks = (dense.currencyOverviews ?? []).concat(dense.itemOverviews ?? []).map((o: { type: string, lines: unknown[] }) => ({
+      ns: 'ITEM', url: URL_OF[o.type], lines: JSON.stringify(o.lines)
+    }))
+    const items = parseDenseChunks(chunks)
+    expect(items.length).toBeGreaterThan(10)
+    expect(findDivinePrice(items)).toBe(180)
+    const misery = items.find(i => i.name === 'Deafening Essence of Misery')
+    expect(misery?.type).toBe('Essence')
+  })
+
+  it('movers: biggest moves first, a divine swing is not a move in div', () => {
+    const then: PriceItem[] = [
+      { type: 'Currency', name: 'Divine Orb', variant: '', chaos: 150 },
+      { type: 'Scarab', name: 'Up Scarab', variant: '', chaos: 10 },
+      { type: 'Scarab', name: 'Flat Scarab', variant: '', chaos: 20 },
+      { type: 'Scarab', name: 'Down Scarab', variant: '', chaos: 40 }
+    ]
+    const now: PriceItem[] = [
+      { type: 'Currency', name: 'Divine Orb', variant: '', chaos: 300 },
+      { type: 'Scarab', name: 'Up Scarab', variant: '', chaos: 30 },
+      { type: 'Scarab', name: 'Flat Scarab', variant: '', chaos: 40 },
+      { type: 'Scarab', name: 'Down Scarab', variant: '', chaos: 20 }
+    ]
+    const chaos = computeMovers(now, then, { minChaos: 1, limit: 10 })
+    expect(chaos[0].name).toBe('Up Scarab')
+    expect(chaos[0].change).toBeCloseTo(2)
+    const div = computeMovers(now, then, { minChaos: 1, limit: 10, unit: 'div', divNow: 300, divThen: 150, type: 'Scarab' })
+    expect(div.find(m => m.name === 'Flat Scarab')?.change).toBeCloseTo(0)
+    expect(div.find(m => m.name === 'Down Scarab')?.change).toBeCloseTo(-0.75)
+  })
+})
+
+describe('price insight (trade listings)', () => {
+  const NOW = Date.parse('2026-11-04T12:00:00Z')
+  const listing = (id: string, amount: number, extra: Partial<InsightListing> = {}): InsightListing => ({
+    id, priceAmount: amount, priceCurrency: 'chaos', accountStatus: 'online', indexedAt: '2026-11-04T10:00:00Z', isMine: false, hasFee: false, ...extra
+  } as InsightListing)
+
+  it('drops bait, own and stale listings and suggests a price', () => {
+    const insight = buildInsight([
+      listing('bait', 5),
+      listing('mine', 40, { isMine: true }),
+      listing('old', 41, { accountStatus: 'offline', indexedAt: '2026-10-01T00:00:00Z' }),
+      ...[50, 52, 55, 55, 58, 60, 62, 70].map((p, i) => listing(`l${i}`, p)),
+      listing('div', 1, { priceCurrency: 'divine' })
+    ], { divine: 180, now: NOW })
+    expect(insight.dropped.get('bait')).toBe('fixer')
+    expect(insight.dropped.get('mine')).toBe('mine')
+    expect(insight.dropped.get('old')).toBe('stale')
+    expect(insight.range?.low).toBe(50)
+    expect(insight.confidence).toBe('high')
+    expect(insight.suggest!.fast).toBeLessThan(50)
+    expect(insight.kept.at(-1)?.chaos).toBe(180)
+  })
+
+  it('no divine price: divine listings are dropped, not guessed', () => {
+    const insight = buildInsight([listing('d', 2, { priceCurrency: 'divine' })], { divine: undefined, now: NOW })
+    expect(insight.dropped.get('d')).toBe('currency')
+    expect(insight.confidence).toBe('none')
+  })
+})
+
+describe('essence corruption', () => {
+  const PRICES: Record<string, number> = {
+    'Deafening Essence of Misery': 6, 'Deafening Essence of Envy': 4, 'Shrieking Essence of Greed': 0.5,
+    'Essence of Horror': 45, 'Essence of Hysteria': 20, 'Essence of Insanity': 25, 'Essence of Delirium': 30
+  }
+  const price = (name: string) => PRICES[name] ?? null
+
+  it('a monolith with Misery/Envy says corrupt, one without says open', () => {
+    const meds = parseMonolith(['Deafening Essence of Misery', 'Shrieking Essence of Greed', 'Deafening Essence of Envy'])!
+    expect(rateMonolith(meds, MEDS, price).verdict).toBe('corrupt')
+    const plain = parseMonolith(['Shrieking Essence of Greed'])!
+    expect(rateMonolith(plain, MEDS, price).verdict).not.toBe('corrupt')
+  })
+
+  it('reads OCR-ish lines', () => {
+    expect(parseMonolith(['Deafenlng Essence of Misery', 'Shrieking Essence 0f Greed'])?.essences.map(e => e.name))
+      .toEqual(['Deafening Essence of Misery', 'Shrieking Essence of Greed'])
+  })
+})
+
+describe('boss runs', () => {
+  const NO_PREFS: BossPrefs = {
+    runSeconds: {}, rates: {}, extraDrops: {}, kills: {}, ownEntry: false, plannedRuns: 0,
+    dropToggles: {}, priceModes: {}, customPrices: {}
+  }
+
+  it('boss data is sane', () => {
+    expect(BOSSES.length).toBeGreaterThan(5)
+    for (const b of BOSSES) {
+      expect(b.entry.length, b.id).toBeGreaterThan(0)
+      expect(b.runSeconds, b.id).toBeGreaterThan(0)
+      for (const d of b.drops) if (d.chance != null) expect(d.chance, `${b.id} ${d.name}`).toBeGreaterThan(0)
+      for (const d of b.drops) if (d.chance != null) expect(d.chance, `${b.id} ${d.name}`).toBeLessThanOrEqual(1)
+    }
+  })
+
+  it('profit per hour = (expected loot - entry) per run time', () => {
+    const boss = BOSSES.find(b => b.drops.some(d => d.chance != null))!
+    const items: PriceItem[] = [
+      ...boss.entry.map(e => ({ type: 'Fragment', name: e.name, variant: '', chaos: 10 })),
+      ...boss.drops.map(d => ({ type: 'UniqueAccessory', name: d.name, variant: d.variant ?? '', chaos: 100 }))
+    ]
+    const r = evaluateBoss(boss, NO_PREFS, priceResolver(items))
+    const entry = boss.entry.reduce((n, e) => n + 10 * e.qty, 0)
+    expect(r.entry).toBe(entry)
+    expect(r.entryMissing).toEqual([])
+    expect(r.profit).toBeCloseTo(r.loot - entry)
+    expect(r.perHour).toBeCloseTo(r.profit * 3600 / boss.runSeconds)
+    // Bringing your own entry: entry costs nothing.
+    expect(evaluateBoss(boss, { ...NO_PREFS, ownEntry: true }, priceResolver(items)).entry).toBe(0)
+  })
+
+  it('own kill log gives drop rates', () => {
+    const rates = observedRates([{ ts: 1, drops: [{ name: 'A', qty: 1 }] }, { ts: 2, drops: [] }, { ts: 3, drops: [{ name: 'A', qty: 1 }, { name: 'B', qty: 1 }] }, { ts: 4, drops: [] }])
+    expect(rates.get('A')).toBeCloseTo(0.5)
+    expect(rates.get('B')).toBeCloseTo(0.25)
+  })
+
+  it('run time text', () => {
+    expect(parseRunTime('2:30')).toBe(150)
+    expect(parseRunTime('90s')).toBe(90)
+    expect(parseRunTime('1.5')).toBe(90) // minutes
+    expect(formatRunTime(150)).toBe('2:30')
+  })
+})
+
+describe('league-start investments', () => {
+  // Two past leagues of poe.ninja dump CSVs: one scarab triples in a week
+  // both times, a card stays flat.
+  function dumps (league: string) {
+    const date = (d: number) => new Date(Date.UTC(2026, 0, 1 + d)).toISOString().slice(0, 10)
+    const cur = ['League;Date;Get;Pay;Value;Confidence']
+    const items = ['League;Date;Id;Type;Name;BaseType;Variant;Links;Value;Confidence']
+    for (let d = 0; d <= 14; d++) {
+      cur.push(`${league};${date(d)};Divine Orb;Chaos Orb;${100 + d * 5};High`)
+      items.push(`${league};${date(d)};1;Scarab;Rising Scarab;;;;${(5 * Math.pow(3, Math.min(d, 7) / 7) * (100 + d * 5) / 100).toFixed(2)};High`)
+      items.push(`${league};${date(d)};2;DivinationCard;Flat Card;;;;${(20 * (100 + d * 5) / 100).toFixed(2)};High`)
+    }
+    return [cur.join('\n'), items.join('\n')]
+  }
+
+  it('ranks the item that rose in every league, in divines', () => {
+    const imp = new DumpImporter()
+    for (const league of ['Alpha', 'Beta']) for (const csv of dumps(league)) imp.addCsv(csv)
+    const histories = imp.leagues().map(l => imp.build(l))
+    const ranked = rankOpportunities(histories, {
+      day: 0, horizon: 7, minLeagues: 2, minMultiple: 1.5, minReliability: 0, minBuyChaos: 1, bulkOnly: false
+    })
+    expect(ranked.map(o => o.name)).toEqual(['Rising Scarab'])
+    expect(ranked[0].median).toBeCloseTo(3, 1)
+    expect(ranked[0].leagues.sort()).toEqual(['Alpha', 'Beta'])
+  })
+
+  it('refuses a file that is not a poe.ninja dump', () => {
+    expect(() => new DumpImporter().addCsv('a;b;c\n1;2;3')).toThrow(/poe.ninja dump/)
+  })
+})

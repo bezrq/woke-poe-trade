@@ -271,7 +271,9 @@ const stats = computed(() => strategyStats(props.config.history))
 
 const strategyNames = computed(() => AppConfig().widgets
   .filter(w => w.wmType === ATLAS_TYPE)
-  .flatMap(w => (w as AtlasWidget).strategies.map(st => st.name))
+  // An Atlas widget that never mounted (just added, or its module is off)
+  // has no strategies yet.
+  .flatMap(w => ((w as AtlasWidget).strategies ?? []).map(st => st.name))
   .filter(Boolean))
 
 const lootQuery = shallowRef('')

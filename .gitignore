@@ -27,5 +27,12 @@ yarn-error.log*
 docs/.vitepress/dist
 docs/.vitepress/cache
 
+# woke test harness (testing/)
+testing/.cache
+testing/fake-host/dist
+testing/test-results
+testing/report
+testing/screens-out
+
 # woke: OCR data fetched for packaging (main/build/fetch-ocr.mjs)
 main/build/cv-ocr
