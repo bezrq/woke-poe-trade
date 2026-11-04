@@ -47,7 +47,7 @@ function mapTooltip (mods: string[], props: { quantity?: number, rarity?: number
 
 let MODS: string[]
 // See 'finds a unique token…' below.
-const KNOWN_UNSEARCHABLE = 31
+const KNOWN_UNSEARCHABLE = 27
 beforeAll(async () => {
   await loadGameData()
   MODS = allAreaMods()
@@ -104,6 +104,22 @@ describe('stash regex', () => {
   it('finds a unique token for all but a known few mods', () => {
     const missing = MODS.filter(mod => buildMapRegex({ avoid: [mod], want: [], mins: {}, highlight: 'good' }, MODS, allMapNames()).missing.length)
     expect(missing.length, missing.join('\n')).toBeLessThanOrEqual(KNOWN_UNSEARCHABLE)
+  })
+
+  // The search box takes one line, so a token across a two-line mod's line
+  // break can't be typed. The T17 "can't be slowed" mod reads exactly like
+  // the first line of a two-line one; that must not leave it without a token.
+  it('tokens stay on one line', () => {
+    const multi = MODS.filter(m => m.includes('\n'))
+    expect(multi.length).toBeGreaterThan(0)
+    for (const mod of multi) {
+      const { text } = buildMapRegex({ avoid: [mod], want: [], mins: {}, highlight: 'good' }, MODS, allMapNames())
+      expect(text, mod).not.toContain('\n')
+    }
+    const slow = "Monsters' Action Speed cannot be modified to below Base Value"
+    const res = buildMapRegex({ avoid: [slow], want: [], mins: {}, highlight: 'good' }, MODS, allMapNames())
+    expect(res.missing).toEqual([])
+    expect(stashSearch(res.text, mapTooltip([slow]))).toBe(false)
   })
 
   it('wanted mods and minimums: the search keeps maps meeting them', () => {

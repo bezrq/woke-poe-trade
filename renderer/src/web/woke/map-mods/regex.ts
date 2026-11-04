@@ -67,9 +67,10 @@ export const TOOLTIP_LINES = [
   'map'
 ]
 
-// "#% increased Pack size" -> lowercase text split at the rolled numbers.
+// "#% increased Pack size" -> lowercase text split at the rolled numbers
+// and at line breaks: the search box takes one line, so a token can't span two.
 function segments (matcher: string): string[] {
-  return matcher.toLowerCase().split(/[#0-9+%-]+/).map(s => s.trim()).filter(Boolean)
+  return matcher.toLowerCase().split(/[#0-9+%\n-]+/).map(s => s.trim()).filter(Boolean)
 }
 
 function usable (token: string): boolean {
@@ -89,7 +90,11 @@ function joinsByLetter (token: string): boolean {
 // Shortest substring of `target` found in none of `others`.
 export function uniqueToken (target: string, others: string[]): string | null {
   const segs = segments(target)
-  const hay = others.map(o => o.toLowerCase())
+  // Compared line by line. A line that reads exactly like one of the target's
+  // (a two-line mod that contains a one-line one) shows the same text in the
+  // tooltip, so matching it too is right.
+  const own = new Set(target.toLowerCase().split('\n'))
+  const hay = others.flatMap(o => o.toLowerCase().split('\n')).filter(h => !own.has(h))
   let fallback: string | null = null
   for (let len = 3; len <= 40; len++) {
     const found: string[] = []
