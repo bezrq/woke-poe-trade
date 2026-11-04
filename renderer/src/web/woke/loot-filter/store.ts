@@ -22,7 +22,7 @@ import { describeProblem, validateFilter } from './validate'
 import type { FilterProblem } from './validate'
 import { useFilterPrices } from './prices'
 import { publishActiveFilter } from './active-filter'
-import { LEVEL_NAMES, clampLevel, ladderTarget, pushArea } from './strictness'
+import { LEVEL_NAMES, clampLevel, ladderTarget, ladderZone, pushArea } from './strictness'
 import { toast } from '../ui'
 
 // First line of every file the editor writes; marks a filter as ours.
@@ -103,7 +103,7 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
   // game drops the keys we'd type; wait until the zone has loaded.
   const RELOAD_AFTER_LOAD_MS = 4000
   let reloadTimer: ReturnType<typeof setTimeout> | undefined
-  // Area levels of the last few zones outside town, for the strictness ladder.
+  // Area levels of the last few maps (or campaign zones), for the strictness ladder.
   let recentAreas: number[] = []
   const logListener = Host.onEvent('MAIN->CLIENT::game-log', (e) => {
     for (const line of e.lines) {
@@ -113,7 +113,7 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
       inSafeZone.value = safe
       if (!safe) {
         areaLevel.value = ev.areaLevel
-        recentAreas = pushArea(recentAreas, ev.areaLevel)
+        if (ladderZone(ev.areaId)) recentAreas = pushArea(recentAreas, ev.areaLevel)
       }
       clearTimeout(reloadTimer)
       if (safe) {

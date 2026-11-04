@@ -1,5 +1,7 @@
 // NeverSink's seven strictness levels and the ladder that picks one from the
 // area level of the maps you've been running.
+import { isMapArea } from '../farming/farming'
+import { actFromAreaId } from '../campaign/log-parse'
 
 export const LEVEL_NAMES = ['Soft', 'Regular', 'Semi-strict', 'Strict', 'Very strict', 'Uber strict', 'Uber plus']
 export const LEVEL_SHORT = ['So', 'R', 'SS', 'S', 'VS', 'U', 'U+']
@@ -51,6 +53,13 @@ export function stepLabel (ladder: LadderStep[], i: number): string {
 // Recent map area levels decide the ladder step: the highest of the last
 // few, so one low map (a side quest, a lab) doesn't drop the filter back.
 export const RECENT_MAPS = 3
+
+// Zones whose level picks the step: maps and the campaign. The lab, boss
+// arenas, Delve, Heist and map side areas run at their own level, so an Uber
+// Lab (83) between T5 maps must not jump the filter to Very strict.
+export function ladderZone (areaId: string): boolean {
+  return isMapArea(areaId) || actFromAreaId(areaId) != null
+}
 
 export function pushArea (recent: number[], areaLevel: number): number[] {
   return [...recent, areaLevel].slice(-RECENT_MAPS)
