@@ -333,7 +333,7 @@ function run (p: Promise<unknown>) {
 }
 .heading {
   padding: 8px 0 2px;
-  font-size: 10.5px;
+  font-size: var(--w-fs-xs);
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--w-faint);
@@ -360,9 +360,9 @@ function run (p: Promise<unknown>) {
 .src { max-width: 55%; }
 .rx {
   font-family: var(--w-num);
-  font-size: 11.5px;
+  font-size: var(--w-fs-sm);
   background: var(--w-panel-3);
-  border-radius: var(--w-radius-sm);
+  border-radius: var(--w-r-sm);
   padding: 2px 6px;
   overflow-wrap: anywhere;
   min-width: 0;

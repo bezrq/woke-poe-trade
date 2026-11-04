@@ -211,7 +211,7 @@ async function copy (n: { key: string, text: string }) {
   gap: 5px;
   padding: 7px 9px;
   margin: 0 0 8px;
-  border-radius: var(--w-radius);
+  border-radius: var(--w-r-md);
   border: 1px solid var(--w-line-strong);
   background: var(--w-panel);
   color: var(--w-fg);
@@ -221,10 +221,10 @@ async function copy (n: { key: string, text: string }) {
 .row { display: flex; align-items: center; gap: 6px; min-width: 0; }
 .badge {
   flex: none;
-  font-size: 11px;
+  font-size: var(--w-fs-xs);
   font-weight: 600;
   padding: 1px 6px;
-  border-radius: var(--w-radius-sm);
+  border-radius: var(--w-r-sm);
   background: var(--w-panel-3);
   color: var(--w-dim);
 }
@@ -232,12 +232,12 @@ async function copy (n: { key: string, text: string }) {
 .medium .badge { background: var(--w-accent); color: var(--w-accent-fg); }
 .low .badge { background: var(--w-warn); color: var(--w-accent-fg); }
 .low { border-color: color-mix(in srgb, var(--w-warn) 45%, transparent); }
-.headline { font-size: 16px; font-weight: 600; color: var(--w-accent); }
+.headline { font-size: var(--w-fs-xl); font-weight: 600; color: var(--w-accent); }
 .risk {
   flex: none;
-  font-size: 11px;
+  font-size: var(--w-fs-xs);
   padding: 0 6px;
-  border-radius: 9px;
+  border-radius: var(--w-r-pill);
   border: 1px solid var(--w-line);
   white-space: nowrap;
   cursor: default;
@@ -247,10 +247,10 @@ async function copy (n: { key: string, text: string }) {
 .risk-high { color: var(--w-down); border-color: color-mix(in srgb, var(--w-down) 55%, transparent); }
 .sparkBtn {
   display: inline-flex; align-items: center; gap: 4px; flex: none;
-  padding: 1px 4px; border-radius: var(--w-radius-sm); border: 1px solid transparent;
+  padding: 1px 4px; border-radius: var(--w-r-sm); border: 1px solid transparent;
 }
 .sparkBtn:hover, .sparkBtn.on { border-color: var(--w-line-strong); background: var(--w-panel-2); }
-.agree { padding: 0 6px; border-radius: 9px; border: 1px solid var(--w-line); color: var(--w-dim); white-space: nowrap; }
+.agree { padding: 0 6px; border-radius: var(--w-r-pill); border: 1px solid var(--w-line); color: var(--w-dim); white-space: nowrap; }
 .agree-agree { color: var(--w-up); border-color: color-mix(in srgb, var(--w-up) 55%, transparent); }
 .agree-mixed { color: var(--w-accent); }
 .agree-disagree { color: var(--w-warn); border-color: color-mix(in srgb, var(--w-warn) 55%, transparent); }
@@ -261,11 +261,11 @@ async function copy (n: { key: string, text: string }) {
   align-items: center;
   gap: 6px;
   padding: 2px 8px;
-  border-radius: var(--w-radius-sm);
+  border-radius: var(--w-r-sm);
   border: 1px solid var(--w-line);
   background: var(--w-panel-2);
-  font-size: 12px;
+  font-size: var(--w-fs-md);
 }
 .note:hover { border-color: var(--w-line-strong); background: var(--w-accent-soft); }
-.ppToggle { display: flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--w-dim); }
+.ppToggle { display: flex; align-items: center; gap: 6px; font-size: var(--w-fs-sm); color: var(--w-dim); }
 </style>

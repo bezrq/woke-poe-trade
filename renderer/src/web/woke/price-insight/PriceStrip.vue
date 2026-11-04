@@ -113,28 +113,28 @@ const ticks = computed(() => {
 .wrap { display: flex; flex-direction: column; gap: 3px; }
 .strip { position: relative; height: 46px; margin: 0 14px; }
 .axis { position: absolute; left: 0; right: 0; top: 22px; height: 1px; background: var(--w-line-strong); }
-.band { position: absolute; top: 16px; height: 13px; border-radius: 3px; opacity: 0.35; }
+.band { position: absolute; top: 16px; height: 13px; border-radius: var(--w-r-sm); opacity: 0.35; }
 .dot {
   position: absolute; top: 18px; width: 9px; height: 9px; margin-left: -4.5px;
   border-radius: 50%; background: var(--w-fg); border: 1px solid var(--w-panel);
 }
 .dot.bad { background: var(--w-down); }
-.mark { position: absolute; top: 11px; width: 2px; height: 23px; margin-left: -1px; border-radius: 1px; }
+.mark { position: absolute; top: 11px; width: 2px; height: 23px; margin-left: -1px; border-radius: var(--w-r-sm); }
 .fairLab {
   position: absolute; top: -3px; transform: translateX(-50%);
-  font-size: 11px; color: var(--w-accent); white-space: nowrap;
+  font-size: var(--w-fs-xs); color: var(--w-accent); white-space: nowrap;
 }
 .fairLab::after {
   content: ''; position: absolute; left: 50%; top: 15px; width: 2px; height: 20px; margin-left: -1px;
   background: var(--w-accent);
 }
-.tick { position: absolute; top: 32px; transform: translateX(-50%); font-size: 10.5px; color: var(--w-faint); white-space: nowrap; }
+.tick { position: absolute; top: 32px; transform: translateX(-50%); font-size: var(--w-fs-xs); color: var(--w-faint); white-space: nowrap; }
 .tick img { width: 11px !important; height: 11px !important; }
 .fairLab img { width: 12px !important; height: 12px !important; }
-.legend { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 11.5px; color: var(--w-dim); }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: var(--w-fs-sm); color: var(--w-dim); }
 .legend > span { display: inline-flex; align-items: center; gap: 4px; }
 .legend > span.off { text-decoration: line-through; opacity: 0.7; }
 .ldot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--w-fg); }
 .ldot.bad { background: var(--w-down); }
-.lbar { display: inline-block; width: 10px; height: 3px; border-radius: 2px; }
+.lbar { display: inline-block; width: 10px; height: 3px; border-radius: var(--w-r-sm); }
 </style>

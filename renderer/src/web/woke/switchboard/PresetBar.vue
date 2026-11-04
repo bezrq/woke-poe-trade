@@ -34,11 +34,11 @@ function pick (p: Preset) { applyPreset(props.config, p) }
   display: inline-flex;
   flex-wrap: wrap;
   border: 1px solid var(--w-line);
-  border-radius: var(--w-radius-sm);
+  border-radius: var(--w-r-sm);
   overflow: hidden;
   width: fit-content;
 }
-.seg button { background: none; border: 0; font: inherit; font-size: 12px; color: var(--w-dim); padding: 3px 10px; }
+.seg button { background: none; border: 0; font: inherit; font-size: var(--w-fs-md); color: var(--w-dim); padding: 3px 10px; }
 .seg button + button { border-left: 1px solid var(--w-line-soft); }
 .seg button:hover { color: var(--w-fg); }
 .seg button.on { background: var(--w-accent-soft); color: var(--w-accent); }

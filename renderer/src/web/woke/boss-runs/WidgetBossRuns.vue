@@ -452,42 +452,42 @@ function killValue (kill: KillRecord) {
 .layout { display: flex; min-height: 0; height: 34rem; }
 .list { width: 16rem; flex: none; border-right: 1px solid var(--w-line); padding-bottom: 8px; }
 .detail { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-.bossName { font-family: var(--w-head); font-size: 18px; letter-spacing: var(--w-head-track); }
+.bossName { font-family: var(--w-head); font-size: var(--w-fs-xl); letter-spacing: var(--w-head-track); }
 .hero {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 10px;
   padding: 0 var(--w-pad) 8px;
 }
-.k { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--w-faint); }
-.big { font-family: var(--w-num); font-size: 18px; font-weight: 500; display: flex; }
+.k { font-size: var(--w-fs-xs); text-transform: uppercase; letter-spacing: 0.08em; color: var(--w-faint); }
+.big { font-family: var(--w-num); font-size: var(--w-fs-xl); font-weight: 500; display: flex; }
 .body { display: flex; flex: 1; min-height: 0; }
 .side { width: 15rem; flex: none; padding: 10px var(--w-pad); display: flex; flex-direction: column; gap: 10px; }
 .box {
   background: var(--w-panel-2);
   border: 1px solid var(--w-line);
-  border-radius: var(--w-radius);
+  border-radius: var(--w-r-md);
   padding: 8px 10px;
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
-.kv { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 3px 10px; font-size: 12.5px; align-items: center; }
+.kv { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 3px 10px; font-size: var(--w-fs-md); align-items: center; }
 .dropGrid { grid-template-columns: 16px minmax(0, 1fr) 62px 72px 72px 70px; }
 .off { opacity: 0.45; }
 .editor { padding: 8px var(--w-pad); background: var(--w-panel-2); border-bottom: 1px solid var(--w-line); }
 .rateGrid { grid-template-columns: minmax(0, 1fr) 80px 80px 22px; }
 .killGrid { grid-template-columns: 74px minmax(0, 1fr) 70px 22px; }
-.share { height: 6px; background: var(--w-panel-3); border-radius: 3px; overflow: hidden; }
+.share { height: 6px; background: var(--w-panel-3); border-radius: var(--w-r-sm); overflow: hidden; }
 .share i { display: block; height: 100%; background: var(--w-accent); }
 .input {
   height: 24px;
   padding: 0 6px;
-  font-size: 12.5px;
+  font-size: var(--w-fs-md);
   color: var(--w-fg);
   background: var(--w-panel-2);
   border: 1px solid var(--w-line);
-  border-radius: var(--w-radius-sm);
+  border-radius: var(--w-r-sm);
 }
 .input:focus { outline: none; border-color: var(--w-accent); }
 </style>

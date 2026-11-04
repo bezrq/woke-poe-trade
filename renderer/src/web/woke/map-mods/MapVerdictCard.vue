@@ -89,12 +89,12 @@ function cycle (matcher: string, current: ModRating) {
   flex: none;
   width: 44px;
   height: 44px;
-  border-radius: var(--w-radius);
+  border-radius: var(--w-r-md);
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: 600;
-  font-size: 12px;
+  font-size: var(--w-fs-md);
   color: var(--w-accent-fg);
 }
 .headline { font-weight: 600; }
@@ -115,8 +115,8 @@ function cycle (matcher: string, current: ModRating) {
   padding: 10px var(--w-pad);
   border-bottom: 1px solid var(--w-line);
 }
-.score { font-size: 18px; font-weight: 600; }
-.bar { height: 6px; border-radius: 3px; background: var(--w-panel-3); overflow: hidden; }
+.score { font-size: var(--w-fs-xl); font-weight: 600; }
+.bar { height: 6px; border-radius: var(--w-r-sm); background: var(--w-panel-3); overflow: hidden; }
 .fill { height: 100%; background: var(--w-accent); }
 .props {
   display: grid;
@@ -128,7 +128,7 @@ function cycle (matcher: string, current: ModRating) {
   display: flex;
   flex-direction: column;
   padding: 4px 6px;
-  border-radius: var(--w-radius-sm);
+  border-radius: var(--w-r-sm);
   background: var(--w-panel-2);
 }
 
@@ -145,7 +145,7 @@ button.mod:hover { background: var(--w-accent-soft); }
   flex: none;
   width: 8px;
   height: 8px;
-  border-radius: 4px;
+  border-radius: var(--w-r-sm);
   background: var(--w-panel-3);
 }
 .dot.deadly { background: var(--w-down); }

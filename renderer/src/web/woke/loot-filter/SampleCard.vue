@@ -228,7 +228,7 @@ function unknownKeys (m: BlockMatch): string[] {
 }
 .itemName {
   font-family: var(--w-head);
-  font-size: 15px;
+  font-size: var(--w-fs-lg);
 }
 .section {
   display: flex;
@@ -240,7 +240,7 @@ function unknownKeys (m: BlockMatch): string[] {
 }
 .conds {
   font-family: var(--w-mono);
-  font-size: 11px;
+  font-size: var(--w-fs-xs);
   color: var(--w-dim);
   line-height: 1.6;
 }
@@ -251,7 +251,7 @@ function unknownKeys (m: BlockMatch): string[] {
   padding: 3px 8px;
   background: var(--w-panel-2);
   border: 1px solid var(--w-line-soft);
-  border-radius: var(--w-radius-sm);
+  border-radius: var(--w-r-sm);
   color: var(--w-fg);
   text-align: left;
   cursor: pointer;
@@ -277,7 +277,7 @@ function unknownKeys (m: BlockMatch): string[] {
   background: var(--w-panel-2);
   color: var(--w-fg);
   border: 1px solid var(--w-line);
-  border-radius: var(--w-radius-sm);
+  border-radius: var(--w-r-sm);
   padding: 1px 4px;
 }
 </style>

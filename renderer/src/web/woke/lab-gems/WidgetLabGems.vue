@@ -252,7 +252,7 @@ function ago (ts: number) {
 .current { background: var(--w-accent-soft); }
 .pickGrid { grid-template-columns: 10px minmax(0, 1fr) 70px 70px 76px; }
 .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; flex: none; }
-.r { background: #d0533f; }
-.g { background: #57b04d; }
-.b { background: #4f7ed6; }
+.r { background: var(--w-sock-r); }
+.g { background: var(--w-sock-g); }
+.b { background: var(--w-sock-b); }
 </style>

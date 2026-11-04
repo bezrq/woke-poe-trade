@@ -54,12 +54,12 @@ function barWidth (chaos: number, max: number) {
   margin: 8px var(--w-pad) 4px;
   padding: 6px 10px;
   border: 1px solid var(--w-line-strong);
-  border-radius: var(--w-radius-sm);
+  border-radius: var(--w-r-sm);
   background: var(--w-accent-soft);
 }
 .verdict b { color: var(--w-accent); font-weight: 600; }
 .priceGrid { grid-template-columns: minmax(0, 1fr) 72px 68px; }
-.best { font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; }
-.bar { height: 5px; border-radius: 3px; background: var(--w-panel-3); overflow: hidden; }
+.best { font-size: var(--w-fs-xs); letter-spacing: 0.06em; text-transform: uppercase; }
+.bar { height: 5px; border-radius: var(--w-r-sm); background: var(--w-panel-3); overflow: hidden; }
 .bar > i { display: block; height: 100%; background: var(--w-accent); opacity: 0.75; }
 </style>

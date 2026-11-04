@@ -319,17 +319,17 @@ function boardMatch (member: string, div: string, reward: string) {
 </script>
 
 <style module>
-.warn { color: var(--w-warn); padding: 6px var(--w-pad); font-size: 12px; }
+.warn { color: var(--w-warn); padding: 6px var(--w-pad); font-size: var(--w-fs-md); }
 .glanceBtr { grid-template-columns: minmax(0, 1fr) 64px; }
 .pad { padding: 4px var(--w-pad) 8px; }
-.goal { display: flex; align-items: center; gap: 6px; padding: 3px var(--w-pad); font-size: 12.5px; }
+.goal { display: flex; align-items: center; gap: 6px; padding: 3px var(--w-pad); font-size: var(--w-fs-md); }
 .goal > :first-child { flex: 1; min-width: 0; }
 .where { display: inline-flex; gap: 2px; }
 .whereBtn {
   width: 20px;
   height: 20px;
-  font-size: 10.5px;
-  border-radius: 3px;
+  font-size: var(--w-fs-xs);
+  border-radius: var(--w-r-sm);
   border: 1px solid var(--w-line);
   color: var(--w-dim);
   background: var(--w-panel-2);
@@ -358,13 +358,13 @@ function boardMatch (member: string, div: string, reward: string) {
   place-items: center;
   gap: 1px;
   padding: 3px 0;
-  border-radius: var(--w-radius-sm);
+  border-radius: var(--w-r-sm);
   color: var(--w-dim);
-  font-size: 9.5px;
+  font-size: var(--w-fs-xs);
   font-weight: 600;
   letter-spacing: 0.04em;
 }
-.railBtn > i:first-child { font-size: 14px; }
+.railBtn > i:first-child { font-size: var(--w-fs-lg); }
 .railBtn:hover { color: var(--w-fg); background: var(--w-panel-3); }
 .railOn { color: var(--w-accent); background: var(--w-accent-soft); }
 .dot { position: absolute; top: 4px; right: 5px; width: 6px; height: 6px; border-radius: 50%; background: var(--w-up); }
@@ -379,7 +379,7 @@ function boardMatch (member: string, div: string, reward: string) {
   list-style: disc;
   background: var(--w-panel-2);
   border: 1px solid var(--w-line);
-  border-radius: var(--w-radius-sm);
+  border-radius: var(--w-r-sm);
   display: grid;
   gap: 4px;
 }
@@ -388,7 +388,7 @@ function boardMatch (member: string, div: string, reward: string) {
 .board {
   display: grid;
   grid-template-columns: 96px repeat(17, minmax(80px, 1fr));
-  font-size: 11.5px;
+  font-size: var(--w-fs-sm);
   overflow-x: auto;
 }
 .boardHead {

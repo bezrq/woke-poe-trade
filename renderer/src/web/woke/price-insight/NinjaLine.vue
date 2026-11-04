@@ -34,6 +34,6 @@ const title = computed(() => gap.value != null
 </script>
 
 <style module>
-.ninja { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: var(--w-fg); }
+.ninja { display: inline-flex; align-items: center; gap: 5px; font-size: var(--w-fs-md); color: var(--w-fg); }
 .ninja:hover { text-decoration: underline; }
 </style>

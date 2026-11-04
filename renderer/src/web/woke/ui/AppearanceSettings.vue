@@ -24,7 +24,7 @@
       <div class="flex justify-between text-gray-500 text-xs"><span>{{ MIN_SCALE }}%</span><span>100%</span><span>{{ MAX_SCALE }}%</span></div>
       <label class="flex items-center gap-2 mt-1">
         <input type="checkbox" :checked="isAuto" @change="uiScale = ($event.target as HTMLInputElement).checked ? 'auto' : scaleValue">
-        <span>Match the game window (about 85% at 1080p, 110% at 1440p)</span>
+        <span>Match the game window (100% at 1080p, about 135% at 1440p)</span>
       </label>
       <div class="text-gray-500 text-sm">Sizes the toolkit's panels; APT's own windows keep their size. Saved instantly.</div>
     </div>

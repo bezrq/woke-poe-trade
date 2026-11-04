@@ -105,7 +105,7 @@ function finish (apply: boolean) {
   color: var(--w-fg);
   background: var(--w-panel);
   border: 1px solid var(--w-line-strong);
-  border-radius: var(--w-radius);
+  border-radius: var(--w-r-md);
   box-shadow: var(--w-shadow);
 }
 .hiddenNote {
@@ -119,11 +119,11 @@ function finish (apply: boolean) {
   gap: 6px;
   padding: 2px 8px;
   font-family: var(--w-body);
-  font-size: 11px;
+  font-size: var(--w-fs-xs);
   color: var(--w-dim);
   background: var(--w-panel);
   border: 1px solid var(--w-line);
-  border-radius: 999px;
+  border-radius: var(--w-r-pill);
   opacity: 0.85;
 }
 .dock {

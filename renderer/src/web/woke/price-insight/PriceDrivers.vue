@@ -165,7 +165,7 @@ async function widen () {
   gap: 5px;
   padding: 7px 9px;
   margin: 0 0 8px;
-  border-radius: var(--w-radius);
+  border-radius: var(--w-r-md);
   border: 1px solid var(--w-line);
   background: var(--w-panel);
   color: var(--w-fg);
@@ -177,23 +177,23 @@ async function widen () {
 .cands { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
 .cand {
   max-width: 100%;
-  font-size: 11.5px;
+  font-size: var(--w-fs-sm);
   padding: 0 6px;
-  border-radius: var(--w-radius-sm);
+  border-radius: var(--w-r-sm);
   background: var(--w-panel-3);
 }
 .actions { display: flex; gap: 6px; }
 .btn {
   padding: 2px 10px;
-  border-radius: var(--w-radius-sm);
+  border-radius: var(--w-r-sm);
   border: 1px solid var(--w-line-strong);
   background: var(--w-panel-2);
-  font-size: 12px;
+  font-size: var(--w-fs-md);
 }
 .btn:hover:not(:disabled) { background: var(--w-accent-soft); }
 .btn:disabled { opacity: 0.5; }
 .driver { display: grid; grid-template-columns: minmax(0, 1fr) 60px auto; align-items: center; gap: 8px; }
 .step { display: flex; align-items: center; gap: 6px; }
-.bar { height: 5px; border-radius: 3px; background: var(--w-panel-3); overflow: hidden; }
+.bar { height: 5px; border-radius: var(--w-r-sm); background: var(--w-panel-3); overflow: hidden; }
 .bar > span { display: block; height: 100%; background: var(--w-accent); }
 </style>

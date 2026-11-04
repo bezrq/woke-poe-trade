@@ -410,29 +410,29 @@ onUnmounted(() => {
   padding: 5px 12px;
   background: var(--w-panel);
   border: 1px solid var(--w-line);
-  border-radius: var(--w-radius);
+  border-radius: var(--w-r-md);
   box-shadow: var(--w-shadow);
-  font-size: 12.5px;
+  font-size: var(--w-fs-md);
   white-space: nowrap;
   color: var(--w-fg);
   max-width: 64rem;
 }
-.where { font-size: 14px; max-width: 18rem; }
+.where { font-size: var(--w-fs-lg); max-width: 18rem; }
 .char { max-width: 9rem; }
-.switch { width: auto; padding: 0 6px; gap: 4px; font-size: 12px; }
+.switch { width: auto; padding: 0 6px; gap: 4px; font-size: var(--w-fs-md); }
 .oneLine { max-width: 26rem; }
 .sep { width: 1px; align-self: stretch; background: var(--w-line); }
 .k {
-  font-size: 10.5px;
+  font-size: var(--w-fs-xs);
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--w-faint);
 }
 .pill {
   font-family: var(--w-num);
-  font-size: 10.5px;
+  font-size: var(--w-fs-xs);
   padding: 0 7px;
-  border-radius: 99px;
+  border-radius: var(--w-r-pill);
   line-height: 17px;
 }
 .pill--safe { color: var(--w-up); background: color-mix(in srgb, var(--w-up) 15%, transparent); }
@@ -442,10 +442,10 @@ onUnmounted(() => {
   width: 24rem;
   background: var(--w-panel);
   border: 1px solid var(--w-line);
-  border-radius: var(--w-radius);
+  border-radius: var(--w-r-md);
   box-shadow: var(--w-shadow);
   color: var(--w-fg);
-  font-size: 12.5px;
+  font-size: var(--w-fs-md);
   overflow: hidden;
 }
 .cardHead {
@@ -456,9 +456,9 @@ onUnmounted(() => {
   background: var(--w-header-bg);
   border-bottom: 1px solid var(--w-line);
   color: var(--w-accent);
-  font-size: 13px;
+  font-size: var(--w-fs-md);
 }
-.cardHead :global(.w-faint) { font-size: 11px; }
+.cardHead :global(.w-faint) { font-size: var(--w-fs-xs); }
 .body {
   display: flex;
   flex-direction: column;
@@ -472,13 +472,13 @@ onUnmounted(() => {
   box-shadow: inset 2px 0 0 var(--w-accent);
 }
 .next { color: var(--w-dim); }
-.sub { padding-left: 14px; font-size: 11.5px; }
+.sub { padding-left: 14px; font-size: var(--w-fs-sm); }
 .callout {
   margin-top: 4px;
   padding: 4px 8px;
   background: var(--w-accent-soft);
   border-left: 2px solid var(--w-accent);
-  border-radius: var(--w-radius-sm);
+  border-radius: var(--w-r-sm);
 }
 .build {
   margin-top: 4px;

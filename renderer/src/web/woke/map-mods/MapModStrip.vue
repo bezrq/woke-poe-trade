@@ -57,7 +57,7 @@ const warnText = computed(() => result.value!.verdict.warn.map(m => shortLabel(m
   flex-direction: column;
   gap: 4px;
   padding: 6px 8px;
-  border-radius: var(--w-radius);
+  border-radius: var(--w-r-md);
   border: 1px solid var(--w-line-strong);
   background: var(--w-panel);
   color: var(--w-fg);
@@ -69,10 +69,10 @@ const warnText = computed(() => result.value!.verdict.warn.map(m => shortLabel(m
 .row { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; }
 .badge {
   flex: none;
-  font-size: 11px;
+  font-size: var(--w-fs-xs);
   font-weight: 600;
   padding: 1px 6px;
-  border-radius: var(--w-radius-sm);
+  border-radius: var(--w-r-sm);
   color: var(--w-accent-fg);
 }
 .skip .badge { background: var(--w-down); }
@@ -86,14 +86,14 @@ const warnText = computed(() => result.value!.verdict.warn.map(m => shortLabel(m
 .chip {
   font-size: var(--w-text-sm);
   padding: 0 7px;
-  border-radius: 999px;
+  border-radius: var(--w-r-pill);
   background: var(--w-panel-2);
   color: var(--w-dim);
 }
 .warnChip { color: var(--w-warn); background: color-mix(in srgb, var(--w-warn) 12%, transparent); }
 .list { display: flex; flex-direction: column; gap: 2px; padding-top: 4px; border-top: 1px solid var(--w-line); }
 .mod { display: flex; align-items: center; gap: 6px; font-size: var(--w-text-sm); }
-.dot { flex: none; width: 7px; height: 7px; border-radius: 4px; background: var(--w-panel-3); }
+.dot { flex: none; width: 7px; height: 7px; border-radius: var(--w-r-sm); background: var(--w-panel-3); }
 .dot.deadly { background: var(--w-down); }
 .dot.warn { background: var(--w-warn); }
 .dot.good { background: var(--w-up); }

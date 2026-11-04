@@ -331,7 +331,7 @@ onUnmounted(() => {
 </script>
 
 <style module>
-.led { width: 8px; height: 8px; border-radius: 4px; background: var(--w-faint); align-self: center; margin-right: 4px; }
+.led { width: 8px; height: 8px; border-radius: var(--w-r-sm); background: var(--w-faint); align-self: center; margin-right: 4px; }
 .led.on { background: var(--w-up); }
 .roll {
   display: flex;
@@ -344,9 +344,9 @@ onUnmounted(() => {
 .rollTag {
   min-width: 20px;
   text-align: center;
-  font-size: 10.5px;
+  font-size: var(--w-fs-xs);
   font-family: var(--w-num);
-  border-radius: var(--w-radius-sm);
+  border-radius: var(--w-r-sm);
   color: var(--w-accent-fg);
   background: var(--w-faint);
 }
@@ -361,15 +361,15 @@ onUnmounted(() => {
   text-align: center;
 }
 .tally > div { display: flex; flex-direction: column; font-size: var(--w-text-sm); }
-.tally :global(.w-num) { font-size: 18px; }
-.entry { display: flex; align-items: center; gap: 8px; padding: 3px var(--w-pad); font-size: 12.5px; }
+.tally :global(.w-num) { font-size: var(--w-fs-xl); }
+.entry { display: flex; align-items: center; gap: 8px; padding: 3px var(--w-pad); font-size: var(--w-fs-md); }
 .tag {
   flex: none;
   min-width: 38px;
   text-align: center;
-  font-size: 11px;
+  font-size: var(--w-fs-xs);
   font-weight: 600;
-  border-radius: var(--w-radius-sm);
+  border-radius: var(--w-r-sm);
   color: var(--w-accent-fg);
   padding: 0 4px;
 }
@@ -405,7 +405,7 @@ onUnmounted(() => {
   font-family: var(--w-body);
   font-size: var(--w-text);
   border: 1px solid var(--w-line-strong);
-  border-radius: var(--w-radius);
+  border-radius: var(--w-r-md);
   box-shadow: var(--w-shadow);
 }
 .badge.skip { border-color: color-mix(in srgb, var(--w-down) 60%, transparent); }
@@ -415,7 +415,7 @@ onUnmounted(() => {
   from { box-shadow: 0 0 0 0 var(--w-up); }
   to { box-shadow: 0 0 0 6px color-mix(in srgb, var(--w-up) 40%, transparent); }
 }
-.dot { width: 7px; height: 7px; border-radius: 4px; background: var(--w-panel-3); flex: none; }
+.dot { width: 7px; height: 7px; border-radius: var(--w-r-sm); background: var(--w-panel-3); flex: none; }
 .dot.deadly { background: var(--w-down); }
 .dot.warn { background: var(--w-warn); }
 .dot.good { background: var(--w-up); }

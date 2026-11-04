@@ -57,13 +57,13 @@
             ({{ current.rated.estimate.gain >= 0 ? '+' : '' }}{{ fmt(current.rated.estimate.gain) }} after Vaal)
           </div>
           <template v-if="current.rated.specials.length">
-            <div class="w-faint" style="font-size: 10.5px; margin-top: 3px;">Corrupting can turn {{ current.rated.flagged.join(', ') }} into:</div>
-            <div v-for="sp in current.rated.specials" :key="sp.name" :class="$style.erow" style="font-size: 11.5px;">
+            <div class="w-faint" style="font-size: var(--w-fs-xs); margin-top: 3px;">Corrupting can turn {{ current.rated.flagged.join(', ') }} into:</div>
+            <div v-for="sp in current.rated.specials" :key="sp.name" :class="$style.erow" style="font-size: var(--w-fs-sm);">
               <span :class="$style.flagged">{{ sp.name.replace('Essence of ', '') }}</span>
               <WPrice :chaos="sp.chaos" :divine="divine" />
             </div>
           </template>
-          <div v-if="!hasPrices" class="w-faint" style="font-size: 10.5px;">Waiting for poe.ninja prices…</div>
+          <div v-if="!hasPrices" class="w-faint" style="font-size: var(--w-fs-xs);">Waiting for poe.ninja prices…</div>
         </div>
       </div>
     </Teleport>
@@ -312,20 +312,20 @@ onUnmounted(() => {
 </script>
 
 <style module>
-.led { width: 8px; height: 8px; border-radius: 4px; background: var(--w-faint); align-self: center; margin-right: 4px; }
+.led { width: 8px; height: 8px; border-radius: var(--w-r-sm); background: var(--w-faint); align-self: center; margin-right: 4px; }
 .led.on { background: var(--w-up); }
-.entry { display: flex; align-items: center; gap: 8px; padding: 3px var(--w-pad); font-size: 12.5px; border-bottom: 1px solid var(--w-line-soft); }
+.entry { display: flex; align-items: center; gap: 8px; padding: 3px var(--w-pad); font-size: var(--w-fs-md); border-bottom: 1px solid var(--w-line-soft); }
 .tag {
   flex: none;
   min-width: 52px;
   text-align: center;
-  font-size: 11px;
+  font-size: var(--w-fs-xs);
   font-weight: 600;
-  border-radius: var(--w-radius-sm);
+  border-radius: var(--w-r-sm);
   color: var(--w-accent-fg);
   padding: 0 4px;
 }
-.corrupt .tag { background: var(--ess-flag, #c58bd6); }
+.corrupt .tag { background: var(--ess-flag, var(--w-corrupt)); }
 .open .tag { background: var(--w-up); }
 .done .tag { background: var(--w-panel-3); color: var(--w-dim); }
 
@@ -342,10 +342,10 @@ onUnmounted(() => {
   font-family: var(--w-body);
   font-size: var(--w-text);
   border: 1px solid var(--w-line-strong);
-  border-radius: var(--w-radius);
+  border-radius: var(--w-r-md);
   box-shadow: var(--w-shadow);
 }
-.card.corrupt { border-color: color-mix(in srgb, var(--ess-flag, #c58bd6) 70%, transparent); }
+.card.corrupt { border-color: color-mix(in srgb, var(--ess-flag, var(--w-corrupt)) 70%, transparent); }
 .card.big { border-color: color-mix(in srgb, var(--w-up) 60%, transparent); }
 .pin {
   position: absolute;
@@ -356,13 +356,13 @@ onUnmounted(() => {
   padding: 3px 6px;
   background: var(--w-panel);
   border: 1px solid var(--w-line-strong);
-  border-radius: var(--w-radius);
+  border-radius: var(--w-r-md);
   box-shadow: var(--w-shadow);
   font-family: var(--w-body);
-  font-size: 12px;
+  font-size: var(--w-fs-md);
   color: var(--w-fg);
 }
-.pin.corrupt { border-color: color-mix(in srgb, var(--ess-flag, #c58bd6) 70%, transparent); }
-.erow { display: flex; justify-content: space-between; gap: 8px; font-size: 12.5px; }
-.flagged { color: var(--ess-flag, #c58bd6); font-weight: 600; }
+.pin.corrupt { border-color: color-mix(in srgb, var(--ess-flag, var(--w-corrupt)) 70%, transparent); }
+.erow { display: flex; justify-content: space-between; gap: 8px; font-size: var(--w-fs-md); }
+.flagged { color: var(--ess-flag, var(--w-corrupt)); font-weight: 600; }
 </style>
