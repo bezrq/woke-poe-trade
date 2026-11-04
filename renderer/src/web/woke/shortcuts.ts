@@ -6,6 +6,8 @@ import { REGEX_LIBRARY_TYPE } from './regex-library/widget'
 import type { RegexLibraryWidget } from './regex-library/widget'
 import { TRADE_SEARCHES_TYPE, hotkeyTarget } from './trade-searches/widget'
 import type { TradeSearchesWidget } from './trade-searches/widget'
+import { LAB_TYPE, hotkeyTarget as labHotkeyTarget } from './lab/lab'
+import type { LabWidget } from './lab/lab'
 
 export function wokeShortcutsFor (widget: Widget): ShortcutAction[] {
   if (widget.wmType === REGEX_LIBRARY_TYPE) {
@@ -38,6 +40,17 @@ export function wokeShortcutsFor (widget: Widget): ShortcutAction[] {
           action: { type: 'trigger-event', target: hotkeyTarget(widget.wmId, entry.id, 'external') }
         })
       }
+    }
+    return actions
+  }
+  if (widget.wmType === LAB_TYPE) {
+    const lab = widget as LabWidget
+    const actions: ShortcutAction[] = []
+    if (lab.hotkeyOverlay) {
+      actions.push({ shortcut: lab.hotkeyOverlay, keepModKeys: true, action: { type: 'trigger-event', target: labHotkeyTarget(widget.wmId, 'overlay') } })
+    }
+    if (lab.hotkeyExternal) {
+      actions.push({ shortcut: lab.hotkeyExternal, keepModKeys: true, action: { type: 'trigger-event', target: labHotkeyTarget(widget.wmId, 'external') } })
     }
     return actions
   }
