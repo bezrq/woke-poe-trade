@@ -94,7 +94,13 @@ export default defineComponent({
   setup (props) {
     const wm = inject<WidgetManager>('wm')!
     // woke: panels inside read the widget config to remember their size.
-    provide('wokeWidgetConfig', props.config)
+    // Through getters: the config object is replaced whenever the whole
+    // config is (settings changes), while this component stays mounted.
+    provide('wokeWidgetConfig', {
+      get anchor () { return props.config.anchor },
+      get wokeSizes () { return (props.config as { wokeSizes?: unknown }).wokeSizes },
+      set wokeSizes (v: unknown) { (props.config as { wokeSizes?: unknown }).wokeSizes = v }
+    })
 
     const moverPosition = computed(() => {
       const { anchor, wmZorder } = props.config

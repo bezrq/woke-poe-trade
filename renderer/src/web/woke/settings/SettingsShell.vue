@@ -95,20 +95,46 @@ const winEl = shallowRef<HTMLElement | null>(null)
 
 function snapshot (): string { return JSON.stringify(clone.value) }
 
-// Window-manager state lives in the live config, not in our copy.
-function mergeLive (next: Config) {
+type Obj = Record<string, unknown>
+const isObj = (v: unknown): v is Obj => v != null && typeof v === 'object' && !Array.isArray(v)
+const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b)
+const copy = <T>(v: T): T => v === undefined ? v : JSON.parse(JSON.stringify(v))
+
+// Three-way: what this window changed since its last commit wins; everything
+// else takes the live value. Widgets keep saving their own state while the
+// window is open (runs, sessions, steps, saved searches), and our copy of it
+// is stale.
+function merge3 (mine: unknown, base: unknown, live: unknown): unknown {
+  if (same(mine, base)) return copy(live)
+  if (isObj(mine) && isObj(base) && isObj(live)) {
+    const out: Obj = {}
+    for (const k of new Set([...Object.keys(mine), ...Object.keys(live)])) {
+      const v = merge3(mine[k], base[k], live[k])
+      if (v !== undefined) out[k] = v
+    }
+    return out
+  }
+  return mine
+}
+
+function mergeLive (next: Config, since: Config): Config {
   const live = AppConfig()
-  for (const w of next.widgets) {
-    const l = live.widgets.find(x => x.wmId === w.wmId)
-    if (!l) continue
+  const noWidgets = (c: Config): Obj => { const o: Obj = { ...c }; delete o.widgets; return o }
+  const merged = merge3(noWidgets(next), noWidgets(since), noWidgets(live)) as Omit<Config, 'widgets'>
+  // Live order and membership: a widget removed while the window was open
+  // stays removed, one added joins.
+  const widgets = live.widgets.map(l => {
+    const mine = next.widgets.find(w => w.wmId === l.wmId)
+    if (!mine) return copy(l)
+    const base = since.widgets.find(w => w.wmId === l.wmId)
+    const w = (base ? merge3(mine, base, l) : mine) as Widget
+    // Window-manager state lives in the live config, not in our copy.
     w.wmWants = l.wmWants
     w.wmZorder = l.wmZorder
     w.wmFlags = [...l.wmFlags]
-  }
-  // Never drop a widget that appeared after we copied the config.
-  for (const l of live.widgets) {
-    if (!next.widgets.some(w => w.wmId === l.wmId)) next.widgets.push(JSON.parse(JSON.stringify(l)))
-  }
+    return w
+  })
+  return { ...merged, widgets } as Config
 }
 
 // Widgets created while the window is open (Add buttons) join our copy.
@@ -120,9 +146,8 @@ function adoptNewWidgets () {
   }
 }
 
-function commit (snap: string) {
-  const next = JSON.parse(snap) as Config
-  mergeLive(next)
+function commit (snap: string, since: string) {
+  const next = mergeLive(JSON.parse(snap) as Config, JSON.parse(since) as Config)
   updateConfig(next)
   pushHostConfig()
 }
@@ -135,15 +160,16 @@ function apply (silent = false) {
   if (snap === lastApplied) return
   const prev = lastApplied
   lastApplied = snap
-  commit(snap)
+  commit(snap, prev)
   if (!silent && !restoring && Date.now() > quietUntil) toast('Change saved', { undo: () => restore(prev), anchor: winEl.value })
 }
 
 function restore (snap: string) {
   restoring = true
+  const since = lastApplied
   clone.value = reactive(JSON.parse(snap)) as Config
   lastApplied = snap
-  commit(snap)
+  commit(snap, since)
   nextTick(() => { restoring = false })
 }
 
