@@ -1,0 +1,53 @@
+{
+  "kind": "map",
+  "source": "Guy, 2560x1440, PoE screenshot-0008",
+  "cursor": {
+    "x": 480,
+    "y": 750
+  },
+  "tier": 16,
+  "props": {
+    "quantity": 62,
+    "rarity": 38,
+    "packSize": 24
+  },
+  "mods": [
+    "Area contains a Blight Encounter",
+    "Players are Cursed with Elemental Weakness",
+    "#% more Monster Life",
+    "Monsters gain an Endurance Charge on Hit",
+    "Unique Boss has #% increased Life",
+    "Unique Boss has #% increased Area of Effect",
+    "Area has patches of Consecrated Ground"
+  ],
+  "modLines": [
+    "Area contains a Blight Encounter",
+    "Players are Cursed with Elemental Weakness",
+    "47% more Monster Life",
+    "Monsters gain an Endurance Charge on Hit",
+    "Unique Boss has 35% increased Life",
+    "Unique Boss has 70% increased Area of Effect",
+    "Area has patches of Consecrated Ground"
+  ],
+  "lines": [
+    "Blood Instigation",
+    "Map (Tier 16)",
+    "Monster Level: 83",
+    "Item Quantity: +62%",
+    "Item Rarity: +38%",
+    "Monster Pack Size: +24%",
+    "Area contains a Blight Encounter",
+    "Players are Cursed with Elemental Weakness",
+    "47% more Monster Life",
+    "Monsters gain an Endurance Charge on Hit",
+    "Unique Boss has 35% increased Life",
+    "Unique Boss has 70% increased Area of Effect",
+    "Area has patches of Consecrated Ground"
+  ],
+  "box": {
+    "x": 200,
+    "y": 180,
+    "width": 560,
+    "height": 540
+  }
+}

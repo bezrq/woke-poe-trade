@@ -82,9 +82,13 @@ export class Shortcuts {
         // woke: wait for a pause in typing so the command never lands in the
         // middle of a chat message or a key you're holding.
         this.whenKeysIdle(() => {
+          // A click in the overlay: give the game focus a moment to arrive
+          // before typing into it.
+          const wasOverlay = this.overlay.isInteractable
           this.overlay.assertGameActive()
-          typeInChat(e.text, true, this.clipboard)
-        })
+          if (wasOverlay) setTimeout(() => typeInChat(e.text, true, this.clipboard), 120)
+          else typeInChat(e.text, true, this.clipboard)
+        }, e.immediate ? 0 : undefined)
       }
     })
 
@@ -208,6 +212,7 @@ export class Shortcuts {
             name: 'MAIN->CLIENT::widget-action',
             payload: { target: entry.action.target }
           })
+          if (entry.action.focusOverlay) this.overlay.assertOverlayActive()
         } else if (entry.action.type === 'stash-search') {
           stashSearch(entry.action.text, this.clipboard, this.overlay)
         } else if (entry.action.type === 'copy-item') {

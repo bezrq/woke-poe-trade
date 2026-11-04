@@ -54,6 +54,7 @@ export const MODULES: ModuleDef[] = [
 
   { id: 'pob-builds', name: 'PoB builds', description: 'Your Path of Building folder', group: 'builds', widgetTypes: ['woke-pob-builds'], needs: [] },
   { id: 'trade-searches', name: 'Trade searches', description: 'Saved trade site searches', group: 'builds', widgetTypes: ['woke-trade-searches'], needs: ['hotkeys'] },
+  { id: 'trade', name: 'Trade assistant', description: 'Trade whispers, quick replies and a sales log', group: 'builds', widgetTypes: ['woke-trade'], needs: ['log', 'hotkeys', 'prices'] },
   { id: 'regex-library', name: 'Regex library', description: 'Saved stash search strings', group: 'builds', widgetTypes: ['woke-regex-library'], needs: ['hotkeys'] },
 
   // APT features: only their hotkeys can be switched off.
@@ -71,9 +72,9 @@ export interface Preset {
 
 export const PRESETS: Preset[] = [
   { id: 'everything', label: 'Everything', on: 'all' },
-  { id: 'mapper', label: 'Mapper', on: ['market', 'farming', 'session-analytics', 'boss-runs', 'map-mods', 'map-scan', 'essence-scan', 'loot-filter', 'atlas', 'mechanics', 'trade-searches', 'regex-library'] },
+  { id: 'mapper', label: 'Mapper', on: ['market', 'farming', 'session-analytics', 'boss-runs', 'map-mods', 'map-scan', 'essence-scan', 'loot-filter', 'atlas', 'mechanics', 'trade-searches', 'trade', 'regex-library'] },
   { id: 'leveling', label: 'Leveling', on: ['campaign', 'run-timer', 'lab', 'pob-builds', 'regex-library'] },
-  { id: 'trader', label: 'Trader', on: ['market', 'league-invest', 'lab-gems', 'trade-searches', 'regex-library'] },
+  { id: 'trader', label: 'Trader', on: ['market', 'league-invest', 'lab-gems', 'trade-searches', 'trade', 'regex-library'] },
   { id: 'price-check-only', label: 'Price check only', on: [] }
 ]
 

@@ -1,0 +1,55 @@
+{
+  "kind": "map",
+  "source": "Guy, 2560x1440, PoE screenshot-0004",
+  "cursor": {
+    "x": 812,
+    "y": 990
+  },
+  "tier": 16,
+  "props": {
+    "quantity": 52,
+    "rarity": 32,
+    "packSize": 20,
+    "maps": 105
+  },
+  "mods": [
+    "Area is Influenced by the Originator's Memories",
+    "Monsters gain a Frenzy Charge on Hit",
+    "Monsters have # to Maximum Endurance Charges",
+    "Monsters have # to Maximum Power Charges",
+    "Monsters gain a Power Charge on Hit",
+    "Monsters gain an Endurance Charge when hit",
+    "Monsters gain #% of Maximum Life as Extra Maximum Energy Shield"
+  ],
+  "modLines": [
+    "Area is Influenced by the Originator's Memories",
+    "Monsters gain a Frenzy Charge on Hit",
+    "Monsters have +1 to Maximum Endurance Charges",
+    "Monsters have +1 to Maximum Power Charges",
+    "Monsters gain a Power Charge on Hit",
+    "Monsters gain an Endurance Charge when hit",
+    "Monsters gain 72% of Maximum Life as Extra Maximum Energy Shield"
+  ],
+  "lines": [
+    "Entropy Solitude",
+    "Map (Tier 16)",
+    "Monster Level: 83",
+    "Item Quantity: +52%",
+    "Item Rarity: +32%",
+    "Monster Pack Size: +20%",
+    "More Maps: +105%",
+    "Area is Influenced by the Originator's Memories",
+    "Monsters gain a Frenzy Charge on Hit",
+    "Monsters have +1 to Maximum Endurance Charges",
+    "Monsters have +1 to Maximum Power Charges",
+    "Monsters gain a Power Charge on Hit",
+    "Monsters gain an Endurance Charge when hit",
+    "Monsters gain 72% of Maximum Life as Extra Maximum Energy Shield"
+  ],
+  "box": {
+    "x": 395,
+    "y": 420,
+    "width": 835,
+    "height": 540
+  }
+}

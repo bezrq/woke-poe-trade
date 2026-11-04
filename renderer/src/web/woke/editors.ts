@@ -13,6 +13,7 @@ import MapModsEditor from './map-mods/map-mods-editor.vue'
 import MapScanEditor from './map-mods/map-scan-editor.vue'
 import EssenceScanEditor from './essence-scan/essence-scan-editor.vue'
 import LootFilterEditor from './loot-filter/loot-filter-editor.vue'
+import TradeEditor from './trade/trade-editor.vue'
 import { REGEX_LIBRARY_TYPE } from './regex-library/widget'
 import { TRADE_SEARCHES_TYPE } from './trade-searches/widget'
 import { POB_BUILDS_TYPE } from './pob-builds/widget'
@@ -26,6 +27,7 @@ import { MAP_MODS_TYPE } from './map-mods/widget'
 import { MAP_SCAN_TYPE } from './map-mods/scan'
 import { ESSENCE_SCAN_TYPE } from './essence-scan/widget'
 import { LOOT_FILTER_TYPE } from './loot-filter/widget'
+import { TRADE_TYPE } from './trade/widget'
 
 const editors: Record<string, Component> = {
   [REGEX_LIBRARY_TYPE]: RegexLibraryEditor,
@@ -40,7 +42,8 @@ const editors: Record<string, Component> = {
   [ESSENCE_SCAN_TYPE]: EssenceScanEditor,
   [MECHANICS_TYPE]: MechanicsEditor,
   [LOOT_FILTER_TYPE]: LootFilterEditor,
-  [FARMING_TYPE]: FarmingEditor
+  [FARMING_TYPE]: FarmingEditor,
+  [TRADE_TYPE]: TradeEditor
 }
 
 export function wokeSettingsFor (wmType: string | undefined): Component | undefined {

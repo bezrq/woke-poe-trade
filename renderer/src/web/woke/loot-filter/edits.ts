@@ -10,7 +10,8 @@ export interface StylePatch {
   text?: Colour
   border?: Colour | null
   background?: Colour
-  // null removes the action.
+  // null removes the action. id is 1-16 for the game's own sounds, or a
+  // file name in the filter folder (CustomAlertSound).
   sound?: { id: string, volume: number } | null
   effect?: { color: string, temp: boolean } | null
   icon?: { size: number, color: string, shape: string } | null
@@ -59,6 +60,8 @@ export function readStyle (actions: FilterAction[]): StylePatch {
       case 'SetBackgroundColor': style.background = colour(a.args); break
       case 'PlayAlertSound':
       case 'PlayAlertSoundPositional':
+      case 'CustomAlertSound':
+      case 'CustomAlertSoundOptional':
         style.sound = { id: a.args[0], volume: Number(a.args[1] ?? 300) }
         break
       case 'PlayEffect': style.effect = { color: a.args[0], temp: a.args[1] === 'Temp' }; break
@@ -95,7 +98,10 @@ export function applyStyle (block: FilterBlock, patch: StylePatch): void {
   if (patch.border !== undefined) actions = setAction(actions, 'SetBorderColor', patch.border ? rgba(patch.border) : null)
   if (patch.background !== undefined) actions = setAction(actions, 'SetBackgroundColor', rgba(patch.background))
   if (patch.sound !== undefined) {
-    actions = setAction(actions, 'PlayAlertSound', patch.sound ? [patch.sound.id, String(patch.sound.volume)] : null, ['PlayAlertSoundPositional', 'CustomAlertSound', 'CustomAlertSoundOptional'])
+    const custom = patch.sound != null && /\.(mp3|wav|ogg)$/i.test(patch.sound.id)
+    const all = ['PlayAlertSound', 'PlayAlertSoundPositional', 'CustomAlertSound', 'CustomAlertSoundOptional']
+    const key = custom ? 'CustomAlertSound' : 'PlayAlertSound'
+    actions = setAction(actions, key, patch.sound ? [patch.sound.id, String(patch.sound.volume)] : null, all.filter(k => k !== key))
   }
   if (patch.effect !== undefined) {
     actions = setAction(actions, 'PlayEffect', patch.effect ? [patch.effect.color, ...(patch.effect.temp ? ['Temp'] : [])] : null)

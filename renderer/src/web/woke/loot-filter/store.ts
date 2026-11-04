@@ -2,6 +2,7 @@
 import { computed, onUnmounted, shallowRef, ref, watch } from 'vue'
 import { Host, MainProcess } from '@/web/background/IPC'
 import { hostRequest } from '../shared/host'
+import { customSoundsIn, installPackSounds } from './sounds'
 import { parseLogLine } from '../campaign/log-parse'
 import { parseFilter, serializeFilter } from './parse'
 import type { FilterDoc } from './parse'
@@ -128,16 +129,18 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
   const updatedSinceSave = computed(() =>
     baseVersion.value != null && cfg().lastVersion != null && baseVersion.value !== cfg().lastVersion)
 
-  function rebuild () {
-    if (baseText.value == null) { doc.value = null; return }
-    const next = parseFilter(baseText.value)
+  // A filter text with everything applied: build rules, price moves, your
+  // edits and the safety net. The editor's own doc, and the preview's
+  // other strictness levels, are made this way.
+  function compose (text: string) {
+    const next = parseFilter(text)
     // Build rules go in first, so edits to them (restyles) apply on top.
     const input = buildInput.value
-    buildBlockCount.value = 0
+    let buildCount = 0
     if (input) {
       const blocks = buildRuleBlocks(input, cfg().buildRules)
       insertBuildBlocks(next, blocks)
-      buildBlockCount.value = blocks.length
+      buildCount = blocks.length
     }
     // Price moves next: your own moves (edits) are applied after them and win.
     if (cfg().priceTiers.on && cfg().priceTiers.moves.length) applyPriceMoves(next, cfg().priceTiers.moves)
@@ -145,20 +148,38 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
     const results = new Map(applyEdits(next, cfg().edits.filter(e => !isNetEdit(e))).map(r => [r.edit.id, r]))
     // The safety net goes on top, listing only what the rest still hides.
     // Restyles of the net apply after it exists.
-    safetyCount.value = 0
-    safetyList.value = ''
+    let netCount = 0
+    let netList = ''
     const lookup = prices.lookup.value
     if (cfg().safetyNet.on && lookup) {
       const bases = safetyBases(next, lookup, cfg().safetyNet.minChaos)
-      const blocks = safetyBlocks(bases)
-      insertBuildBlocks(next, blocks)
-      safetyCount.value = bases.plain.length + bases.unique.length
-      safetyList.value = JSON.stringify(bases)
+      insertBuildBlocks(next, safetyBlocks(bases))
+      netCount = bases.plain.length + bases.unique.length
+      netList = JSON.stringify(bases)
     }
     for (const r of applyEdits(next, cfg().edits.filter(isNetEdit))) results.set(r.edit.id, r)
-    statuses.value = cfg().edits.map(e => results.get(e.id)!)
-    doc.value = next
+    return { doc: next, results, buildCount, netCount, netList }
+  }
+
+  function rebuild () {
+    if (baseText.value == null) { doc.value = null; return }
+    const c = compose(baseText.value)
+    buildBlockCount.value = c.buildCount
+    safetyCount.value = c.netCount
+    safetyList.value = c.netList
+    statuses.value = cfg().edits.map(e => c.results.get(e.id)!)
+    doc.value = c.doc
     publishActiveFilter(api)
+  }
+
+  // The filter to compare the preview with: NeverSink as it came, or another
+  // strictness level with all your changes on it.
+  async function compareDoc (against: 'untouched' | number): Promise<FilterDoc | null> {
+    if (against === 'untouched') return baseText.value != null ? parseFilter(baseText.value) : null
+    const ns = cfg().neversink
+    if (!ns.on) return null
+    const { text } = await readNeverSink(ns.version, against)
+    return compose(text).doc
   }
 
   // ---- prices ----
@@ -557,6 +578,8 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
         await hostRequest('filter-write', { dir: cfg().folder, name: cfg().sourceName + '.bak', text: baseText.value })
         baseNeedsBackup.value = false
       }
+      // Pack sounds the filter uses go into the folder first, so the game finds them.
+      await installPackSounds(customSoundsIn(doc.value), cfg().folder).catch(() => 0)
       await hostRequest('filter-write', { dir: cfg().folder, name, text: serializeFilter(doc.value, header()) })
       savedEdits.value = signature()
       cfg().savedBuildSig = hash(buildSig.value)
@@ -608,6 +631,7 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
     lockItem,
     resetPrices,
     editWithUndo,
+    compareDoc,
     restore,
     updateReady,
     checking,

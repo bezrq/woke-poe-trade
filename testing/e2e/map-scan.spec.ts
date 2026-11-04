@@ -13,10 +13,12 @@ function screen (name: string): { cursor: { x: number, y: number } } {
   return JSON.parse(fs.readFileSync(path.join(FIXTURES, `screens/${name}.json`), 'utf8'))
 }
 
-test('Alt+S scans the hovered map: a deadly map gets CAREFUL with its flagged mods', async ({ overlay }) => {
+test('Alt+S scans the hovered map: a map with max res down gets CAREFUL with its flagged mods', async ({ overlay }) => {
   await overlay.boot({ widgets: [{ wmType: 'woke-map-scan' }, { wmType: 'woke-map-mods' }] })
-  await overlay.showScreen('screens/map-tooltip-deadly.png')
-  const { cursor } = screen('map-tooltip-deadly')
+  // Real screenshot: Players have -20% to all maximum Resistances, cursed
+  // with Temporal Chains and Enfeeble.
+  await overlay.showScreen('screens/map-real-07.png')
+  const { cursor } = screen('map-real-07')
   await overlay.moveMouse(cursor.x, cursor.y)
   await overlay.pressHotkey('Alt + S')
 
@@ -24,18 +26,17 @@ test('Alt+S scans the hovered map: a deadly map gets CAREFUL with its flagged mo
   await expect(badge).toBeVisible({ timeout: 20_000 })
   await expect(badge).toContainText('CARE')
   await expect(badge).toContainText(/maximum Resistances|max res/i)
-  await expect(badge).toContainText(/regenerate|regen/i)
-  await overlay.snap('map scan badge on a deadly map')
+  await overlay.snap('map scan badge on a max res map')
 
   // The same hotkey stops scanning, and the badge goes away.
   await overlay.pressHotkey('Alt + S')
   await expect(badge).toBeHidden()
 })
 
-test('map scan: a clean juicy map gets a verdict, and moving off it reads nothing new', async ({ overlay }) => {
+test('map scan: a clean map gets a verdict, and moving off it reads nothing new', async ({ overlay }) => {
   await overlay.boot({ widgets: [{ wmType: 'woke-map-scan', wmWants: 'show' }, { wmType: 'woke-map-mods' }] })
-  await overlay.showScreen('screens/map-tooltip-strand.png')
-  const { cursor } = screen('map-tooltip-strand')
+  await overlay.showScreen('screens/map-real-09.png')
+  const { cursor } = screen('map-real-09')
   await overlay.moveMouse(cursor.x, cursor.y)
   await overlay.pressHotkey('Alt + S')
 
@@ -43,7 +44,7 @@ test('map scan: a clean juicy map gets a verdict, and moving off it reads nothin
   await expect(panel).toContainText('1 scanned', { timeout: 20_000 })
   await overlay.snap('map scan panel after one map')
   // Off the tooltip: still one reading.
-  await overlay.moveMouse(1700, 900)
+  await overlay.moveMouse(2300, 1300)
   await overlay.page.waitForTimeout(1500)
   await expect(panel).toContainText('1 scanned')
 })

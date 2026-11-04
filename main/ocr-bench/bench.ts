@@ -2,9 +2,10 @@
 // runs, on the same tesseract/opencv wasm) over labelled screenshots and
 // reports how often it reads them right.
 //
-//   npm run ocr-bench -- --ocr <cv-ocr dir> --samples <dir> [--out <dir>] [--model <name>]
+//   npm run ocr-bench -- --ocr <cv-ocr dir> [--samples <dir>] [--kind map|essence] [--out <dir>] [--model <name>]
 //
-// A sample is <id>.png (a full game screenshot) + <id>.json:
+// Samples default to testing/fixtures/screens (real screenshots, shared with
+// the OCR tests). A sample is <id>.png (a game screenshot) + <id>.json:
 //   { "kind": "map", "cursor": { "x", "y" },          cursor in image pixels
 //     "lines": [...],                                 every tooltip line (optional)
 //     "modLines": ["Monsters deal 102% extra ..."],   map mod lines as shown
@@ -95,7 +96,8 @@ const PROP_KEYS = ['tier', 'quantity', 'rarity', 'packSize', 'quality'] as const
 
 async function main () {
   const ocrDir = path.resolve(arg('ocr'))
-  const samplesDir = path.resolve(arg('samples'))
+  const samplesDir = path.resolve(arg('samples', path.resolve(__dirname, '../../testing/fixtures/screens')))
+  const onlyKind = arg('kind', '')
   const outDir = process.argv.includes('--out') ? path.resolve(arg('out')) : null
   // Default: the model the app ships for scans.
   const model = arg('model', path.resolve(__dirname, '../../renderer/public/data/ocr/poe.traineddata'))
@@ -115,6 +117,9 @@ async function main () {
 
   for (const id of ids) {
     const anyLabel = JSON.parse(fs.readFileSync(path.join(samplesDir, id + '.json'), 'utf8')) as MapLabel | EssenceLabel
+    // Other kinds of fixture (e.g. whole-screen essence reads) aren't benched.
+    if (anyLabel.kind !== 'map' && anyLabel.kind !== 'essence') continue
+    if (onlyKind && anyLabel.kind !== onlyKind) continue
     if (anyLabel.kind === 'essence') {
       benchEssence(id, anyLabel, readPng(path.join(samplesDir, id + '.png')), ess, fails)
       continue

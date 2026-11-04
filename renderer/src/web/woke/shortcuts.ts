@@ -23,6 +23,8 @@ import { RUN_TIMER_TYPE, hotkeyTarget as timerHotkeyTarget } from './campaign/ru
 import type { RunTimerWidget } from './campaign/run-timer'
 import { FARMING_TYPE, FARMING_LOOT_TARGET } from './farming/farming'
 import type { FarmingWidget } from './farming/farming'
+import { TRADE_TYPE, hotkeyTarget as tradeHotkeyTarget } from './trade/widget'
+import type { TradeWidget } from './trade/widget'
 
 export const HIDE_ALL_TARGET = 'woke-hide-all'
 
@@ -130,7 +132,7 @@ export function wokeShortcutsFor (widget: Widget, config: { woke?: { setupDone: 
       actions.push({ shortcut: lf.sampleHotkey, action: { type: 'copy-item', target: LOOT_FILTER_SAMPLE_TARGET, focusOverlay: true } })
     }
     if (lf.editorHotkey) {
-      actions.push({ shortcut: lf.editorHotkey, keepModKeys: true, action: { type: 'trigger-event', target: editorHotkeyTarget(widget.wmId) } })
+      actions.push({ shortcut: lf.editorHotkey, keepModKeys: true, action: { type: 'trigger-event', target: editorHotkeyTarget(widget.wmId), focusOverlay: true } })
     }
     // Strictness steps only mean something with NeverSink from GitHub.
     if (lf.neversink?.on) {
@@ -152,6 +154,16 @@ export function wokeShortcutsFor (widget: Widget, config: { woke?: { setupDone: 
     const actions: ShortcutAction[] = []
     for (const [key, action] of [[t.hotkeyPause, 'pause'], [t.hotkeySplits, 'splits']] as const) {
       if (key) actions.push({ shortcut: key, keepModKeys: true, action: { type: 'trigger-event', target: timerHotkeyTarget(widget.wmId, action) } })
+    }
+    return actions
+  }
+  if (widget.wmType === TRADE_TYPE) {
+    // Every key is released before the reply is typed, so a held Ctrl or
+    // Alt can't turn the chat line into something else.
+    const t = widget as TradeWidget
+    const actions: ShortcutAction[] = []
+    for (const [key, what] of [[t.stepHotkey, 'step'], [t.busyHotkey, 'busy'], [t.skipHotkey, 'skip']] as const) {
+      if (key) actions.push({ shortcut: key, action: { type: 'trigger-event', target: tradeHotkeyTarget(widget.wmId, what) } })
     }
     return actions
   }

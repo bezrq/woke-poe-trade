@@ -4,7 +4,9 @@
     <span v-if="extras && visibility !== 'Hide'" :class="$style.extras">
       <span v-if="style.effect" :title="`Beam: ${style.effect.color}${style.effect.temp ? ' (temporary)' : ''}`" :class="$style.beam" :style="{ background: poeColour(style.effect.color) }" />
       <span v-if="style.icon" :title="`Minimap: ${style.icon.color} ${style.icon.shape}`" :style="{ color: poeColour(style.icon.color) }">{{ shapeGlyph(style.icon.shape) }}</span>
-      <span v-if="style.sound" :title="`Sound ${style.sound.id}, volume ${style.sound.volume}`" class="w-dim"><i class="fas fa-volume-up" /> {{ style.sound.id }}</span>
+      <span v-if="style.sound" :title="`${soundLabel(style.sound.id)}, volume ${style.sound.volume}`" class="w-dim">
+        <i :class="isCustomSound(style.sound.id) ? 'fas fa-music' : 'fas fa-volume-up'" /><template v-if="!isCustomSound(style.sound.id)"> {{ style.sound.id }}</template>
+      </span>
     </span>
   </span>
 </template>
@@ -15,6 +17,7 @@ import type { FilterAction } from './parse'
 import { DEFAULT_BG, DEFAULT_FONT, DEFAULT_TEXT, readStyle } from './edits'
 import type { Colour, StylePatch } from './edits'
 import { poeColour, shapeGlyph } from './colours'
+import { isCustomSound, soundLabel } from './sounds'
 
 const props = withDefaults(defineProps<{
   text: string
@@ -24,7 +27,9 @@ const props = withDefaults(defineProps<{
   extras?: boolean
   // Scale: 1 for list rows, larger for the main preview.
   scale?: number
-}>(), { actions: () => [], styleOverride: undefined, visibility: 'Show', extras: true, scale: 1 })
+  // The game's colour for the item when no rule sets one (rarity, class).
+  defaultText?: Colour
+}>(), { actions: () => [], styleOverride: undefined, visibility: 'Show', extras: true, scale: 1, defaultText: undefined })
 
 const style = computed<StylePatch>(() => ({ ...readStyle(props.actions), ...(props.styleOverride ?? {}) }))
 
@@ -36,7 +41,7 @@ const labelStyle = computed(() => {
   const size = s.fontSize ?? DEFAULT_FONT
   const px = (9 + (size - 18) * 0.28) * props.scale
   return {
-    color: css(s.text ?? DEFAULT_TEXT),
+    color: css(s.text ?? props.defaultText ?? DEFAULT_TEXT),
     background: css(s.background ?? DEFAULT_BG),
     borderColor: s.border ? css(s.border) : 'transparent',
     fontSize: `${px.toFixed(1)}px`
@@ -65,6 +70,7 @@ const labelStyle = computed(() => {
 }
 .extras {
   display: inline-flex;
+  white-space: nowrap;
   align-items: center;
   gap: 6px;
   font-size: var(--w-text-sm);

@@ -5,7 +5,7 @@ Three layers, all run by CI on every pull request (`.github/workflows/test.yml`)
 
 | Layer | Where | What it covers |
 | --- | --- | --- |
-| Unit tests | `renderer/test` (vitest) | Item parsing, map stash regex against every map mod, campaign route walked end to end, Client.txt parsing (farming, mechanics, lab), loot filter parse/match/edits, poe.ninja, trade insight, essences, boss runs, league-start investments |
+| Unit tests | `renderer/test` (vitest) | Item parsing, map stash regex against every map mod, campaign route walked end to end, Client.txt parsing (farming, mechanics, lab, trade whispers), loot filter parse/match/edits, poe.ninja, trade insight, essences, boss runs, league-start investments |
 | OCR tests | `testing/vision` (vitest) | APT's opencv + tesseract reading map tooltips and essence monoliths from screenshots |
 | Fake-game tests | `testing/e2e` (Playwright) | The real app on a fake Path of Exile: hotkeys, clipboard, Client.txt, screenshots, the overlay, settings on disk |
 | Performance checks | `testing/perf` (Playwright) | Every module on: startup, idle in a map, opening the overlay, price check, memory, against budgets (see perf/README.md) |
@@ -30,8 +30,8 @@ inside Electron. Each test boots the overlay with the widgets it needs:
 ```ts
 test('Alt+S scans the hovered map', async ({ overlay }) => {
   await overlay.boot({ widgets: [{ wmType: 'woke-map-scan' }] })
-  await overlay.showScreen('screens/map-tooltip-deadly.png')
-  await overlay.moveMouse(616, 356)
+  await overlay.showScreen('screens/map-real-07.png')
+  await overlay.moveMouse(605, 810)
   await overlay.pressHotkey('Alt + S')
   await expect(overlay.page.getByText('CARE')).toBeVisible()
 })
@@ -63,9 +63,11 @@ npm run test:perf                        # performance checks (perf/README.md)
   from `Path of Exile/logs/Client.txt`, replace character and account names,
   and keep a `#` comment on top saying what happens.
 - `items/`: item text as Ctrl+Alt+C copies it in game (advanced format).
-- `screens/`: screenshots plus a `.json` with the cursor position and what
-  should be read. The current ones are rendered by `tools/render-screens.mjs`
-  (`"synthetic": true`); real 1920x1080 screenshots can go next to them.
+- `screens/`: real 2560x1440 game screenshots (blacked out away from the
+  tooltip) plus a `.json` with the cursor position and what should be read.
+  `main/ocr-bench` reads the same files and reports accuracy; its README
+  says how to add one. `essence-real-two` puts two real monolith labels in
+  one frame for the whole-screen read.
 - `http/`: recorded responses, `fixtures/http/<host>/<path>[.post].json`,
   with `_any.json` for any path in that folder. poe.ninja prices come from
   `tools/make-ninja-fixture.mjs`. Requests without a fixture are listed in
@@ -74,10 +76,10 @@ npm run test:perf                        # performance checks (perf/README.md)
 
 ## Known gaps the tests mark
 
-- The synthetic map screenshots use an older tooltip layout (a grey "Map
-  Tier:" line), whose grey labels OCR garbles; real screenshots read fine.
-  `vision/ocr.test.ts` marks tier/properties on them as an expected failure
-  until they're replaced by real labelled screenshots.
+- Two essence screenshots have a monster health bar over the label and read
+  wrong; their `.json` has `knownMiss`, and the test expects the miss.
+- Map scan reads from the first property line down, so the tier in the
+  header ("Map (Tier 16)") isn't read or checked.
 - 31 map mods can't be put in a stash search (every word of them is also in
   another mod). `renderer/test/woke/map-mods.test.ts` keeps the list from
   growing.

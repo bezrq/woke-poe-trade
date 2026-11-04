@@ -1,0 +1,52 @@
+{
+  "kind": "map",
+  "source": "Guy, 2560x1440, PoE screenshot-0006",
+  "note": "Valdo map: its mods aren't in the game data the overlay matches against, so 7 lines stay unmatched",
+  "unmatched": 7,
+  "cursor": {
+    "x": 895,
+    "y": 900
+  },
+  "props": {
+    "quantity": 164,
+    "rarity": 28,
+    "packSize": 24
+  },
+  "mods": [],
+  "modLines": [
+    "Rare and Unique Monsters in Area are Possessed by 3 to 4 Tormented Spirits and their",
+    "Minions are Touched",
+    "Monsters can only be Damaged while within 2 metres of a Player",
+    "Players' modifiers to Light Radius also apply to this range",
+    "Area contains The Feared",
+    "Players have 50% reduced Movement Speed",
+    "Players' Travel Skills are Disabled",
+    "Players gain Instability on Kill",
+    "Unstable Players eventually detonate",
+    "Maximum number of Players in Area is one"
+  ],
+  "lines": [
+    "Entrenched Secrets",
+    "Valdo Map",
+    "Monster Level: 84",
+    "Item Quantity: +164%",
+    "Item Rarity: +28%",
+    "Monster Pack Size: +24%",
+    "Rare and Unique Monsters in Area are Possessed by 3 to 4 Tormented Spirits and their",
+    "Minions are Touched",
+    "Monsters can only be Damaged while within 2 metres of a Player",
+    "Players' modifiers to Light Radius also apply to this range",
+    "Area contains The Feared",
+    "Players have 50% reduced Movement Speed",
+    "Players' Travel Skills are Disabled",
+    "Players gain Instability on Kill",
+    "Unstable Players eventually detonate",
+    "Maximum number of Players in Area is one"
+  ],
+  "box": {
+    "x": 380,
+    "y": 0,
+    "width": 1030,
+    "height": 870
+  }
+}

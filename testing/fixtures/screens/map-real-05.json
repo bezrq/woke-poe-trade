@@ -1,0 +1,67 @@
+{
+  "kind": "map",
+  "source": "Guy, 2560x1440, PoE screenshot-0005",
+  "cursor": {
+    "x": 780,
+    "y": 920
+  },
+  "tier": 16,
+  "props": {
+    "quantity": 84,
+    "rarity": 51,
+    "packSize": 32,
+    "maps": 105
+  },
+  "mods": [
+    "Area is Influenced by the Originator's Memories",
+    "Players are Cursed with Vulnerability",
+    "#% increased Monster Damage",
+    "#% Monster Physical Damage Reduction",
+    "Monsters have # to Maximum Frenzy Charges",
+    "Monsters gain a Frenzy Charge on Hit",
+    "Monsters have # to Maximum Power Charges",
+    "Monsters gain a Power Charge on Hit",
+    "#% Monster Chaos Resistance",
+    "#% Monster Elemental Resistances",
+    "#% less effect of Curses on Monsters"
+  ],
+  "modLines": [
+    "Area is Influenced by the Originator's Memories",
+    "Players are Cursed with Vulnerability",
+    "23% increased Monster Damage",
+    "+50% Monster Physical Damage Reduction",
+    "Monsters have +1 to Maximum Frenzy Charges",
+    "Monsters gain a Frenzy Charge on Hit",
+    "Monsters have +1 to Maximum Power Charges",
+    "Monsters gain a Power Charge on Hit",
+    "+35% Monster Chaos Resistance",
+    "+55% Monster Elemental Resistances",
+    "60% less effect of Curses on Monsters"
+  ],
+  "lines": [
+    "Forgotten Nexus",
+    "Map (Tier 16)",
+    "Monster Level: 83",
+    "Item Quantity: +84%",
+    "Item Rarity: +51%",
+    "Monster Pack Size: +32%",
+    "More Maps: +105%",
+    "Area is Influenced by the Originator's Memories",
+    "Players are Cursed with Vulnerability",
+    "23% increased Monster Damage",
+    "+50% Monster Physical Damage Reduction",
+    "Monsters have +1 to Maximum Frenzy Charges",
+    "Monsters gain a Frenzy Charge on Hit",
+    "Monsters have +1 to Maximum Power Charges",
+    "Monsters gain a Power Charge on Hit",
+    "+35% Monster Chaos Resistance",
+    "+55% Monster Elemental Resistances",
+    "60% less effect of Curses on Monsters"
+  ],
+  "box": {
+    "x": 480,
+    "y": 200,
+    "width": 600,
+    "height": 690
+  }
+}

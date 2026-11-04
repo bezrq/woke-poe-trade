@@ -1,0 +1,20 @@
+{
+  "kind": "essence",
+  "source": "Guy, 2560x1440, PoE screenshot-0020",
+  "cursor": {
+    "x": 1757,
+    "y": 600
+  },
+  "essences": [
+    "Wailing Essence of Doubt",
+    "Weeping Essence of Hatred",
+    "Wailing Essence of Greed"
+  ],
+  "corrupted": false,
+  "box": {
+    "x": 1465,
+    "y": 250,
+    "width": 585,
+    "height": 325
+  }
+}

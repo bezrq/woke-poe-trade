@@ -150,6 +150,17 @@ describe('safety net', () => {
     expect(crow.visibility).toBe('Hide')
   })
 
+  it('judges a single drop in a map, not a stack or acts-only rule', () => {
+    // Strict filters show stacks of a card they hide one at a time.
+    const doc = parseFilter([
+      block('Show', 'divination->stacked', 't1', ['Hidden Gem'], 'StackSize >= 3'),
+      block('Show', 'divination->leveling', 't1', ['Hidden Gem'], 'AreaLevel <= 67'),
+      FILTER
+    ].join('\n'))
+    expect(auditBases(doc, lookup(), 10).find(v => v.base === 'Hidden Gem')?.state).toBe('hidden')
+    expect(safetyBases(doc, lookup(), 20).plain).toEqual(['Hidden Gem'])
+  })
+
   it('lists hidden valuable items in the health audit', () => {
     const audit = auditBases(parseFilter(FILTER), lookup(), 10)
     expect(audit.find(v => v.base === 'Hidden Gem')?.state).toBe('hidden')
