@@ -19,12 +19,20 @@
       </WPanel>
       <WPanel v-if="openDiff" :title="`${labLabel(openDiff)} Labyrinth`" :scroll="false" max-height="none"
         style="width: 60vw; height: 80vh;">
+        <template v-if="staleDate" #meta>
+          <span style="color: var(--w-warn);"><i class="fas fa-exclamation-triangle" /> Today's layout isn't posted yet. This one is from {{ staleDate }}.</span>
+        </template>
         <template #actions>
+          <button v-if="layoutImg" class="w-icon-btn mr-1" :class="{ 'w-icon-btn--on': config.fullPage }" @click="config.fullPage = !config.fullPage"
+            :title="config.fullPage ? 'Show just the layout' : 'Show poelab\'s whole page'"><i class="fas fa-globe" /></button>
           <span class="w-faint text-xs whitespace-nowrap mr-1">{{ overlayKey }} to interact</span>
           <button @click="open(openDiff, 'external')" class="w-icon-btn" title="Open in your browser"><i class="fas fa-external-link-alt" /></button>
           <button @click="openDiff = null" class="w-icon-btn" title="Close"><i class="fas fa-times" /></button>
         </template>
-        <webview ref="webviewEl" class="pointer-events-auto w-full h-full flex" width="100%" height="100%" />
+        <div v-if="showImage" class="pointer-events-auto w-full h-full overflow-auto" :class="$style.imgWrap">
+          <img :src="layoutImg!" :class="zoomed ? $style.full : $style.fit" :title="zoomed ? 'Click to fit' : 'Click to zoom'" @click="zoomed = !zoomed">
+        </div>
+        <webview v-show="!showImage" ref="webviewEl" class="pointer-events-auto w-full h-full flex" width="100%" height="100%" />
       </WPanel>
     </div>
   </Widget>
@@ -51,7 +59,8 @@ import { AppConfig } from '@/web/Config'
 import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
 import { WPanel, WKbd, WListItem } from '../ui'
-import { DEFAULT_LAB_URLS, DIFFICULTIES, formatDuration, labLabel, msUntilLabReset, parseHotkeyTarget } from './lab'
+import { DEFAULT_LAB_URLS, DIFFICULTIES, FIND_LAYOUT_JS, PLAZA_ZONE, dateInUrl, difficultyForAreaLevel, formatDuration, labLabel, msUntilLabReset, parseHotkeyTarget } from './lab'
+import { parseLogLine } from '../campaign/log-parse'
 import type { LabDifficulty, OpenTarget } from './lab'
 
 const props = defineProps<{
@@ -73,7 +82,42 @@ if (props.config.wmFlags[0] === 'uninitialized') {
 }
 
 const openDiff = shallowRef<LabDifficulty | null>(null)
-const webviewEl = shallowRef<HTMLElement & { src: string } | null>(null)
+const webviewEl = shallowRef<HTMLElement & { src: string, executeJavaScript?: (code: string) => Promise<unknown> } | null>(null)
+const layoutImg = shallowRef<string | null>(null)
+const zoomed = shallowRef(false)
+const showImage = computed(() => !!layoutImg.value && !props.config.fullPage)
+const staleDate = computed(() => {
+  const d = layoutImg.value ? dateInUrl(layoutImg.value) : null
+  const today = new Date(now.value).toISOString().slice(0, 10)
+  return d && d < today ? d : null
+})
+
+// Once poelab's page has loaded, look for the layout image in it.
+function onPageLoaded () {
+  const el = webviewEl.value
+  if (!el?.executeJavaScript) return
+  el.executeJavaScript(FIND_LAYOUT_JS)
+    .then(src => { layoutImg.value = typeof src === 'string' && /^https:\/\//.test(src) ? src : null })
+    .catch(() => { layoutImg.value = null })
+}
+watch(webviewEl, (el, old) => {
+  old?.removeEventListener('did-stop-loading', onPageLoaded)
+  el?.addEventListener('did-stop-loading', onPageLoaded)
+})
+
+// Entering Aspirant's Plaza opens that difficulty's layout.
+let lastAreaLevel: number | null = null
+const logListener = Host.onEvent('MAIN->CLIENT::game-log', (e) => {
+  for (const line of e.lines) {
+    const ev = parseLogLine(line)
+    if (ev?.kind === 'area') lastAreaLevel = ev.areaLevel
+    else if (ev?.kind === 'zone' && ev.name === PLAZA_ZONE && lastAreaLevel != null && props.config.autoOpen !== false) {
+      const d = difficultyForAreaLevel(lastAreaLevel)
+      if (openDiff.value !== d) open(d, 'overlay')
+    }
+  }
+})
+onUnmounted(() => { logListener.abort() })
 const overlayKey = computed(() => AppConfig().overlayKey)
 
 const now = shallowRef(Date.now())
@@ -96,6 +140,7 @@ function open (d: LabDifficulty, where: OpenTarget) {
     window.open(url)
     return
   }
+  if (openDiff.value !== d) layoutImg.value = null
   openDiff.value = d
   wm.show(props.config.wmId)
   nextTick(() => {
@@ -115,3 +160,9 @@ const hotkeys = MainProcess.onEvent('MAIN->CLIENT::widget-action', (e) => {
 })
 onUnmounted(() => { hotkeys.abort() })
 </script>
+
+<style module>
+.imgWrap { background: #000; }
+.fit { max-width: 100%; max-height: 100%; margin: auto; display: block; cursor: zoom-in; }
+.full { max-width: none; cursor: zoom-out; }
+</style>

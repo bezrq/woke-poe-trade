@@ -21,7 +21,33 @@ export interface LabWidget extends Widget {
   hotkeyOverlay: string | null
   hotkeyExternal: string | null
   notes: string
+  // Open the layout when you enter Aspirant's Plaza (default on).
+  autoOpen?: boolean
+  // Show poelab's whole page instead of just the layout image.
+  fullPage?: boolean
 }
+
+export const PLAZA_ZONE = "Aspirant's Plaza"
+
+// The plaza's area level tells the difficulty: 33 / 55 / 68 / 75.
+export function difficultyForAreaLevel (level: number): LabDifficulty {
+  if (level <= 33) return 'normal'
+  if (level <= 55) return 'cruel'
+  if (level <= 68) return 'merciless'
+  return 'uber'
+}
+
+// poelab layout images carry the layout's date (e.g. …/2026-11-04_uber.jpg).
+export function dateInUrl (url: string): string | null {
+  return /(\d{4}-\d{2}-\d{2})/.exec(url)?.[1] ?? null
+}
+
+// Finds the layout image on a poelab page (runs inside the page).
+export const FIND_LAYOUT_JS = `(() => {
+  const pick = document.getElementById('notesImg') ||
+    Array.from(document.images).find(i => /labfiles/i.test(i.src));
+  return pick ? pick.src : null;
+})()`
 
 export function hotkeyTarget (wmId: number, where: OpenTarget): string {
   return `woke-lab:${wmId}:${where}`
