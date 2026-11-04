@@ -92,11 +92,12 @@ describe.skipIf(!haveOcr)('OCR on game screenshots', () => {
       expect(parsed!.weak, 'lines read with low confidence').toEqual([])
     })
 
-    // Known gap: the grey labels ("Map Tier:", "Item Quantity:") are dim
-    // after the mask and tesseract garbles them ("VWIAE TER: 16"), so tier and
-    // quantity/rarity/pack size are missed. Marked as an expected failure: once
-    // OCR reads them this test fails, and it should become a normal test.
-    // (Seen on synthetic screenshots; needs a real one to confirm.)
+    // The synthetic screenshots use an older tooltip layout (a grey "Map
+    // Tier:" line; the game now shows the tier in the header) and the grey
+    // labels come out garbled there ("VWIAE TER: 16"). On real screenshots
+    // the labels read fine (see the "Make OCR scans accurate" work, which adds
+    // real labelled samples). Kept as an expected failure until these
+    // screenshots are replaced by real ones.
     it.fails(`map scan reads tier and properties on ${screen.file}`, () => {
       const parsed = matcher.parse(readMapTooltip(screen))
       expect(parsed!.tier).toBe(screen.tier)

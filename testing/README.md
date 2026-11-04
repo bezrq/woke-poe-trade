@@ -72,11 +72,10 @@ npx playwright show-report report        # screenshots of every scenario
 
 ## Known gaps the tests mark
 
-- Map scan doesn't read the grey property labels ("Map Tier:", "Item
-  Quantity:") on the synthetic screenshots, so tier and quantity/rarity/pack
-  size are missing from the juice score. `vision/ocr.test.ts` marks it as an
-  expected failure; it starts failing (and should become a normal test) once
-  OCR reads them. Needs a real screenshot to confirm.
+- The synthetic map screenshots use an older tooltip layout (a grey "Map
+  Tier:" line), whose grey labels OCR garbles; real screenshots read fine.
+  `vision/ocr.test.ts` marks tier/properties on them as an expected failure
+  until they're replaced by real labelled screenshots.
 - 31 map mods can't be put in a stash search (every word of them is also in
   another mod). `renderer/test/woke/map-mods.test.ts` keeps the list from
   growing.
