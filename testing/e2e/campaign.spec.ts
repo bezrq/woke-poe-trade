@@ -48,11 +48,15 @@ test('run timer catches up on lines logged while the app was closed, using the l
   await expect(overlay.widget('woke-run-timer')).toContainText('Act 2')
 })
 
-test('a burst of settings saves (catch-up) leaves the newest settings on disk', async ({ overlay, fakeApp }) => {
-  await overlay.boot({
-    widgets: [{ ...RUN_TIMER, lastLogAt: new Date(2026, 10, 4, 17, 59, 0).getTime() }],
-    logBefore: 'client-logs/campaign-act1.txt'
-  })
+test('a burst of settings saves leaves the newest settings on disk', async ({ overlay, fakeApp }) => {
+  await overlay.boot({ widgets: [RUN_TIMER] })
+  // Zone changes arriving one after another: the run timer saves on each.
+  // (The start-up catch-up replays in one batch, so it saves once.)
+  const zones = logFixture('client-logs/campaign-act1.txt').filter(l => /Generating level|You have entered|is now level/.test(l))
+  for (const line of zones.slice(0, 14)) {
+    fakeApp.appendClientLog([line])
+    await overlay.page.waitForTimeout(550)
+  }
   await expect.poll(() => fakeApp.received.filter(e => e.name === 'CLIENT->MAIN::save-config').length, { timeout: 15_000 }).toBeGreaterThan(5)
   await fakeApp.settled()
   await overlay.page.waitForTimeout(500)
