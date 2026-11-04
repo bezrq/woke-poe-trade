@@ -25,6 +25,9 @@
       More <span :class="$style.count">{{ closedUnpinned.length }}</span> <i class="fas fa-chevron-down" />
     </button>
     <button :class="$style.iconBtn" title="Add a tool" @click="openPopup('add', $event)"><i class="fas fa-plus" /></button>
+    <button v-if="hotkeys.problems.value" :class="$style.warnBtn" :title="`${hotkeys.summary.value}. Click for the hotkey list.`" @click="openHotkeyList">
+      <i class="fas fa-exclamation-triangle" /> Hotkeys <span :class="$style.count">{{ hotkeys.problems.value }}</span>
+    </button>
     <textarea :class="$style.paste" rows="1" spellcheck="false"
       placeholder="Paste item (Ctrl V)" @input="$emit('paste', $event)" />
 
@@ -107,6 +110,7 @@ import { registry } from '@/web/overlay/widget-registry'
 import { AppConfig } from '@/web/Config'
 import { isWidgetTypeOn } from '@/web/woke/modules'
 import { useI18n } from 'vue-i18n'
+import { useHotkeyHealth } from '../switchboard/hotkey-health'
 import { iconFor, allowsCopies, groupTypes } from './tools'
 import type { TabBarConfig } from './tools'
 
@@ -171,6 +175,16 @@ const pinnedTabs = computed(() => {
 })
 const openUnpinned = computed(() => tabs.value.filter(tab => !tab.pinned && tab.open))
 const closedUnpinned = computed(() => tabs.value.filter(tab => !tab.pinned && !tab.open))
+
+// Two actions on one key, or a key another program holds: either way one
+// of them silently does nothing, so say so where it's always seen.
+const hotkeys = useHotkeyHealth()
+function openHotkeyList () {
+  const settings = wm.widgets.value.find(w => w.wmType === 'settings')
+  if (!settings) return
+  wm.setFlag(settings.wmId, 'settings::page=Hotkey list', true)
+  wm.show(settings.wmId)
+}
 
 function show (tab: Pick<Tab, 'wmId'>) { wm.show(tab.wmId) }
 function close (tab: Pick<Tab, 'wmId'>) { wm.hide(tab.wmId) }
@@ -337,6 +351,17 @@ function addFirstMatch () {
   font-family: var(--w-body);
   font-size: var(--w-text);
 }
+.warnBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 28px;
+  padding: 0 8px;
+  border-radius: var(--w-radius-sm);
+  color: var(--w-warn);
+  background: color-mix(in srgb, var(--w-warn) 14%, transparent);
+}
+.warnBtn:hover { background: color-mix(in srgb, var(--w-warn) 24%, transparent); }
 .sep { width: 1px; height: 20px; background: var(--w-line); margin: 0 3px; flex: none; }
 .tab {
   position: relative;

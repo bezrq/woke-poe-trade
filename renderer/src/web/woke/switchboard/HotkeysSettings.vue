@@ -16,7 +16,7 @@
     </div>
     <table :class="$style.table">
       <tr :class="$style.head"><td>Action</td><td>Module</td><td>Key</td><td>Status</td></tr>
-      <tr v-for="(r, i) in visible" :key="i" :class="{ [$style.clash]: !r.off && r.conflicts.length, [$style.off]: r.off }">
+      <tr v-for="(r, i) in visible" :key="i" :class="{ [$style.clash]: isProblem(r), [$style.off]: r.off }">
         <td>{{ r.label }}</td>
         <td class="text-gray-500">{{ r.module }}</td>
         <td :class="$style.key">{{ r.key }}</td>
@@ -24,6 +24,7 @@
           <span v-if="r.off && r.conflicts.length" class="text-yellow-400">Module off; would clash with {{ r.conflicts[0] }}</span>
           <span v-else-if="r.off" class="text-gray-500">Module off, key is free</span>
           <span v-else-if="r.conflicts.length" class="text-red-400">Same key as {{ r.conflicts.join(', ') }}</span>
+          <span v-else-if="failedNorm.has(r.norm)" class="text-red-400">Another program holds this key; pick a different one</span>
           <span v-else class="text-gray-500">OK</span>
         </td>
       </tr>
@@ -40,17 +41,17 @@ export default {
 
 <script setup lang="ts">
 import { computed, shallowRef } from 'vue'
-import { AppConfig, getConfigForHost } from '@/web/Config'
-import { buildHotkeyList } from './hotkey-list'
+import { useHotkeyHealth } from './hotkey-health'
 
-const rows = computed(() => buildHotkeyList(AppConfig(), getConfigForHost().shortcuts))
-const conflictCount = computed(() => new Set(rows.value.filter(r => !r.off && r.conflicts.length).map(r => r.norm)).size)
+const { rows, failedNorm } = useHotkeyHealth()
+const isProblem = (r: { off: boolean, norm: string, conflicts: string[] }) => !r.off && (r.conflicts.length > 0 || failedNorm.value.has(r.norm))
+const conflictCount = computed(() => new Set(rows.value.filter(isProblem).map(r => r.norm)).size)
 const search = shallowRef('')
 const onlyClashes = shallowRef(false)
 const visible = computed(() => {
   const q = search.value.trim().toLowerCase()
   return rows.value.filter(r =>
-    (!onlyClashes.value || r.conflicts.length) &&
+    (!onlyClashes.value || r.conflicts.length || isProblem(r)) &&
     (!q || r.label.toLowerCase().includes(q) || r.key.toLowerCase().includes(q) || r.module.toLowerCase().includes(q)))
 })
 </script>

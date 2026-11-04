@@ -11,6 +11,7 @@ import type { OverlayWindow } from '../windowing/OverlayWindow'
 import type { GameLogWatcher } from '../host-files/GameLogWatcher'
 import { readGameLogTail } from './game-log-tail'
 import { perfSnapshot, startProcessSampler } from './perf'
+import { hotkeyFailures } from './hotkey-failures'
 
 type Handler = (args: any) => Promise<unknown> // eslint-disable-line @typescript-eslint/no-explicit-any
 
@@ -25,7 +26,8 @@ const handlers: Record<string, Handler> = {
   'filter-write': writeFilter,
   'filter-folder': showFilterFolder,
   'perf-stats': async () => perfSnapshot(),
-  'ocr-check': async () => checkOcr()
+  'ocr-check': async () => checkOcr(),
+  'hotkey-failures': async () => hotkeyFailures()
 }
 
 export function initWoke (server: ServerEvents, logger: Logger, poeWindow: GameWindow, gameLog: GameLogWatcher): void {
