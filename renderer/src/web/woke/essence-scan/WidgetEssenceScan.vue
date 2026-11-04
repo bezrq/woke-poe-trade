@@ -1,6 +1,6 @@
 <template>
   <Widget :config="config" move-handles="corners" :inline-edit="false">
-    <DockItem id="essence-scan" :art="mechanicIcon('essence').src" icon="fas fa-flask" title="Essence scan" :show="running || paused || !!message"
+    <DockItem id="essence-scan" title="Essence scan" :show="running || paused || !!message"
       :led="message ? 'error' : paused ? 'warn' : running ? 'on' : null" :badge="unseenCorrupt || null"
       :wm-id="config.wmId" card-width="18rem" @open-change="onCard">
       <template #card>
@@ -104,7 +104,6 @@ import Widget from '@/web/overlay/Widget.vue'
 import { WPanel, WButton, WEmpty, WKbd, WPrice, toast } from '../ui'
 import { hostRequest } from '../shared/host'
 import DockItem from '../dock/DockItem.vue'
-import { mechanicIcon } from '../ui/game-icons'
 import { hideWhilePlaying } from '../dock/dock'
 import { usePriceIndex } from '../market/price-index'
 import { parseMonolith, rateMonolith, shortEssenceName } from './essences'

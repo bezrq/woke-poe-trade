@@ -1,6 +1,7 @@
 // Display info for the overlay tab bar: icon, name and group per widget type.
 import { MODULES, MODULE_GROUPS, ModuleGroup } from '@/web/woke/modules'
 import type { WidgetMenu } from '@/web/overlay/widgets'
+import { moduleIconForWidget } from '../ui/game-icons'
 
 // Stored on the menu widget's own config. Older configs have neither field.
 export interface TabBarConfig extends WidgetMenu {
@@ -10,34 +11,17 @@ export interface TabBarConfig extends WidgetMenu {
   dismissed?: number[]
 }
 
-const ICONS: Record<string, string> = {
+// APT's own windows; toolkit modules use their module icon (modules.ts).
+const APT_ICONS: Record<string, string> = {
   'settings': 'fa-cog',
-  'stash-search': 'fa-search',
   'image-strip': 'fa-images',
-  'timer': 'fa-stopwatch',
-  'woke-market-tracker': 'fa-chart-line',
-  'woke-league-invest': 'fa-sack-dollar',
-  'woke-lab-gems': 'fa-gem',
-  'woke-farming': 'fa-coins',
-  'woke-session-analytics': 'fa-chart-bar',
-  'woke-boss-runs': 'fa-skull',
-  'woke-map-mods': 'fa-map',
-  'woke-map-scan': 'fa-expand',
-  'woke-essence-scan': 'fa-flask',
-  'woke-loot-filter': 'fa-filter',
-  'woke-atlas-strategies': 'fa-globe',
-  'woke-mechanics': 'fa-puzzle-piece',
-  'woke-campaign': 'fa-route',
-  'woke-run-timer': 'fa-stopwatch-20',
-  'woke-lab': 'fa-dungeon',
-  'woke-pob-builds': 'fa-diagram-project',
-  'woke-trade-searches': 'fa-star',
-  'woke-trade': 'fa-handshake',
-  'woke-regex-library': 'fa-code'
+  'timer': 'fa-stopwatch'
 }
 
 export function iconFor (wmType: string): string {
-  return ICONS[wmType] ?? 'fa-window-maximize'
+  const mod = moduleIconForWidget(wmType)
+  if (mod) return mod.fa.replace(/^fa[srb] /, '')
+  return APT_ICONS[wmType] ?? 'fa-window-maximize'
 }
 
 // Only APT's own multi widgets may have several copies (each holds different

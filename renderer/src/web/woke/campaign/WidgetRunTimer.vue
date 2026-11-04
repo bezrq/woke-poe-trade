@@ -1,7 +1,7 @@
 <template>
   <Widget :config="config" move-handles="corners" :inline-edit="false" :readonly="true">
     <!-- With the campaign tracker placed, the run time is in its icon. -->
-    <DockItem id="run-timer" icon="fas fa-stopwatch" title="Run timer" :show="!docked && !!run && !run.finished"
+    <DockItem id="run-timer" title="Run timer" :show="!docked && !!run && !run.finished"
       :badge="delta != null ? formatDelta(delta) : null" :tone="delta == null ? 'accent' : delta <= 0 ? 'up' : 'down'"
       :wm-id="config.wmId" card-width="17rem" @open-change="cardShown = $event">
       <template #card>

@@ -2,7 +2,7 @@
   <Widget :config="config" move-handles="corners" :inline-edit="false" :readonly="true">
     <!-- While you play: one icon (act badge, green while ahead of your best);
          the strip and guide below show only with the overlay open. -->
-    <DockItem ref="dockRef" id="campaign" :art="CURRENCY_ICONS.wisdom" icon="fas fa-route" title="Campaign" :show="dockShow"
+    <DockItem ref="dockRef" id="campaign" title="Campaign" :show="dockShow"
       :badge="s.act ? actShort(s.act) : null" :tone="dockTone" :wm-id="config.wmId" card-width="24rem"
       @open-change="cardShown = $event">
       <template #card>
@@ -138,7 +138,6 @@ import Widget from '@/web/overlay/Widget.vue'
 import { useVisibleClock } from '../shared/visible-clock'
 import RouteParts from './RouteParts.vue'
 import DockItem from '../dock/DockItem.vue'
-import { CURRENCY_ICONS } from '../ui/game-icons'
 import { hideWhilePlaying, tickWhile } from '../dock/dock'
 import { reportProblem } from '../dock/health'
 import { actFromAreaId, actLabel } from './log-parse'

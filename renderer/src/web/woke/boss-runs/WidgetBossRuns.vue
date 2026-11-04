@@ -1,7 +1,7 @@
 <template>
   <Widget :config="config" move-handles="corners" :inline-edit="false" :readonly="true">
     <!-- In a pinnacle arena: what this fight costs and pays. -->
-    <DockItem id="boss-runs" :art="mechanicIcon('maven').src ?? undefined" icon="fas fa-skull" title="Boss runs" :show="arenaBosses.length > 0"
+    <DockItem id="boss-runs" title="Boss runs" :show="arenaBosses.length > 0"
       :badge="arenaBosses.length === 1 && arenaBosses[0].kills ? arenaBosses[0].kills : null" :wm-id="config.wmId" card-width="20rem">
       <template #card>
         <div style="padding: 4px var(--w-pad) 6px;" class="flex flex-col gap-2">
@@ -254,7 +254,7 @@ import { inject, computed, nextTick, shallowRef, watch } from 'vue'
 import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
 import UiCheckbox from '@/web/ui/UiCheckbox.vue'
-import { WPanel, WTabs, WSegmented, WField, WButton, WEmpty, WPrice, WChip, WListItem, WIcon, WBanner, WSkeleton, mechanicIcon, openMenu, toast } from '../ui'
+import { WPanel, WTabs, WSegmented, WField, WButton, WEmpty, WPrice, WChip, WListItem, WIcon, WBanner, WSkeleton, openMenu, toast } from '../ui'
 import { ninjaIcon } from '../ui/game-icons'
 import { usePriceIndex } from '../market/price-index'
 import { useLeagues } from '@/web/background/Leagues'

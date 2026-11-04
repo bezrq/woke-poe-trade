@@ -6,6 +6,7 @@ import { computed, markRaw, shallowReactive, shallowRef, watch } from 'vue'
 import type { Slots } from 'vue'
 import { AppConfig, saveConfig } from '@/web/Config'
 import { ensureWokeConfig } from '../modules'
+import { moduleIcon } from '../ui/game-icons'
 
 export type DockTone = 'accent' | 'up' | 'down' | 'warn'
 export type DockLed = 'on' | 'warn' | 'error'
@@ -13,9 +14,10 @@ export type DockLed = 'on' | 'warn' | 'error'
 export interface DockItemProps {
   // Module id, used for ordering and the per-module peek switch.
   id: string
-  // Font Awesome class, e.g. "fas fa-route".
-  icon: string
+  // Font Awesome class, e.g. "fas fa-route". Left out: the module's icon.
+  icon?: string
   // Game art (image URL); `icon` is the fallback when it's missing or fails.
+  // Left out (undefined): the module's art; null: none.
   art?: string | null
   title: string
   show: boolean
@@ -117,6 +119,14 @@ let nextKey = 1
 // A plain array (not a reactive Map, which would hand back the raw entries
 // and lose their reactivity).
 export const dockEntries = shallowRef<DockEntry[]>([])
+
+// The icon and art an item shows: its own, else its module's (by id).
+export function dockIcon (p: DockItemProps): string {
+  return p.icon ?? moduleIcon(p.id).fa
+}
+export function dockArt (p: DockItemProps): string | null {
+  return p.art !== undefined ? p.art : moduleIcon(p.id).art
+}
 
 export function registerDockEntry (props: DockItemProps, slots: Slots, onOpen: (open: boolean) => void, onClick: () => void): DockEntry {
   const entry = shallowReactive<DockEntry>({

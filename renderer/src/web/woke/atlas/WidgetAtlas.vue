@@ -1,7 +1,7 @@
 <template>
   <Widget :config="config" move-handles="corners" :inline-edit="false">
     <!-- In the hideout, while you set up the map device: the strategy you picked. -->
-    <DockItem id="atlas" icon="fas fa-globe" :title="selected?.name || 'Atlas strategy'" :show="!!selected && zone.kind === 'hideout'"
+    <DockItem id="atlas" :title="selected?.name || 'Atlas strategy'" :show="!!selected && zone.kind === 'hideout'"
       :wm-id="config.wmId" card-width="21rem">
       <template #card>
         <div v-if="selected" style="padding: 4px var(--w-pad) 6px;" class="flex flex-col gap-0.5">

@@ -2,7 +2,7 @@
   <Widget :config="config" move-handles="corners" :inline-edit="false">
     <!-- While you play: an icon with a badge for open offers that peeks when
          one arrives (A1); resting on it opens the offers with buttons (B1). -->
-    <DockItem ref="dockRef" id="trade" icon="fas fa-handshake" :art="CURRENCY_ICONS.divine" title="Trades" :show="shown.length > 0"
+    <DockItem ref="dockRef" id="trade" title="Trades" :show="shown.length > 0"
       :badge="sellCount || null" :tone="anyInArea ? 'up' : 'accent'" :led="book.afk ? 'warn' : null" :wm-id="config.wmId"
       card-width="23rem" interactive @open-change="onCard">
       <template #card>
@@ -85,7 +85,7 @@ import { MainProcess } from '@/web/background/IPC'
 import { AppConfig } from '@/web/Config'
 import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
-import { WPanel, WTabs, WEmpty, WButton, WBanner, WSkeleton, WKbd, openMenu, toast, CURRENCY_ICONS } from '../ui'
+import { WPanel, WTabs, WEmpty, WButton, WBanner, WSkeleton, WKbd, openMenu, toast } from '../ui'
 import { gameIcon } from '../ui/game-icons'
 import DockItem from '../dock/DockItem.vue'
 import { hideWhilePlaying } from '../dock/dock'

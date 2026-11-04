@@ -1,7 +1,7 @@
 <template>
   <Widget :config="config" move-handles="corners" :inline-edit="false" :readonly="true">
     <!-- Town and hideout, while a watched item is past one of your alerts. -->
-    <DockItem id="market" :art="CURRENCY_ICONS.divine" icon="fas fa-chart-line" title="Market alerts" :show="dockShow" :badge="unseenAlerts || null"
+    <DockItem id="market" title="Market alerts" :show="dockShow" :badge="unseenAlerts || null"
       tone="down" :wm-id="config.wmId" card-width="20rem" @open-change="onCard">
       <template #card>
         <div style="padding: 4px var(--w-pad) 6px;" class="flex flex-col gap-0.5">
@@ -152,7 +152,6 @@ import type { PriceItem, Snapshot } from './types'
 import { PERIOD_MS, checkAlert } from './widget'
 import type { WatchedItem } from './widget'
 import DockItem from '../dock/DockItem.vue'
-import { CURRENCY_ICONS } from '../ui/game-icons'
 import { useZone } from '../shared/zone'
 
 const props = defineProps<{

@@ -4,8 +4,8 @@
       :title="wm.active.value ? `${host.props.title}${host.props.wmId != null ? ' · click to open' : ''}` : undefined"
       @click="click">
       <span :class="$style.glyph">
-        <img v-if="host.props.art && !artFailed" :src="host.props.art" alt="" draggable="false" :class="$style.art" @error="artFailed = true">
-        <i v-else :class="host.props.icon" />
+        <img v-if="dockArt(host.props) && !artFailed" :src="dockArt(host.props)!" alt="" draggable="false" :class="$style.art" @error="artFailed = true">
+        <i v-else :class="dockIcon(host.props)" />
       </span>
       <span v-if="peekText" :class="$style.peekText">{{ peekText }}</span>
       <span v-if="badge != null && badge !== ''" :class="[$style.badge, $style['tone-' + (host.props.tone ?? 'accent')]]">{{ badge }}</span>
@@ -14,12 +14,12 @@
     <div v-if="showCard" ref="cardEl" :class="[$style.card, placement]"
       :style="{ width: host.props.cardWidth ?? '20rem' }">
       <div :class="$style.cardHead">
-        <i :class="host.props.icon" class="w-accent" />
+        <i :class="dockIcon(host.props)" class="w-accent" />
         <span class="w-head-font w-accent w-trunc">{{ host.props.title }}</span>
       </div>
       <SlotOut :entry="host" />
       <template v-for="ex in extras" :key="ex.key">
-        <div :class="$style.extraHead"><i :class="ex.props.icon" /> {{ ex.props.title }}</div>
+        <div :class="$style.extraHead"><i :class="dockIcon(ex.props)" /> {{ ex.props.title }}</div>
         <SlotOut :entry="ex" />
       </template>
       <div v-if="!wm.active.value && host.props.wmId != null" :class="$style.foot">{{ overlayKey }} then click the icon for the full window</div>
@@ -34,6 +34,7 @@ import type { WidgetManager } from '@/web/overlay/interfaces'
 import { AppConfig } from '@/web/Config'
 import { useHoverZone } from '../shared/hover'
 import type { DockEntry } from './dock'
+import { dockArt, dockIcon } from './dock'
 
 const props = defineProps<{
   host: DockEntry
@@ -52,7 +53,7 @@ const badge = computed(() => props.host.props.badge)
 
 // Game art, with the Font Awesome icon as fallback if it doesn't load.
 const artFailed = shallowRef(false)
-watch(() => props.host.props.art, () => { artFailed.value = false })
+watch(() => dockArt(props.host.props), () => { artFailed.value = false })
 
 // The peek line, while it lasts.
 const now = shallowRef(Date.now())

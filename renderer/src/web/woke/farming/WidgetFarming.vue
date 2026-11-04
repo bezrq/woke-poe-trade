@@ -2,7 +2,7 @@
   <Widget :config="config" move-handles="corners" :inline-edit="false" :readonly="true">
     <!-- During a session, in maps and hideout: an icon with divines per hour
          (the map clock while you're in a map). -->
-    <DockItem ref="dockRef" id="farming" :art="CURRENCY_ICONS.chaos" icon="fas fa-coins" title="Farming" :show="dockShow" :badge="dockBadge"
+    <DockItem ref="dockRef" id="farming" title="Farming" :show="dockShow" :badge="dockBadge"
       :tone="t.profit < 0 ? 'down' : 'up'" :led="s && s.runningSince == null ? 'warn' : null" :wm-id="config.wmId"
       card-width="18rem" @open-change="cardShown = $event">
       <template #card>
@@ -191,7 +191,6 @@ import type { PriceItem } from '../market/types'
 import { onGameLog } from '../shared/game-log'
 import { useZone } from '../shared/zone'
 import DockItem from '../dock/DockItem.vue'
-import { CURRENCY_ICONS } from '../ui/game-icons'
 import { tickWhile } from '../dock/dock'
 import { ATLAS_TYPE } from '../atlas/widget'
 import { parseScarabs, priceScarabs } from '../atlas/guide'

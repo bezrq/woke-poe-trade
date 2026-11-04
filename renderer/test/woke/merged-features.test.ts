@@ -81,3 +81,14 @@ describe('one Client.txt stream for every module', () => {
     vi.doUnmock('@/web/woke/campaign/log-tail')
   })
 })
+
+describe('one icon per module', () => {
+  it('every module has an icon, and the tab bar uses it', async () => {
+    const { MODULES } = await import('@/web/woke/modules')
+    const { iconFor } = await import('@/web/woke/tab-bar/tools')
+    for (const m of MODULES) {
+      expect(m.icon.fa, m.id).toMatch(/^fa[srb] fa-/)
+      for (const t of m.widgetTypes) expect(`fas ${iconFor(t)}`).toBe(m.icon.fa)
+    }
+  })
+})

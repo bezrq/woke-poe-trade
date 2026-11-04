@@ -1,7 +1,7 @@
 <template>
   <Widget :config="config" move-handles="corners" :inline-edit="false" :readonly="true">
     <!-- In the lab: the best font gem per colour, inside the lab icon's card. -->
-    <DockItem id="lab-gems" into="lab" icon="fas fa-gem" title="Divine Font, best per colour" :show="inLab" :wm-id="config.wmId">
+    <DockItem id="lab-gems" into="lab" title="Divine Font, best per colour" :show="inLab" :wm-id="config.wmId">
       <template #card>
         <div style="padding: 2px var(--w-pad) 6px;">
           <div v-for="r in rolls" :key="r.color" class="flex items-center gap-2">

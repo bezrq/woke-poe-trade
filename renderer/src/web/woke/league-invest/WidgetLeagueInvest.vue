@@ -1,7 +1,7 @@
 <template>
   <Widget :config="config" move-handles="corners" :inline-edit="false" :readonly="true">
     <!-- First two weeks of a league, in town and hideout: today's best buys. -->
-    <DockItem id="league-invest" icon="fas fa-seedling" title="League start buys" :show="dockShow"
+    <DockItem id="league-invest" title="League start buys" :show="dockShow"
       :badge="day != null ? `D${day}` : null" :wm-id="config.wmId" card-width="21rem">
       <template #card>
         <div style="padding: 4px var(--w-pad) 6px;" class="flex flex-col gap-0.5">

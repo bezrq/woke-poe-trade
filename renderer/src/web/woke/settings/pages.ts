@@ -2,7 +2,8 @@
 // per module or pair of modules) and App. Each page lists the setting labels
 // it holds so search can find them without rendering every page.
 import type { Component } from 'vue'
-import { CURRENCY_ICONS, mechanicIcon } from '../ui/game-icons'
+import { CURRENCY_ICONS, MECHANIC_ICONS } from '../ui/game-icons'
+import { MODULES } from '../modules'
 
 import SettingsPricecheck from '@/web/price-check/settings-price-check.vue'
 import SettingsItemcheck from '@/web/item-check/settings-item-check.vue'
@@ -49,7 +50,19 @@ export interface SettingsPage {
   aliases?: string[]
 }
 
-const art = (id: string) => mechanicIcon(id).src
+// A module page shows its module's icon (modules.ts), the same one the tab
+// bar and dock use. Item art is looked up when drawn.
+function modulePageIcon (moduleId: string): PageIcon {
+  const i = MODULES.find(m => m.id === moduleId)?.icon
+  if (!i) return { fa: 'fas fa-puzzle-piece' }
+  if (i.item) return { item: i.item, fa: i.fa }
+  if (i.mechanic) {
+    const m = MECHANIC_ICONS[i.mechanic]
+    return m?.item ? { item: m.item, fa: i.fa } : { art: m?.src ?? null, fa: i.fa }
+  }
+  if (i.currency) return { art: CURRENCY_ICONS[i.currency] ?? null, fa: i.fa }
+  return { fa: i.fa }
+}
 
 export const PAGES: SettingsPage[] = [
   // ---------- General ----------
@@ -87,7 +100,7 @@ export const PAGES: SettingsPage[] = [
     id: 'screen',
     name: 'Screen reading',
     group: 'general',
-    icon: { fa: 'fas fa-eye' },
+    icon: modulePageIcon('apt-heist-ocr'),
     description: 'Text recognition (OCR) for the scans that read the game screen.',
     parts: [ScreenPage],
     modules: ['apt-heist-ocr'],
@@ -97,7 +110,7 @@ export const PAGES: SettingsPage[] = [
     id: 'builds',
     name: 'Builds (PoB)',
     group: 'general',
-    icon: { item: 'Enlighten Support', fa: 'fas fa-gem' },
+    icon: modulePageIcon('pob-builds'),
     description: 'Your Path of Building folder. The build helpers and the campaign guide use the active build.',
     modules: ['pob-builds'],
     widgets: ['woke-pob-builds'],
@@ -120,7 +133,7 @@ export const PAGES: SettingsPage[] = [
     name: 'Price check',
     group: 'modules',
     sub: 'Trade & prices',
-    icon: { art: CURRENCY_ICONS.chaos, fa: 'fas fa-coins' },
+    icon: modulePageIcon('apt-price-check'),
     description: 'Prices for the item under your cursor.',
     modules: ['apt-price-check'],
     parts: [SettingsPricecheck],
@@ -132,7 +145,7 @@ export const PAGES: SettingsPage[] = [
     name: 'Item info & map check',
     group: 'modules',
     sub: 'Trade & prices',
-    icon: { item: 'Scroll of Wisdom', fa: 'fas fa-info-circle' },
+    icon: modulePageIcon('apt-item-info'),
     description: 'Item details, wiki and poedb links, and APT\'s map mod check.',
     modules: ['apt-item-info'],
     parts: [SettingsItemcheck, SettingsMaps],
@@ -144,7 +157,7 @@ export const PAGES: SettingsPage[] = [
     name: 'Trade searches',
     group: 'modules',
     sub: 'Trade & prices',
-    icon: { art: CURRENCY_ICONS.exalted, fa: 'fas fa-search-dollar' },
+    icon: modulePageIcon('trade-searches'),
     description: 'Saved trade site searches and live search alerts.',
     modules: ['trade-searches'],
     widgets: ['woke-trade-searches'],
@@ -155,7 +168,7 @@ export const PAGES: SettingsPage[] = [
     name: 'Trade assistant',
     group: 'modules',
     sub: 'Trade & prices',
-    icon: { art: CURRENCY_ICONS.divine, fa: 'fas fa-handshake' },
+    icon: modulePageIcon('trade'),
     description: 'Trade whispers in the icon row, one-key replies and a sales log.',
     modules: ['trade'],
     widgets: ['woke-trade'],
@@ -166,7 +179,7 @@ export const PAGES: SettingsPage[] = [
     name: 'Market & investments',
     group: 'modules',
     sub: 'Trade & prices',
-    icon: { art: CURRENCY_ICONS.divine, fa: 'fas fa-chart-line' },
+    icon: modulePageIcon('market'),
     description: 'Movers, watchlist and league-start investments from poe.ninja.',
     modules: ['market', 'league-invest'],
     widgets: ['woke-market-tracker', 'woke-league-invest'],
@@ -177,7 +190,7 @@ export const PAGES: SettingsPage[] = [
     name: 'Campaign & run timer',
     group: 'modules',
     sub: 'Campaign & lab',
-    icon: { art: CURRENCY_ICONS.wisdom, fa: 'fas fa-route' },
+    icon: modulePageIcon('campaign'),
     description: 'Next steps for your act, and act splits with personal bests.',
     modules: ['campaign', 'run-timer'],
     widgets: ['woke-campaign', 'woke-run-timer'],
@@ -188,7 +201,7 @@ export const PAGES: SettingsPage[] = [
     name: 'Lab & lab gems',
     group: 'modules',
     sub: 'Campaign & lab',
-    icon: { art: art('lab'), fa: 'fas fa-dungeon' },
+    icon: modulePageIcon('lab'),
     description: "Today's lab layout, and Divine Font gem values.",
     modules: ['lab', 'lab-gems'],
     widgets: ['woke-lab', 'woke-lab-gems'],
@@ -199,7 +212,7 @@ export const PAGES: SettingsPage[] = [
     name: 'Map mods & map scan',
     group: 'modules',
     sub: 'Maps & atlas',
-    icon: { art: art('map'), fa: 'fas fa-map' },
+    icon: modulePageIcon('map-mods'),
     description: 'Danger strip for map mods, profiles and weights, and the on-screen map scan.',
     modules: ['map-mods', 'map-scan'],
     widgets: ['woke-map-mods', 'woke-map-scan'],
@@ -210,7 +223,7 @@ export const PAGES: SettingsPage[] = [
     name: 'Essence scan',
     group: 'modules',
     sub: 'Maps & atlas',
-    icon: { art: art('essence'), fa: 'fas fa-flask' },
+    icon: modulePageIcon('essence-scan'),
     description: 'Reads essence monoliths and flags Misery, Envy, Dread and Scorn.',
     modules: ['essence-scan'],
     widgets: ['woke-essence-scan'],
@@ -221,7 +234,7 @@ export const PAGES: SettingsPage[] = [
     name: 'Atlas strategies',
     group: 'modules',
     sub: 'Maps & atlas',
-    icon: { item: 'Cartography Scarab of Risk', fa: 'fas fa-globe' },
+    icon: modulePageIcon('atlas'),
     description: 'Tree, scarabs, device and regex for each strategy.',
     modules: ['atlas'],
     widgets: ['woke-atlas-strategies'],
@@ -232,7 +245,7 @@ export const PAGES: SettingsPage[] = [
     name: 'Boss runs',
     group: 'modules',
     sub: 'Maps & atlas',
-    icon: { art: art('maven'), fa: 'fas fa-skull' },
+    icon: modulePageIcon('boss-runs'),
     description: 'Profit per boss kill.',
     modules: ['boss-runs'],
     widgets: ['woke-boss-runs'],
@@ -243,7 +256,7 @@ export const PAGES: SettingsPage[] = [
     name: 'Farming & sessions',
     group: 'modules',
     sub: 'Maps & atlas',
-    icon: { art: CURRENCY_ICONS.chaos, fa: 'fas fa-coins' },
+    icon: modulePageIcon('farming'),
     description: 'Profit per hour now, and per map and strategy over time.',
     modules: ['farming', 'session-analytics'],
     widgets: ['woke-farming', 'woke-session-analytics'],
@@ -254,7 +267,7 @@ export const PAGES: SettingsPage[] = [
     name: 'League mechanics',
     group: 'modules',
     sub: 'Maps & atlas',
-    icon: { art: art('incursion'), fa: 'fas fa-dungeon' },
+    icon: modulePageIcon('mechanics'),
     description: 'Picks and the Betrayal board for the zone you are in.',
     modules: ['mechanics'],
     widgets: ['woke-mechanics'],
@@ -265,7 +278,7 @@ export const PAGES: SettingsPage[] = [
     name: 'Loot filter editor',
     group: 'modules',
     sub: 'Maps & atlas',
-    icon: { item: 'Orb of Scouring', fa: 'fas fa-filter' },
+    icon: modulePageIcon('loot-filter'),
     description: 'Edit the NeverSink rule for an item you hover.',
     modules: ['loot-filter'],
     widgets: ['woke-loot-filter'],
@@ -276,7 +289,7 @@ export const PAGES: SettingsPage[] = [
     name: 'Regex library',
     group: 'modules',
     sub: 'Tools',
-    icon: { art: art('stash'), fa: 'fas fa-search' },
+    icon: modulePageIcon('regex-library'),
     description: 'Saved stash search strings, with hotkeys.',
     modules: ['regex-library'],
     widgets: ['woke-regex-library'],
