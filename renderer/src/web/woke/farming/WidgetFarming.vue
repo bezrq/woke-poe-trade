@@ -86,7 +86,7 @@
             <div v-if="s.autoPaused" class="text-xs w-dim"><i class="fas fa-pause-circle" /> Paused after 5 minutes without a zone change. Resumes when you change zone.</div>
             <div v-if="config.lootHotkey" class="text-xs w-faint">Hover an item in game and press <WKbd :keys="config.lootHotkey" /> to add it.</div>
             <div v-if="t.missingPrices" class="text-xs" style="color: var(--w-warn);">{{ t.missingPrices }} item(s) have no price and count as 0.</div>
-            <ui-checkbox v-model="config.autoCountMaps" class="text-sm">Count maps from Client.txt</ui-checkbox>
+            <w-toggle v-model="config.autoCountMaps" class="text-sm">Count maps from Client.txt</w-toggle>
 
             <div class="relative">
               <WField v-model="lootQuery" icon="fas fa-plus" placeholder="Add loot… (e.g. Divine Orb)" class="w-full" />
@@ -173,12 +173,12 @@ export default {
 </script>
 
 <script setup lang="ts">
+import WToggle from '../ui/WToggle.vue'
 import { inject, computed, shallowRef, onUnmounted, watch, nextTick } from 'vue'
 import { useVisibleClock } from '../shared/visible-clock'
 import { AppConfig, saveConfig } from '@/web/Config'
 import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
-import UiCheckbox from '@/web/ui/UiCheckbox.vue'
 import { WPanel, WTabs, WField, WButton, WEmpty, WKbd, WIcon, WBanner, toast } from '../ui'
 import { ninjaIcon } from '../ui/game-icons'
 import { MainProcess } from '@/web/background/IPC'

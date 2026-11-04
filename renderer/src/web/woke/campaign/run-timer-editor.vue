@@ -6,8 +6,8 @@
       each new act and finishes when you reach the Epilogue after Kitava. Use the strip's buttons (with the overlay
       active) to start, pause or end a run by hand.
     </div>
-    <ui-checkbox v-model="autoStart">Start a new run when a character enters The Twilight Strand</ui-checkbox>
-    <ui-checkbox v-model="subSplits">Sub-splits for key bosses (Brutus, Merveil, Dominus, Kitava…), timed when you enter their area</ui-checkbox>
+    <w-toggle v-model="autoStart">Start a new run when a character enters The Twilight Strand</w-toggle>
+    <w-toggle v-model="subSplits">Sub-splits for key bosses (Brutus, Merveil, Dominus, Kitava…), timed when you enter their area</w-toggle>
     <div class="grid gap-2 items-center" style="grid-template-columns: auto 1fr;">
       <span>Hotkey: pause/resume</span>
       <w-hotkey-cell v-model="hotkeyPause" />
@@ -33,8 +33,8 @@
 </template>
 
 <script lang="ts">
+import WToggle from '../ui/WToggle.vue'
 import { defineComponent, shallowRef } from 'vue'
-import UiCheckbox from '@/web/ui/UiCheckbox.vue'
 import WHotkeyCell from '../ui/WHotkeyCell.vue'
 import { configProp, configModelValue } from '@/web/settings/utils'
 import { migrateRunTimer } from './run-timer'
@@ -42,7 +42,7 @@ import type { RunTimerWidget } from './run-timer'
 
 export default defineComponent({
   name: 'Campaign run timer',
-  components: { UiCheckbox, WHotkeyCell },
+  components: { WToggle, WHotkeyCell },
   props: configProp<RunTimerWidget>(),
   setup (props) {
     migrateRunTimer(props.configWidget)
