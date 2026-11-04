@@ -1,6 +1,26 @@
 <template>
   <Widget :config="config" move-handles="corners" :inline-edit="false">
-    <WPanel :title="config.wmTitle || 'Map scan'" width="19rem">
+    <DockItem id="map-scan" :art="mechanicIcon('map').src" icon="fas fa-crosshairs" title="Map scan" :show="running || paused || !!message"
+      :led="message ? 'error' : paused ? 'warn' : running ? 'on' : null" :badge="rolling ? rolls.length : null"
+      :wm-id="config.wmId" card-width="18rem">
+      <template #card>
+        <div v-if="message" class="w-warn text-xs px-3 pt-2">{{ message }}</div>
+        <div v-else-if="paused" class="w-dim text-xs px-3 pt-2">Paused while the essence scan runs. It resumes when that stops.</div>
+        <div v-if="rolling" class="w-dim text-xs px-3 pt-2"><i class="fas fa-dice" /> Rolling · {{ rolls.length }} rerolls</div>
+        <div :class="$style.tally">
+          <div><span class="w-num w-up">{{ tally.run }}</span><span class="w-dim">run</span></div>
+          <div><span class="w-num" style="color: var(--w-warn);">{{ tally.careful }}</span><span class="w-dim">careful</span></div>
+          <div><span class="w-num w-down">{{ tally.skip }}</span><span class="w-dim">skip</span></div>
+        </div>
+        <div v-for="e in recent.slice(0, 5)" :key="e.id" :class="[$style.entry, $style[e.verdict]]">
+          <span :class="$style.tag">{{ VERDICT_LABEL[e.verdict] }}</span>
+          <span class="flex-1 w-trunc">{{ e.label }}</span>
+          <span class="w-num w-accent">{{ e.juice }}</span>
+        </div>
+        <div v-if="config.hotkey" class="w-faint text-xs px-3 py-1"><WKbd :keys="config.hotkey" /> to stop</div>
+      </template>
+    </DockItem>
+    <WPanel :title="config.wmTitle || 'Map scan'" icon="map" width="19rem">
       <template #actions>
         <span :class="[$style.led, { [$style.on]: running }]" />
         <WButton size="sm" :variant="running ? 'default' : 'primary'" @click="toggle">{{ running ? 'Stop' : 'Start' }}</WButton>
@@ -99,6 +119,9 @@ import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
 import { WPanel, WButton, WEmpty, WKbd } from '../ui'
 import { hostRequest } from '../shared/host'
+import DockItem from '../dock/DockItem.vue'
+import { mechanicIcon } from '../ui/game-icons'
+import { hideWhilePlaying } from '../dock/dock'
 import { DEFAULT_JUICE_WEIGHTS, defaultProfile, juiceScore, rateMods, shortLabel } from './rules'
 import type { ModRating, Verdict } from './rules'
 import { TooltipMatcher } from './tooltip-parse'
@@ -115,6 +138,7 @@ if (props.config.wmFlags[0] === 'uninitialized') {
   wm.show(props.config.wmId)
 }
 normalizeMapScanWidget(props.config)
+hideWhilePlaying(props.config)
 
 // 'unsure': would be a run, but some lines were read with low confidence.
 type ShownVerdict = Verdict | 'unsure'
@@ -307,7 +331,7 @@ onUnmounted(() => {
 </script>
 
 <style module>
-.led { width: 8px; height: 8px; border-radius: 4px; background: var(--w-faint); align-self: center; margin-right: 4px; }
+.led { width: 8px; height: 8px; border-radius: var(--w-r-sm); background: var(--w-faint); align-self: center; margin-right: 4px; }
 .led.on { background: var(--w-up); }
 .roll {
   display: flex;
@@ -320,9 +344,9 @@ onUnmounted(() => {
 .rollTag {
   min-width: 20px;
   text-align: center;
-  font-size: 10.5px;
+  font-size: var(--w-fs-xs);
   font-family: var(--w-num);
-  border-radius: var(--w-radius-sm);
+  border-radius: var(--w-r-sm);
   color: var(--w-accent-fg);
   background: var(--w-faint);
 }
@@ -337,15 +361,15 @@ onUnmounted(() => {
   text-align: center;
 }
 .tally > div { display: flex; flex-direction: column; font-size: var(--w-text-sm); }
-.tally :global(.w-num) { font-size: 18px; }
-.entry { display: flex; align-items: center; gap: 8px; padding: 3px var(--w-pad); font-size: 12.5px; }
+.tally :global(.w-num) { font-size: var(--w-fs-xl); }
+.entry { display: flex; align-items: center; gap: 8px; padding: 3px var(--w-pad); font-size: var(--w-fs-md); }
 .tag {
   flex: none;
   min-width: 38px;
   text-align: center;
-  font-size: 11px;
+  font-size: var(--w-fs-xs);
   font-weight: 600;
-  border-radius: var(--w-radius-sm);
+  border-radius: var(--w-r-sm);
   color: var(--w-accent-fg);
   padding: 0 4px;
 }
@@ -381,7 +405,7 @@ onUnmounted(() => {
   font-family: var(--w-body);
   font-size: var(--w-text);
   border: 1px solid var(--w-line-strong);
-  border-radius: var(--w-radius);
+  border-radius: var(--w-r-md);
   box-shadow: var(--w-shadow);
 }
 .badge.skip { border-color: color-mix(in srgb, var(--w-down) 60%, transparent); }
@@ -391,7 +415,7 @@ onUnmounted(() => {
   from { box-shadow: 0 0 0 0 var(--w-up); }
   to { box-shadow: 0 0 0 6px color-mix(in srgb, var(--w-up) 40%, transparent); }
 }
-.dot { width: 7px; height: 7px; border-radius: 4px; background: var(--w-panel-3); flex: none; }
+.dot { width: 7px; height: 7px; border-radius: var(--w-r-sm); background: var(--w-panel-3); flex: none; }
 .dot.deadly { background: var(--w-down); }
 .dot.warn { background: var(--w-warn); }
 .dot.good { background: var(--w-up); }

@@ -1,7 +1,27 @@
 <template>
   <Widget :config="config" move-handles="corners" :inline-edit="false">
+    <!-- In the hideout, while you set up the map device: the strategy you picked. -->
+    <DockItem id="atlas" icon="fas fa-globe" :title="selected?.name || 'Atlas strategy'" :show="!!selected && zone.kind === 'hideout'"
+      :wm-id="config.wmId" card-width="21rem">
+      <template #card>
+        <div v-if="selected" style="padding: 4px var(--w-pad) 6px;" class="flex flex-col gap-0.5">
+          <div v-for="(p, i) in pricedScarabs" :key="i" class="flex justify-between gap-2">
+            <span class="w-trunc">{{ p.qty > 1 ? p.qty + '× ' : '' }}{{ p.name }}</span>
+            <span v-if="p.item" class="w-num w-dim">{{ formatChaos(p.item.chaos * p.qty, prices.snapshot.value?.divine ?? null) }}</span>
+          </div>
+          <div v-if="scarabCost != null" class="flex justify-between w-num"><span class="w-dim">Scarabs per map</span>
+            <span class="w-accent">{{ formatChaos(scarabCost, prices.snapshot.value?.divine ?? null) }}</span></div>
+          <div v-if="selected.device.trim()" class="w-dim text-xs whitespace-pre-wrap">{{ selected.device.trim() }}</div>
+          <div v-if="selected.regex" class="flex items-center gap-1 text-xs">
+            <span class="w-dim">Map regex</span>
+            <code class="w-trunc" style="font-family: var(--w-num);">{{ selected.regex }}</code>
+            <button v-if="wm.active.value" class="w-icon-btn" title="Copy" @click="copy(selected.regex)"><i :class="copied ? 'fas fa-check' : 'far fa-copy'" /></button>
+          </div>
+        </div>
+      </template>
+    </DockItem>
     <div class="flex gap-2 min-h-0 items-start">
-      <WPanel :title="config.wmTitle || 'Atlas strategies'" width="17rem">
+      <WPanel :title="config.wmTitle || 'Atlas strategies'" icon="map" width="17rem">
         <template #actions>
           <button class="w-icon-btn" :class="{ 'w-icon-btn--on': sortByProfit }" title="Best earning first (from Farming profit history)"
             @click="sortByProfit = !sortByProfit"><i class="fas fa-sort-amount-down" /></button>
@@ -25,12 +45,12 @@
             :title="`${earnings.get(s.name)!.hours.toFixed(1)} h farmed`">{{ fmt(earnings.get(s.name)!.perHour) }}/h</span>
           <template #sub>{{ [s.league, ...s.tags].filter(Boolean).join(' · ') }}</template>
         </WListItem>
-        <WEmpty v-if="!config.strategies.length" icon="fas fa-map">
+        <WEmpty v-if="!config.strategies.length" :art="{ mechanic: 'map' }">
           No strategies yet. Paste one from a guide with the button above, or add them in settings.
         </WEmpty>
       </WPanel>
 
-      <WPanel v-if="selected" :title="selected.name || 'Untitled'" width="26rem">
+      <WPanel v-if="selected" size-key="detail" :title="selected.name || 'Untitled'" width="26rem">
         <template v-if="treeLink || selected.regex" #toolbar>
           <WButton v-if="treeLink" :href="treeLink" size="sm" variant="primary" icon="fas fa-external-link-alt">Open atlas tree</WButton>
           <WButton v-if="selected.regex" size="sm" :icon="copied ? 'fas fa-check' : 'far fa-copy'" @click="copy(selected.regex)">{{ copied ? 'Copied' : 'Copy map regex' }}</WButton>
@@ -51,7 +71,7 @@
               </div>
             </template>
             <div v-else class="whitespace-pre-wrap">{{ selected.scarabs }}</div>
-            <WButton v-if="farmingWidget && pricedScarabs.some(p => p.item)" size="sm" icon="fas fa-coins" class="mt-1" @click="useInFarming">
+            <WButton v-if="farmingWidget && pricedScarabs.some(p => p.item)" size="sm" class="mt-1" @click="useInFarming">
               {{ usedInFarming ? 'Set in Farming profit' : 'Use in Farming profit' }}
             </WButton>
           </div>
@@ -124,7 +144,7 @@ export default {
 </script>
 
 <script setup lang="ts">
-import { inject, computed, shallowRef } from 'vue'
+import { inject, computed, shallowRef, watch } from 'vue'
 import { MainProcess } from '@/web/background/IPC'
 import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
@@ -133,6 +153,8 @@ import { AppConfig } from '@/web/Config'
 import { emptyStrategy, strategyMatches, useAtlasData } from './widget'
 import { parseGuideText, parseScarabs, priceScarabs } from './guide'
 import { usePriceIndex } from '../market/price-index'
+import DockItem from '../dock/DockItem.vue'
+import { useZone } from '../shared/zone'
 import { formatChaos } from '../market/analysis'
 import { FARMING_TYPE, strategyStats } from '../farming/farming'
 import type { FarmingWidget } from '../farming/farming'
@@ -156,6 +178,8 @@ if (props.config.wmFlags[0] === 'uninitialized') {
 }
 
 const { atlasData, atlasDataError } = useAtlasData(props.config.dataUrl)
+// A new data URL from the settings applies without restarting.
+watch(() => props.config.dataUrl, (url) => { useAtlasData(url) })
 
 const filter = shallowRef('')
 const compareId = shallowRef<number | null>(null)
@@ -192,6 +216,7 @@ function importPaste () {
   pasteText.value = ''
   pasteOpen.value = false
 }
+const zone = useZone()
 const selected = computed(() => props.config.strategies.find(s => s.id === props.config.selectedId) ?? null)
 const pricedScarabs = computed(() => selected.value && prices.snapshot.value
   ? priceScarabs(parseScarabs(selected.value.scarabs), prices.snapshot.value.items)
@@ -276,7 +301,7 @@ function pasteSearch (text: string) {
 <style module>
 .heading {
   padding: 4px 0 2px;
-  font-size: 10.5px;
+  font-size: var(--w-fs-xs);
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--w-faint);
@@ -288,21 +313,21 @@ function pasteSearch (text: string) {
 .textarea {
   width: 100%;
   padding: 4px 8px;
-  font-size: 12px;
+  font-size: var(--w-fs-md);
   color: var(--w-fg);
   background: var(--w-panel-2);
   border: 1px solid var(--w-line);
-  border-radius: var(--w-radius-sm);
+  border-radius: var(--w-r-sm);
   resize: vertical;
 }
 .select {
   height: 26px;
   margin-bottom: 4px;
   padding: 0 6px;
-  font-size: 12.5px;
+  font-size: var(--w-fs-md);
   color: var(--w-fg);
   background: var(--w-panel-2);
   border: 1px solid var(--w-line);
-  border-radius: var(--w-radius-sm);
+  border-radius: var(--w-r-sm);
 }
 </style>

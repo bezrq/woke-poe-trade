@@ -1,12 +1,18 @@
 <template>
   <div :class="$style.empty">
-    <i v-if="icon" :class="[icon, $style.icon]" />
-    <div><slot /></div>
+    <WIcon v-if="art" v-bind="art" size="lg" />
+    <i v-else-if="icon" :class="[icon, $style.icon]" />
+    <div :class="$style.text"><slot /></div>
+    <div v-if="$slots.actions" :class="$style.actions"><slot name="actions" /></div>
   </div>
 </template>
 
 <script setup lang="ts">
-defineProps<{ icon?: string }>()
+// Empty or failed state (P12): say what goes here and how to fill it, with an
+// optional fix button in `actions`. `art` takes WIcon props for game art.
+import WIcon from './WIcon.vue'
+
+defineProps<{ icon?: string, art?: { currency?: string, item?: string, mechanic?: string, src?: string } }>()
 </script>
 
 <style module>
@@ -14,11 +20,13 @@ defineProps<{ icon?: string }>()
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
-  padding: 20px var(--w-pad);
+  gap: var(--w-s2);
+  padding: var(--w-s5) var(--w-pad);
   text-align: center;
   color: var(--w-dim);
-  font-size: 12.5px;
+  font-size: var(--w-fs-md);
 }
 .icon { font-size: 18px; color: var(--w-faint); }
+.text { max-width: 36ch; text-wrap: balance; }
+.actions { display: flex; gap: var(--w-s2); }
 </style>

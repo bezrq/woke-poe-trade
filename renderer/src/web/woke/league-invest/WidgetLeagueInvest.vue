@@ -1,6 +1,21 @@
 <template>
   <Widget :config="config" move-handles="corners" :inline-edit="false" :readonly="true">
-    <WPanel :title="config.wmTitle || 'League investments'" width="36rem" max-height="80vh">
+    <!-- First two weeks of a league, in town and hideout: today's best buys. -->
+    <DockItem id="league-invest" icon="fas fa-seedling" title="League start buys" :show="dockShow"
+      :badge="day != null ? `D${day}` : null" :wm-id="config.wmId" card-width="21rem">
+      <template #card>
+        <div style="padding: 4px var(--w-pad) 6px;" class="flex flex-col gap-0.5">
+          <div v-for="r in ranked.slice(0, 5)" :key="opportunityKey(r.opportunity)" class="flex justify-between gap-2">
+            <span class="w-trunc">{{ r.opportunity.name }}<span v-if="r.opportunity.variant" class="w-dim"> {{ r.opportunity.variant }}</span></span>
+            <span class="w-num whitespace-nowrap"><span class="w-up">+{{ Math.round((r.opportunity.median - 1) * 100) }}%</span>
+              <span v-if="r.chaos != null" class="w-dim"> · {{ formatChaos(r.chaos, snapshot?.divine ?? null) }}</span></span>
+          </div>
+          <div v-if="!ranked.length" class="w-dim text-xs">No buys stand out for day {{ day }}.</div>
+          <div class="w-faint text-xs mt-1">From past leagues, rise by day {{ (day ?? 0) + config.horizon }}</div>
+        </div>
+      </template>
+    </DockItem>
+    <WPanel :title="config.wmTitle || 'League investments'" icon="divine" width="36rem" max-height="80vh">
       <template #actions>
         <WChip clickable :active="showChanged" title="Items a patch changed this league" @click="showChanged = !showChanged"><i class="fas fa-exclamation-triangle" /> Changed {{ changed.length }}</WChip>
         <WChip clickable :active="showData" @click="showData = !showData"><i class="fas fa-database" /> Past leagues {{ histories.length }}</WChip>
@@ -56,7 +71,7 @@
         </div>
       </div>
 
-      <WEmpty v-if="note" icon="fas fa-chart-line">{{ note }}</WEmpty>
+      <WEmpty v-if="note" :art="{ currency: 'divine' }">{{ note }}</WEmpty>
       <template v-else>
         <div v-if="plan.length" :class="$style.hero">
           <div><div :class="$style.k">Spend</div><div :class="$style.big" class="w-num">{{ fmt(planCost) }}</div></div>
@@ -127,6 +142,8 @@ import type { Opportunity } from './invest'
 import { allLeagues, deleteLeague, saveLeague } from './store'
 import { leagueDay, leagueStartDates } from './league-start'
 import { readZip } from './zip'
+import DockItem from '../dock/DockItem.vue'
+import { useZone } from '../shared/zone'
 import type { LeagueInvestWidget } from './widget'
 import { changedMatchers, isChanged } from './widget'
 
@@ -187,6 +204,10 @@ const day = computed<number | null>(() => {
   if (props.config.dayOverride != null) return props.config.dayOverride
   return start.value ? Math.max(0, leagueDay(start.value)) : null
 })
+
+const zone = useZone()
+const dockShow = computed(() => day.value != null && day.value <= 14 && histories.value.length > 0 &&
+  (zone.kind === 'town' || zone.kind === 'hideout'))
 
 function onDayInput (e: Event) {
   const v = (e.target as HTMLInputElement).value.trim()
@@ -337,11 +358,11 @@ function fmtDiv (div: number) { return `${div.toFixed(div >= 10 ? 0 : 1)} div` }
 .textarea {
   width: 100%;
   padding: 4px 8px;
-  font-size: 12px;
+  font-size: var(--w-fs-md);
   color: var(--w-fg);
   background: var(--w-panel-2);
   border: 1px solid var(--w-line);
-  border-radius: var(--w-radius-sm);
+  border-radius: var(--w-r-sm);
   resize: vertical;
 }
 .dayInput {
@@ -351,7 +372,7 @@ function fmtDiv (div: number) { return `${div.toFixed(div >= 10 ? 0 : 1)} div` }
   color: var(--w-fg);
   background: var(--w-panel-2);
   border: 1px solid var(--w-line);
-  border-radius: var(--w-radius-sm);
+  border-radius: var(--w-r-sm);
 }
 .hero {
   display: grid;
@@ -361,12 +382,12 @@ function fmtDiv (div: number) { return `${div.toFixed(div >= 10 ? 0 : 1)} div` }
   border-bottom: 1px solid var(--w-line);
 }
 .k {
-  font-size: 10.5px;
+  font-size: var(--w-fs-xs);
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--w-faint);
 }
-.big { font-size: 17px; font-weight: 500; }
+.big { font-size: var(--w-fs-xl); font-weight: 500; }
 .planGrid { grid-template-columns: minmax(0, 1fr) 76px 80px; }
 .rankGrid { grid-template-columns: minmax(0, 1fr) 72px 56px 56px 56px; }
 </style>

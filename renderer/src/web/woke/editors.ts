@@ -1,0 +1,48 @@
+// Settings editor for each woke widget type (shown on its module's settings page).
+import type { Component } from 'vue'
+import RegexLibraryEditor from './regex-library/regex-library-editor.vue'
+import TradeSearchesEditor from './trade-searches/trade-searches-editor.vue'
+import PobBuildsEditor from './pob-builds/pob-builds-editor.vue'
+import CampaignEditor from './campaign/campaign-editor.vue'
+import RunTimerEditor from './campaign/run-timer-editor.vue'
+import AtlasEditor from './atlas/atlas-editor.vue'
+import LabEditor from './lab/lab-editor.vue'
+import FarmingEditor from './farming/farming-editor.vue'
+import MechanicsEditor from './mechanics/mechanics-editor.vue'
+import MapModsEditor from './map-mods/map-mods-editor.vue'
+import MapScanEditor from './map-mods/map-scan-editor.vue'
+import EssenceScanEditor from './essence-scan/essence-scan-editor.vue'
+import LootFilterEditor from './loot-filter/loot-filter-editor.vue'
+import { REGEX_LIBRARY_TYPE } from './regex-library/widget'
+import { TRADE_SEARCHES_TYPE } from './trade-searches/widget'
+import { POB_BUILDS_TYPE } from './pob-builds/widget'
+import { CAMPAIGN_TYPE } from './campaign/widget'
+import { RUN_TIMER_TYPE } from './campaign/run-timer'
+import { ATLAS_TYPE } from './atlas/widget'
+import { LAB_TYPE } from './lab/lab'
+import { FARMING_TYPE } from './farming/farming'
+import { MECHANICS_TYPE } from './mechanics/widget'
+import { MAP_MODS_TYPE } from './map-mods/widget'
+import { MAP_SCAN_TYPE } from './map-mods/scan'
+import { ESSENCE_SCAN_TYPE } from './essence-scan/widget'
+import { LOOT_FILTER_TYPE } from './loot-filter/widget'
+
+const editors: Record<string, Component> = {
+  [REGEX_LIBRARY_TYPE]: RegexLibraryEditor,
+  [TRADE_SEARCHES_TYPE]: TradeSearchesEditor,
+  [POB_BUILDS_TYPE]: PobBuildsEditor,
+  [CAMPAIGN_TYPE]: CampaignEditor,
+  [RUN_TIMER_TYPE]: RunTimerEditor,
+  [ATLAS_TYPE]: AtlasEditor,
+  [LAB_TYPE]: LabEditor,
+  [MAP_MODS_TYPE]: MapModsEditor,
+  [MAP_SCAN_TYPE]: MapScanEditor,
+  [ESSENCE_SCAN_TYPE]: EssenceScanEditor,
+  [MECHANICS_TYPE]: MechanicsEditor,
+  [LOOT_FILTER_TYPE]: LootFilterEditor,
+  [FARMING_TYPE]: FarmingEditor
+}
+
+export function wokeSettingsFor (wmType: string | undefined): Component | undefined {
+  return wmType ? editors[wmType] : undefined
+}

@@ -2,13 +2,13 @@
   <div class="max-w-xl p-2 flex flex-col gap-3">
     <div class="grid gap-2 items-center" style="grid-template-columns: auto 1fr;">
       <span>Hotkey: show the rule for the hovered item</span>
-      <hotkey-input v-model="sampleHotkey" />
+      <w-hotkey-cell v-model="sampleHotkey" />
       <span>Hotkey: open the editor</span>
-      <hotkey-input v-model="editorHotkey" />
+      <w-hotkey-cell v-model="editorHotkey" />
       <span>Filter folder</span>
-      <input v-model="folder" class="rounded bg-gray-900 px-1 block w-full font-sans" placeholder="Documents\My Games\Path of Exile">
+      <input v-model="folder" class="rounded w-input px-1 block w-full font-sans" placeholder="Documents\My Games\Path of Exile">
       <span>Area level when unknown</span>
-      <input v-model.number="fallbackAreaLevel" type="number" min="1" max="86" class="rounded bg-gray-900 px-1 block w-24 font-sans">
+      <input v-model.number="fallbackAreaLevel" type="number" min="1" max="86" class="rounded w-input px-1 block w-24 font-sans">
     </div>
 
     <div class="flex flex-col gap-1">
@@ -45,13 +45,13 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue'
-import HotkeyInput from '@/web/settings/HotkeyInput.vue'
+import WHotkeyCell from '../ui/WHotkeyCell.vue'
 import { configProp, configModelValue } from '@/web/settings/utils'
 import type { LootFilterWidget } from './widget'
 
 export default defineComponent({
   name: 'Loot filter',
-  components: { HotkeyInput },
+  components: { WHotkeyCell },
   props: configProp<LootFilterWidget>(),
   setup (props) {
     return {

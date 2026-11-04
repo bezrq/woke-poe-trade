@@ -1,5 +1,5 @@
 <template>
-  <WPanel :title="config.wmTitle || 'Loot filter'" width="68rem" max-height="85vh" :scroll="false">
+  <WPanel :title="config.wmTitle || 'Loot filter'" icon="wisdom" width="68rem" max-height="85vh" :scroll="false">
     <template #actions>
       <button class="w-icon-btn" title="Close" @click="emit('close')"><i class="fas fa-times" /></button>
     </template>
@@ -95,6 +95,30 @@
       </div>
     </div>
 
+    <!-- build rules -->
+    <div v-else-if="tab === 'build'" :class="$style.changes" class="w-scroll">
+      <WEmpty v-if="!buildInput" icon="fas fa-user-cog">
+        No active build. Pick one in PoB builds and press "Make active"; its gems, link colours and uniques can then be added to your filter here.
+      </WEmpty>
+      <template v-else>
+        <div class="w-dim text-sm" :class="$style.buildIntro">
+          Rules for <span class="w-accent">{{ buildInput.buildName }}</span> go at the top of your saved copy, ahead of NeverSink's own.
+          They follow the active build, and you can restyle them under Rules › Your build.
+        </div>
+        <div v-for="r in buildRows" :key="r.key" :class="$style.changeRow">
+          <WChip clickable :active="config.buildRules[r.key]" :title="config.buildRules[r.key] ? 'Turn off' : 'Turn on'" @click="config.buildRules[r.key] = !config.buildRules[r.key]">
+            {{ config.buildRules[r.key] ? 'On' : 'Off' }}
+          </WChip>
+          <span class="grow min-w-0 flex flex-col">
+            <span>{{ r.label }}</span>
+            <span class="w-dim text-xs w-trunc" :title="r.detail">{{ r.detail }}</span>
+          </span>
+          <LabelPreview v-if="r.block" :text="r.sample" :actions="r.block.actions" :visibility="r.block.visibility" />
+          <span v-else-if="config.buildRules[r.key]" class="w-faint text-xs">nothing to add</span>
+        </div>
+      </template>
+    </div>
+
     <!-- changes -->
     <div v-else :class="$style.changes" class="w-scroll">
       <WEmpty v-if="!config.edits.length" icon="fas fa-pen">No changes yet. Sample an item with <WKbd v-if="config.sampleHotkey" :keys="config.sampleHotkey" /> or edit a tier here.</WEmpty>
@@ -145,6 +169,9 @@ import type { Visibility } from './parse'
 import { buildTree, findBase, groupName } from './groups'
 import type { GroupNode, TierNode } from './groups'
 import { hostRequest } from '../shared/host'
+import { BUILD_RULE_TYPE, LEVELLING_BELOW, WEAPON_CLASSES } from './build-rules'
+import type { BuildRuleSwitches } from './build-rules'
+import { COLOUR_NAME } from '../pob-builds/build-model'
 
 const props = defineProps<{
   store: LootFilterStore
@@ -155,7 +182,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{ (e: 'close'): void }>()
 
-const tab = ref<'rules' | 'changes'>('rules')
+const tab = ref<'rules' | 'build' | 'changes'>('rules')
 const search = ref('')
 const selType = ref<string | null>(null)
 const selTier = ref<string | null>(null)
@@ -172,8 +199,32 @@ const outName = computed(() => props.config.sourceName ? outputName(props.config
 
 const tabOptions = computed(() => [
   { value: 'rules', label: 'Rules' },
+  { value: 'build', label: 'Build', count: props.store.buildBlockCount.value || undefined },
   { value: 'changes', label: 'Changes', count: props.config.edits.length }
 ])
+
+// ---- build rules ----
+
+const buildInput = computed(() => props.store.buildInput.value)
+
+function buildBlock (tier: string) {
+  return props.store.doc.value?.blocks.find(b => b.type === BUILD_RULE_TYPE && b.tier === tier) ?? null
+}
+
+const buildRows = computed(() => {
+  const input = buildInput.value
+  if (!input) return []
+  const list = (xs: string[]) => xs.length > 4 ? `${xs.slice(0, 4).join(', ')} +${xs.length - 4}` : xs.join(', ')
+  const coloured = input.linkColours.filter(c => c !== 'w')
+  const rows: Array<{ key: keyof BuildRuleSwitches, label: string, detail: string, tier: string, sample: string }> = [
+    { key: 'gems', label: 'Show my gems', tier: 'gems', sample: input.gems[0] ?? 'Gem', detail: `${input.gems.length} gems, while levelling (area level below ${LEVELLING_BELOW})` },
+    { key: 'links', label: 'Linked items in my colours', tier: coloured.length >= 4 ? 'links4' : 'links3', sample: 'Linked item', detail: coloured.length >= 2 ? `${coloured.map(c => COLOUR_NAME[c]).join('-')} main link, 3- and 4-links, while levelling` : 'The main link needs 2+ coloured gems' },
+    { key: 'uniques', label: 'My uniques', tier: 'uniques', sample: input.uniqueBases[0] ?? 'Unique', detail: input.uniqueBases.length ? `Bases: ${list(input.uniqueBases)}` : 'No uniques in the build' },
+    { key: 'bases', label: 'My rare bases', tier: 'bases', sample: input.rareBases[0] ?? 'Rare', detail: input.rareBases.length ? list(input.rareBases) : 'No rare items in the item set for your level' },
+    { key: 'hideWeapons', label: 'Hide other weapon types while levelling', tier: 'otherweapons', sample: 'Other weapon', detail: input.weaponClasses.length ? `White and blue only; keeps ${input.weaponClasses.join(', ')} (${WEAPON_CLASSES.length - input.weaponClasses.length} types hidden)` : 'No weapon in the build' }
+  ]
+  return rows.map(r => ({ ...r, block: props.config.buildRules[r.key] ? buildBlock(r.tier) : null }))
+})
 
 // Online filters are keyed "online:<id>" in the picker.
 const sourceKey = computed(() => props.config.sourceOnline ? `online:${props.config.sourceName}` : props.config.sourceName)
@@ -359,7 +410,7 @@ function openFolder () {
   padding: 6px 8px;
   background: var(--w-panel-2);
   border: 1px solid transparent;
-  border-radius: var(--w-radius-sm);
+  border-radius: var(--w-r-sm);
   color: var(--w-fg);
   text-align: left;
   cursor: pointer;
@@ -390,6 +441,10 @@ function openFolder () {
   max-height: min(36rem, 70vh);
   padding: 6px 0;
 }
+.buildIntro {
+  padding: 4px var(--w-pad) 8px;
+  max-width: 60rem;
+}
 .changeRow {
   display: flex;
   align-items: center;
@@ -404,7 +459,7 @@ function openFolder () {
   background: var(--w-panel-2);
   color: var(--w-fg);
   border: 1px solid var(--w-line);
-  border-radius: var(--w-radius-sm);
+  border-radius: var(--w-r-sm);
   padding: 2px 4px;
 }
 </style>

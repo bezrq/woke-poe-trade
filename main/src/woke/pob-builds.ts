@@ -1,4 +1,5 @@
 import { promises as fs } from 'fs'
+import type { Dirent } from 'fs'
 import path from 'path'
 import zlib from 'zlib'
 import { spawn } from 'child_process'
@@ -43,7 +44,14 @@ const summaryCache = new Map<string, { mtime: number, summary: PobSummary }>()
 
 async function walk (root: string, rel: string, depth: number, out: PobBuildEntry[]): Promise<void> {
   if (depth > MAX_DEPTH || out.length >= MAX_BUILDS) return
-  const entries = await fs.readdir(path.join(root, rel), { withFileTypes: true })
+  let entries: Dirent[]
+  try {
+    entries = await fs.readdir(path.join(root, rel), { withFileTypes: true })
+  } catch (err) {
+    // An unreadable subfolder shouldn't hide every other build.
+    if (depth === 0) throw err
+    return
+  }
   for (const entry of entries) {
     if (out.length >= MAX_BUILDS) return
     const childRel = rel ? `${rel}/${entry.name}` : entry.name

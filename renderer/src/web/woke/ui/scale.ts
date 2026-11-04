@@ -21,9 +21,10 @@ function readStored (): UiScale {
 
 export const uiScale = shallowRef<UiScale>(readStored())
 
-// 1080p -> 85%, 1440p -> 110%, 2160p (no Windows scaling) -> 160%.
+// 1080p -> 100%, 1440p -> 135%, 2160p (no Windows scaling) -> 160%.
+// 1080p stays at 100% so the smallest text is a real 11px (charter P19).
 export function autoScale (height = window.innerHeight): number {
-  const pct = Math.round(height / 1300 * 100 / 5) * 5
+  const pct = Math.round(height / 1080 * 100 / 5) * 5
   return Math.min(MAX_SCALE, Math.max(MIN_SCALE, pct))
 }
 

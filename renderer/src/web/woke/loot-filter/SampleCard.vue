@@ -1,5 +1,5 @@
 <template>
-  <WPanel title="Filter rule for this item" width="27rem" max-height="85vh">
+  <WPanel title="Filter rule for this item" size-key="sample" width="27rem" max-height="85vh">
     <template #actions>
       <span class="w-faint text-xs">{{ store.doc.value?.strictness ?? '' }} {{ store.doc.value?.version ?? '' }}</span>
       <button class="w-icon-btn" title="Close" @click="emit('close')"><i class="fas fa-times" /></button>
@@ -228,7 +228,7 @@ function unknownKeys (m: BlockMatch): string[] {
 }
 .itemName {
   font-family: var(--w-head);
-  font-size: 15px;
+  font-size: var(--w-fs-lg);
 }
 .section {
   display: flex;
@@ -239,8 +239,8 @@ function unknownKeys (m: BlockMatch): string[] {
   padding: 0;
 }
 .conds {
-  font-family: var(--w-num);
-  font-size: 11px;
+  font-family: var(--w-mono);
+  font-size: var(--w-fs-xs);
   color: var(--w-dim);
   line-height: 1.6;
 }
@@ -251,7 +251,7 @@ function unknownKeys (m: BlockMatch): string[] {
   padding: 3px 8px;
   background: var(--w-panel-2);
   border: 1px solid var(--w-line-soft);
-  border-radius: var(--w-radius-sm);
+  border-radius: var(--w-r-sm);
   color: var(--w-fg);
   text-align: left;
   cursor: pointer;
@@ -277,7 +277,7 @@ function unknownKeys (m: BlockMatch): string[] {
   background: var(--w-panel-2);
   color: var(--w-fg);
   border: 1px solid var(--w-line);
-  border-radius: var(--w-radius-sm);
+  border-radius: var(--w-r-sm);
   padding: 1px 4px;
 }
 </style>

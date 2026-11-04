@@ -1,7 +1,21 @@
 <template>
   <Widget :config="config" move-handles="corners" :inline-edit="false">
+    <!-- A live search keeps running out of sight; its icon counts new results. -->
+    <DockItem ref="dockRef" id="trade-live" icon="fas fa-bolt" :title="openEntry?.name || 'Live search'" :show="liveOpen"
+      :badge="unseen || null" :tone="unseen ? 'down' : 'accent'" :led="liveOpen ? 'on' : null" :wm-id="config.wmId"
+      card-width="20rem" @open-change="onCard">
+      <template #card>
+        <div style="padding: 4px var(--w-pad) 6px;">
+          <div class="w-dim text-xs">{{ unseen ? `${unseen} new since you last looked` : 'No new results since you last looked' }}<template v-if="total >= 0"> · {{ total }} on the page</template></div>
+          <div v-for="(r, i) in latest" :key="i" class="flex justify-between gap-2">
+            <span class="w-trunc">{{ r.name || 'Item' }}</span><span class="w-num w-accent whitespace-nowrap">{{ r.price }}</span>
+          </div>
+          <div class="w-faint text-xs mt-1">Ping {{ config.liveAlert ? 'on' : 'off' }} · open the overlay and click the icon to whisper</div>
+        </div>
+      </template>
+    </DockItem>
     <div class="flex gap-2 min-h-0 items-start">
-      <WPanel :title="config.wmTitle || 'Trade searches'" width="19rem" max-height="70vh">
+      <WPanel ref="panel" :title="config.wmTitle || 'Trade searches'" icon="exalted" width="19rem" max-height="70vh">
         <template #actions>
           <WChip v-if="hasHotkeys" clickable :active="config.enableHotkeys" title="Use each search's hotkey"
             @click="config.enableHotkeys = !config.enableHotkeys"><i class="fas fa-keyboard" /> Hotkeys</WChip>
@@ -13,7 +27,8 @@
         <template v-for="group in groups" :key="group.category">
           <div class="w-group-label">{{ group.category }}</div>
           <WListItem v-for="entry in group.entries" :key="entry.id" :active="openId === entry.id"
-            :title="tooltip(entry)" @select="open(entry, 'overlay')">
+            :title="tooltip(entry)" @select="open(entry, 'overlay')"
+            @contextmenu="rowMenu($event, entry)" @keydown.c.ctrl.prevent="copyLink(entry)" @keydown.delete.prevent="remove(entry)">
             <i v-if="isLiveSearch(entry.url)" class="fas fa-bolt w-accent" title="Live search" />
             <span class="w-trunc">{{ entry.name || entry.url }}</span>
             <WChip v-if="otherLeague(entry)" :title="`Saved in ${otherLeague(entry)}. Opens in ${league}.`">{{ otherLeague(entry) }} → now</WChip>
@@ -25,16 +40,20 @@
             </template>
           </WListItem>
         </template>
-        <WEmpty v-if="!groups.length" icon="fas fa-search">
-          {{ config.entries.length ? 'No matches' : 'No saved searches yet. Open settings to add some.' }}
+        <WEmpty v-if="!groups.length && config.entries.length" icon="fas fa-filter">
+          Nothing matches "{{ filter }}". Search looks at names, tags and categories.
+          <template #actions><WButton size="sm" @click="filter = ''">Clear search</WButton></template>
+        </WEmpty>
+        <WEmpty v-else-if="!groups.length" :art="{ currency: 'exalted' }">
+          No saved searches yet. Paste a trade site link in this widget's settings to add one.
         </WEmpty>
 
         <template #footer>
-          <span>Opens the official trade site</span>
+          <span>Opens the official trade site · right-click for more</span>
         </template>
       </WPanel>
 
-      <WPanel v-if="openEntry" :title="openEntry.name || openEntry.url" :scroll="false" max-height="none"
+      <WPanel v-if="openEntry" size-key="browser" :title="openEntry.name || openEntry.url" :scroll="false" max-height="none"
         :class="{ [$style.flash]: flashing }" style="width: 60vw; height: 75vh;">
         <template #actions>
           <WChip v-if="isLiveSearch(openEntry.url)" clickable :active="!!config.liveAlert" class="mr-1"
@@ -75,7 +94,9 @@ import { Host, MainProcess } from '@/web/background/IPC'
 import { AppConfig, pushHostConfig } from '@/web/Config'
 import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
-import { WPanel, WField, WChip, WKbd, WEmpty, WListItem } from '../ui'
+import { WPanel, WField, WChip, WKbd, WEmpty, WListItem, WButton, openMenu, toast } from '../ui'
+import DockItem from '../dock/DockItem.vue'
+import { hideWhilePlaying } from '../dock/dock'
 import { useLeagues } from '@/web/background/Leagues'
 import { groupByCategory, isLiveSearch, isValidUrl, leagueOf, matchesFilter, parseHotkeyTarget, withLeague } from './widget'
 import type { OpenTarget, TradeSearchEntry } from './widget'
@@ -117,18 +138,37 @@ function urlFor (entry: TradeSearchEntry): string {
 const flashing = shallowRef(false)
 let lastCount = -1
 const ROWS_JS = "document.querySelectorAll('.resultset > .row[data-id]').length"
+// The newest few results (name, price), for the dock card.
+const LATEST_JS = `JSON.stringify(Array.from(document.querySelectorAll('.resultset > .row[data-id]')).slice(0, 3).map(r => ({
+  name: (r.querySelector('.itemName') || {}).innerText || '',
+  price: ((r.querySelector('[data-field="price"]') || {}).innerText || '').replace(/\\s+/g, ' ').trim()
+})))`
+const unseen = shallowRef(0)
+const total = shallowRef(-1)
+const latest = shallowRef<Array<{ name: string, price: string }>>([])
+const dockRef = shallowRef<InstanceType<typeof DockItem> | null>(null)
 const livePoll = setInterval(async () => {
   const el = webviewEl.value
-  if (!props.config.liveAlert || !openEntry.value || !isLiveSearch(openEntry.value.url) || !el?.executeJavaScript) {
+  if (!liveOpen.value || !el?.executeJavaScript) {
     lastCount = -1
     return
   }
   try {
     const n = Number(await el.executeJavaScript(ROWS_JS))
-    if (lastCount >= 0 && n > lastCount) ping()
+    if (lastCount >= 0 && n > lastCount) {
+      unseen.value += n - lastCount
+      if (props.config.liveAlert) ping()
+      latest.value = JSON.parse(String(await el.executeJavaScript(LATEST_JS))) as Array<{ name: string, price: string }>
+      const top = latest.value[0]
+      if (top && !wm.active.value) dockRef.value?.peek(`${top.name || 'New result'} · ${top.price}`)
+    }
     lastCount = n
+    total.value = n
   } catch {}
 }, 1500)
+function onCard (open: boolean) {
+  if (!open) unseen.value = 0
+}
 onUnmounted(() => { clearInterval(livePoll) })
 
 function ping () {
@@ -156,10 +196,17 @@ const overlayKey = computed(() => AppConfig().overlayKey)
 
 watch(() => props.config.enableHotkeys, () => { pushHostConfig() })
 
-// While a search is open, keep it visible over the game (useful for live
-// searches); the list alone hides when the game has focus, like stash search.
+const liveOpen = computed(() => !!openEntry.value && isLiveSearch(openEntry.value.url))
+
+// A search you opened stays over the game until you close it, like before,
+// except a live search: it keeps running out of sight and its dock icon
+// shows new results. The list alone shows only with the overlay open.
+hideWhilePlaying(props.config)
 watch(openEntry, (entry) => {
-  wm.setFlag(props.config.wmId, 'invisible-on-blur', !entry)
+  unseen.value = 0
+  total.value = -1
+  latest.value = []
+  wm.setFlag(props.config.wmId, 'invisible-on-blur', !entry || isLiveSearch(entry.url))
 })
 
 function open (entry: TradeSearchEntry, where: OpenTarget) {
@@ -189,6 +236,36 @@ const hotkeyController = MainProcess.onEvent('MAIN->CLIENT::widget-action', (e) 
   if (entry) open(entry, parsed.where)
 })
 onUnmounted(() => { hotkeyController.abort() })
+
+const panel = shallowRef<InstanceType<typeof WPanel> | null>(null)
+
+function copyLink (entry: TradeSearchEntry) {
+  navigator.clipboard.writeText(urlFor(entry))
+    .then(() => toast('Copied the trade link', { anchor: panel.value?.el, ms: 1800 }))
+    .catch(() => {})
+}
+
+// No "are you sure": remove now, offer Undo (P9).
+function remove (entry: TradeSearchEntry) {
+  const before = props.config.entries
+  if (openId.value === entry.id) closeBrowser()
+  props.config.entries = before.filter(e => e.id !== entry.id)
+  pushHostConfig()
+  toast(`Removed "${entry.name || 'search'}"`, {
+    anchor: panel.value?.el,
+    undo: () => { props.config.entries = before; pushHostConfig() }
+  })
+}
+
+function rowMenu (e: MouseEvent, entry: TradeSearchEntry) {
+  openMenu(e, [
+    { label: 'Open here', icon: 'far fa-window-maximize', keys: entry.hotkeyOverlay ?? 'Enter', action: () => open(entry, 'overlay') },
+    { label: 'Open in browser', icon: 'fas fa-external-link-alt', keys: entry.hotkeyExternal ?? undefined, action: () => open(entry, 'external') },
+    { label: 'Copy link', icon: 'far fa-copy', keys: 'Ctrl + C', action: () => copyLink(entry) },
+    { separator: true },
+    { label: 'Remove', icon: 'fas fa-trash', keys: 'Del', danger: true, action: () => remove(entry) }
+  ])
+}
 
 function tooltip (entry: TradeSearchEntry) {
   return [entry.url, entry.tags.length ? `Tags: ${entry.tags.join(', ')}` : '', entry.notes]

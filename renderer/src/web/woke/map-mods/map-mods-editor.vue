@@ -2,9 +2,9 @@
   <div class="max-w-2xl p-2 flex flex-col gap-4" style="color: var(--w-fg);">
     <div class="grid gap-2 items-center" style="grid-template-columns: auto 1fr;">
       <span>Hotkey: check hovered map</span>
-      <hotkey-input v-model="hotkey" />
+      <w-hotkey-cell v-model="hotkey" />
       <span>Hotkey: paste map regex into stash search</span>
-      <hotkey-input v-model="regexHotkey" />
+      <w-hotkey-cell v-model="regexHotkey" />
     </div>
     <label class="flex items-center gap-2">
       <input type="checkbox" v-model="stripOnPriceCheck">
@@ -43,7 +43,7 @@
 
 <script lang="ts">
 import { defineComponent, computed } from 'vue'
-import HotkeyInput from '@/web/settings/HotkeyInput.vue'
+import WHotkeyCell from '../ui/WHotkeyCell.vue'
 import { configProp, configModelValue } from '@/web/settings/utils'
 import { WButton, WField, WSelect } from '../ui'
 import type { JuiceWeights } from './rules'
@@ -63,7 +63,7 @@ const WEIGHT_LABELS: Record<keyof JuiceWeights, string> = {
 
 export default defineComponent({
   name: 'Map mods',
-  components: { HotkeyInput, WButton, WField, WSelect },
+  components: { WHotkeyCell, WButton, WField, WSelect },
   props: configProp<MapModsWidget>(),
   setup (props) {
     const w = computed(() => {

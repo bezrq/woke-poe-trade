@@ -1,6 +1,21 @@
 <template>
   <Widget :config="config" move-handles="corners" :inline-edit="false">
-    <WPanel :title="config.wmTitle || 'Essence scan'" width="19rem">
+    <DockItem id="essence-scan" :art="mechanicIcon('essence').src" icon="fas fa-flask" title="Essence scan" :show="running || paused || !!message"
+      :led="message ? 'error' : paused ? 'warn' : running ? 'on' : null" :badge="unseenCorrupt || null"
+      :wm-id="config.wmId" card-width="18rem" @open-change="onCard">
+      <template #card>
+        <div v-if="message" class="w-warn text-xs px-3 pt-2">{{ message }}</div>
+        <div v-else-if="paused" class="w-dim text-xs px-3 pt-2">Paused while the map scan runs. It resumes when that stops.</div>
+        <div v-for="e in recent.slice(0, 5)" :key="e.id" :class="[$style.entry, $style[e.rated.verdict]]">
+          <span :class="$style.tag">{{ VERDICT_LABEL[e.rated.verdict] }}</span>
+          <span class="flex-1 w-trunc">{{ entryLabel(e) }}</span>
+          <WPrice :chaos="e.rated.totalChaos || null" :divine="divine" />
+        </div>
+        <div v-if="!entries.length" class="w-dim text-xs px-3 py-2">Hover an essence monolith.</div>
+        <div v-if="config.hotkey" class="w-faint text-xs px-3 py-1"><WKbd :keys="config.hotkey" /> to stop</div>
+      </template>
+    </DockItem>
+    <WPanel :title="config.wmTitle || 'Essence scan'" icon="essence" width="19rem">
       <template #actions>
         <button type="button" class="w-icon-btn" title="Read every essence on screen once" @click="readOnce"><i class="fas fa-expand" /></button>
         <span :class="[$style.led, { [$style.on]: running }]" />
@@ -14,7 +29,7 @@
         <span class="flex-1 w-trunc">{{ entryLabel(e) }}</span>
         <WPrice :chaos="e.rated.totalChaos || null" :divine="divine" />
       </div>
-      <WEmpty v-if="!entries.length" icon="fas fa-flask">
+      <WEmpty v-if="!entries.length" :art="{ mechanic: 'essence' }">
         <template v-if="running">Hover an essence monolith. Its essences get priced, and ones holding {{ flagText }} say CORRUPT.</template>
         <template v-else-if="config.hotkey">Press <WKbd :keys="config.hotkey" /> in game to start scanning.</template>
         <template v-else>Start scanning, then hover essence monoliths.</template>
@@ -42,13 +57,13 @@
             ({{ current.rated.estimate.gain >= 0 ? '+' : '' }}{{ fmt(current.rated.estimate.gain) }} after Vaal)
           </div>
           <template v-if="current.rated.specials.length">
-            <div class="w-faint" style="font-size: 10.5px; margin-top: 3px;">Corrupting can turn {{ current.rated.flagged.join(', ') }} into:</div>
-            <div v-for="sp in current.rated.specials" :key="sp.name" :class="$style.erow" style="font-size: 11.5px;">
+            <div class="w-faint" style="font-size: var(--w-fs-xs); margin-top: 3px;">Corrupting can turn {{ current.rated.flagged.join(', ') }} into:</div>
+            <div v-for="sp in current.rated.specials" :key="sp.name" :class="$style.erow" style="font-size: var(--w-fs-sm);">
               <span :class="$style.flagged">{{ sp.name.replace('Essence of ', '') }}</span>
               <WPrice :chaos="sp.chaos" :divine="divine" />
             </div>
           </template>
-          <div v-if="!hasPrices" class="w-faint" style="font-size: 10.5px;">Waiting for poe.ninja prices…</div>
+          <div v-if="!hasPrices" class="w-faint" style="font-size: var(--w-fs-xs);">Waiting for poe.ninja prices…</div>
         </div>
       </div>
     </Teleport>
@@ -88,6 +103,9 @@ import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
 import { WPanel, WButton, WEmpty, WKbd, WPrice } from '../ui'
 import { hostRequest } from '../shared/host'
+import DockItem from '../dock/DockItem.vue'
+import { mechanicIcon } from '../ui/game-icons'
+import { hideWhilePlaying } from '../dock/dock'
 import { usePriceIndex } from '../market/price-index'
 import { parseMonolith, rateMonolith, shortEssenceName } from './essences'
 import type { EssenceVerdict, PricedMonolith } from './essences'
@@ -101,6 +119,7 @@ if (props.config.wmFlags[0] === 'uninitialized') {
   wm.show(props.config.wmId)
 }
 normalizeEssenceScanWidget(props.config)
+hideWhilePlaying(props.config)
 
 const VERDICT_LABEL: Record<EssenceVerdict, string> = { corrupt: 'CORRUPT', open: 'OPEN', done: 'DONE' }
 
@@ -118,6 +137,16 @@ const paused = shallowRef(false)
 const entries = shallowRef<Entry[]>([])
 const current = shallowRef<Entry | null>(null)
 let nextId = 1
+
+// Badge: monoliths worth corrupting since the dock card was last opened.
+// By entry, not by count: a re-read monolith replaces its entry, so counts
+// can drop and a new find would hide behind the old total.
+const seenCorrupt = shallowRef(new Set<number>())
+const corruptIds = computed(() => entries.value.filter(e => e.rated.verdict === 'corrupt').map(e => e.id))
+const unseenCorrupt = computed(() => corruptIds.value.filter(id => !seenCorrupt.value.has(id)).length)
+function onCard (open: boolean) {
+  if (open) seenCorrupt.value = new Set(corruptIds.value)
+}
 
 const prices = usePriceIndex()
 const divine = computed(() => prices.snapshot.value?.divine ?? null)
@@ -207,15 +236,18 @@ function onReading (reading: { lines: string[], at: { x: number, y: number } }) 
     return
   }
   const alert = props.config.valueAlertChaos
+  // The same monolith read again (after corrupting it, say): replace it,
+  // keeping its id while the verdict stays the same so the badge doesn't
+  // count it again.
+  const list = entries.value.slice()
+  const idx = list.findIndex(e => Math.hypot(e.at.x - reading.at.x, e.at.y - reading.at.y) < 0.06)
+  const prev = idx >= 0 ? list[idx] : null
   const entry: Entry = {
-    id: nextId++,
+    id: prev && prev.rated.verdict === rated.verdict ? prev.id : nextId++,
     at: reading.at,
     rated,
     bigValue: alert > 0 && rated.totalChaos >= alert
   }
-  // The same monolith read again (after corrupting it, say): replace it.
-  const list = entries.value.slice()
-  const idx = list.findIndex(e => Math.hypot(e.at.x - reading.at.x, e.at.y - reading.at.y) < 0.06)
   if (idx >= 0) list.splice(idx, 1)
   list.push(entry)
   entries.value = list.slice(-50)
@@ -258,6 +290,7 @@ async function toggle () {
 
 function clear () {
   entries.value = []
+  seenCorrupt.value = new Set()
   current.value = null
   hostRequest('essence-scan-reread', null).catch(() => {})
 }
@@ -284,20 +317,20 @@ onUnmounted(() => {
 </script>
 
 <style module>
-.led { width: 8px; height: 8px; border-radius: 4px; background: var(--w-faint); align-self: center; margin-right: 4px; }
+.led { width: 8px; height: 8px; border-radius: var(--w-r-sm); background: var(--w-faint); align-self: center; margin-right: 4px; }
 .led.on { background: var(--w-up); }
-.entry { display: flex; align-items: center; gap: 8px; padding: 3px var(--w-pad); font-size: 12.5px; border-bottom: 1px solid var(--w-line-soft); }
+.entry { display: flex; align-items: center; gap: 8px; padding: 3px var(--w-pad); font-size: var(--w-fs-md); border-bottom: 1px solid var(--w-line-soft); }
 .tag {
   flex: none;
   min-width: 52px;
   text-align: center;
-  font-size: 11px;
+  font-size: var(--w-fs-xs);
   font-weight: 600;
-  border-radius: var(--w-radius-sm);
+  border-radius: var(--w-r-sm);
   color: var(--w-accent-fg);
   padding: 0 4px;
 }
-.corrupt .tag { background: var(--ess-flag, #c58bd6); }
+.corrupt .tag { background: var(--ess-flag, var(--w-corrupt)); }
 .open .tag { background: var(--w-up); }
 .done .tag { background: var(--w-panel-3); color: var(--w-dim); }
 
@@ -314,10 +347,10 @@ onUnmounted(() => {
   font-family: var(--w-body);
   font-size: var(--w-text);
   border: 1px solid var(--w-line-strong);
-  border-radius: var(--w-radius);
+  border-radius: var(--w-r-md);
   box-shadow: var(--w-shadow);
 }
-.card.corrupt { border-color: color-mix(in srgb, var(--ess-flag, #c58bd6) 70%, transparent); }
+.card.corrupt { border-color: color-mix(in srgb, var(--ess-flag, var(--w-corrupt)) 70%, transparent); }
 .card.big { border-color: color-mix(in srgb, var(--w-up) 60%, transparent); }
 .pin {
   position: absolute;
@@ -328,13 +361,13 @@ onUnmounted(() => {
   padding: 3px 6px;
   background: var(--w-panel);
   border: 1px solid var(--w-line-strong);
-  border-radius: var(--w-radius);
+  border-radius: var(--w-r-md);
   box-shadow: var(--w-shadow);
   font-family: var(--w-body);
-  font-size: 12px;
+  font-size: var(--w-fs-md);
   color: var(--w-fg);
 }
-.pin.corrupt { border-color: color-mix(in srgb, var(--ess-flag, #c58bd6) 70%, transparent); }
-.erow { display: flex; justify-content: space-between; gap: 8px; font-size: 12.5px; }
-.flagged { color: var(--ess-flag, #c58bd6); font-weight: 600; }
+.pin.corrupt { border-color: color-mix(in srgb, var(--ess-flag, var(--w-corrupt)) 70%, transparent); }
+.erow { display: flex; justify-content: space-between; gap: 8px; font-size: var(--w-fs-md); }
+.flagged { color: var(--ess-flag, var(--w-corrupt)); font-weight: 600; }
 </style>

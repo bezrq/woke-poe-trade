@@ -14,6 +14,7 @@ export interface PobGem {
   level: number | null
   quality: number | null
   enabled: boolean
+  support: boolean
 }
 
 export interface PobSkillGroup {
@@ -30,10 +31,45 @@ export interface PobTreeSpec {
   isActive: boolean
 }
 
+export interface PobSkillSet {
+  title: string
+  isActive: boolean
+  groups: PobSkillGroup[]
+}
+
+export type PobRarity = 'NORMAL' | 'MAGIC' | 'RARE' | 'UNIQUE' | 'RELIC' | ''
+
+export interface PobItem {
+  rarity: PobRarity
+  // Unique or rare name; the full name for magic and normal items.
+  name: string
+  // Base type when PoB lists it on its own line (uniques and rares).
+  base: string
+  // As PoB writes it, e.g. "R-G-B B".
+  sockets: string
+  implicits: string[]
+  mods: string[]
+}
+
+export interface PobItemSlot {
+  slot: string
+  item: PobItem
+}
+
+export interface PobItemSet {
+  title: string
+  isActive: boolean
+  slots: PobItemSlot[]
+}
+
 export interface PobDetails extends PobSummary {
   notes: string
+  // Groups of the active skill set.
   skills: PobSkillGroup[]
+  // Every skill set (levelling builds often have one per act or level range).
+  skillSets: PobSkillSet[]
   trees: PobTreeSpec[]
+  itemSets: PobItemSet[]
 }
 
 function attrs (tag: string): Record<string, string> {
@@ -61,28 +97,20 @@ function num (value: string | undefined): number | null {
   return Number.isFinite(n) ? n : null
 }
 
-function parseSkills (xml: string, mainSocketGroup: number | null): PobSkillGroup[] {
+function parseGroups (body: string, mainSocketGroup: number | null): PobSkillGroup[] {
   const groups: PobSkillGroup[] = []
-  // Skills may sit directly under <Skills> or inside <SkillSet> blocks;
-  // with several skill sets, prefer the active one.
-  const skillsBlock = /<Skills\b([^>]*)>([\s\S]*?)<\/Skills>/.exec(xml)
-  if (!skillsBlock) return groups
-  let body = skillsBlock[2]
-  const activeSet = attrs(skillsBlock[1]).activeSkillSet
-  if (activeSet) {
-    const set = new RegExp(`<SkillSet\\b[^>]*\\bid="${activeSet}"[^>]*>([\\s\\S]*?)</SkillSet>`).exec(body)
-    if (set) body = set[1]
-  }
   for (const m of body.matchAll(/<Skill\b([^>]*?)(?:\/>|>([\s\S]*?)<\/Skill>)/g)) {
     const a = attrs(m[1])
     const gems: PobGem[] = []
     for (const g of (m[2] ?? '').matchAll(/<Gem\b([^>]*?)\/?>/g)) {
       const ga = attrs(g[1])
+      const id = `${ga.gemId ?? ''} ${ga.skillId ?? ''}`
       gems.push({
         name: ga.nameSpec || ga.skillId || '',
         level: num(ga.level),
         quality: num(ga.quality),
-        enabled: ga.enabled !== 'false'
+        enabled: ga.enabled !== 'false',
+        support: /SupportGem|(^|\s)Support/.test(id)
       })
     }
     groups.push({
@@ -94,6 +122,30 @@ function parseSkills (xml: string, mainSocketGroup: number | null): PobSkillGrou
     })
   }
   return groups
+}
+
+// Skills may sit directly under <Skills> or inside <SkillSet> blocks.
+// mainSocketGroup on <Build> counts groups of the active set.
+function parseSkillSets (xml: string, mainSocketGroup: number | null): PobSkillSet[] {
+  const skillsBlock = /<Skills\b([^>]*)>([\s\S]*?)<\/Skills>/.exec(xml)
+  if (!skillsBlock) return []
+  const body = skillsBlock[2]
+  const activeSet = attrs(skillsBlock[1]).activeSkillSet
+  const sets: PobSkillSet[] = []
+  let i = 0
+  for (const m of body.matchAll(/<SkillSet\b([^>]*?)(?:\/>|>([\s\S]*?)<\/SkillSet>)/g)) {
+    i++
+    const a = attrs(m[1])
+    const isActive = activeSet ? a.id === activeSet : i === 1
+    sets.push({
+      title: a.title || `Skill set ${i}`,
+      isActive,
+      groups: parseGroups(m[2] ?? '', isActive ? mainSocketGroup : null)
+    })
+  }
+  if (!sets.length) sets.push({ title: 'Default', isActive: true, groups: parseGroups(body, mainSocketGroup) })
+  if (!sets.some(s => s.isActive)) sets[0].isActive = true
+  return sets
 }
 
 function parseTrees (xml: string): PobTreeSpec[] {
@@ -109,20 +161,104 @@ function parseTrees (xml: string): PobTreeSpec[] {
     const url = urlMatch ? decodeEntities(urlMatch[1].trim()) : ''
     out.push({ title: a.title || `Tree ${i}`, url, isActive: active === i })
   }
+  // No (or a stale) activeSpec: PoB opens the first tree.
+  if (out.length && !out.some(t => t.isActive)) out[0].isActive = true
   return out
+}
+
+
+// PoB item text: "Rarity: X", name line(s), then "Key: value" lines, then
+// "Implicits: N" followed by N implicit lines and the explicit mods.
+// Mod lines may start with {tags}; {variant:1,2} limits a line to variants.
+const ITEM_META = /^(Unique ID|Item Level|Quality|Sockets|LevelReq|Requires|Selected Variant|Selected Alt Variant|Variant|Has Alt Variant|League|Source|Upgrade|Radius|Limited to|Crafted|Prefix|Suffix|Catalyst|CatalystQuality|Cluster Jewel Skill|Cluster Jewel Node Count|Armour|Evasion|Energy Shield|Ward|Talisman Tier|Item Class|Shaper Item|Elder Item|Crusader Item|Hunter Item|Redeemer Item|Warlord Item|Searing Exarch Item|Eater of Worlds Item|Synthesised Item|Fractured Item|Corrupted|Mirrored|Split|Unreleased|Foulborn|Note)\b/
+
+export function parseItemText (text: string): PobItem {
+  const lines = decodeEntities(text).split(/\r?\n/).map(l => l.trim()).filter(Boolean)
+  const item: PobItem = { rarity: '', name: '', base: '', sockets: '', implicits: [], mods: [] }
+  let i = 0
+  const r = /^Rarity:\s*(\w+)/i.exec(lines[0] ?? '')
+  if (r) { item.rarity = r[1].toUpperCase() as PobRarity; i = 1 }
+  item.name = lines[i++] ?? ''
+  if ((item.rarity === 'UNIQUE' || item.rarity === 'RARE' || item.rarity === 'RELIC') && lines[i] && !ITEM_META.test(lines[i]) && !/^Implicits:/.test(lines[i])) {
+    item.base = lines[i++]
+  }
+  let variant: number | null = null
+  let implicitsLeft = -1
+  for (; i < lines.length; i++) {
+    const line = lines[i]
+    const sel = /^Selected Variant:\s*(\d+)/.exec(line)
+    if (sel) { variant = Number(sel[1]); continue }
+    const sock = /^Sockets:\s*(.*)$/.exec(line)
+    if (sock) { item.sockets = sock[1].trim(); continue }
+    const imp = /^Implicits:\s*(\d+)/.exec(line)
+    if (imp) { implicitsLeft = Number(imp[1]); continue }
+    if (implicitsLeft < 0) continue
+    // Flags PoB writes after the mods aren't mods.
+    if (/^(Corrupted|Mirrored|Split|Unreleased|Foulborn|Fractured Item|Synthesised Item)$/.test(line)) continue
+    let mod = line
+    let allowed = true
+    for (const tag of mod.matchAll(/\{([^}]*)\}/g)) {
+      const v = /^variant:([\d,]+)$/.exec(tag[1])
+      if (v && variant != null && !v[1].split(',').map(Number).includes(variant)) allowed = false
+    }
+    mod = mod.replace(/\{[^}]*\}/g, '').trim()
+    if (!mod) continue
+    if (implicitsLeft > 0) {
+      implicitsLeft--
+      if (allowed) item.implicits.push(mod)
+    } else if (allowed) {
+      item.mods.push(mod)
+    }
+  }
+  return item
+}
+
+function parseItemSets (xml: string): PobItemSet[] {
+  const block = /<Items\b([^>]*)>([\s\S]*?)<\/Items>/.exec(xml)
+  if (!block) return []
+  const items = new Map<string, PobItem>()
+  for (const m of block[2].matchAll(/<Item\b([^>]*)>([\s\S]*?)<\/Item>/g)) {
+    const id = attrs(m[1]).id
+    // Newer PoB versions put <ModRange> etc. inside <Item>; keep the text only.
+    if (id) items.set(id, parseItemText(m[2].replace(/<[^>]+>/g, '')))
+  }
+  const slotsOf = (body: string): PobItemSlot[] => {
+    const out: PobItemSlot[] = []
+    for (const s of body.matchAll(/<Slot\b([^>]*?)\/?>/g)) {
+      const a = attrs(s[1])
+      const item = a.itemId && a.itemId !== '0' ? items.get(a.itemId) : undefined
+      if (item && a.name) out.push({ slot: a.name, item })
+    }
+    return out
+  }
+  const active = attrs(block[1]).activeItemSet
+  const sets: PobItemSet[] = []
+  let i = 0
+  for (const m of block[2].matchAll(/<ItemSet\b([^>]*?)(?:\/>|>([\s\S]*?)<\/ItemSet>)/g)) {
+    i++
+    const a = attrs(m[1])
+    sets.push({ title: a.title || `Item set ${i}`, isActive: active ? a.id === active : i === 1, slots: slotsOf(m[2] ?? '') })
+  }
+  if (!sets.length) {
+    const outside = block[2].replace(/<Item\b[\s\S]*?<\/Item>/g, '')
+    sets.push({ title: 'Default', isActive: true, slots: slotsOf(outside) })
+  }
+  if (!sets.some(s => s.isActive)) sets[0].isActive = true
+  return sets
 }
 
 function mainSkillName (skills: PobSkillGroup[]): string {
   const main = skills.find(s => s.isMain) ?? skills.find(s => s.enabled && s.gems.length)
   if (!main) return ''
-  const gem = main.gems.find(g => g.enabled && !/support/i.test(g.name)) ?? main.gems[0]
+  const gem = main.gems.find(g => g.enabled && !g.support && !/support/i.test(g.name)) ?? main.gems[0]
   return gem?.name || main.label
 }
 
 export function parseBuild (xml: string): PobDetails {
   const buildTag = /<Build\b([^>]*)>/.exec(xml)
   const b = buildTag ? attrs(buildTag[1]) : {}
-  const skills = parseSkills(xml, num(b.mainSocketGroup))
+  const skillSets = parseSkillSets(xml, num(b.mainSocketGroup))
+  const skills = (skillSets.find(s => s.isActive) ?? skillSets[0])?.groups ?? []
   const notesMatch = /<Notes>([\s\S]*?)<\/Notes>/.exec(xml)
   return {
     className: b.className ?? '',
@@ -132,7 +268,9 @@ export function parseBuild (xml: string): PobDetails {
     // PoB colour codes like ^7 or ^xFFFFFF are stripped.
     notes: notesMatch ? decodeEntities(notesMatch[1]).replace(/\^x[0-9a-fA-F]{6}|\^\d/g, '').trim() : '',
     skills,
-    trees: parseTrees(xml)
+    skillSets,
+    trees: parseTrees(xml),
+    itemSets: parseItemSets(xml)
   }
 }
 

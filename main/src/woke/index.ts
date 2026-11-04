@@ -13,6 +13,9 @@ import { readGameLogTail } from './game-log-tail'
 import { perfSnapshot, startProcessSampler } from './perf'
 import { hotkeyFailures } from './hotkey-failures'
 import { marketHandlers } from './market-store'
+import { labLayoutImage } from './lab-layout'
+import { sessionHandlers } from './session-store'
+import { browsePath, pathStat } from './settings-files'
 
 type Handler = (args: any) => Promise<unknown> // eslint-disable-line @typescript-eslint/no-explicit-any
 
@@ -29,7 +32,16 @@ const handlers: Record<string, Handler> = {
   'perf-stats': async () => perfSnapshot(),
   'ocr-check': async () => checkOcr(),
   'hotkey-failures': async () => hotkeyFailures(),
-  ...marketHandlers
+  'lab-layout-image': labLayoutImage,
+  'path-stat': pathStat,
+  'browse-path': browsePath,
+  ...marketHandlers,
+  ...sessionHandlers
+}
+
+// For main-process parts set up outside initWoke (setup window, crash reports).
+export function registerWokeHandler (op: string, handler: Handler): void {
+  handlers[op] = handler
 }
 
 export function initWoke (server: ServerEvents, logger: Logger, poeWindow: GameWindow, gameLog: GameLogWatcher): void {
@@ -48,7 +60,8 @@ export function initWoke (server: ServerEvents, logger: Logger, poeWindow: GameW
   handlers['essence-scan-once'] = async () => await readAllEssenceLabels(poeWindow)
 
   server.onEventAnyClient('CLIENT->MAIN::woke-request', ({ id, op, args }) => {
-    const handler = handlers[op]
+    // Own keys only: an op like "constructor" must not reach Object.prototype.
+    const handler = Object.prototype.hasOwnProperty.call(handlers, op) ? handlers[op] : undefined
     const reply = (payload: { ok: boolean, data?: unknown, error?: string }) => {
       server.sendEventTo('broadcast', { name: 'MAIN->CLIENT::woke-response', payload: { id, ...payload } })
     }
@@ -56,7 +69,8 @@ export function initWoke (server: ServerEvents, logger: Logger, poeWindow: GameW
       reply({ ok: false, error: `Unknown op: ${op}` })
       return
     }
-    handler(args)
+    Promise.resolve()
+      .then(async () => await handler(args))
       .then(data => reply({ ok: true, data }))
       .catch((err: unknown) => {
         logger.write(`error [woke] ${op}: ${String(err)}`)

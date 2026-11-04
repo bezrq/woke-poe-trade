@@ -31,9 +31,10 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, PropType, computed, inject, ref } from 'vue'
+import { defineComponent, PropType, computed, inject, provide, ref } from 'vue'
 import { Widget, Anchor, WidgetManager } from './interfaces'
 import { useI18n } from 'vue-i18n'
+import { snapMove, clearGuides } from '@/web/woke/ui/snap'
 
 function useRemovable (remove: () => void) {
   const isRemoving = ref(false)
@@ -92,6 +93,8 @@ export default defineComponent({
   },
   setup (props) {
     const wm = inject<WidgetManager>('wm')!
+    // woke: panels inside read the widget config to remember their size.
+    provide('wokeWidgetConfig', props.config)
 
     const moverPosition = computed(() => {
       const { anchor, wmZorder } = props.config
@@ -227,15 +230,18 @@ export default defineComponent({
         const dy = ev.clientY - e.clientY
         if (!dragged && Math.hypot(dx, dy) < DRAG_START_PX) return
         dragged = true
-        // Keeps the whole widget on screen.
-        const x = Math.min(Math.max(dx, -rect.left), window.innerWidth - rect.right)
-        const y = Math.min(Math.max(dy, -rect.top), window.innerHeight - rect.bottom)
+        // Snaps to screen edges and other panels (Alt moves freely), then
+        // keeps the whole widget on screen.
+        const s = snapMove(rect, dx, dy, widgetEl.value, ev.altKey)
+        const x = Math.min(Math.max(s.dx, -rect.left), window.innerWidth - rect.right)
+        const y = Math.min(Math.max(s.dy, -rect.top), window.innerHeight - rect.bottom)
         props.config.anchor.x = startX + x / window.innerWidth * 100
         props.config.anchor.y = startY + y / window.innerHeight * 100
       }
       function onUp () {
         document.removeEventListener('mousemove', onMove)
         document.removeEventListener('mouseup', onUp)
+        clearGuides()
         if (dragged) swallowNextClick()
       }
       document.addEventListener('mousemove', onMove)

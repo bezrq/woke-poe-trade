@@ -1,6 +1,23 @@
 <template>
   <Widget :config="config" move-handles="corners" :inline-edit="false" :readonly="true">
-    <WPanel :title="config.wmTitle || 'Boss runs'" width="62rem" max-height="80vh" :scroll="false">
+    <!-- In a pinnacle arena: what this fight costs and pays. -->
+    <DockItem id="boss-runs" :art="mechanicIcon('maven').src ?? undefined" icon="fas fa-skull" title="Boss runs" :show="arenaBosses.length > 0"
+      :badge="arenaBosses.length === 1 && arenaBosses[0].kills ? arenaBosses[0].kills : null" :wm-id="config.wmId" card-width="20rem">
+      <template #card>
+        <div style="padding: 4px var(--w-pad) 6px;" class="flex flex-col gap-2">
+          <div v-for="r in arenaBosses" :key="r.boss.id" class="flex flex-col gap-0.5 w-num">
+            <div class="w-head-font w-accent w-trunc">{{ r.boss.name }}</div>
+            <div class="flex justify-between"><span class="w-dim">Entry</span>
+              <span class="w-down"><template v-if="r.entryMissing.length">?</template><WPrice v-else :chaos="-r.entry" :divine="divine" /></span></div>
+            <div class="flex justify-between"><span class="w-dim">{{ r.myLoot != null ? 'Your average drop' : 'Average drop' }}</span><WPrice :chaos="r.myLoot ?? r.loot" :divine="divine" /></div>
+            <div v-if="r.ready" class="flex justify-between"><span class="w-dim">Per run</span>
+              <span :class="r.profit >= 0 ? 'w-up' : 'w-down'"><WPrice :chaos="r.profit" :divine="divine" /></span></div>
+            <div v-if="r.kills" class="w-dim text-xs">{{ r.kills }} kill{{ r.kills === 1 ? '' : 's' }} logged</div>
+          </div>
+        </div>
+      </template>
+    </DockItem>
+    <WPanel :title="config.wmTitle || 'Boss runs'" icon="maven" :updated="prices.snapshot.value?.ts ?? null" :fresh-min="40" :stale-min="180" width="62rem" max-height="80vh" :scroll="false">
       <template #toolbar>
         <WSegmented v-model="config.tier" :options="tierOptions" />
         <WSegmented v-model="config.sort" :options="sortOptions" />
@@ -12,8 +29,7 @@
       </template>
       <template #meta>
         <template v-if="prices.snapshot.value">
-          <span>{{ prices.snapshot.value.league }}</span><span class="w-faint">·</span>
-          <span>prices {{ ago(prices.snapshot.value.ts) }}</span>
+          <span>{{ prices.snapshot.value.league }}</span>
           <template v-if="divine"><span class="w-faint">·</span><span>1 div = {{ Math.round(divine) }}c</span></template>
         </template>
         <span v-else style="color: var(--w-warn);"><i class="fas fa-exclamation-triangle" /> Waiting for poe.ninja prices. They load on their own within a minute or two.</span>
@@ -75,7 +91,7 @@
             <div class="grow min-w-0 w-scroll">
               <!-- drops -->
               <template v-if="tab === 'drops'">
-                <WEmpty v-if="!sel.drops.length" icon="fas fa-skull">No drop list for this boss yet. Log a kill or add drops under Rates &amp; sources.</WEmpty>
+                <WEmpty v-if="!sel.drops.length" :art="{ mechanic: 'maven' }">No drop list for this boss yet. Log a kill or add drops under Rates &amp; sources.</WEmpty>
                 <template v-else>
                   <div class="w-row w-row--head" :class="$style.dropGrid"><span title="Count this drop in the loot">On</span><span>Drop</span><span class="text-right">Chance</span><span class="text-right">Price</span><span class="text-right">Per run</span><span>Share</span></div>
                   <div v-for="d in sel.drops" :key="d.name" class="w-row" :class="[$style.dropGrid, { [$style.off]: !d.included }]">
@@ -133,7 +149,7 @@
                     <WButton variant="ghost" @click="logging = null">Cancel</WButton>
                   </div>
                 </div>
-                <WEmpty v-else-if="!sel.kills" icon="fas fa-skull">Log each kill's drops. Bosses without public rates use your own kill rates.</WEmpty>
+                <WEmpty v-else-if="!sel.kills" :art="{ mechanic: 'maven' }">Log each kill's drops. Bosses without public rates use your own kill rates.</WEmpty>
                 <template v-else>
                   <div class="flex gap-4" style="padding: 8px var(--w-pad);">
                     <span class="w-dim">My average loot <WPrice :chaos="sel.myLoot" :divine="divine" class="w-accent" /></span>
@@ -234,9 +250,11 @@ import { inject, computed, shallowRef, watch } from 'vue'
 import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
 import UiCheckbox from '@/web/ui/UiCheckbox.vue'
-import { WPanel, WTabs, WSegmented, WField, WButton, WEmpty, WPrice, WChip, WListItem } from '../ui'
+import { WPanel, WTabs, WSegmented, WField, WButton, WEmpty, WPrice, WChip, WListItem, mechanicIcon } from '../ui'
 import { usePriceIndex } from '../market/price-index'
 import { BOSSES } from './bosses'
+import DockItem from '../dock/DockItem.vue'
+import { BOSS_ARENAS, useZone } from '../shared/zone'
 import { evaluateBoss, formatRunTime, luck, parseRunTime, priceResolver, unidentifiedTradeUrl } from './calc'
 import type { BossResult, DropRow, KillRecord, PriceMode, RateSource } from './calc'
 import { OWN_RATE_KILLS } from './calc'
@@ -299,6 +317,13 @@ const ranked = computed(() => {
   }
 })
 
+// Bosses this arena can hold (shared/zone.ts), across every tier.
+const zone = useZone()
+const arenaBosses = computed(() => {
+  const ids = zone.kind === 'boss' ? BOSS_ARENAS[zone.name] ?? [] : []
+  return BOSSES.filter(b => ids.includes(b.id)).map(b => evaluateBoss(b, props.config, px.value))
+})
+
 const sel = computed(() => results.value.find(r => r.boss.id === props.config.selected) ?? results.value[0] ?? null)
 const lk = computed(() => sel.value ? luckById.value.get(sel.value.boss.id) ?? null : null)
 
@@ -310,11 +335,6 @@ function subline (r: BossResult) {
   const parts = [formatRunTime(r.runSeconds)]
   if (l) parts.push(`${Math.round(l.beatEntry * 100)}% of runs beat entry`)
   return parts.join(' · ')
-}
-
-function ago (ts: number) {
-  const min = Math.round((Date.now() - ts) / 60000)
-  return min < 60 ? `${min} min ago` : `${Math.round(min / 60)} h ago`
 }
 
 function pct (chance: number) {
@@ -426,42 +446,42 @@ function killValue (kill: KillRecord) {
 .layout { display: flex; min-height: 0; height: 34rem; }
 .list { width: 16rem; flex: none; border-right: 1px solid var(--w-line); padding-bottom: 8px; }
 .detail { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-.bossName { font-family: var(--w-head); font-size: 18px; letter-spacing: var(--w-head-track); }
+.bossName { font-family: var(--w-head); font-size: var(--w-fs-xl); letter-spacing: var(--w-head-track); }
 .hero {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 10px;
   padding: 0 var(--w-pad) 8px;
 }
-.k { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--w-faint); }
-.big { font-family: var(--w-num); font-size: 18px; font-weight: 500; display: flex; }
+.k { font-size: var(--w-fs-xs); text-transform: uppercase; letter-spacing: 0.08em; color: var(--w-faint); }
+.big { font-family: var(--w-num); font-size: var(--w-fs-xl); font-weight: 500; display: flex; }
 .body { display: flex; flex: 1; min-height: 0; }
 .side { width: 15rem; flex: none; padding: 10px var(--w-pad); display: flex; flex-direction: column; gap: 10px; }
 .box {
   background: var(--w-panel-2);
   border: 1px solid var(--w-line);
-  border-radius: var(--w-radius);
+  border-radius: var(--w-r-md);
   padding: 8px 10px;
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
-.kv { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 3px 10px; font-size: 12.5px; align-items: center; }
+.kv { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 3px 10px; font-size: var(--w-fs-md); align-items: center; }
 .dropGrid { grid-template-columns: 16px minmax(0, 1fr) 62px 72px 72px 70px; }
 .off { opacity: 0.45; }
 .editor { padding: 8px var(--w-pad); background: var(--w-panel-2); border-bottom: 1px solid var(--w-line); }
 .rateGrid { grid-template-columns: minmax(0, 1fr) 80px 80px 22px; }
 .killGrid { grid-template-columns: 74px minmax(0, 1fr) 70px 22px; }
-.share { height: 6px; background: var(--w-panel-3); border-radius: 3px; overflow: hidden; }
+.share { height: 6px; background: var(--w-panel-3); border-radius: var(--w-r-sm); overflow: hidden; }
 .share i { display: block; height: 100%; background: var(--w-accent); }
 .input {
   height: 24px;
   padding: 0 6px;
-  font-size: 12.5px;
+  font-size: var(--w-fs-md);
   color: var(--w-fg);
   background: var(--w-panel-2);
   border: 1px solid var(--w-line);
-  border-radius: var(--w-radius-sm);
+  border-radius: var(--w-r-sm);
 }
 .input:focus { outline: none; border-color: var(--w-accent); }
 </style>

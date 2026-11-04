@@ -5,18 +5,24 @@ import * as Data from './assets/data'
 import { initConfig, AppConfig } from './web/Config'
 import { Host } from './web/background/IPC'
 import { perfMark, perfTimeAsync } from './web/woke/shared/perf'
+import { captureRendererErrors } from './web/woke/app/report'
+
+// woke: the first-run setup window loads this page with #setup. It needs no
+// item data, so it opens quicker.
+const isSetupWindow = window.location.hash === '#setup'
 
 ;(async function () {
   await perfTimeAsync('Startup: load settings', initConfig())
   // woke: these three don't depend on each other, so load them side by side.
   const [i18nPlugin] = await Promise.all([
     perfTimeAsync('Startup: load translations', I18n.init(AppConfig().language)),
-    perfTimeAsync('Startup: load item + stat data', Data.init(AppConfig().language)),
+    isSetupWindow ? Promise.resolve() : perfTimeAsync('Startup: load item + stat data', Data.init(AppConfig().language)),
     perfTimeAsync('Startup: connect to app', Host.init())
   ])
+  captureRendererErrors()
 
   watch(() => AppConfig().language, async () => {
-    await Data.loadForLang(AppConfig().language)
+    if (!isSetupWindow) await Data.loadForLang(AppConfig().language)
     await I18n.loadLang(AppConfig().language)
   })
 

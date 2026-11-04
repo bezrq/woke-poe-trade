@@ -73,6 +73,6 @@ const labelStyle = computed(() => {
   display: inline-block;
   width: 3px;
   height: 14px;
-  border-radius: 2px;
+  border-radius: var(--w-r-sm);
 }
 </style>

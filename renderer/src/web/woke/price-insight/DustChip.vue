@@ -19,7 +19,7 @@ const { t } = useI18n()
   padding: 0 0.5rem;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
-  color: var(--w-dim, #9ca3af);
+  color: var(--w-dim);
 }
 .icon {
   width: 1.25rem;

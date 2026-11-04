@@ -64,10 +64,14 @@ function bool (c: FilterCondition, actual: boolean | undefined): Tri {
 function strings (c: FilterCondition, actual: string | string[] | undefined): Tri {
   if (actual == null) return null
   const list = Array.isArray(actual) ? actual : [actual]
+  // With a count (`HasExplicitMod <2 "A" "B"`) the operator is for the count.
+  if (c.count != null) {
+    const hits = c.values.filter(v => list.some(a => a.includes(v))).length
+    return compareNum(c.op || '>=', hits, c.count)
+  }
   const exact = c.op === '=='
   const hits = c.values.filter(v => list.some(a => exact ? a === v : a.includes(v))).length
   if (c.op === '!=' || c.op === '!') return hits === 0
-  if (c.count != null) return hits >= c.count
   return hits > 0
 }
 

@@ -58,6 +58,7 @@ import { WPrice } from '../ui'
 import type { Insight, InsightOptions } from './insight'
 import { driverSeed, pickCandidates, measureDrivers, runLadder, LADDER_LABEL, searchBudget, searchKey, cachedDrivers, cacheDrivers, cachedLadder, cacheLadder } from './drivers'
 import { verdictExpanded } from './view'
+import { measuredDrivers } from './check-state'
 import type { DriverResult, LadderResult } from './drivers'
 
 const props = defineProps<{
@@ -98,6 +99,12 @@ const driverKey = computed(() => searchKey(props.filters, props.stats, candidate
 drivers.value = cachedDrivers(driverKey.value) ?? []
 ladder.value = cachedLadder(driverKey.value) ?? []
 
+// Measured drivers also feed the mod worth tags and "By value".
+function shareDrivers () {
+  if (drivers.value.length) measuredDrivers.value = { item: props.item, list: drivers.value }
+}
+shareDrivers()
+
 // While measuring, show finished results plus placeholders for the rest.
 const shownDrivers = computed<DriverResult[]>(() => {
   if (!busyDrivers.value) return drivers.value
@@ -126,6 +133,7 @@ async function measure () {
     drivers.value = await measureDrivers(props.filters, props.stats, baseFair.value, candidates.value, props.options,
       (done, wait) => { drivers.value = done; waiting.value = wait })
     cacheDrivers(driverKey.value, drivers.value)
+    shareDrivers()
   } catch (err) {
     error.value = (err as Error).message
   } finally {
@@ -157,7 +165,7 @@ async function widen () {
   gap: 5px;
   padding: 7px 9px;
   margin: 0 0 8px;
-  border-radius: var(--w-radius);
+  border-radius: var(--w-r-md);
   border: 1px solid var(--w-line);
   background: var(--w-panel);
   color: var(--w-fg);
@@ -169,23 +177,23 @@ async function widen () {
 .cands { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
 .cand {
   max-width: 100%;
-  font-size: 11.5px;
+  font-size: var(--w-fs-sm);
   padding: 0 6px;
-  border-radius: var(--w-radius-sm);
+  border-radius: var(--w-r-sm);
   background: var(--w-panel-3);
 }
 .actions { display: flex; gap: 6px; }
 .btn {
   padding: 2px 10px;
-  border-radius: var(--w-radius-sm);
+  border-radius: var(--w-r-sm);
   border: 1px solid var(--w-line-strong);
   background: var(--w-panel-2);
-  font-size: 12px;
+  font-size: var(--w-fs-md);
 }
 .btn:hover:not(:disabled) { background: var(--w-accent-soft); }
 .btn:disabled { opacity: 0.5; }
 .driver { display: grid; grid-template-columns: minmax(0, 1fr) 60px auto; align-items: center; gap: 8px; }
 .step { display: flex; align-items: center; gap: 6px; }
-.bar { height: 5px; border-radius: 3px; background: var(--w-panel-3); overflow: hidden; }
+.bar { height: 5px; border-radius: var(--w-r-sm); background: var(--w-panel-3); overflow: hidden; }
 .bar > span { display: block; height: 100%; background: var(--w-accent); }
 </style>

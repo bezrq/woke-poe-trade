@@ -2,9 +2,9 @@
   <div class="max-w-xl p-2 flex flex-col gap-3">
     <div class="grid gap-2 items-center" style="grid-template-columns: auto 1fr;">
       <span>Hotkey: turn scan mode on/off</span>
-      <hotkey-input v-model="hotkey" />
+      <w-hotkey-cell v-model="hotkey" />
       <span>Hotkey: rolling mode (lock onto the hovered map)</span>
-      <hotkey-input v-model="rollHotkey" />
+      <w-hotkey-cell v-model="rollHotkey" />
     </div>
     <label class="flex items-center gap-2">
       <input type="checkbox" v-model="alertOnPass">
@@ -26,13 +26,13 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue'
-import HotkeyInput from '@/web/settings/HotkeyInput.vue'
+import WHotkeyCell from '../ui/WHotkeyCell.vue'
 import { configProp, configModelValue } from '@/web/settings/utils'
 import type { MapScanWidget } from './scan'
 
 export default defineComponent({
   name: 'Map scan',
-  components: { HotkeyInput },
+  components: { WHotkeyCell },
   props: configProp<MapScanWidget>(),
   setup (props) {
     return {

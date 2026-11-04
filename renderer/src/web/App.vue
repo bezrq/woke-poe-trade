@@ -1,11 +1,15 @@
 <template>
   <div id="app" class="text-sm font-poe-sc">
-    <OverlayWindow />
+    <SetupWizard v-if="isSetupWindow" />
+    <OverlayWindow v-else />
   </div>
 </template>
 
 <script setup lang="ts">
 import OverlayWindow from './overlay/OverlayWindow.vue'
+import SetupWizard from './woke/setup/SetupWizard.vue'
+// woke: the first-run setup window (main/src/woke/setup.ts) loads index.html#setup.
+const isSetupWindow = window.location.hash === '#setup'
 </script>
 
 <style lang="postcss">

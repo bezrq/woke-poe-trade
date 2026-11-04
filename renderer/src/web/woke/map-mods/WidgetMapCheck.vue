@@ -2,8 +2,8 @@
   <Widget :config="config" move-handles="corners" :removable="false" :readonly="true" :inline-edit="false">
     <div class="flex flex-col gap-1 items-stretch">
       <MapVerdictCard v-if="result && mapMods" :result="result" :config="mapMods" />
-      <WPanel v-else title="Map check" width="22rem">
-        <WEmpty icon="fas fa-map">That item isn't a map, invitation or logbook.</WEmpty>
+      <WPanel v-else title="Map check" icon="map" width="22rem">
+        <WEmpty :art="{ mechanic: 'map' }">That item isn't a map, invitation or logbook.</WEmpty>
       </WPanel>
       <div class="flex gap-1 justify-between">
         <WButton size="sm" variant="ghost" icon="fas fa-arrow-left" @click="openRegex">Map regex</WButton>

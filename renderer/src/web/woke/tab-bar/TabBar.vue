@@ -242,9 +242,15 @@ function canShift (tab: Tab, dir: -1 | 1) {
 }
 function shift (tab: Tab, dir: -1 | 1) {
   if (!canShift(tab, dir)) return
-  const ids = pinnedTabs.value.map(x => x.wmId)
-  const i = ids.indexOf(tab.wmId)
-  ;[ids[i], ids[i + dir]] = [ids[i + dir], ids[i]]
+  // Swap with the neighbour shown on the bar, inside the full pinned list:
+  // pins of switched-off modules (not shown) must survive the move.
+  const shown = pinnedTabs.value.map(x => x.wmId)
+  const other = shown[shown.indexOf(tab.wmId) + dir]
+  const ids = [...(props.config.pinned ?? [])]
+  const a = ids.indexOf(tab.wmId)
+  const b = ids.indexOf(other)
+  if (a < 0 || b < 0) return
+  ;[ids[a], ids[b]] = [ids[b], ids[a]]
   props.config.pinned = ids
 }
 
@@ -384,7 +390,7 @@ function addFirstMatch () {
   align-items: center;
   gap: 2px;
   padding: 3px;
-  border-radius: var(--w-radius);
+  border-radius: var(--w-r-md);
   flex-wrap: wrap;
   white-space: nowrap;
   font-family: var(--w-body);
@@ -396,7 +402,7 @@ function addFirstMatch () {
   gap: 5px;
   height: 28px;
   padding: 0 8px;
-  border-radius: var(--w-radius-sm);
+  border-radius: var(--w-r-sm);
   color: var(--w-warn);
   background: color-mix(in srgb, var(--w-warn) 14%, transparent);
 }
@@ -409,7 +415,7 @@ function addFirstMatch () {
   gap: 6px;
   height: 28px;
   padding: 0 6px 0 8px;
-  border-radius: var(--w-radius-sm);
+  border-radius: var(--w-r-sm);
   color: var(--w-dim);
   font-family: var(--w-head);
   font-size: var(--w-head-size);
@@ -424,28 +430,28 @@ function addFirstMatch () {
   right: 8px;
   bottom: 1px;
   height: 2px;
-  border-radius: 2px;
+  border-radius: var(--w-r-sm);
   background: var(--w-accent);
 }
 .tab.iconOnly { padding: 0 8px; }
-.tab > i { font-size: 12px; opacity: 0.85; }
+.tab > i { font-size: var(--w-fs-md); opacity: 0.85; }
 .x {
   display: inline-grid;
   place-items: center;
   width: 16px;
   height: 16px;
-  border-radius: 3px;
-  font-size: 10px;
+  border-radius: var(--w-r-sm);
+  font-size: var(--w-fs-xs);
   color: var(--w-faint);
   visibility: hidden;
 }
 .tab:hover .x, .tab.open .x { visibility: visible; }
 .x:hover { color: var(--w-down); background: color-mix(in srgb, var(--w-down) 18%, transparent); }
 .dup {
-  font: 10px var(--w-num);
+  font: var(--w-fs-xs) var(--w-num);
   color: var(--w-down);
   border: 1px solid color-mix(in srgb, var(--w-down) 45%, transparent);
-  border-radius: 3px;
+  border-radius: var(--w-r-sm);
   padding: 0 3px;
   letter-spacing: 0;
 }
@@ -455,15 +461,15 @@ function addFirstMatch () {
   gap: 5px;
   height: 28px;
   padding: 0 8px;
-  border-radius: var(--w-radius-sm);
+  border-radius: var(--w-r-sm);
   color: var(--w-dim);
 }
 .more:hover, .iconBtn:hover { background: var(--w-panel-3); color: var(--w-fg); }
-.more i { font-size: 10px; }
+.more i { font-size: var(--w-fs-xs); }
 .count {
-  font: 11px var(--w-num);
+  font: var(--w-fs-xs) var(--w-num);
   border: 1px solid var(--w-line);
-  border-radius: 3px;
+  border-radius: var(--w-r-sm);
   padding: 0 4px;
   background: var(--w-panel-3);
 }
@@ -474,7 +480,7 @@ function addFirstMatch () {
   padding: 4px 8px;
   resize: none;
   overflow: hidden;
-  border-radius: var(--w-radius-sm);
+  border-radius: var(--w-r-sm);
   border: 1px solid var(--w-line);
   background: var(--w-panel-2);
   color: var(--w-fg);
@@ -493,7 +499,7 @@ function addFirstMatch () {
   flex-direction: column;
   background: var(--w-panel);
   border: 1px solid var(--w-line-strong);
-  border-radius: var(--w-radius);
+  border-radius: var(--w-r-md);
   box-shadow: var(--w-shadow);
   color: var(--w-fg);
   font-family: var(--w-body);
@@ -513,11 +519,11 @@ function addFirstMatch () {
   gap: 9px;
   height: 28px;
   padding: 0 8px;
-  border-radius: var(--w-radius-sm);
+  border-radius: var(--w-r-sm);
   text-align: left;
   white-space: nowrap;
 }
-.item > i { width: 14px; text-align: center; font-size: 12px; color: var(--w-dim); }
+.item > i { width: 14px; text-align: center; font-size: var(--w-fs-md); color: var(--w-dim); }
 .item:hover:not(:disabled) { background: var(--w-accent-soft); }
 .item:disabled { color: var(--w-faint); }
 .danger, .danger > i { color: var(--w-down); }
@@ -531,7 +537,7 @@ function addFirstMatch () {
   min-width: 0;
   height: 26px;
   padding: 0 8px;
-  border-radius: var(--w-radius-sm);
+  border-radius: var(--w-r-sm);
   border: 1px solid var(--w-line-strong);
   background: var(--w-panel-2);
   color: var(--w-fg);

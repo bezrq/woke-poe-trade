@@ -1,34 +1,27 @@
 <template>
-  <div class="p-2 flex flex-col gap-3 max-w-md">
-    <div>
-      <div class="mb-1">Toolkit theme</div>
-      <div class="text-gray-500 text-sm mb-2">Applies to the woke modules and recolours APT's own windows. Saved instantly.</div>
-      <div class="flex flex-col gap-1">
-        <label v-for="t in WOKE_THEMES" :key="t.id" :class="$style.option">
-          <input type="radio" name="woke-theme" :value="t.id" :checked="wokeTheme === t.id" @change="wokeTheme = t.id">
-          <span :class="$style.swatch" :data-theme="t.id" />
-          <span class="flex flex-col leading-tight">
-            <span>{{ t.label }}</span>
-            <span class="text-gray-500 text-sm">{{ t.hint }}</span>
-          </span>
-        </label>
-      </div>
-    </div>
-    <div>
-      <div class="mb-1 flex items-baseline gap-2">
-        <label for="woke-ui-scale" class="flex-1">Panel size</label>
-        <span class="text-sm" style="font-variant-numeric: tabular-nums;">{{ isAuto ? 'Auto' : `${scaleValue}%` }}</span>
-      </div>
-      <input id="woke-ui-scale" type="range" :min="MIN_SCALE" :max="MAX_SCALE" step="5" class="w-full"
-        :value="scaleValue" @input="setScale(($event.target as HTMLInputElement).value)">
-      <div class="flex justify-between text-gray-500 text-xs"><span>{{ MIN_SCALE }}%</span><span>100%</span><span>{{ MAX_SCALE }}%</span></div>
-      <label class="flex items-center gap-2 mt-1">
-        <input type="checkbox" :checked="isAuto" @change="uiScale = ($event.target as HTMLInputElement).checked ? 'auto' : scaleValue">
-        <span>Match the game window (about 85% at 1080p, 110% at 1440p)</span>
+  <w-setting-section title="Theme">
+    <div :class="$style.themes">
+      <label v-for="t in WOKE_THEMES" :key="t.id" :class="[$style.option, { [$style.picked]: wokeTheme === t.id }]">
+        <input type="radio" name="woke-theme" :value="t.id" :checked="wokeTheme === t.id" class="sr-only" @change="wokeTheme = t.id">
+        <span :class="$style.swatch" :data-theme="t.id" />
+        <span :class="$style.text">
+          <span>{{ t.label }}</span>
+          <span class="w-dim" :class="$style.hint">{{ t.hint }}</span>
+        </span>
       </label>
-      <div class="text-gray-500 text-sm">Sizes the toolkit's panels; APT's own windows keep their size. Saved instantly.</div>
     </div>
-  </div>
+    <w-setting-row label="Panel size" hint="Sizes the toolkit's panels; APT's windows follow Text size.">
+      <span class="w-num w-dim">{{ isAuto ? 'Auto' : `${scaleValue}%` }}</span>
+      <input id="woke-ui-scale" type="range" :min="MIN_SCALE" :max="MAX_SCALE" step="5" :class="$style.range"
+        :value="scaleValue" :disabled="isAuto" @input="setScale(($event.target as HTMLInputElement).value)">
+    </w-setting-row>
+    <w-setting-row label="Match the game window" hint="100% at 1080p, about 135% at 1440p.">
+      <w-toggle :model-value="isAuto" @update:model-value="uiScale = $event ? 'auto' : scaleValue" />
+    </w-setting-row>
+    <w-setting-row label="Row density" :hint="density === 'compact' ? '24 px rows, more on screen at 1440p and up.' : '28 px rows, easiest to hit mid-map.'">
+      <w-segmented :model-value="density" :options="DENSITIES" @update:model-value="density = $event as Density" />
+    </w-setting-row>
+  </w-setting-section>
 </template>
 
 <script lang="ts">
@@ -41,6 +34,14 @@ export default {
 import { computed } from 'vue'
 import { wokeTheme, WOKE_THEMES } from './theme'
 import { MAX_SCALE, MIN_SCALE, uiScale } from './scale'
+import WSettingRow from './WSettingRow.vue'
+import WSettingSection from './WSettingSection.vue'
+import WToggle from './WToggle.vue'
+import WSegmented from './WSegmented.vue'
+import { density } from './density'
+import type { Density } from './density'
+
+const DENSITIES = [{ value: 'comfortable', label: 'Comfortable' }, { value: 'compact', label: 'Compact' }]
 
 const isAuto = computed(() => uiScale.value === 'auto')
 // The settings window isn't the game's size, so auto shows as 100% here.
@@ -51,22 +52,18 @@ function setScale (v: string) {
 </script>
 
 <style module>
+.themes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--w-s2); padding: var(--w-s2) 0; }
 .option {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 6px 8px;
-  border-radius: 4px;
-  cursor: pointer;
+  display: flex; align-items: center; gap: var(--w-s3); padding: var(--w-s2); cursor: pointer;
+  border: 1px solid var(--w-line); border-radius: var(--w-r-md); background: var(--w-panel-2);
 }
-.option:hover { background: rgba(255, 255, 255, 0.04); }
-.swatch {
-  width: 34px;
-  height: 22px;
-  border-radius: 4px;
-  flex: none;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-}
+.option:hover { border-color: var(--w-line-strong); }
+.picked { border-color: var(--w-accent); box-shadow: inset 0 0 0 1px var(--w-accent); }
+.option:focus-within { outline: 1px solid var(--w-accent); }
+.text { display: flex; flex-direction: column; line-height: 1.3; font-size: var(--w-fs-md); min-width: 0; }
+.hint { font-size: var(--w-fs-sm); }
+.range { width: 12rem; accent-color: var(--w-accent); }
+.swatch { width: 34px; height: 22px; border-radius: var(--w-r-sm); flex: none; border: 1px solid var(--w-line-strong); }
 .swatch[data-theme="hybrid"] { background: linear-gradient(135deg, #13110f 55%, #d4a64a 55%); }
 .swatch[data-theme="native"] { background: linear-gradient(135deg, #0e0b08 55%, #8a6a3a 55%); }
 .swatch[data-theme="modern"] { background: linear-gradient(135deg, #111216 55%, #9aa8ff 55%); }

@@ -1,5 +1,7 @@
 'use strict'
 
+// woke: must stay the first import (pins the data folder, migrates old data).
+import './woke/user-data'
 import { app } from 'electron'
 import { uIOhook } from 'uiohook-napi'
 import os from 'node:os'
@@ -16,10 +18,15 @@ import { GameLogWatcher } from './host-files/GameLogWatcher'
 import { HttpProxy } from './proxy'
 import { initWoke, initWokeOverlay } from './woke'
 import { perfMark } from './woke/perf'
+import { startCrashReporting, attachCrashLogger } from './woke/crash-reports'
+import { initSetup, maybeOpenSetup, openSetupWindow } from './woke/setup'
 
 if (!app.requestSingleInstanceLock()) {
   app.exit()
 }
+
+// woke: crash reports (saved locally, offered for reporting next launch).
+startCrashReporting()
 
 if (process.platform !== 'darwin') {
   app.disableHardwareAcceleration()
@@ -32,12 +39,15 @@ app.on('ready', async () => {
   perfMark('app ready')
   tray = new AppTray(eventPipe)
   const logger = new Logger(eventPipe)
+  attachCrashLogger(logger)
   const gameLogWatcher = new GameLogWatcher(eventPipe, logger)
   const gameConfig = new GameConfig(eventPipe, logger)
   const poeWindow = new GameWindow()
   const appUpdater = new AppUpdater(eventPipe)
   const _httpProxy = new HttpProxy(server, logger)
   initWoke(eventPipe, logger, poeWindow, gameLogWatcher)
+  initSetup(appUpdater)
+  tray.onRunSetup = openSetupWindow
 
   setTimeout(
     async () => {
@@ -64,6 +74,7 @@ app.on('ready', async () => {
       overlay.loadAppPage(port)
       perfMark('overlay page requested')
       tray.serverPort = port
+      maybeOpenSetup(port)
     },
     // fixes(linux): window is black instead of transparent
     process.platform === 'linux' ? 1000 : 0

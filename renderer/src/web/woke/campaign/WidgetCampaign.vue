@@ -1,5 +1,39 @@
 <template>
   <Widget :config="config" move-handles="corners" :inline-edit="false" :readonly="true">
+    <!-- While you play: one icon (act badge, green while ahead of your best);
+         the strip and guide below show only with the overlay open. -->
+    <DockItem ref="dockRef" id="campaign" :art="CURRENCY_ICONS.wisdom" icon="fas fa-route" title="Campaign" :show="dockShow"
+      :badge="s.act ? actShort(s.act) : null" :tone="dockTone" :wm-id="config.wmId" card-width="24rem"
+      @open-change="cardShown = $event">
+      <template #card>
+        <div :class="$style.body">
+          <div class="flex items-baseline gap-2">
+            <span class="w-head-font w-accent w-trunc">{{ s.act ? actLabel(s.act) + ' · ' : '' }}{{ s.zone || 'waiting for a zone change' }}</span>
+            <span v-if="s.level != null" class="ml-auto w-num whitespace-nowrap">Lv {{ s.level }}
+              <span v-if="xp" :class="[$style.pill, $style['pill--' + xp.band]]">{{ xpLabel }}</span></span>
+          </div>
+          <template v-if="current">
+            <div v-for="(st, i) in shown" :key="st.index" :class="i === 0 ? $style.now : $style.next">
+              <div class="flex gap-1.5">
+                <span :class="i === 0 ? 'w-accent' : 'w-faint'">{{ i === 0 ? '›' : '·' }}</span>
+                <span class="min-w-0"><RouteParts :parts="st.parts" />
+                  <span v-if="st.recommendedLevel != null" class="w-num" :class="lowFor(st) ? 'w-down' : 'w-faint'"> · lv {{ st.recommendedLevel }}</span></span>
+              </div>
+              <div v-for="(sub, j) in (i === 0 ? st.subs : [])" :key="j" :class="$style.sub" class="w-dim"><RouteParts :parts="sub" /></div>
+            </div>
+          </template>
+          <div v-else class="w-dim">Route finished. Good luck in maps.</div>
+          <div v-if="note" :class="$style.callout" class="whitespace-pre-wrap">{{ note }}</div>
+          <div v-if="timer" class="flex gap-2 w-num" :class="$style.build">
+            <span class="w-dim">Run</span> {{ formatRunTime(timer.total) }}
+            <span v-if="timer.delta != null" :class="timer.delta <= 0 ? 'w-up' : 'w-down'">{{ formatDelta(timer.delta) }}</span>
+            <span v-if="timer.paused" style="color: var(--w-warn);">paused</span>
+            <span v-if="timer.act" class="ml-auto w-dim">act {{ formatRunTime(timer.act) }}</span>
+          </div>
+          <CampaignBuild :config="config" :show-tree="false" :max-links="1" />
+        </div>
+      </template>
+    </DockItem>
     <div v-if="visible" class="flex flex-col items-start gap-1" data-w-panel>
       <!-- HUD strip -->
       <div :class="$style.strip">
@@ -74,14 +108,7 @@
           </div>
           <div v-if="note" :class="$style.callout" class="whitespace-pre-wrap">{{ note }}</div>
 
-          <div v-if="config.showBuild && activeBuild && (tree || mainGroups.length)" :class="$style.build">
-            <a v-if="tree && safeUrl(tree.url)" :href="safeUrl(tree.url)" target="_blank" class="block w-trunc w-accent hover:underline">
-              <i class="fas fa-external-link-alt text-xs" /> Tree: {{ tree.title }}
-            </a>
-            <div v-for="(g, i) in mainGroups" :key="i" class="w-trunc w-rarity-gem" :title="g.gems.map(x => x.name).join(', ')">
-              {{ g.gems.filter(x => x.enabled).map(x => x.name.replace(/ Support$/, '')).join(' · ') }}
-            </div>
-          </div>
+          <CampaignBuild :config="config" :tickable="wm.active.value" />
         </div>
       </div>
     </div>
@@ -110,7 +137,12 @@ import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
 import { useVisibleClock } from '../shared/visible-clock'
 import RouteParts from './RouteParts.vue'
-import { actFromAreaId, actLabel, parseLogLine, pickTreeForLevel } from './log-parse'
+import DockItem from '../dock/DockItem.vue'
+import { CURRENCY_ICONS } from '../ui/game-icons'
+import { hideWhilePlaying, tickWhile } from '../dock/dock'
+import { reportProblem } from '../dock/health'
+import { actFromAreaId, actLabel, parseLogLine } from './log-parse'
+import CampaignBuild from './CampaignBuild.vue'
 import type { LogEvent } from './log-parse'
 import { emptyState, migrateCampaign, parseHotkeyTarget } from './widget'
 import type { CampaignWidget } from './widget'
@@ -123,8 +155,6 @@ import {
 } from './run-timer'
 import type { RunTimerWidget } from './run-timer'
 import { isWidgetTypeOn } from '../modules'
-import { POB_BUILDS_TYPE, pobApi } from '../pob-builds/widget'
-import type { PobBuildsWidget, PobDetails } from '../pob-builds/widget'
 
 const props = defineProps<{
   config: CampaignWidget
@@ -133,7 +163,7 @@ const props = defineProps<{
 const wm = inject<WidgetManager>('wm')!
 
 if (props.config.wmFlags[0] === 'uninitialized') {
-  props.config.wmFlags = []
+  props.config.wmFlags = ['invisible-on-blur']
   props.config.wmTitle = 'Campaign tracker'
   props.config.anchor = { pos: 'tc', x: 50, y: 1 }
   props.config.charName = ''
@@ -144,6 +174,7 @@ if (props.config.wmFlags[0] === 'uninitialized') {
   wm.show(props.config.wmId)
 }
 migrateCampaign(props.config)
+hideWhilePlaying(props.config)
 
 const s = computed(() => props.config.state)
 
@@ -216,6 +247,9 @@ const note = computed(() => {
 const now = shallowRef(Date.now())
 // Ticks only while the widget is on screen.
 useVisibleClock(props.config, () => { now.value = Date.now() }, 1000)
+// ...and while the dock card is open.
+const cardShown = shallowRef(false)
+onUnmounted(tickWhile(() => cardShown.value, () => { now.value = Date.now() }, 1000))
 
 const timerWidget = computed(() => {
   const cfg = AppConfig()
@@ -230,6 +264,7 @@ const timer = computed(() => {
   return {
     total: runElapsed(run, now.value),
     delta: headlineDelta(rows),
+    act: rows.find(r => r.state === 'current')?.segmentMs ?? null,
     paused: !run.finished && run.runningSince == null
   }
 })
@@ -243,6 +278,22 @@ const visible = computed(() => {
   // Still show in campaign zones (e.g. the Epilogue), hide in maps and hideouts.
   return actFromAreaId(s.value.areaId) != null
 })
+
+// ---- dock icon ----
+
+// Campaign areas and towns only; maps, hideouts and the lab hide it.
+const dockShow = computed(() => visible.value && actFromAreaId(s.value.areaId) != null)
+const dockTone = computed(() => {
+  const d = timer.value?.delta
+  return d == null ? 'accent' : d <= 0 ? 'up' : 'down'
+})
+const dockRef = shallowRef<InstanceType<typeof DockItem> | null>(null)
+
+function peekStep () {
+  const step = current.value
+  if (!step || !s.value.zone) return
+  dockRef.value?.peek(`${s.value.zone} · ${step.parts.map(p => p.text).join('')}`)
+}
 
 // ---- Client.txt ----
 
@@ -260,10 +311,12 @@ function apply (ev: LogEvent): boolean {
       state.charName = ''
       state.className = ''
       state.level = null
+      state.gemsGot = []
     }
     props.config.step = advanceOnEnter(route.value, props.config.step, ev.areaId, routeData)
   } else if (ev.kind === 'zone') {
     state.zone = ev.name
+    if (caughtUp) setTimeout(peekStep, 0)
   } else if (ev.kind === 'level') {
     // Party members' level-ups are logged too. Follow the character named
     // in the settings, or else the first one seen, the way the run timer does.
@@ -313,6 +366,7 @@ function applyLines (lines: string[], at: number) {
     if (ev && apply(ev)) changed = true
   }
   if (changed) {
+    now.value = Date.now()
     props.config.state.updatedAt = at
     // Log events arrive while the game has focus, when APT doesn't save config.
     saveConfig()
@@ -327,6 +381,7 @@ const logListener = Host.onEvent('MAIN->CLIENT::game-log', (e) => {
 // Catch up on what happened while the app was closed, then go live.
 logTail().then(tail => {
   logMissing.value = tail.path == null
+  reportProblem('client-log', logMissing.value ? 'Client.txt not found, so the campaign tracker can\'t follow you. Set its path in Settings → General.' : null)
   for (const { line, at } of linesAfter(tail, props.config.state.updatedAt)) applyLines([line], at)
 }).finally(() => {
   caughtUp = true
@@ -345,34 +400,6 @@ onUnmounted(() => {
   logListener.abort()
   hotkeys.abort()
 })
-
-// ---- build (optional, from the PoB builds widget) ----
-
-const pobWidget = computed(() => AppConfig().widgets
-  .find(w => w.wmType === POB_BUILDS_TYPE && (w as PobBuildsWidget).activeBuild) as PobBuildsWidget | undefined)
-const activeBuild = computed(() => pobWidget.value?.activeBuild ?? null)
-const details = shallowRef<PobDetails | null>(null)
-
-watch([activeBuild, () => props.config.showBuild], async ([relPath, show]) => {
-  details.value = null
-  if (!relPath || !show || !pobWidget.value) return
-  try {
-    details.value = await pobApi.read(pobWidget.value, relPath)
-  } catch {
-    // The build moved or was deleted; the guide works without it.
-  }
-}, { immediate: true })
-
-const tree = computed(() => details.value ? pickTreeForLevel(details.value.trees, s.value.level) : null)
-const mainGroups = computed(() => {
-  const groups = details.value?.skills.filter(g => g.enabled && g.gems.length) ?? []
-  const main = groups.filter(g => g.isMain)
-  return (main.length ? main : groups).slice(0, 2)
-})
-
-function safeUrl (url: string) {
-  return /^https?:\/\//i.test(url) ? url : undefined
-}
 </script>
 
 <style module>
@@ -383,29 +410,29 @@ function safeUrl (url: string) {
   padding: 5px 12px;
   background: var(--w-panel);
   border: 1px solid var(--w-line);
-  border-radius: var(--w-radius);
+  border-radius: var(--w-r-md);
   box-shadow: var(--w-shadow);
-  font-size: 12.5px;
+  font-size: var(--w-fs-md);
   white-space: nowrap;
   color: var(--w-fg);
   max-width: 64rem;
 }
-.where { font-size: 14px; max-width: 18rem; }
+.where { font-size: var(--w-fs-lg); max-width: 18rem; }
 .char { max-width: 9rem; }
-.switch { width: auto; padding: 0 6px; gap: 4px; font-size: 12px; }
+.switch { width: auto; padding: 0 6px; gap: 4px; font-size: var(--w-fs-md); }
 .oneLine { max-width: 26rem; }
 .sep { width: 1px; align-self: stretch; background: var(--w-line); }
 .k {
-  font-size: 10.5px;
+  font-size: var(--w-fs-xs);
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--w-faint);
 }
 .pill {
   font-family: var(--w-num);
-  font-size: 10.5px;
+  font-size: var(--w-fs-xs);
   padding: 0 7px;
-  border-radius: 99px;
+  border-radius: var(--w-r-pill);
   line-height: 17px;
 }
 .pill--safe { color: var(--w-up); background: color-mix(in srgb, var(--w-up) 15%, transparent); }
@@ -415,10 +442,10 @@ function safeUrl (url: string) {
   width: 24rem;
   background: var(--w-panel);
   border: 1px solid var(--w-line);
-  border-radius: var(--w-radius);
+  border-radius: var(--w-r-md);
   box-shadow: var(--w-shadow);
   color: var(--w-fg);
-  font-size: 12.5px;
+  font-size: var(--w-fs-md);
   overflow: hidden;
 }
 .cardHead {
@@ -429,9 +456,9 @@ function safeUrl (url: string) {
   background: var(--w-header-bg);
   border-bottom: 1px solid var(--w-line);
   color: var(--w-accent);
-  font-size: 13px;
+  font-size: var(--w-fs-md);
 }
-.cardHead :global(.w-faint) { font-size: 11px; }
+.cardHead :global(.w-faint) { font-size: var(--w-fs-xs); }
 .body {
   display: flex;
   flex-direction: column;
@@ -445,13 +472,13 @@ function safeUrl (url: string) {
   box-shadow: inset 2px 0 0 var(--w-accent);
 }
 .next { color: var(--w-dim); }
-.sub { padding-left: 14px; font-size: 11.5px; }
+.sub { padding-left: 14px; font-size: var(--w-fs-sm); }
 .callout {
   margin-top: 4px;
   padding: 4px 8px;
   background: var(--w-accent-soft);
   border-left: 2px solid var(--w-accent);
-  border-radius: var(--w-radius-sm);
+  border-radius: var(--w-r-sm);
 }
 .build {
   margin-top: 4px;

@@ -1,5 +1,5 @@
 <template>
-  <WPanel :title="config.wmTitle || 'Map mods'" width="44rem" max-height="85vh">
+  <WPanel :title="config.wmTitle || 'Map mods'" icon="map" width="44rem" max-height="85vh">
     <template #actions>
       <WSelect :model-value="String(config.activeProfile)" :options="profileOptions"
         @update:model-value="config.activeProfile = Number($event)" title="Build profile" />
@@ -252,23 +252,23 @@ function paste () {
   gap: 8px;
   width: 100%;
   padding: 6px 8px;
-  border-radius: var(--w-radius-sm);
+  border-radius: var(--w-r-sm);
   background: var(--w-panel-2);
   border: 1px solid var(--w-line);
 }
 .regex {
   flex: 1;
   min-width: 0;
-  font-family: var(--w-num);
-  font-size: 12px;
+  font-family: var(--w-mono);
+  font-size: var(--w-fs-md);
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
 }
 .preset {
-  font-size: 11.5px;
+  font-size: var(--w-fs-sm);
   padding: 1px 8px;
-  border-radius: 999px;
+  border-radius: var(--w-r-pill);
   border: 1px solid var(--w-line);
   background: var(--w-panel-2);
   color: var(--w-dim);
@@ -292,20 +292,20 @@ function paste () {
   max-height: 9.5rem;
   overflow-y: auto;
   padding: 6px 8px;
-  border-radius: var(--w-radius-sm);
+  border-radius: var(--w-r-sm);
   background: var(--w-panel-2);
   border: 1px solid var(--w-line);
 }
 .pickRow { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
-.pickHead { width: 52px; flex: none; font-size: 11px; color: var(--w-accent); }
+.pickHead { width: 52px; flex: none; font-size: var(--w-fs-xs); color: var(--w-accent); }
 .pickHead.deadly { color: var(--w-down); }
 .pickHead.warn { color: var(--w-warn); }
 .pickHead.good { color: var(--w-up); }
 .chip {
   display: inline-flex;
   align-items: center;
-  font-size: 11.5px;
-  border-radius: 999px;
+  font-size: var(--w-fs-sm);
+  border-radius: var(--w-r-pill);
   border: 1px solid color-mix(in srgb, var(--chip) 48%, transparent);
   background: color-mix(in srgb, var(--chip) 13%, transparent);
   color: var(--chip);
@@ -324,20 +324,20 @@ button.chipText:hover { text-decoration: underline; }
   align-items: center;
   gap: 8px;
   padding: 3px var(--w-pad);
-  font-size: 12.5px;
+  font-size: var(--w-fs-md);
 }
 .row:nth-child(odd) { background: var(--w-panel-2); }
 .cost {
-  font-size: 11px;
+  font-size: var(--w-fs-xs);
   color: var(--w-dim);
   white-space: nowrap;
   font-family: var(--w-num);
 }
 .t17 {
   margin-left: 6px;
-  font-size: 10px;
+  font-size: var(--w-fs-xs);
   padding: 0 4px;
-  border-radius: 3px;
+  border-radius: var(--w-r-sm);
   color: var(--w-warn);
   border: 1px solid color-mix(in srgb, var(--w-warn) 45%, transparent);
 }

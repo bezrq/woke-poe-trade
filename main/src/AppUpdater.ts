@@ -1,12 +1,13 @@
 import { autoUpdater } from 'electron-updater'
 import type { ServerEvents } from './server'
 import type { UpdateInfo } from '../../ipc/types'
+import { appPrefs } from './woke/app-prefs'
 
 export class AppUpdater {
   private _checkedAtStartup = false
   private _info: UpdateInfo = { state: 'initial' }
 
-  public readonly noAutoUpdatesReason:
+  public noAutoUpdatesReason:
     Extract<UpdateInfo, { state: 'update-available' }>['noDownloadReason'] = null
 
   get info () { return this._info }
@@ -21,7 +22,9 @@ export class AppUpdater {
   constructor (
     private server: ServerEvents
   ) {
-    setInterval(this.check, 16 * 60 * 60 * 1000)
+    // woke: every 6 hours (APT: 16); the feed is this fork's GitHub releases
+    // (publish settings in electron-builder.yml).
+    setInterval(this.check, 6 * 60 * 60 * 1000)
 
     this.server.onEventAnyClient('CLIENT->MAIN::user-action', ({ action }) => {
       if (action === 'check-for-update') {
@@ -36,7 +39,8 @@ export class AppUpdater {
 
     if (!autoUpdater.autoDownload || process.platform === 'darwin') {
       this.noAutoUpdatesReason = 'not-supported'
-    } else if (process.argv.includes('--no-updates')) {
+    } else if (process.argv.includes('--no-updates') || !appPrefs().autoUpdate) {
+      // woke: also off when the player turned automatic updates off in setup.
       autoUpdater.autoDownload = false
       this.noAutoUpdatesReason = 'disabled-by-flag'
     }
@@ -57,6 +61,13 @@ export class AppUpdater {
       this.info = { state: 'update-downloaded', version: info.version }
     })
     // on('download-progress') https://github.com/electron-userland/electron-builder/issues/2521
+  }
+
+  // woke: the setup window's "Install updates automatically" switch.
+  setAutoDownload (on: boolean) {
+    if (this.noAutoUpdatesReason === 'not-supported' || process.argv.includes('--no-updates')) return
+    autoUpdater.autoDownload = on
+    this.noAutoUpdatesReason = on ? null : 'disabled-by-flag'
   }
 
   checkAtStartup () {

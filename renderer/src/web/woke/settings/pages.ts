@@ -1,0 +1,336 @@
+// The settings window's pages: General (shared settings), Modules (one page
+// per module or pair of modules) and App. Each page lists the setting labels
+// it holds so search can find them without rendering every page.
+import type { Component } from 'vue'
+import { CURRENCY_ICONS, mechanicIcon } from '../ui/game-icons'
+
+import SettingsPricecheck from '@/web/price-check/settings-price-check.vue'
+import SettingsItemcheck from '@/web/item-check/settings-item-check.vue'
+import SettingsMaps from '@/web/map-check/settings-maps.vue'
+import SettingsChat from '@/web/settings/chat.vue'
+import SettingsDebug from '@/web/settings/debug.vue'
+import PerfSettings from '../ui/PerfSettings.vue'
+import ModulesSettings from '../switchboard/ModulesSettings.vue'
+import GamePage from './GamePage.vue'
+import HotkeysPage from './HotkeysPage.vue'
+import LookPage from './LookPage.vue'
+import ScreenPage from './ScreenPage.vue'
+import InstallPage from './InstallPage.vue'
+import AboutPage from './AboutPage.vue'
+
+export type PageGroup = 'general' | 'modules' | 'app'
+
+export interface PageIcon {
+  // Game art (bundled image or item art URL).
+  art?: string | null
+  // Item name for art from the item data.
+  item?: string
+  // Font Awesome fallback, and the icon for UI-only pages.
+  fa: string
+}
+
+export interface SettingsPage {
+  id: string
+  name: string
+  description: string
+  group: PageGroup
+  // Sub-heading inside Modules.
+  sub?: string
+  icon: PageIcon
+  // Module switches shown on the page (and one switch in the sidebar).
+  modules?: string[]
+  // Widgets whose settings editor the page shows, in order.
+  widgets?: string[]
+  // Whole-config pages (APT's, or our shared pages), shown after the widgets.
+  parts?: Component[]
+  // Setting labels for search.
+  find: string[]
+  // Old page names that other code opens by (settings::page=…).
+  aliases?: string[]
+}
+
+const art = (id: string) => mechanicIcon(id).src
+
+export const PAGES: SettingsPage[] = [
+  // ---------- General ----------
+  {
+    id: 'game',
+    name: 'Game & league',
+    group: 'general',
+    icon: { fa: 'fas fa-flag' },
+    description: 'Set once here. Every module reads these.',
+    parts: [GamePage],
+    find: ['League', 'Private league', 'Trade site', 'Game language', 'Client.txt', 'Game log', 'production_Config.ini', 'Loot filter folder', 'Character', 'Account name'],
+    aliases: ['settings.general']
+  },
+  {
+    id: 'hotkeys',
+    name: 'Hotkeys',
+    group: 'general',
+    icon: { fa: 'fas fa-keyboard' },
+    description: 'Every key the app listens for. Click a key, then press the new one.',
+    parts: [HotkeysPage],
+    find: ['Overlay key', 'Hotkey clashes', 'Stash scroll', 'Ctrl + mouse wheel'],
+    aliases: ['Hotkey list', 'settings.hotkeys']
+  },
+  {
+    id: 'look',
+    name: 'Look & icon row',
+    group: 'general',
+    icon: { fa: 'fas fa-paint-brush' },
+    description: 'Theme, text size, the overlay backdrop and the row of icons you see while playing.',
+    parts: [LookPage],
+    find: ['Theme', 'Panel size', 'Font size', 'Text size', 'Overlay background', 'Restore clipboard', 'Window title', 'Overlay ready notice', 'Icon row', 'Peek', 'Dock'],
+    aliases: ['Appearance', 'Icon row']
+  },
+  {
+    id: 'screen',
+    name: 'Screen reading',
+    group: 'general',
+    icon: { fa: 'fas fa-eye' },
+    description: 'Text recognition (OCR) for the scans that read the game screen.',
+    parts: [ScreenPage],
+    modules: ['apt-heist-ocr'],
+    find: ['OCR', 'Text recognition', 'Heist gems', 'Map scan', 'Essence scan']
+  },
+  {
+    id: 'builds',
+    name: 'Builds (PoB)',
+    group: 'general',
+    icon: { item: 'Enlighten Support', fa: 'fas fa-gem' },
+    description: 'Your Path of Building folder. The build helpers and the campaign guide use the active build.',
+    modules: ['pob-builds'],
+    widgets: ['woke-pob-builds'],
+    find: ['Path of Building', 'PoB folder', 'Builds folder', 'PoB.exe']
+  },
+
+  // ---------- Modules ----------
+  {
+    id: 'modules',
+    name: 'All modules',
+    group: 'modules',
+    icon: { fa: 'fas fa-th-large' },
+    description: 'Switch modules on and off, pick a preset, and see what runs in the background.',
+    parts: [ModulesSettings],
+    find: ['Modules', 'Presets', 'Shared services', 'Run setup again', 'Hide all toolkit panels'],
+    aliases: ['Modules']
+  },
+  {
+    id: 'price-check',
+    name: 'Price check',
+    group: 'modules',
+    sub: 'Trade & prices',
+    icon: { art: CURRENCY_ICONS.chaos, fa: 'fas fa-coins' },
+    description: 'Prices for the item under your cursor.',
+    modules: ['apt-price-check'],
+    parts: [SettingsPricecheck],
+    find: ['Show seller', 'Fill rolls', 'Stock filter', 'Price prediction', 'Built-in browser', 'Auto search', 'Collapse listings'],
+    aliases: ['price_check.name']
+  },
+  {
+    id: 'item-info',
+    name: 'Item info & map check',
+    group: 'modules',
+    sub: 'Trade & prices',
+    icon: { item: 'Scroll of Wisdom', fa: 'fas fa-info-circle' },
+    description: 'Item details, wiki and poedb links, and APT\'s map mod check.',
+    modules: ['apt-item-info'],
+    parts: [SettingsItemcheck, SettingsMaps],
+    find: ['Item info', 'Wiki', 'poedb', 'Craft of Exile', 'Map check', 'Map mods (APT)'],
+    aliases: ['item.info', 'map_check.name']
+  },
+  {
+    id: 'trade-searches',
+    name: 'Trade searches',
+    group: 'modules',
+    sub: 'Trade & prices',
+    icon: { art: CURRENCY_ICONS.exalted, fa: 'fas fa-search-dollar' },
+    description: 'Saved trade site searches and live search alerts.',
+    modules: ['trade-searches'],
+    widgets: ['woke-trade-searches'],
+    find: ['Saved searches', 'Live search alert', 'Open old searches in the current league']
+  },
+  {
+    id: 'market',
+    name: 'Market & investments',
+    group: 'modules',
+    sub: 'Trade & prices',
+    icon: { art: CURRENCY_ICONS.divine, fa: 'fas fa-chart-line' },
+    description: 'Movers, watchlist and league-start investments from poe.ninja.',
+    modules: ['market', 'league-invest'],
+    widgets: ['woke-market-tracker', 'woke-league-invest'],
+    find: ['Market tracker', 'Watchlist', 'Investments', 'League day']
+  },
+  {
+    id: 'campaign',
+    name: 'Campaign & run timer',
+    group: 'modules',
+    sub: 'Campaign & lab',
+    icon: { art: CURRENCY_ICONS.wisdom, fa: 'fas fa-route' },
+    description: 'Next steps for your act, and act splits with personal bests.',
+    modules: ['campaign', 'run-timer'],
+    widgets: ['woke-campaign', 'woke-run-timer'],
+    find: ['League start stops', 'Library gem', 'Guide card', 'Act notes', 'Zone notes', 'Auto start', 'Sub-splits', 'Splits']
+  },
+  {
+    id: 'lab',
+    name: 'Lab & lab gems',
+    group: 'modules',
+    sub: 'Campaign & lab',
+    icon: { art: art('lab'), fa: 'fas fa-dungeon' },
+    description: "Today's lab layout, and Divine Font gem values.",
+    modules: ['lab', 'lab-gems'],
+    widgets: ['woke-lab', 'woke-lab-gems'],
+    find: ['Lab layout', 'poelab', "Aspirant's Plaza", 'Lab notes', 'Lab gems']
+  },
+  {
+    id: 'map-mods',
+    name: 'Map mods & map scan',
+    group: 'modules',
+    sub: 'Maps & atlas',
+    icon: { art: art('map'), fa: 'fas fa-map' },
+    description: 'Danger strip for map mods, profiles and weights, and the on-screen map scan.',
+    modules: ['map-mods', 'map-scan'],
+    widgets: ['woke-map-mods', 'woke-map-scan'],
+    find: ['Map mod weights', 'Profiles', 'Danger strip', 'Map regex', 'Rolling mode', 'Alert when a map passes']
+  },
+  {
+    id: 'essence-scan',
+    name: 'Essence scan',
+    group: 'modules',
+    sub: 'Maps & atlas',
+    icon: { art: art('essence'), fa: 'fas fa-flask' },
+    description: 'Reads essence monoliths and flags Misery, Envy, Dread and Scorn.',
+    modules: ['essence-scan'],
+    widgets: ['woke-essence-scan'],
+    find: ['MEDS', 'Value alert', 'Essence']
+  },
+  {
+    id: 'atlas',
+    name: 'Atlas strategies',
+    group: 'modules',
+    sub: 'Maps & atlas',
+    icon: { item: 'Cartography Scarab of Risk', fa: 'fas fa-globe' },
+    description: 'Tree, scarabs, device and regex for each strategy.',
+    modules: ['atlas'],
+    widgets: ['woke-atlas-strategies'],
+    find: ['Strategies', 'Atlas tree', 'Scarabs', 'Atlas data']
+  },
+  {
+    id: 'boss-runs',
+    name: 'Boss runs',
+    group: 'modules',
+    sub: 'Maps & atlas',
+    icon: { art: art('maven'), fa: 'fas fa-skull' },
+    description: 'Profit per boss kill.',
+    modules: ['boss-runs'],
+    widgets: ['woke-boss-runs'],
+    find: ['Boss runs', 'Boss kill']
+  },
+  {
+    id: 'farming',
+    name: 'Farming & sessions',
+    group: 'modules',
+    sub: 'Maps & atlas',
+    icon: { art: CURRENCY_ICONS.chaos, fa: 'fas fa-coins' },
+    description: 'Profit per hour now, and per map and strategy over time.',
+    modules: ['farming', 'session-analytics'],
+    widgets: ['woke-farming', 'woke-session-analytics'],
+    find: ['Bulk price', 'Junk below', 'Auto pause', 'Session analytics']
+  },
+  {
+    id: 'mechanics',
+    name: 'League mechanics',
+    group: 'modules',
+    sub: 'Maps & atlas',
+    icon: { art: art('incursion'), fa: 'fas fa-dungeon' },
+    description: 'Picks and the Betrayal board for the zone you are in.',
+    modules: ['mechanics'],
+    widgets: ['woke-mechanics'],
+    find: ['Switch tab by zone', 'Mechanics shown', 'Betrayal board', 'Syndicate']
+  },
+  {
+    id: 'loot-filter',
+    name: 'Loot filter editor',
+    group: 'modules',
+    sub: 'Maps & atlas',
+    icon: { item: 'Orb of Scouring', fa: 'fas fa-filter' },
+    description: 'Edit the NeverSink rule for an item you hover.',
+    modules: ['loot-filter'],
+    widgets: ['woke-loot-filter'],
+    find: ['Save mode', 'Reload filter via chat', 'Area level']
+  },
+  {
+    id: 'regex-library',
+    name: 'Regex library',
+    group: 'modules',
+    sub: 'Tools',
+    icon: { art: art('stash'), fa: 'fas fa-search' },
+    description: 'Saved stash search strings, with hotkeys.',
+    modules: ['regex-library'],
+    widgets: ['woke-regex-library'],
+    find: ['Regex', 'Stash search strings', 'Import', 'Export']
+  },
+  {
+    id: 'chat',
+    name: 'Chat commands',
+    group: 'modules',
+    sub: 'Tools',
+    icon: { fa: 'fas fa-comment-dots' },
+    description: 'Text pasted into chat with one key, like /hideout.',
+    parts: [SettingsChat],
+    find: ['/hideout', '/exit', 'Chat command'],
+    aliases: ['settings.chat']
+  },
+
+  // ---------- App ----------
+  {
+    id: 'install',
+    name: 'Install & updates',
+    group: 'app',
+    icon: { fa: 'fas fa-download' },
+    description: 'Updates, starting with Windows, crash reports and the setup window.',
+    parts: [InstallPage],
+    find: ['Auto update', 'Start with Windows', 'Crash reports', 'Setup window', 'Version']
+  },
+  {
+    id: 'performance',
+    name: 'Performance',
+    group: 'app',
+    icon: { fa: 'fas fa-tachometer-alt' },
+    description: 'Startup time, CPU and memory, with a report you can copy.',
+    parts: [PerfSettings],
+    find: ['Performance', 'CPU', 'Memory', 'Copy report'],
+    aliases: ['Performance']
+  },
+  {
+    id: 'debug',
+    name: 'Troubleshooting',
+    group: 'app',
+    icon: { fa: 'fas fa-bug' },
+    description: "The app's log, and key logging for hotkey problems.",
+    parts: [SettingsDebug],
+    find: ['Debug', 'Log', 'Log keys'],
+    aliases: ['settings.debug']
+  },
+  {
+    id: 'about',
+    name: 'About',
+    group: 'app',
+    icon: { fa: 'fas fa-info-circle' },
+    description: 'Version, credits and the people who support Awakened PoE Trade.',
+    parts: [AboutPage],
+    find: ['About', 'Patreon', 'Credits', 'Check for updates'],
+    aliases: ['settings.about']
+  }
+]
+
+export const PAGE_BY_ID = new Map(PAGES.map(p => [p.id, p]))
+
+export function pageForWidgetType (wmType: string): SettingsPage | undefined {
+  return PAGES.find(p => p.widgets?.includes(wmType))
+}
+
+export function pageByName (name: string): SettingsPage | undefined {
+  return PAGES.find(p => p.id === name || p.name === name || p.aliases?.includes(name))
+}

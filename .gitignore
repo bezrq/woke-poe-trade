@@ -33,3 +33,6 @@ testing/fake-host/dist
 testing/test-results
 testing/report
 testing/screens-out
+
+# woke: OCR data fetched for packaging (main/build/fetch-ocr.mjs)
+main/build/cv-ocr
