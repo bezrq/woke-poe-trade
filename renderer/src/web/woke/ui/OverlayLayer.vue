@@ -1,0 +1,116 @@
+<template>
+  <div v-if="menu" :class="$style.backdrop" @mousedown="closeMenu" @contextmenu.prevent="closeMenu" />
+  <div v-if="menu" ref="menuEl" :class="[$style.menu, 'w-enter']" :style="menuPos" role="menu" tabindex="-1"
+    @keydown="onMenuKey" @contextmenu.prevent>
+    <template v-for="(item, i) in menu.items" :key="i">
+      <div v-if="'separator' in item" :class="$style.sep" role="separator" />
+      <button v-else type="button" role="menuitem" :disabled="item.disabled"
+        :class="[$style.item, { [$style.danger]: item.danger, [$style.hl]: i === hl }]"
+        @mouseenter="hl = i" @click="pick(item)">
+        <img v-if="item.gameIcon" :src="item.gameIcon" class="w-game-icon" :class="$style.ic" alt="">
+        <i v-else :class="[item.icon, $style.ic]" />
+        <span class="w-trunc" :class="$style.label">{{ item.label }}</span>
+        <WKbd v-if="item.keys" :keys="item.keys" :class="$style.keys" />
+      </button>
+    </template>
+  </div>
+
+  <div v-for="t in list" :key="t.id" :class="[$style.toast, 'w-enter']" :style="{ left: `${t.x}px`, top: `${t.y}px` }" role="status">
+    <span class="w-trunc">{{ t.text }}</span>
+    <button v-if="t.undo" type="button" :class="$style.undo" @click="undoToast(t.id)">Undo</button>
+    <WKbd v-if="t.undo" keys="Ctrl + Z" />
+  </div>
+</template>
+
+<script setup lang="ts">
+// Mounted once in the overlay. Renders the shared menu and done/undo notes.
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import WKbd from './WKbd.vue'
+import { closeMenu, menuState, toasts, undoToast, type MenuEntry } from './layer'
+
+const menu = menuState
+const list = toasts
+const menuEl = ref<HTMLElement | null>(null)
+const hl = ref(-1)
+const size = ref({ w: 0, h: 0 })
+
+watch(menu, async (m) => {
+  hl.value = -1
+  if (!m) return
+  await nextTick()
+  const el = menuEl.value
+  if (!el) return
+  size.value = { w: el.offsetWidth, h: el.offsetHeight }
+  el.focus({ preventScroll: true })
+})
+
+// Keep the menu inside the window.
+const menuPos = computed(() => {
+  const m = menu.value
+  if (!m) return {}
+  const x = Math.min(m.x, window.innerWidth - size.value.w - 8)
+  const y = m.y + size.value.h > window.innerHeight - 8 ? Math.max(8, m.y - size.value.h) : m.y
+  return { left: `${Math.max(8, x)}px`, top: `${y}px` }
+})
+
+function pick (item: MenuEntry) {
+  if ('separator' in item || item.disabled) return
+  closeMenu()
+  item.action()
+}
+
+function move (dir: 1 | -1) {
+  const items = menu.value?.items ?? []
+  for (let n = 0, i = hl.value; n < items.length; n++) {
+    i = (i + dir + items.length) % items.length
+    const it = items[i]
+    if (!('separator' in it) && !it.disabled) { hl.value = i; return }
+  }
+}
+
+function onMenuKey (e: KeyboardEvent) {
+  if (e.key === 'ArrowDown') { e.preventDefault(); move(1) } else if (e.key === 'ArrowUp') { e.preventDefault(); move(-1) } else if (e.key === 'Escape') { e.preventDefault(); closeMenu() } else if (e.key === 'Enter' && hl.value >= 0) {
+    e.preventDefault()
+    pick(menu.value!.items[hl.value])
+  }
+}
+
+function onKey (e: KeyboardEvent) {
+  const t = e.target as HTMLElement | null
+  if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) return
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && undoToast()) e.preventDefault()
+}
+onMounted(() => window.addEventListener('keydown', onKey))
+onUnmounted(() => window.removeEventListener('keydown', onKey))
+</script>
+
+<style module>
+.backdrop { position: fixed; inset: 0; z-index: 1000; }
+.menu {
+  position: fixed; z-index: 1001; min-width: 200px; max-width: 320px; padding: var(--w-s1);
+  background: var(--w-panel); backdrop-filter: var(--w-blur);
+  border: 1px solid var(--w-line-strong); border-radius: var(--w-r-md); box-shadow: var(--w-shadow);
+  font-family: var(--w-body); font-size: var(--w-fs-md); color: var(--w-fg);
+  outline: none;
+}
+.item {
+  display: flex; align-items: center; gap: var(--w-s2); width: 100%; height: var(--w-row-h);
+  padding: 0 var(--w-s2); border-radius: var(--w-r-sm); text-align: left; color: var(--w-fg);
+}
+.item:disabled { opacity: 0.45; }
+.hl { background: var(--w-accent-soft); }
+.ic { width: var(--w-icon-sm); height: var(--w-icon-sm); flex: none; display: inline-grid; place-items: center; font-size: 12px; color: var(--w-dim); }
+.label { flex: 1; }
+.keys { margin-left: var(--w-s3); }
+.danger, .danger .ic { color: var(--w-down); }
+.sep { height: 1px; margin: var(--w-s1) 2px; background: var(--w-line); }
+.toast {
+  position: fixed; z-index: 1002; transform: translate(-50%, -100%);
+  display: flex; align-items: center; gap: var(--w-s2); max-width: 360px;
+  padding: 5px 6px 5px 10px; font-family: var(--w-body); font-size: var(--w-fs-sm); color: var(--w-fg);
+  background: var(--w-panel-3); border: 1px solid var(--w-line-strong); border-radius: var(--w-r-md);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5); pointer-events: auto;
+}
+.undo { color: var(--w-accent); font-weight: 600; padding: 0 4px; }
+.undo:hover { text-decoration: underline; }
+</style>

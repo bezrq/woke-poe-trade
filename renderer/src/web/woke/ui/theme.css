@@ -49,20 +49,57 @@
   --w-s-b: #4a78d0;
   --w-s-w: #d9d4c8;
 
-  /* Type */
+  /* Type (P19). Inter is picked for small sizes on a dark, busy background;
+   * numbers use the same family with even-width digits (.w-num). Fontin small
+   * caps is for titles of 15px and up only. Nothing goes below --w-fs-xs. */
   --w-head: FontinSmallCaps, FrizQuadrataC, Georgia, serif;
   --w-head-size: 15px;
   --w-head-track: 0.03em;
-  --w-body: "IBM Plex Sans", system-ui, sans-serif;
-  --w-num: "JetBrains Mono", ui-monospace, monospace;
-  --w-text: 13px;
-  --w-text-sm: 11.5px;
+  --w-body: Inter, system-ui, sans-serif;
+  --w-num: Inter, system-ui, sans-serif;
+  --w-mono: "JetBrains Mono", ui-monospace, monospace;
+  --w-fs-xs: 11px;    /* column labels, key caps */
+  --w-fs-sm: 11.5px;  /* meta, ages, hints */
+  --w-fs-md: 13px;    /* rows, body, buttons */
+  --w-fs-lg: 15px;    /* titles, key values */
+  --w-fs-xl: 18px;    /* the verdict (P7) */
+  --w-text: var(--w-fs-md);
+  --w-text-sm: var(--w-fs-sm);
 
-  /* Shape + density */
-  --w-radius: 6px;
-  --w-radius-sm: 4px;
+  /* Spacing: 4px grid (P14) */
+  --w-s1: 4px;
+  --w-s2: 8px;
+  --w-s3: 12px;
+  --w-s4: 16px;
+  --w-s5: 20px;
+  --w-s6: 24px;
+
+  /* Shape: three radii */
+  --w-r-sm: 4px;
+  --w-r-md: 6px;
+  --w-r-pill: 999px;
+  --w-radius: var(--w-r-md);
+  --w-radius-sm: var(--w-r-sm);
+
+  /* Density (P16): comfortable by default, compact via data-woke-density */
   --w-row-h: 28px;
   --w-pad: 12px;
+
+  /* Motion (P15): quick fade + short rise in, faster out */
+  --w-dur-in: 120ms;
+  --w-dur-out: 80ms;
+  --w-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --w-rise: 6px;
+
+  /* Game icon sizes (P18) */
+  --w-icon-sm: 16px;
+  --w-icon-md: 20px;
+  --w-icon-lg: 24px;
+}
+
+:root[data-woke-density="compact"] { --w-row-h: 24px; }
+@media (prefers-reduced-motion: reduce) {
+  :root { --w-dur-in: 0ms; --w-dur-out: 0ms; --w-rise: 0px; }
 }
 
 :root[data-woke-theme="native"] {
@@ -84,8 +121,8 @@
   --w-head-track: 0.06em;
   --w-body: Fontin, FrizQuadrataC, Georgia, serif;
   --w-num: Fontin, FrizQuadrataC, Georgia, serif;
-  --w-radius: 1px;
-  --w-radius-sm: 1px;
+  --w-r-sm: 1px;
+  --w-r-md: 1px;
   --w-row-h: 30px;
 }
 
@@ -105,11 +142,11 @@
   --w-accent: #9aa8ff;
   --w-accent-fg: #0d0f1a;
   --w-accent-soft: rgba(154, 168, 255, 0.12);
-  --w-head: "IBM Plex Sans", system-ui, sans-serif;
+  --w-head: Inter, system-ui, sans-serif;
   --w-head-size: 13px;
   --w-head-track: 0;
-  --w-radius: 12px;
-  --w-radius-sm: 7px;
+  --w-r-sm: 7px;
+  --w-r-md: 12px;
 }
 
 /* ---------- Base classes (used by the W* components, usable directly too) ---------- */
@@ -137,7 +174,7 @@
 .w-row:hover { background: var(--w-accent-soft); }
 .w-row--head {
   min-height: 24px;
-  font-size: 10.5px;
+  font-size: var(--w-fs-xs);
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--w-faint);
@@ -146,13 +183,14 @@
 
 .w-group-label {
   padding: 6px var(--w-pad) 2px;
-  font-size: 10.5px;
+  font-size: var(--w-fs-xs);
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--w-faint);
 }
 
 .w-num { font-family: var(--w-num); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.w-mono { font-family: var(--w-mono); }
 .w-dim { color: var(--w-dim); }
 .w-faint { color: var(--w-faint); }
 .w-up { color: var(--w-up); }
@@ -170,6 +208,7 @@
   flex: none;
 }
 .w-icon-btn:hover { background: var(--w-panel-3); color: var(--w-fg); }
+.w-icon-btn:focus-visible { outline: 1px solid var(--w-accent); outline-offset: -1px; }
 .w-icon-btn--on { color: var(--w-accent); }
 
 .w-scroll { overflow-y: auto; min-height: 0; }
@@ -183,6 +222,34 @@
 .w-rarity-gem { color: var(--w-r-gem); }
 .w-rarity-currency { color: var(--w-r-currency); }
 .w-rarity-divination { color: var(--w-r-divination); }
+
+/* Keyboard focus (pick K2): the hover look plus a gold edge, so the mouse and
+ * the keys feel like one thing. .w-focus is set by useListNav for the active row. */
+.w-row:focus-visible, .w-row.w-focus,
+.w-focusable:focus-visible, .w-focusable.w-focus {
+  outline: none;
+  background: var(--w-accent-soft);
+  box-shadow: inset 2px 0 0 var(--w-accent);
+}
+:where(.w-surface) button:focus-visible:not(.w-row):not(.w-focusable),
+:where(.w-surface) a:focus-visible {
+  outline: 1px solid var(--w-accent);
+  outline-offset: 1px;
+}
+
+/* Opening motion (pick M1). WPanel and WMenu use it; any popup can add .w-enter. */
+@keyframes w-enter { from { opacity: 0; transform: translateY(var(--w-rise)); } to { opacity: 1; transform: none; } }
+.w-enter { animation: w-enter var(--w-dur-in) var(--w-ease) both; }
+
+/* A value that just changed flashes once (P15). Toggle the class on update. */
+@keyframes w-flash { from { background: var(--w-accent-soft); } to { background: transparent; } }
+.w-flash { animation: w-flash 600ms ease-out; }
+
+/* Old data kept on screen under an error banner (pick E1). */
+.w-stale { opacity: 0.55; }
+
+/* Game art (P18): never stretched, always on the icon grid. */
+.w-game-icon { object-fit: contain; flex: none; image-rendering: auto; }
 
 /* ---------- APT skin layer ----------
  * Restyles APT's own widget shell (price check, stash search, menu…) through the

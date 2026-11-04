@@ -112,5 +112,6 @@ export { wokeShortcutsFor } from './shortcuts'
 export const wokeGeneralSettings: Component[] = [AppearanceSettings, DockSettings, ModulesSettings, HotkeysSettings, PerfSettings]
 
 // Mounted once inside APT's overlay window: first-run module setup, the icon
-// dock, the toolkit health icon, and update / crash notices.
+// dock, the toolkit health icon, the shared menu / undo notes layer, and
+// update / crash notices.
 export const WokeOverlay = WokeOverlayRoot

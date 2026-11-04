@@ -2,6 +2,7 @@
   <SetupOverlay />
   <Dock />
   <ToolkitHealth />
+  <OverlayLayer />
   <AppNotices />
 </template>
 
@@ -9,5 +10,6 @@
 import SetupOverlay from './switchboard/SetupOverlay.vue'
 import Dock from './dock/Dock.vue'
 import ToolkitHealth from './dock/ToolkitHealth.vue'
+import OverlayLayer from './ui/OverlayLayer.vue'
 import AppNotices from './app/AppNotices.vue'
 </script>

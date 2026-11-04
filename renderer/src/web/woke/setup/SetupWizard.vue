@@ -110,8 +110,7 @@
               <div>Install updates automatically</div>
               <div class="w-faint">Downloads in the background and installs when you quit. Never in the middle of a map.</div>
             </div>
-            <button type="button" role="switch" :aria-checked="prefs.autoUpdate" :class="[$style.sw, { [$style.swOn]: prefs.autoUpdate }]"
-              @click="setPref({ autoUpdate: !prefs.autoUpdate })" />
+            <w-toggle :model-value="prefs.autoUpdate" :aria-label="TOGGLE_LABEL.autoUpdate" @update:model-value="v => setPref({ autoUpdate: v })" />
           </label>
           <div v-else :class="$style.toggle">
             <div class="min-w-0">
@@ -124,16 +123,14 @@
               <div>Offer to report crashes</div>
               <div class="w-faint">If the app crashes, it asks next time whether to report it. Nothing is sent unless you press Report, and you see the report first.</div>
             </div>
-            <button type="button" role="switch" :aria-checked="prefs.crashPrompt" :class="[$style.sw, { [$style.swOn]: prefs.crashPrompt }]"
-              @click="setPref({ crashPrompt: !prefs.crashPrompt })" />
+            <w-toggle :model-value="prefs.crashPrompt" :aria-label="TOGGLE_LABEL.crashPrompt" @update:model-value="v => setPref({ crashPrompt: v })" />
           </label>
           <label v-if="prefs.canOpenAtLogin" :class="$style.toggle">
             <div class="min-w-0">
               <div>Start with Windows</div>
               <div class="w-faint">Waits in the tray, ready when the game is.</div>
             </div>
-            <button type="button" role="switch" :aria-checked="prefs.openAtLogin" :class="[$style.sw, { [$style.swOn]: prefs.openAtLogin }]"
-              @click="setPref({ openAtLogin: !prefs.openAtLogin })" />
+            <w-toggle :model-value="prefs.openAtLogin" :aria-label="TOGGLE_LABEL.openAtLogin" @update:model-value="v => setPref({ openAtLogin: v })" />
           </label>
         </div>
         <div v-else class="w-dim"><i class="fas fa-circle-notch fa-spin" /></div>
@@ -172,7 +169,7 @@ import { AppConfig, saveConfig, pushHostConfig, getConfigForHost } from '@/web/C
 import type { Config } from '@/web/Config'
 import { Host } from '@/web/background/IPC'
 import { useLeagues } from '@/web/background/Leagues'
-import { WButton, WKbd } from '../ui'
+import { WButton, WKbd, WToggle } from '../ui'
 import { hostRequest } from '../shared/host'
 import { ensureWokeConfig } from '../modules'
 import PresetBar from '../switchboard/PresetBar.vue'
@@ -199,6 +196,12 @@ const STEPS = [
   { id: 'updates', label: 'Updates' },
   { id: 'ready', label: 'Ready' }
 ] as const
+
+const TOGGLE_LABEL = {
+  autoUpdate: 'Install updates automatically',
+  crashPrompt: 'Offer to report crashes',
+  openAtLogin: 'Start with Windows'
+}
 
 const SOURCE_LABEL: Record<FoundLog['source'], string> = {
   running: 'Running now',
@@ -324,7 +327,7 @@ async function finish () {
   background: var(--w-panel-2);
   color: var(--w-fg);
   font-family: var(--w-body);
-  font-size: var(--w-text);
+  font-size: var(--w-fs-md);
 }
 .rail {
   display: flex;
@@ -336,7 +339,7 @@ async function finish () {
 }
 .brand { display: flex; gap: 10px; align-items: center; padding: 0 6px 16px; }
 .logo { width: 32px; height: 32px; }
-.name { white-space: nowrap; font-family: var(--w-head); font-size: 14px; color: var(--w-accent); letter-spacing: var(--w-head-track); }
+.name { white-space: nowrap; font-family: var(--w-head); font-size: var(--w-fs-lg); color: var(--w-accent); letter-spacing: var(--w-head-track); }
 .stepBtn {
   display: flex;
   align-items: center;
@@ -349,7 +352,7 @@ async function finish () {
 .stepBtn:hover { color: var(--w-fg); }
 .on { background: var(--w-accent-soft); color: var(--w-fg); }
 .done { color: var(--w-up); }
-.n { width: 16px; font-family: var(--w-num); font-size: 11px; text-align: center; }
+.n { width: 16px; font-family: var(--w-num); font-size: var(--w-fs-xs); text-align: center; }
 .body { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
 .page {
   flex: 1;
@@ -362,8 +365,8 @@ async function finish () {
 .pageFlush { padding: 0 0 12px; gap: 0; }
 .pad { padding: 22px 26px 0; display: flex; flex-direction: column; gap: 8px; }
 .page p { max-width: 62ch; }
-.h { font-family: var(--w-head); font-size: 20px; color: var(--w-fg); letter-spacing: var(--w-head-track); }
-.h2 { font-family: var(--w-head); font-size: 15px; color: var(--w-fg); margin-top: 10px; }
+.h { font-family: var(--w-head); font-size: var(--w-fs-xl); color: var(--w-fg); letter-spacing: var(--w-head-track); }
+.h2 { font-family: var(--w-head); font-size: var(--w-fs-lg); color: var(--w-fg); margin-top: 10px; }
 .note {
   display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
   padding: 8px 10px;
@@ -371,7 +374,7 @@ async function finish () {
   border-radius: var(--w-radius-sm);
   background: var(--w-panel);
 }
-.rec { margin-left: 6px; font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--w-accent); }
+.rec { margin-left: 6px; font-size: var(--w-fs-xs); letter-spacing: 0.06em; text-transform: uppercase; color: var(--w-accent); }
 .list { display: flex; flex-direction: column; border: 1px solid var(--w-line); border-radius: var(--w-radius-sm); overflow: hidden; }
 .opt, .toggle {
   display: flex;
@@ -385,10 +388,6 @@ async function finish () {
 .opt input { accent-color: var(--w-accent); flex: none; }
 .optOn { background: var(--w-accent-soft); }
 .toggle { justify-content: space-between; cursor: default; }
-.sw { position: relative; flex: none; width: 34px; height: 18px; border-radius: 9px; background: var(--w-panel-3); border: 1px solid var(--w-line); }
-.sw::after { content: ""; position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; border-radius: 50%; background: var(--w-dim); transition: left 0.12s; }
-.swOn { background: var(--w-accent-soft); border-color: var(--w-line-strong); }
-.swOn::after { left: 18px; background: var(--w-accent); }
 .chips { display: flex; flex-wrap: wrap; gap: 8px; }
 .chip { padding: 3px 12px; border-radius: 999px; border: 1px solid var(--w-line); color: var(--w-dim); }
 .chip:hover { color: var(--w-fg); }
