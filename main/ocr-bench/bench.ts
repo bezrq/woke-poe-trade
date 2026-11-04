@@ -97,7 +97,8 @@ async function main () {
   const ocrDir = path.resolve(arg('ocr'))
   const samplesDir = path.resolve(arg('samples'))
   const outDir = process.argv.includes('--out') ? path.resolve(arg('out')) : null
-  const model = arg('model', 'eng')
+  // Default: the model the app ships for scans.
+  const model = arg('model', path.resolve(__dirname, '../../renderer/public/data/ocr/poe.traineddata'))
   const stats = path.resolve(__dirname, '../../renderer/public/data/en/stats.ndjson')
   const limit = Number(arg('limit', '100000'))
 
@@ -178,8 +179,10 @@ async function main () {
       else { ok = false; notes.push(`${k} ${gotProps[k]} != ${v}`) }
     }
     tot.weak += got.weak.length
+    // Low-confidence lines make the app show "unsure" instead of a verdict.
+    if (got.weak.length) notes.push(`weak: ${got.weak.join(' | ')}`)
     if (ok) tot.perfect++
-    else fails.push(`${id}: ${notes.join('; ')}`)
+    if (!ok || notes.length) fails.push(`${id}: ${notes.join('; ')}`)
 
     // Character-level: each true line against its closest read line.
     for (const want of label.lines ?? label.modLines) {

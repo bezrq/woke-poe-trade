@@ -269,12 +269,13 @@ function spanOf (lines: Span[]): Span {
 }
 
 // Stacks of blue text lines sharing a centre.
-function textStacks (blue: Uint8Array, cols: number, rows: number, lineH: number): Span[][] {
+export function textStacks (blue: Uint8Array, cols: number, rows: number, lineH: number): Span[][] {
   const lines = textBlobs(blue, cols, rows, lineH).filter(b => {
     const h = b.y1 - b.y0 + 1
     const w = b.x1 - b.x0 + 1
     return h >= lineH * 0.3 && h <= lineH * 1.4 && w >= lineH * 1.5 && b.n >= w * h * 0.06
   }).sort((a, b) => a.y0 - b.y0)
+  // The gap allows a separator, or one line hidden (e.g. by a health bar).
   const tol = Math.max(3, lineH * 0.6)
   const stacks: Span[][] = []
   for (const l of lines) {
@@ -282,7 +283,7 @@ function textStacks (blue: Uint8Array, cols: number, rows: number, lineH: number
     const stack = stacks.find(s => {
       const last = s[s.length - 1]
       const gap = l.y0 - last.y1
-      return gap >= 0 && gap <= lineH * 2.2 && Math.abs((last.x0 + last.x1) / 2 - c) <= tol
+      return gap >= 0 && gap <= lineH * 2.5 && Math.abs((last.x0 + last.x1) / 2 - c) <= tol
     })
     if (stack) stack.push(l)
     else stacks.push([l])

@@ -19,8 +19,8 @@ npm run ocr-bench -- --ocr <cv-ocr dir> --samples ocr-bench/samples/essences --f
 
 Options:
 
-- `--model <name or path>`: read with a different model, e.g.
-  `--model ../renderer/public/data/ocr/poe.traineddata` (the app's) or `eng` (stock).
+- `--model <name or path>`: read with a different model. Default: the one
+  the app ships (`renderer/public/data/ocr/poe.traineddata`); `eng` is stock English.
 - `--out <dir>`: write each misread line's image and text, to see why.
 - `--oracle`: read only the labelled tooltip box, to tell "didn't find the
   tooltip" apart from "found it, misread it".
