@@ -2,7 +2,7 @@
 // and components import Config.ts.
 import type { ShortcutAction } from '@ipc/types'
 import type { Widget } from '@/web/overlay/widgets'
-import { REGEX_LIBRARY_TYPE } from './regex-library/widget'
+import { REGEX_LIBRARY_TYPE, effectiveText } from './regex-library/widget'
 import type { RegexLibraryWidget } from './regex-library/widget'
 import { TRADE_SEARCHES_TYPE, hotkeyTarget } from './trade-searches/widget'
 import type { TradeSearchesWidget } from './trade-searches/widget'
@@ -13,7 +13,7 @@ import type { MapModsWidget } from './map-mods/widget'
 import { MAP_SCAN_TYPE, rollHotkeyTarget, scanHotkeyTarget } from './map-mods/scan'
 import type { MapScanWidget } from './map-mods/scan'
 import { isWidgetTypeOn } from './modules'
-import { ESSENCE_SCAN_TYPE, essenceHotkeyTarget } from './essence-scan/widget'
+import { ESSENCE_SCAN_TYPE, essenceHotkeyTarget, essenceOnceTarget } from './essence-scan/widget'
 import type { EssenceScanWidget } from './essence-scan/widget'
 import { LOOT_FILTER_TYPE, LOOT_FILTER_SAMPLE_TARGET, editorHotkeyTarget } from './loot-filter/widget'
 import type { LootFilterWidget } from './loot-filter/widget'
@@ -21,6 +21,8 @@ import { CAMPAIGN_TYPE, hotkeyTarget as campaignHotkeyTarget } from './campaign/
 import type { CampaignWidget } from './campaign/widget'
 import { RUN_TIMER_TYPE, hotkeyTarget as timerHotkeyTarget } from './campaign/run-timer'
 import type { RunTimerWidget } from './campaign/run-timer'
+import { FARMING_TYPE, FARMING_LOOT_TARGET } from './farming/farming'
+import type { FarmingWidget } from './farming/farming'
 
 export function wokeShortcutsFor (widget: Widget, config: { woke?: { setupDone: boolean, off: string[] }, widgets: Widget[] }): ShortcutAction[] {
   // Modules that are switched off register no hotkeys.
@@ -32,7 +34,7 @@ export function wokeShortcutsFor (widget: Widget, config: { woke?: { setupDone: 
       .filter(entry => entry.hotkey && entry.text)
       .map(entry => ({
         shortcut: entry.hotkey!,
-        action: { type: 'stash-search', text: entry.text }
+        action: { type: 'stash-search', text: effectiveText(entry) }
       }))
   }
   if (widget.wmType === TRADE_SEARCHES_TYPE) {
@@ -80,6 +82,11 @@ export function wokeShortcutsFor (widget: Widget, config: { woke?: { setupDone: 
     }
     return actions
   }
+  if (widget.wmType === FARMING_TYPE) {
+    const farming = widget as FarmingWidget
+    if (!farming.lootHotkey) return []
+    return [{ shortcut: farming.lootHotkey, action: { type: 'copy-item', target: FARMING_LOOT_TARGET } }]
+  }
   if (widget.wmType === MAP_SCAN_TYPE) {
     const scan = widget as MapScanWidget
     const actions: ShortcutAction[] = []
@@ -93,8 +100,10 @@ export function wokeShortcutsFor (widget: Widget, config: { woke?: { setupDone: 
   }
   if (widget.wmType === ESSENCE_SCAN_TYPE) {
     const scan = widget as EssenceScanWidget
-    if (!scan.hotkey) return []
-    return [{ shortcut: scan.hotkey, keepModKeys: true, action: { type: 'trigger-event', target: essenceHotkeyTarget(widget.wmId) } }]
+    const out: ShortcutAction[] = []
+    if (scan.hotkey) out.push({ shortcut: scan.hotkey, keepModKeys: true, action: { type: 'trigger-event', target: essenceHotkeyTarget(widget.wmId) } })
+    if (scan.onceHotkey) out.push({ shortcut: scan.onceHotkey, keepModKeys: true, action: { type: 'trigger-event', target: essenceOnceTarget(widget.wmId) } })
+    return out
   }
   if (widget.wmType === LOOT_FILTER_TYPE) {
     const lf = widget as LootFilterWidget

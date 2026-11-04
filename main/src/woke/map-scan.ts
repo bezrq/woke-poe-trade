@@ -4,6 +4,9 @@
 // whenever it changes, so rerolling the same map gives a new reading.
 // Used by map scan (map tooltips) and essence scan (essence monolith labels).
 import { uIOhook } from 'uiohook-napi'
+import { app } from 'electron'
+import fs from 'fs'
+import path from 'path'
 import type { ServerEvents } from '../server'
 import type { Logger } from '../RemoteLogger'
 import type { GameWindow } from '../windowing/GameWindow'
@@ -13,6 +16,40 @@ import { perfRecord } from './perf'
 
 // Stop after this long without the game focused, so it can't run forever.
 const IDLE_STOP_MS = 30 * 60 * 1000
+// Only take a screenshot once the cursor has rested this long.
+const REST_MS = 150
+
+// Files the OCR worker loads (the same ones APT's heist gem reader uses).
+// The worker swallows load errors, so they're checked up front instead.
+export const OCR_DIR = () => path.join(app.getPath('userData'), 'apt-data/cv-ocr')
+const OCR_FILES = ['tesseract-core-simd.js', 'opencv.js', 'eng.traineddata']
+
+export interface OcrCheck {
+  ok: boolean
+  windows: boolean
+  dir: string
+  missing: string[]
+  message: string | null
+}
+
+export function checkOcr (): OcrCheck {
+  const windows = process.platform === 'win32'
+  const dir = OCR_DIR()
+  let missing: string[] = []
+  try {
+    const have = new Set(fs.readdirSync(dir))
+    missing = OCR_FILES.filter(f => !have.has(f))
+  } catch {
+    missing = [...OCR_FILES]
+  }
+  let message: string | null = null
+  if (!windows) {
+    message = 'Scanning needs Windows (it uses the game screenshot API).'
+  } else if (missing.length) {
+    message = `OCR files missing: ${missing.join(', ')}. Download cv-ocr from the Awakened PoE Trade releases page and unzip it into ${dir}`
+  }
+  return { ok: !message, windows, dir, missing, message }
+}
 
 export interface MapScanReading {
   lines: string[]
@@ -32,6 +69,8 @@ export interface ScannerKind {
   // Shown in errors, e.g. 'Map scan mode'.
   name: string
   frameMs: number
+  // Stop when nothing has been read for this long (e.g. the stash was closed).
+  noReadingStopMs?: number
   // Only this much of the screen either side of the cursor is sent to the
   // vision worker, as a fraction of the window height.
   cropHalfWidth: number
@@ -44,6 +83,7 @@ export const MAP_SCAN: ScannerKind = {
   topic: 'map-scan',
   name: 'Map scan mode',
   frameMs: 150,
+  noReadingStopMs: 3 * 60 * 1000,
   cropHalfWidth: 0.6,
   canRoll: true,
   read: async (worker, image, opts) => await worker.scanMapTooltip(image, opts)
@@ -75,6 +115,11 @@ async function getWorker (): Promise<OcrWorker> {
 
 function scannerStopped (scanner: ScreenScanner) {
   runningScanners.delete(scanner)
+  releaseWorker()
+}
+
+// Shuts the worker down after a while unless a scan is using it.
+function releaseWorker () {
   if (runningScanners.size || !sharedWorker) return
   clearTimeout(idleTimer)
   idleTimer = setTimeout(() => {
@@ -90,6 +135,11 @@ export class ScreenScanner {
   private timer: ReturnType<typeof setTimeout> | undefined
   private running = false
   private mouse = { x: 0, y: 0 }
+  private movedAt = 0
+  // Cursor position of the last frame that found no tooltip; while the
+  // cursor stays there, no screenshots are taken.
+  private emptyAt: { x: number, y: number } | null = null
+  private lastReadingAt = Date.now()
   private prevSig: string | null = null
   private lastReadSig: string | null = null
   private lastActive = Date.now()
@@ -113,6 +163,7 @@ export class ScreenScanner {
   // Only listened to while scanning: mouse events arrive at polling rate.
   private readonly onMouseMove = (e: { x: number, y: number }) => {
     this.mouse = { x: e.x, y: e.y }
+    this.movedAt = Date.now()
   }
 
   get isRunning () { return this.running }
@@ -143,9 +194,8 @@ export class ScreenScanner {
   }
 
   async start (): Promise<{ running: boolean }> {
-    if (process.platform !== 'win32') {
-      throw new Error(`${this.kind.name} needs Windows (it uses the game screenshot API).`)
-    }
+    const check = checkOcr()
+    if (!check.ok) throw new Error(check.message!)
     try {
       // Every start: the shared worker may have been shut down while idle.
       this.worker = await getWorker()
@@ -159,6 +209,8 @@ export class ScreenScanner {
       this.prevSig = null
       this.lastReadSig = null
       this.lastActive = Date.now()
+      this.lastReadingAt = Date.now()
+      this.emptyAt = null
       this.failures = 0
       this.loopId++
       uIOhook.on('mousemove', this.onMouseMove)
@@ -184,6 +236,7 @@ export class ScreenScanner {
   // Forget the last reading, so the tooltip under the cursor is read again.
   reread (): { ok: true } {
     this.lastReadSig = null
+    this.emptyAt = null
     return { ok: true }
   }
 
@@ -205,6 +258,16 @@ export class ScreenScanner {
     const cursor = { x: this.mouse.x - bounds.x, y: this.mouse.y - bounds.y }
     const lock = this.lock
     if (!lock && (cursor.x < 0 || cursor.y < 0 || cursor.x >= bounds.width || cursor.y >= bounds.height)) return
+    if (this.kind.noReadingStopMs && Date.now() - this.lastReadingAt > this.kind.noReadingStopMs) {
+      this.stop(`Stopped: nothing to read for ${Math.round(this.kind.noReadingStopMs / 60000)} minutes.`)
+      return
+    }
+    if (!lock) {
+      // Wait for the cursor to rest, and skip frames while it sits where
+      // there was nothing to read.
+      if (Date.now() - this.movedAt < REST_MS) return
+      if (this.emptyAt && this.emptyAt.x === this.mouse.x && this.emptyAt.y === this.mouse.y) return
+    }
 
     try {
       const t0 = performance.now()
@@ -249,6 +312,8 @@ export class ScreenScanner {
         }
       }
       this.prevSig = res.sig
+      this.emptyAt = res.sig == null ? { ...this.mouse } : null
+      if (res.sig != null) this.lastReadingAt = Date.now()
       if (res.sig == null) {
         // Tooltip gone: hovering the same map again later reads it again.
         if (this.lastReadSig != null) {
@@ -287,6 +352,34 @@ export class ScreenScanner {
       name: 'MAIN->CLIENT::woke-event',
       payload: { topic: this.kind.topic, data }
     })
+  }
+}
+
+// Essence scan's one-shot: reads every label on screen once. Positions are
+// fractions of the game window.
+export async function readAllEssenceLabels (poeWindow: GameWindow):
+Promise<{ labels: Array<{ lines: string[], at: { x: number, y: number } }> }> {
+  const check = checkOcr()
+  if (!check.ok) throw new Error(check.message!)
+  const bounds = poeWindow.bounds
+  if (!bounds.width || !bounds.height) throw new Error('Game window not found.')
+  let worker: OcrWorker
+  try {
+    worker = await getWorker()
+  } catch (err) {
+    sharedWorker = null
+    throw err
+  }
+  try {
+    const t0 = performance.now()
+    const shot = poeWindow.screenshot()
+    const res = await worker.scanAllEssenceLabels({ width: bounds.width, height: bounds.height, data: shot })
+    perfRecord('Essence scan: whole screen', performance.now() - t0)
+    return {
+      labels: res.labels.map(l => ({ lines: l.lines, at: { x: l.at.x / bounds.width, y: l.at.y / bounds.height } }))
+    }
+  } finally {
+    releaseWorker()
   }
 }
 

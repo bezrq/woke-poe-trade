@@ -37,6 +37,8 @@ import WidgetLab from './lab/WidgetLab.vue'
 import LabEditor from './lab/lab-editor.vue'
 import { LAB_TYPE } from './lab/lab'
 import WidgetFarming from './farming/WidgetFarming.vue'
+import FarmingEditor from './farming/farming-editor.vue'
+import { FARMING_TYPE } from './farming/farming'
 import WidgetMechanics from './mechanics/WidgetMechanics.vue'
 import MechanicsEditor from './mechanics/mechanics-editor.vue'
 import { MECHANICS_TYPE } from './mechanics/widget'
@@ -90,7 +92,8 @@ const editors: Record<string, Component> = {
   [MAP_SCAN_TYPE]: MapScanEditor,
   [ESSENCE_SCAN_TYPE]: EssenceScanEditor,
   [MECHANICS_TYPE]: MechanicsEditor,
-  [LOOT_FILTER_TYPE]: LootFilterEditor
+  [LOOT_FILTER_TYPE]: LootFilterEditor,
+  [FARMING_TYPE]: FarmingEditor
 }
 
 export function wokeSettingsFor (wmType: string | undefined): Component | undefined {

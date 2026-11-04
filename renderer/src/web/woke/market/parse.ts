@@ -33,6 +33,7 @@ export function parseDenseChunks (chunks: DenseChunk[]): PriceItem[] {
             name: info.name,
             variant: typeof info.variant === 'string' ? info.variant : '',
             chaos: info.chaos,
+            gaps: graphGaps(info.graph),
             ...trendPrices(info.chaos, info.graph)
           })
         }
@@ -53,6 +54,16 @@ function trendPrices (chaos: number, graph: unknown): { d1?: number, d7?: number
     d7: chaos / today,
     ...(typeof graph[5] === 'number' && yesterday > 0 ? { d1: chaos * yesterday / today } : {})
   }
+}
+
+// poe.ninja's 7-day graph uses null for days without a price and can be
+// shorter or empty for items with little trade.
+export function graphGaps (graph: unknown): number {
+  if (!Array.isArray(graph)) return 0
+  const DAYS = 7
+  let gaps = Math.max(0, DAYS - graph.length)
+  for (const v of graph.slice(-DAYS)) if (v == null) gaps++
+  return Math.min(DAYS, gaps)
 }
 
 export function findDivinePrice (items: PriceItem[]): number | null {

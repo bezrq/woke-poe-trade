@@ -28,7 +28,7 @@ export type Confidence = 'high' | 'medium' | 'low' | 'none'
 
 export interface Insight {
   /** Listings used for the range, cheapest first, with their chaos value. */
-  kept: Array<{ id: string, chaos: number }>
+  kept: Array<{ id: string, chaos: number, weight?: number }>
   dropped: Map<string, DropReason>
   /** Cheapest trusted listing, median of the cheapest few, and the top of that window. */
   range: { low: number, fair: number, high: number } | null
@@ -63,10 +63,37 @@ function median (values: number[]): number {
   return s.length % 2 ? s[mid] : (s[mid - 1] + s[mid]) / 2
 }
 
+// How much a listing says about what the item really sells for: sellers who
+// are online and listed recently are the ones actually trading.
+const STATUS_WEIGHT: Record<InsightListing['accountStatus'], number> = { online: 1, afk: 0.7, offline: 0.4 }
+const DAY_MS = 24 * 60 * 60 * 1000
+
+export function listingWeight (l: Pick<InsightListing, 'accountStatus' | 'indexedAt'>, now: number): number {
+  let w = STATUS_WEIGHT[l.accountStatus] ?? 0.5
+  if (l.indexedAt) {
+    const age = now - Date.parse(l.indexedAt)
+    if (age > 7 * DAY_MS) w *= 0.6
+    else if (age > DAY_MS) w *= 0.8
+  }
+  return w
+}
+
+// Median where each listing counts by its weight; rows sorted by price.
+export function weightedMedian (rows: Array<{ chaos: number, weight: number }>): number {
+  const total = rows.reduce((s, r) => s + r.weight, 0)
+  if (!(total > 0)) return median(rows.map(r => r.chaos))
+  let acc = 0
+  for (const r of rows) {
+    acc += r.weight
+    if (acc >= total / 2) return r.chaos
+  }
+  return rows[rows.length - 1].chaos
+}
+
 export function buildInsight (listings: InsightListing[], opts: InsightOptions): Insight {
   const now = opts.now ?? Date.now()
   const dropped = new Map<string, DropReason>()
-  let kept: Array<{ id: string, chaos: number }> = []
+  let kept: Array<{ id: string, chaos: number, weight: number }> = []
 
   for (const l of listings) {
     if (l.isMine) { dropped.set(l.id, 'mine'); continue }
@@ -76,7 +103,7 @@ export function buildInsight (listings: InsightListing[], opts: InsightOptions):
       const age = now - Date.parse(l.indexedAt)
       if (age > STALE_MS) { dropped.set(l.id, 'stale'); continue }
     }
-    kept.push({ id: l.id, chaos })
+    kept.push({ id: l.id, chaos, weight: listingWeight(l, now) })
   }
   kept.sort((a, b) => a.chaos - b.chaos)
 
@@ -93,8 +120,9 @@ export function buildInsight (listings: InsightListing[], opts: InsightOptions):
     return { kept, dropped, range: null, suggest: null, confidence: 'none' }
   }
 
-  const window = kept.slice(0, WINDOW).map(k => k.chaos)
-  const range = { low: window[0], fair: median(window), high: window[window.length - 1] }
+  const windowRows = kept.slice(0, WINDOW)
+  const window = windowRows.map(k => k.chaos)
+  const range = { low: window[0], fair: weightedMedian(windowRows), high: window[window.length - 1] }
   const spread = range.high / range.low
 
   let confidence: Confidence

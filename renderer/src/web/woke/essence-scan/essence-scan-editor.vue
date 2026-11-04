@@ -3,6 +3,8 @@
     <div class="grid gap-2 items-center" style="grid-template-columns: auto 1fr;">
       <span>Hotkey: turn scan mode on/off</span>
       <hotkey-input v-model="hotkey" />
+      <span>Hotkey: read every essence on screen once</span>
+      <hotkey-input v-model="onceHotkey" />
     </div>
     <div>
       <div class="mb-1">Corrupt when the monolith holds any of these</div>
@@ -22,8 +24,10 @@
     <div class="text-sm" style="color: var(--w-dim);">
       Essence scan reads the label of the essence monolith under your mouse with on-screen text recognition,
       prices its essences from poe.ninja (through the Market tracker) and says whether to corrupt it.
-      A monolith with Misery, Envy, Dread or Scorn (any tier) is worth corrupting because the corrupt can turn them
-      into Horror, Hysteria, Insanity or Delirium, which only come from corrupting.
+      It compares what the monolith is worth now with an estimate of its worth after corrupting (minus a Vaal Orb),
+      and says CORRUPT only when the estimate is higher. The odds of each corrupt outcome aren't published, so the
+      estimate treats them as equally likely. Without prices it falls back to the essences ticked here: Misery, Envy,
+      Dread or Scorn can turn into Horror, Hysteria, Insanity or Delirium, which only come from corrupting.
       It only reads the screen; you still use the Remnant of Corruption yourself.
       It needs Windows and the OCR files used by APT's heist gem reader.
     </div>
@@ -48,6 +52,7 @@ export default defineComponent({
       MEDS,
       types: ESSENCE_TYPES,
       hotkey: configModelValue(() => props.configWidget, 'hotkey'),
+      onceHotkey: configModelValue(() => props.configWidget, 'onceHotkey'),
       valueAlertChaos: configModelValue(() => props.configWidget, 'valueAlertChaos'),
       isFlagged: (t: string) => flagTypes.value.includes(t),
       toggleType: (t: string) => {

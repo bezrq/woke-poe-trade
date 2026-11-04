@@ -20,7 +20,19 @@ watch(priceView, (v) => {
   try { localStorage.setItem(STORAGE_KEY, v) } catch {}
 })
 
+// Verdict card: one line by default; expanded shows notes, poe.ninja and
+// the price drivers.
+const EXPANDED_KEY = 'woke.priceVerdictExpanded'
+function readExpanded (): boolean {
+  try { return localStorage.getItem(EXPANDED_KEY) === '1' } catch { return false }
+}
+export const verdictExpanded = shallowRef(readExpanded())
+watch(verdictExpanded, (v) => {
+  try { localStorage.setItem(EXPANDED_KEY, v ? '1' : '0') } catch {}
+})
+
 window.addEventListener('storage', (e) => {
+  if (e.key === EXPANDED_KEY) verdictExpanded.value = e.newValue === '1'
   if (e.key === STORAGE_KEY && (e.newValue === 'classic' || e.newValue === 'improved')) {
     priceView.value = e.newValue
   }

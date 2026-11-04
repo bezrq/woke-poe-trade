@@ -1,9 +1,11 @@
 import { ITEMS_ITERATOR, STATS_ITERATOR } from '@/assets/data'
-import { buildMapRegex } from './regex'
+import { buildMapRegex, buildTrimmedMapRegex } from './regex'
 import type { MapRegexResult } from './regex'
+import { modPriority } from './rules'
 import type { MapModProfile } from './rules'
 
 let areaMods: string[] | null = null
+let t17Mods: Set<string> | null = null
 let mapNames: string[] | null = null
 
 // Every map mod line (all wordings), from APT's stat data.
@@ -16,6 +18,17 @@ export function allAreaMods (): string[] {
   }
   areaMods = [...out].sort((a, b) => a.localeCompare(b))
   return areaMods
+}
+
+// Mods that only roll on tier 17 maps.
+export function tier17Mods (): Set<string> {
+  if (t17Mods) return t17Mods
+  t17Mods = new Set()
+  for (const stat of STATS_ITERATOR('AreaMods')) {
+    if (stat.fromAreaMods !== 'ubermap_exclusive') continue
+    for (const m of stat.matchers) t17Mods.add(m.string)
+  }
+  return t17Mods
 }
 
 // Map names ("Strand Map"), so mod tokens don't also match a map's name.
@@ -37,5 +50,8 @@ export function profileRegex (profile: MapModProfile): MapRegexResult {
     if (r === 'deadly') avoid.push(m)
     else if (r === 'good') want.push(m)
   }
-  return buildMapRegex({ avoid, want, mins: profile.mins, highlight: profile.highlight }, allAreaMods(), allMapNames())
+  const input = { avoid, want, mins: profile.mins, highlight: profile.highlight, minsAny: profile.minsAny }
+  return profile.autoTrim
+    ? buildTrimmedMapRegex(input, allAreaMods(), allMapNames(), modPriority)
+    : buildMapRegex(input, allAreaMods(), allMapNames())
 }

@@ -6,6 +6,9 @@
         <WButton size="sm" :variant="running ? 'default' : 'primary'" @click="toggle">{{ running ? 'Stop' : 'Start' }}</WButton>
       </template>
       <div v-if="message" class="w-warn text-xs px-3 pt-2">{{ message }}</div>
+      <div v-else-if="setupProblem" class="w-warn text-xs px-3 pt-2" :title="setupProblem">
+        <i class="fas fa-exclamation-triangle" /> {{ setupProblem }}
+      </div>
       <div v-if="rolling" :class="$style.roll">
         <div class="flex items-center gap-2">
           <i class="fas fa-dice" />
@@ -61,6 +64,11 @@
           <div v-if="current.flash" class="w-up text-xs font-semibold">
             {{ current.rollN ? `Stop: reroll ${current.rollN} passes.` : 'This reroll passes. Stop here.' }}
           </div>
+          <div v-if="current.unsure" class="w-warn text-xs">
+            Couldn't read {{ current.unsure }} line{{ current.unsure > 1 ? 's' : '' }} clearly.
+            <template v-if="exactKey">Press <WKbd :keys="exactKey" /> for an exact read.</template>
+            <template v-else>Use the Map mods hotkey for an exact read.</template>
+          </div>
           <div v-for="m in current.flagged" :key="m.matcher" class="flex items-center gap-1 text-xs">
             <span :class="[$style.dot, $style[m.rating]]" /><span>{{ m.label }}</span>
           </div>
@@ -108,18 +116,22 @@ if (props.config.wmFlags[0] === 'uninitialized') {
 }
 normalizeMapScanWidget(props.config)
 
-const VERDICT_LABEL: Record<Verdict, string> = { skip: 'SKIP', careful: 'CARE', run: 'RUN' }
+// 'unsure': would be a run, but some lines were read with low confidence.
+type ShownVerdict = Verdict | 'unsure'
+const VERDICT_LABEL: Record<ShownVerdict, string> = { skip: 'SKIP', careful: 'CARE', run: 'RUN', unsure: '?' }
 
 interface Entry {
   id: number
   at: { x: number, y: number }
-  verdict: Verdict
+  verdict: ShownVerdict
   juice: number
   label: string
   rerolls: number
   flash: boolean
   // Reroll number while rolling.
   rollN?: number
+  // Number of lines read with low confidence; a "run" isn't trusted then.
+  unsure: number
   flagged: Array<{ matcher: string, label: string, rating: ModRating }>
 }
 
@@ -138,13 +150,19 @@ const tally = computed(() => {
   const t = { run: 0, careful: 0, skip: 0 }
   for (const e of entries.value) {
     if (e.verdict === 'run') t.run++
-    else if (e.verdict === 'careful') t.careful++
+    else if (e.verdict === 'careful' || e.verdict === 'unsure') t.careful++
     else t.skip++
   }
   return t
 })
 
 const mapMods = computed(() => findMapModsConfig())
+const exactKey = computed(() => mapMods.value?.hotkey ?? null)
+
+const setupProblem = shallowRef<string | null>(null)
+hostRequest<{ ok: boolean, message: string | null }>('ocr-check', null)
+  .then(c => { setupProblem.value = c.ok ? null : c.message })
+  .catch(() => {})
 const profileName = computed(() => mapMods.value ? activeProfile(mapMods.value).name : 'default')
 
 const badgeStyle = computed(() => {
@@ -190,11 +208,12 @@ function onReading (reading: Reading) {
   const entry: Entry = {
     id: nextId++,
     at: prev?.at ?? reading.at,
-    verdict: verdict.verdict,
+    verdict: verdict.verdict === 'run' && scanned.weak.length ? 'unsure' : verdict.verdict,
     juice: juice.score,
     label,
     rerolls: prev ? prev.rerolls + 1 : 0,
-    flash: props.config.alertOnPass && passes,
+    unsure: scanned.weak.length,
+    flash: Boolean(props.config.alertOnPass && passes && !scanned.weak.length),
     rollN,
     flagged
   }
@@ -321,6 +340,8 @@ onUnmounted(() => {
   padding: 0 4px;
 }
 .run .tag { background: var(--w-up); }
+.unsure .tag { background: var(--w-warn); }
+.marker.unsure { border-color: var(--w-warn); border-style: dashed; }
 .careful .tag { background: var(--w-warn); }
 .skip .tag { background: var(--w-down); }
 

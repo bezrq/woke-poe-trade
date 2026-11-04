@@ -103,6 +103,10 @@
                   </div>
                   <div v-if="sel.excluded" class="text-xs w-dim" style="padding: 6px var(--w-pad) 0;">{{ sel.excluded }} drop(s) left out of the loot<template v-if="config.plannedRuns"> (rarer than 1 in {{ config.plannedRuns }} runs, or switched off)</template>.</div>
                   <div v-if="sel.entryMissing.length" class="text-xs" style="padding: 6px var(--w-pad) 0; color: var(--w-warn);">No price for {{ sel.entryMissing.join(', ') }}, so profit is hidden. Tick "I own the entry items" to count it as free.</div>
+                  <div class="text-xs w-faint" style="padding: 6px var(--w-pad) 0;">
+                    <template v-if="sel.kills >= OWN_RATE_KILLS">Using your own drop rates from {{ sel.kills }} logged kills.</template>
+                    <template v-else-if="sel.boss.source">Rates: {{ sel.boss.source.label }}. Your own rates take over after {{ OWN_RATE_KILLS }} logged kills ({{ sel.kills }} so far).</template>
+                  </div>
                   <div v-if="sel.unrated" class="text-xs w-faint" style="padding: 6px var(--w-pad);">"?" = no known drop rate; counted as 0. Log kills or type a rate under Rates &amp; sources.</div>
                   <div v-if="sel.unpriced" class="text-xs" style="padding: 0 var(--w-pad) 6px; color: var(--w-warn);">{{ sel.unpriced }} drop(s) have no poe.ninja price and count as 0.</div>
                 </template>
@@ -235,6 +239,7 @@ import { usePriceIndex } from '../market/price-index'
 import { BOSSES } from './bosses'
 import { evaluateBoss, formatRunTime, luck, parseRunTime, priceResolver, unidentifiedTradeUrl } from './calc'
 import type { BossResult, DropRow, KillRecord, PriceMode, RateSource } from './calc'
+import { OWN_RATE_KILLS } from './calc'
 
 const props = defineProps<{
   config: BossRunsWidget

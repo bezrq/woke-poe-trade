@@ -15,6 +15,9 @@ export interface ScannedMap {
     divCards?: number
   }
   mods: Array<{ matcher: string, roll?: number }>
+  // Lines that look like map mods but matched weakly or not at all, so the
+  // verdict can't be trusted as a pass.
+  weak: string[]
 }
 
 const PROP_PATTERNS: Array<[keyof ScannedMap['props'], RegExp]> = [
@@ -61,6 +64,10 @@ export function similarity (a: string, b: string): number {
 }
 
 const MIN_SIMILARITY = 0.8
+// Below this a match counts as a guess.
+const SURE_SIMILARITY = 0.9
+// Words that start map mod lines; such a line with no match is suspicious.
+const MOD_LIKE = /^(monsters?|players?|rare|unique|area|buffs|auras|debuffs|the maven|#% (more|less|increased|reduced))/
 
 export class TooltipMatcher {
   private readonly known: Array<{ matcher: string, norm: string }>
@@ -69,7 +76,7 @@ export class TooltipMatcher {
     this.known = matchers.map(m => ({ matcher: m, norm: normalize(m) }))
   }
 
-  matchLine (line: string): { matcher: string, roll?: number } | null {
+  matchLine (line: string): { matcher: string, roll?: number, score: number } | null {
     const norm = normalize(line)
     if (norm.length < 8) return null
     let best: { matcher: string, score: number } | null = null
@@ -83,12 +90,12 @@ export class TooltipMatcher {
     }
     if (!best) return null
     const num = /(\d+)/.exec(line)
-    return { matcher: best.matcher, roll: num ? Number(num[1]) : undefined }
+    return { matcher: best.matcher, roll: num ? Number(num[1]) : undefined, score: best.score }
   }
 
   // Null when the lines don't look like a map tooltip.
   parse (lines: string[]): ScannedMap | null {
-    const out: ScannedMap = { props: {}, mods: [] }
+    const out: ScannedMap = { props: {}, mods: [], weak: [] }
     let isMap = false
     const seen = new Set<string>()
     for (const line of lines) {
@@ -111,7 +118,11 @@ export class TooltipMatcher {
       const mod = this.matchLine(line)
       if (mod && !seen.has(mod.matcher)) {
         seen.add(mod.matcher)
-        out.mods.push(mod)
+        out.mods.push({ matcher: mod.matcher, roll: mod.roll })
+      }
+      const norm = normalize(line)
+      if ((mod && mod.score < SURE_SIMILARITY) || (!mod && norm.length >= 15 && MOD_LIKE.test(norm))) {
+        out.weak.push(line)
       }
     }
     if (!isMap && !out.mods.length) return null

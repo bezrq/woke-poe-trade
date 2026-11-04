@@ -14,13 +14,22 @@
           <span class="w-dim text-xs">under {{ LOW_VALUE }}c</span>
         </template>
         <template v-else>
-          <span class="w-dim">Worth about</span>
+          <span class="w-dim" title="What it is likely to sell for: the middle of the cheapest trusted listings, counting online and recent sellers more">Likely sells for</span>
           <w-price :class="$style.headline" :chaos="insight.range.fair" :divine="divine" />
+        </template>
+        <template v-if="!expanded">
+          <span class="w-faint text-xs whitespace-nowrap">
+            <w-price :chaos="insight.range.low" :divine="divine" :unit="rangeUnit" /> – <w-price :chaos="insight.range.high" :divine="divine" :unit="rangeUnit" />
+          </span>
         </template>
         <span class="flex-1" />
         <span class="w-dim text-xs" :title="droppedTitle">{{ countText }}</span>
+        <button type="button" class="w-icon-btn" :title="expanded ? 'Show less' : 'Show listing notes, poe.ninja and what drives the price'"
+          @click="verdictExpanded = !verdictExpanded">
+          <i class="fas text-xs" :class="expanded ? 'fa-chevron-up' : 'fa-chevron-down'" />
+        </button>
       </div>
-      <div :class="$style.row" class="text-xs">
+      <div v-if="expanded" :class="$style.row" class="text-xs">
         <span class="w-dim">Range</span>
         <w-price :chaos="insight.range.low" :divine="divine" :unit="rangeUnit" />
         <span class="w-faint">–</span>
@@ -28,7 +37,7 @@
         <span class="flex-1" />
         <ninja-line v-if="ninjaChaos != null" :chaos="ninjaChaos" :divine="divine" :url="ninjaUrl" :fair="insight.range.fair" />
       </div>
-      <div v-if="!lowValue && notes.length" :class="$style.row">
+      <div v-if="expanded && !lowValue && notes.length" :class="$style.row">
         <button v-for="n in notes" :key="n.key" type="button" :class="$style.note"
           :title="'Copy the listing note: ' + n.text" @click="copy(n)">
           <span class="w-dim">{{ n.label }}</span>
@@ -46,6 +55,7 @@ import { usePoeninja } from '@/web/background/Prices'
 import { getDetailsId } from '@/web/price-check/trends/getDetailsId'
 import { WPrice } from '../ui'
 import NinjaLine from './NinjaLine.vue'
+import { verdictExpanded } from './view'
 import { DROP_LABEL, DropReason, Insight, Confidence, notePrice, noteText } from './insight'
 
 const props = defineProps<{
@@ -57,6 +67,7 @@ const props = defineProps<{
 }>()
 
 const LOW_VALUE = 3
+const expanded = computed(() => verdictExpanded.value)
 
 const CONFIDENCE_LABEL: Record<Confidence, string> = { high: 'SOLID', medium: 'FAIR', low: 'THIN', none: 'NO DATA' }
 const CONFIDENCE_HINT: Record<Confidence, string> = {
@@ -100,7 +111,7 @@ const emptyText = computed(() => {
 const countText = computed(() => {
   const used = props.insight.kept.length
   const skipped = props.insight.dropped.size
-  return skipped ? `${used} used · ${skipped} ignored` : `${used} used`
+  return skipped ? `${used} trusted · ${skipped} ignored` : `${used} trusted`
 })
 
 const droppedTitle = computed(() => {

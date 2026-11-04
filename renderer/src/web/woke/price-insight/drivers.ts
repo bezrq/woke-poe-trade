@@ -10,6 +10,8 @@ import { shallowRef, watch } from 'vue'
 import type { ItemFilters, FilterOrGroup, StatFilter } from '@/web/price-check/filters/interfaces'
 import { createTradeRequest, requestTradeResultList, requestResults } from '@/web/price-check/trade/pathofexile-trade'
 import { AppConfig } from '@/web/Config'
+import { RATE_LIMIT_RULES } from '@/web/price-check/trade/common'
+import { RateLimiter } from '@/web/price-check/trade/RateLimiter'
 import { buildInsight, InsightOptions, Insight } from './insight'
 
 // Matched case-insensitively as a substring of the stat's reference text,
@@ -91,6 +93,36 @@ function cloneStats (stats: FilterOrGroup[]): FilterOrGroup[] {
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
 
 export interface PricedSearch { total: number, insight: Insight }
+
+// Search budget right now: how many searches APT's limiter would allow
+// without queueing, and how long `count` more would have to wait.
+// `_tick` only lets a caller re-run this on a timer (the limiter's state
+// changes with time, not through Vue reactivity).
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export function searchBudget (count: number, _tick?: number): { left: number, waitMs: number } {
+  const limiters = Array.from(RATE_LIMIT_RULES.SEARCH)
+  const left = limiters.length ? Math.min(...limiters.map(l => l.available)) : 0
+  const waitMs = RateLimiter.estimateTime(count, limiters)
+  return { left, waitMs }
+}
+
+// Measured drivers per search, for this session, so measuring the same
+// item twice costs nothing.
+const driverCache = new Map<string, DriverResult[]>()
+const ladderCache = new Map<string, LadderResult[]>()
+
+export function searchKey (filters: ItemFilters, stats: FilterOrGroup[], extra: unknown): string {
+  return JSON.stringify([filters.trade.league, createTradeRequest(filters, stats), extra])
+}
+
+export function cachedDrivers (key: string) { return driverCache.get(key) }
+export function cacheDrivers (key: string, v: DriverResult[]) { driverCache.set(key, v); trim(driverCache) }
+export function cachedLadder (key: string) { return ladderCache.get(key) }
+export function cacheLadder (key: string, v: LadderResult[]) { ladderCache.set(key, v); trim(ladderCache) }
+
+function trim (m: Map<string, unknown>) {
+  while (m.size > 50) m.delete(m.keys().next().value as string)
+}
 
 /**
  * One search plus one page of listings, turned into an insight. Waits and
