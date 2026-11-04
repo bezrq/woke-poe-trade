@@ -14,12 +14,14 @@ import { REGEX_LIBRARY_TYPE } from './regex-library/widget'
 import WidgetTradeSearches from './trade-searches/WidgetTradeSearches.vue'
 import TradeSearchesEditor from './trade-searches/trade-searches-editor.vue'
 import { TRADE_SEARCHES_TYPE } from './trade-searches/widget'
+import WidgetMarketTracker from './market/WidgetMarketTracker.vue'
 
 type WidgetComponent = Component & { widget: WidgetSpec }
 
 export const wokeWidgets: WidgetComponent[] = [
   WidgetRegexLibrary as unknown as WidgetComponent,
-  WidgetTradeSearches as unknown as WidgetComponent
+  WidgetTradeSearches as unknown as WidgetComponent,
+  WidgetMarketTracker as unknown as WidgetComponent
 ]
 
 const editors: Record<string, Component> = {

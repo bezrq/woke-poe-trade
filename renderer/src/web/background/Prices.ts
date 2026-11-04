@@ -2,6 +2,7 @@ import { shallowRef, watch, readonly } from 'vue'
 import { createGlobalState } from '@vueuse/core'
 import { Host } from '@/web/background/IPC'
 import { useLeagues } from './Leagues'
+import { emitWokePricesLoaded } from '@/web/woke/market/hook'
 
 interface NinjaDenseInfo {
   chaos: number
@@ -57,6 +58,7 @@ export const usePoeninja = createGlobalState(() => {
       const jsonBlob = await response.text()
 
       PRICES_DB = splitJsonBlob(jsonBlob)
+      emitWokePricesLoaded(league.id, PRICES_DB)
       const divine = findPriceByQuery({ ns: 'ITEM', name: 'Divine Orb', variant: undefined })
       if (divine && divine.chaos >= 30) {
         xchgRate.value = divine.chaos
