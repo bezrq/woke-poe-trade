@@ -3,7 +3,10 @@
     <woke-map-strip :item="item" class="mb-2" />
     <filter-name
       :filters="itemFilters"
-      :item="item" />
+      :item="item">
+      <woke-dust-chip v-if="item.dustEquivalent" :amount="item.dustEquivalent" />
+    </filter-name>
+    <woke-roll-presets :stats="itemStats" @apply="searchAfterPreset" />
     <price-prediction v-if="showPredictedPrice" class="mb-4"
       :item="item" />
     <price-trend v-else
@@ -42,7 +45,6 @@
       {{ t('item.complexity_hint') }}
     </p>
     <stack-value :filters="itemFilters" :item="item"/>
-    <dust-value v-if="item.dustEquivalent" :item="item"/>
     <div v-if="showSupportLinks" class="mt-auto border border-dashed p-2">
       <div class="mb-1">{{ t('Support development on') }} <a href="https://patreon.com/awakened_poe_trade" class="inline-flex align-middle animate__animated animate__fadeInRight" target="_blank"><img class="inline h-5" src="/images/Patreon.svg"></a></div>
       <i18n-t keypath="app.thanks_3rd_party" tag="div">
@@ -66,7 +68,8 @@ import FiltersBlock from './filters/FiltersBlock.vue'
 import { createPresets } from './filters/create-presets'
 import PricePrediction from './price-prediction/PricePrediction.vue'
 import StackValue from './expected-value/StackValue.vue'
-import DustValue from './expected-value/DustValue.vue'
+import WokeDustChip from '@/web/woke/price-insight/DustChip.vue'
+import WokeRollPresets from '@/web/woke/price-insight/RollPresets.vue'
 import FilterName from './filters/FilterName.vue'
 import WokeMapStrip from '@/web/woke/map-mods/MapModStrip.vue'
 import { CATEGORY_TO_TRADE_ID, createTradeRequest } from './trade/pathofexile-trade'
@@ -81,6 +84,8 @@ export default defineComponent({
   name: 'CheckedItem',
   components: {
     WokeMapStrip,
+    WokeDustChip,
+    WokeRollPresets,
     PricePrediction,
     TradeListing,
     TradeBulk,
@@ -88,8 +93,7 @@ export default defineComponent({
     PriceTrend,
     FiltersBlock,
     FilterName,
-    StackValue,
-    DustValue
+    StackValue
   },
   props: {
     item: {
@@ -262,6 +266,10 @@ export default defineComponent({
       },
       resetTradeResults () {
         doSearch.value = false
+      },
+      searchAfterPreset () {
+        // stat edits reset doSearch first (watcher above), then search with the new ranges
+        nextTick(() => { doSearch.value = true })
       }
     }
   }
