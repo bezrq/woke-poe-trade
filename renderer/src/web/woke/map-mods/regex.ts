@@ -78,10 +78,19 @@ function usable (token: string): boolean {
   return token.length >= 3 && token.trim() === token && !/["|!\\.*?()[\]{}^$]/.test(token)
 }
 
+// Joins two words (or the two lines of a mod) by a single letter: "m h"
+// from "from hits" also matches a rare map's random name ("Grim Hollow") by
+// chance, so such a token is only used when a mod has nothing better.
+function joinsByLetter (token: string): boolean {
+  const words = token.split(/[ \n]/)
+  return words.length > 1 && words.some(word => word.length < 2)
+}
+
 // Shortest substring of `target` found in none of `others`.
 export function uniqueToken (target: string, others: string[]): string | null {
   const segs = segments(target)
   const hay = others.map(o => o.toLowerCase())
+  let fallback: string | null = null
   for (let len = 3; len <= 40; len++) {
     const found: string[] = []
     for (const seg of segs) {
@@ -91,12 +100,12 @@ export function uniqueToken (target: string, others: string[]): string | null {
         if (!hay.some(h => h.includes(tok))) found.push(tok)
       }
     }
-    if (found.length) {
-      found.sort()
-      return found[0]
-    }
+    found.sort()
+    const safe = found.find(t => !joinsByLetter(t))
+    if (safe) return safe
+    fallback ??= found[0] ?? null
   }
-  return null
+  return fallback
 }
 
 // Regex for whole numbers >= n (n in 1..999), e.g. 80 -> ([89][0-9]|[1-9][0-9][0-9]).

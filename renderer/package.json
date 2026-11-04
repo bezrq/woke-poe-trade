@@ -5,7 +5,9 @@
   "scripts": {
     "dev": "vite",
     "lint": "eslint --ext .ts,.vue src",
-    "build": "vue-tsc --noEmit && vite build"
+    "build": "vue-tsc --noEmit && vite build",
+    "test": "vitest run",
+    "typecheck:test": "vue-tsc -p test/tsconfig.json"
   },
   "dependencies": {
     "@fontsource/ibm-plex-sans": "^5.3.0",
