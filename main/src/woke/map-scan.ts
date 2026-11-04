@@ -115,7 +115,36 @@ async function getWorker (): Promise<OcrWorker> {
 
 function scannerStopped (scanner: ScreenScanner) {
   runningScanners.delete(scanner)
+  releaseOcr(scanner)
   releaseWorker()
+}
+
+// One scan mode reads the screen at a time. Starting another pauses the
+// current one, which carries on by itself once the newer one stops.
+let ocrOwner: ScreenScanner | null = null
+const waiting: ScreenScanner[] = []
+
+function claimOcr (scanner: ScreenScanner) {
+  if (ocrOwner === scanner) return
+  const i = waiting.indexOf(scanner)
+  if (i >= 0) waiting.splice(i, 1)
+  if (ocrOwner) {
+    waiting.push(ocrOwner)
+    ocrOwner.pause(scanner.name)
+  }
+  ocrOwner = scanner
+}
+
+function releaseOcr (scanner: ScreenScanner) {
+  const i = waiting.indexOf(scanner)
+  if (i >= 0) waiting.splice(i, 1)
+  if (ocrOwner !== scanner) return
+  ocrOwner = null
+  const next = waiting.pop()
+  if (next) {
+    ocrOwner = next
+    next.resume()
+  }
 }
 
 // Shuts the worker down after a while unless a scan is using it.
@@ -150,6 +179,8 @@ export class ScreenScanner {
   // Rolling mode: once the tooltip is found, only `lock` (window pixels) is
   // sent to the worker, and readings are pinned to the cursor at lock time.
   private rolling = false
+  // Another scan mode has the screen (see claimOcr).
+  private paused = false
   private lock: Rect | null = null
   private lockAt: { x: number, y: number } | null = null
 
@@ -168,6 +199,37 @@ export class ScreenScanner {
 
   get isRunning () { return this.running }
   get isRolling () { return this.rolling }
+  get isPaused () { return this.paused }
+  get name () { return this.kind.name }
+
+  pause (by: string) {
+    if (!this.running || this.paused) return
+    this.paused = true
+    this.unlock()
+    this.send({ type: 'clear' })
+    this.emitState(`Paused while ${by} is on. Resumes when it stops.`)
+  }
+
+  resume () {
+    if (!this.running || !this.paused) return
+    this.paused = false
+    this.fresh()
+    this.emitState()
+  }
+
+  // Forget what was on screen: read from scratch, where the cursor is now.
+  private fresh () {
+    this.prevSig = null
+    this.lastReadSig = null
+    this.lastActive = Date.now()
+    this.lastReadingAt = Date.now()
+    this.emptyAt = null
+    this.failures = 0
+    // mousemove only arrives once the cursor moves, so a scan started
+    // while resting on a map would otherwise read nothing.
+    this.mouse = cursorInScreenPixels()
+    this.movedAt = 0
+  }
 
   // Toggles rolling mode, starting the scanner if it's off.
   async roll (): Promise<{ running: boolean, rolling: boolean }> {
@@ -205,20 +267,19 @@ export class ScreenScanner {
     }
     if (!this.running) {
       this.running = true
+      this.paused = false
       runningScanners.add(this)
-      this.prevSig = null
-      this.lastReadSig = null
-      this.lastActive = Date.now()
-      this.lastReadingAt = Date.now()
-      this.emptyAt = null
-      this.failures = 0
-      // Start from where the cursor is now: mousemove only arrives once it
-      // moves, so a scan started while resting on a map would read nothing.
-      this.mouse = cursorInScreenPixels()
-      this.movedAt = 0
+      this.fresh()
       this.loopId++
       uIOhook.on('mousemove', this.onMouseMove)
+      claimOcr(this)
       this.schedule()
+      this.emitState()
+    } else if (this.paused) {
+      // Started again while paused: take the screen back.
+      claimOcr(this)
+      this.paused = false
+      this.fresh()
       this.emitState()
     }
     return { running: true }
@@ -227,6 +288,7 @@ export class ScreenScanner {
   stop (reason?: string): { running: boolean } {
     if (this.running) {
       this.running = false
+      this.paused = false
       this.unlock()
       this.loopId++
       clearTimeout(this.timer)
@@ -252,6 +314,7 @@ export class ScreenScanner {
   }
 
   private async frame () {
+    if (this.paused) return
     if (!this.poeWindow.isActive) {
       if (Date.now() - this.lastActive > IDLE_STOP_MS) this.stop('Stopped after 30 minutes away from the game.')
       return
@@ -348,7 +411,7 @@ export class ScreenScanner {
   }
 
   private emitState (message?: string) {
-    this.send({ type: 'state', running: this.running, rolling: this.rolling, locked: this.lock != null, message })
+    this.send({ type: 'state', running: this.running, paused: this.paused, rolling: this.rolling, locked: this.lock != null, message })
   }
 
   private send (data: unknown) {
