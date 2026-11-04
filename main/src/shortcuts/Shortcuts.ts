@@ -175,7 +175,17 @@ export class Shortcuts {
 
   private getOcrWorker () {
     const language = this.ocrLanguage
-    const current = this.ocrWorker ??= OcrWorker.create().then(async w => { await w.updateOptions(language); return w })
+    if (!this.ocrWorker) {
+      const starting = OcrWorker.create().then(async w => { await w.updateOptions(language); return w })
+      // A worker that failed to start (OCR files not downloaded yet, say) is
+      // tried again on the next press instead of failing until it idles out.
+      starting.catch((err) => {
+        this.logger.write(`error [Shortcuts] Heist gem OCR failed to start: ${(err as Error)?.message ?? err}`)
+        if (this.ocrWorker === starting) this.ocrWorker = null
+      })
+      this.ocrWorker = starting
+    }
+    const current = this.ocrWorker
     // woke: free it once heist gems haven't been read for a while.
     clearTimeout(this.ocrIdleTimer)
     this.ocrIdleTimer = setTimeout(() => {
