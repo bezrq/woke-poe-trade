@@ -61,6 +61,9 @@ export class Shortcuts {
     this.server.onEventAnyClient('CLIENT->MAIN::user-action', (e) => {
       if (e.action === 'stash-search') {
         stashSearch(e.text, this.clipboard, this.overlay)
+      } else if (e.action === 'paste-in-chat') {
+        this.overlay.assertGameActive()
+        typeInChat(e.text, true, this.clipboard)
       }
     })
 

@@ -4,6 +4,7 @@ import type { ServerEvents } from '../server'
 import type { Logger } from '../RemoteLogger'
 import type { GameWindow } from '../windowing/GameWindow'
 import { listBuilds, openBuild, readBuild, showBuild } from './pob-builds'
+import { listFilters, readFilter, writeFilter, showFilterFolder } from './loot-filter'
 import { ScreenScanner, MAP_SCAN, ESSENCE_SCAN } from './map-scan'
 import { WokeHoverTracker } from './hover'
 import type { OverlayWindow } from '../windowing/OverlayWindow'
@@ -16,6 +17,10 @@ const handlers: Record<string, Handler> = {
   'pob-read': readBuild,
   'pob-open': openBuild,
   'pob-show': showBuild,
+  'filter-list': listFilters,
+  'filter-read': readFilter,
+  'filter-write': writeFilter,
+  'filter-folder': showFilterFolder,
   'perf-stats': async () => perfSnapshot()
 }
 

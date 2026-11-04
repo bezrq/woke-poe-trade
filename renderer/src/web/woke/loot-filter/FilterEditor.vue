@@ -1,0 +1,388 @@
+<template>
+  <WPanel :title="config.wmTitle || 'Loot filter'" width="68rem" max-height="85vh" :scroll="false">
+    <template #actions>
+      <button class="w-icon-btn" title="Close" @click="emit('close')"><i class="fas fa-times" /></button>
+    </template>
+    <template #toolbar>
+      <WSelect :model-value="config.sourceName" :options="fileOptions" style="max-width: 20rem;" @update:model-value="pickSource" />
+      <WButton size="sm" variant="ghost" icon="fas fa-sync" title="Reload the file list and the filter" @click="refresh" />
+      <WField v-model="search" type="search" icon="fas fa-search" placeholder="Find an item or base type" style="width: 16rem;" />
+      <span class="grow" />
+      <WTabs v-model="tab" :options="tabOptions" />
+    </template>
+    <template v-if="banner" #meta>
+      <span style="color: var(--w-warn);"><i class="fas fa-info-circle" /> {{ banner }}</span>
+    </template>
+
+    <WEmpty v-if="!store.doc.value" :icon="store.loading.value ? 'fas fa-spinner fa-spin' : 'fas fa-filter'">
+      <template v-if="store.loading.value">Reading the filter…</template>
+      <template v-else-if="store.error.value">{{ store.error.value }}</template>
+      <template v-else>Pick a NeverSink filter from your filter folder above. Download one from FilterBlade or NeverSink's GitHub first if the list is empty.</template>
+    </WEmpty>
+
+    <div v-else-if="tab === 'rules'" :class="$style.layout">
+      <!-- groups -->
+      <div :class="$style.tree" class="w-scroll">
+        <template v-for="sec in tree" :key="sec.title">
+          <div class="w-group-label w-trunc" :title="sec.title">{{ sec.title }}</div>
+          <WListItem v-for="g in sec.groups" :key="g.type" :active="g.type === selType" @select="selectGroup(g.type)">
+            <span class="flex justify-between gap-2 w-full min-w-0" :class="{ [$style.off]: g.hidden }">
+              <span class="w-trunc">{{ shortName(g) }}</span>
+              <span class="w-faint text-xs">{{ g.tiers.length }}</span>
+            </span>
+          </WListItem>
+        </template>
+      </div>
+
+      <!-- tiers or search results -->
+      <div :class="$style.mid" class="w-scroll">
+        <template v-if="search.trim().length >= 2">
+          <div class="w-group-label">Search results</div>
+          <WEmpty v-if="!results.length" icon="fas fa-search">No rule lists an item matching "{{ search }}".</WEmpty>
+          <WListItem v-for="r in results" :key="`${r.base}|${r.type}|${r.tier}`" @select="jumpTo(r.type, r.tier, r.base)">
+            <span class="flex items-center gap-2 w-full min-w-0">
+              <LabelPreview :text="r.base" :actions="r.block.actions" :visibility="r.block.visibility" :extras="false" />
+              <span class="grow" />
+              <span class="w-dim text-xs w-trunc">{{ groupName(r.type) }} › {{ r.tier }}</span>
+            </span>
+          </WListItem>
+        </template>
+
+        <template v-else-if="group">
+          <div class="flex items-center gap-2" :class="$style.groupHead">
+            <span :class="$style.groupTitle" class="w-trunc">{{ groupName(group.type) }}</span>
+            <span class="w-faint text-xs">{{ group.tiers.length }} tiers · {{ group.blockCount }} rules</span>
+            <span class="grow" />
+            <WButton v-if="!isOwnGroup" size="sm" variant="ghost" @click="toggleGroup">{{ groupHiddenByMe ? 'Show group again' : 'Hide whole group' }}</WButton>
+          </div>
+          <button v-for="t in group.tiers" :key="t.tier" :class="[$style.tierRow, { [$style.active]: t.tier === selTier, [$style.off]: t.disabled }]" @click="selTier = t.tier; movingBase = null">
+            <span :class="$style.tierName" :title="t.tier">{{ t.tier.startsWith('#') ? 'rule' : t.tier }}</span>
+            <LabelPreview :text="t.bases[0] ?? previewName(t)" :actions="firstLive(t).actions" :visibility="t.disabled ? 'Hide' : t.visibility" />
+            <span :class="$style.bases" class="w-trunc">
+              <template v-if="t.bases.length">{{ t.bases.slice(0, 5).join(' · ') }}<span v-if="t.bases.length > 5" class="w-faint"> · +{{ t.bases.length - 5 }}</span></template>
+              <span v-else class="w-faint">{{ conditionSummary(t) }}</span>
+            </span>
+          </button>
+        </template>
+      </div>
+
+      <!-- selected tier -->
+      <div :class="$style.side" class="w-scroll">
+        <template v-if="tier">
+          <div :class="$style.groupTitle">{{ tier.tier.startsWith('#') ? 'Rule' : tier.tier }}</div>
+          <div class="text-xs w-faint">{{ tier.blocks.length > 1 ? `${tier.blocks.length} rules` : `line ${tier.blocks[0].line}` }}<span v-if="tier.disabled"> · commented out in the filter</span></div>
+          <StyleEditor v-if="!tier.tier.startsWith('#')" :look="readStyle(firstLive(tier).actions)" :visibility="firstLive(tier).visibility"
+            :preview-text="tier.bases[0] ?? previewName(tier)" :copy-from="copyFrom"
+            @patch="patchTier" @visibility="setTierVisibility" />
+          <div v-else class="text-xs w-dim">This rule has no $tier tag, so it can't be edited by tier.</div>
+
+          <template v-if="tier.bases.length && !isOwnGroup">
+            <div class="w-group-label" style="padding: 8px 0 2px;">Items in this tier</div>
+            <div class="flex flex-wrap gap-1">
+              <WChip v-for="b in tier.bases" :key="b" clickable :active="b === movingBase" @click="movingBase = movingBase === b ? null : b">{{ b }}</WChip>
+            </div>
+            <div v-if="movingBase" class="flex items-center gap-2 text-sm" style="margin-top: 6px;">
+              <span class="w-dim">Move {{ movingBase }} to</span>
+              <select :class="$style.select" value="" aria-label="Target tier" @change="moveBase(($event.target as HTMLSelectElement).value)">
+                <option value="" disabled>tier…</option>
+                <option v-for="t in targets" :key="t" :value="t" :disabled="t === tier.tier">{{ t }}</option>
+              </select>
+            </div>
+          </template>
+          <WButton v-if="isOwnGroup && ownEditFor(tier)" size="sm" variant="ghost" icon="fas fa-undo" @click="store.removeEdit(ownEditFor(tier)!.id)">Remove this own rule</WButton>
+        </template>
+        <WEmpty v-else icon="fas fa-layer-group">Pick a tier to restyle it or move its items.</WEmpty>
+      </div>
+    </div>
+
+    <!-- changes -->
+    <div v-else :class="$style.changes" class="w-scroll">
+      <WEmpty v-if="!config.edits.length" icon="fas fa-pen">No changes yet. Sample an item with <WKbd v-if="config.sampleHotkey" :keys="config.sampleHotkey" /> or edit a tier here.</WEmpty>
+      <div v-for="s in store.statuses.value" :key="s.edit.id" :class="[$style.changeRow, { [$style.failed]: !s.ok }]">
+        <i :class="iconFor(s.edit.kind)" class="w-dim" />
+        <span class="grow min-w-0">
+          <span class="w-trunc">{{ describeEdit(s.edit) }}</span>
+          <span v-if="!s.ok" class="text-xs" style="color: var(--w-warn);"> · {{ s.message }}</span>
+        </span>
+        <WButton size="sm" variant="ghost" @click="store.removeEdit(s.edit.id)">Undo</WButton>
+      </div>
+    </div>
+
+    <template #footer>
+      <div class="flex items-center gap-2 w-full">
+        <span class="text-xs grow w-trunc" :style="store.error.value ? 'color: var(--w-down)' : ''" :class="store.error.value ? '' : 'w-dim'">
+          <template v-if="store.error.value">{{ store.error.value }}</template>
+          <template v-else>Saves to <span class="w-num">{{ outName }}</span><template v-if="store.dirty.value"> · unsaved changes</template><template v-else-if="store.lastSaved.value"> · saved</template></template>
+        </span>
+        <WButton size="sm" variant="ghost" icon="fas fa-folder-open" @click="openFolder">Folder</WButton>
+        <WButton v-if="config.reloadViaChat" size="sm" variant="ghost" title="Type /itemfilter in chat to reload the saved filter" @click="store.reloadInGame()">Reload in game</WButton>
+        <WButton size="sm" variant="primary" :disabled="store.saving.value || !store.doc.value" @click="store.save()">{{ config.reloadViaChat ? 'Save + reload' : 'Save' }}</WButton>
+      </div>
+    </template>
+  </WPanel>
+</template>
+
+<script setup lang="ts">
+import { computed, ref, watch } from 'vue'
+import { WPanel, WButton, WSelect, WField, WTabs, WListItem, WChip, WEmpty, WKbd } from '../ui'
+import LabelPreview from './LabelPreview.vue'
+import StyleEditor from './StyleEditor.vue'
+import type { LootFilterStore } from './store'
+import { outputName } from './widget'
+import type { LootFilterWidget } from './widget'
+import { OWN_RULE_TYPE, describeEdit, moveTargets, readStyle, slug } from './edits'
+import type { FilterEdit, StylePatch } from './edits'
+import type { Visibility } from './parse'
+import { buildTree, findBase, groupName } from './groups'
+import type { GroupNode, TierNode } from './groups'
+import { hostRequest } from '../shared/host'
+
+const props = defineProps<{
+  store: LootFilterStore
+  config: LootFilterWidget
+  // Group/tier to show first (from the sample card).
+  focus?: { type: string, tier: string } | null
+}>()
+
+const emit = defineEmits<{ (e: 'close'): void }>()
+
+const tab = ref<'rules' | 'changes'>('rules')
+const search = ref('')
+const selType = ref<string | null>(null)
+const selTier = ref<string | null>(null)
+const movingBase = ref<string | null>(null)
+
+const tree = computed(() => props.store.doc.value ? buildTree(props.store.doc.value) : [])
+const allGroups = computed(() => tree.value.flatMap(s => s.groups))
+const group = computed<GroupNode | null>(() => allGroups.value.find(g => g.type === selType.value) ?? null)
+const tier = computed<TierNode | null>(() => group.value?.tiers.find(t => t.tier === selTier.value) ?? null)
+const isOwnGroup = computed(() => selType.value === OWN_RULE_TYPE)
+const results = computed(() => props.store.doc.value ? findBase(props.store.doc.value, search.value) : [])
+const targets = computed(() => props.store.doc.value && selType.value ? moveTargets(props.store.doc.value, selType.value) : [])
+const outName = computed(() => props.config.sourceName ? outputName(props.config) : '—')
+
+const tabOptions = computed(() => [
+  { value: 'rules', label: 'Rules' },
+  { value: 'changes', label: 'Changes', count: props.config.edits.length }
+])
+
+const fileOptions = computed(() => {
+  const opts = props.store.files.value
+    .filter(f => !/\(woke\)\.filter$/i.test(f.name))
+    .map(f => ({ value: f.name, label: f.name.replace(/\.filter$/i, '') }))
+  if (props.config.sourceName && !opts.some(o => o.value === props.config.sourceName)) {
+    opts.unshift({ value: props.config.sourceName, label: props.config.sourceName.replace(/\.filter$/i, '') })
+  }
+  if (!opts.length) opts.push({ value: '', label: 'No .filter files found' })
+  return opts
+})
+
+const banner = computed(() => {
+  const s = props.store
+  const failed = s.failed.value.length
+  if (s.updatedSinceSave.value) {
+    const total = s.statuses.value.length
+    return `NeverSink ${s.baseVersion.value} found (you last saved against ${props.config.lastVersion}). ${total - failed} of ${total} changes reapplied${failed ? `, ${failed} need a look under Changes` : ''}. Save to update the game's copy.`
+  }
+  if (failed) return `${failed} change(s) no longer fit this filter. See Changes.`
+  return null
+})
+
+function shortName (g: GroupNode): string {
+  if (g.type.startsWith('untagged:')) return 'Untagged rules'
+  return groupName(g.type)
+}
+
+function firstLive (t: TierNode) {
+  return t.blocks.find(b => !b.disabled) ?? t.blocks[0]
+}
+
+function previewName (t: TierNode): string {
+  const cls = firstLive(t).conditions.find(c => c.key === 'Class')
+  return cls?.values[0] ?? 'Item'
+}
+
+function conditionSummary (t: TierNode): string {
+  return firstLive(t).conditions.slice(0, 3).map(c => `${c.key} ${c.op} ${c.values.slice(0, 2).join(' ')}${c.values.length > 2 ? '…' : ''}`).join(' · ')
+}
+
+const copyFrom = computed(() => group.value
+  ? group.value.tiers.filter(t => t.tier !== selTier.value && !t.tier.startsWith('#')).map(t => ({ tier: t.tier, look: readStyle(firstLive(t).actions) as StylePatch }))
+  : [])
+
+function selectGroup (type: string) {
+  selType.value = type
+  selTier.value = group.value?.tiers[0]?.tier ?? null
+  movingBase.value = null
+}
+
+function jumpTo (type: string, t: string, base?: string) {
+  search.value = ''
+  tab.value = 'rules'
+  selType.value = type
+  selTier.value = t
+  movingBase.value = base ?? null
+}
+
+watch(() => props.focus, (f) => {
+  if (f) jumpTo(f.type, f.tier)
+}, { immediate: true })
+
+// Default selection once the filter loads.
+watch(tree, () => {
+  if (!selType.value || !group.value) {
+    const first = allGroups.value.find(g => g.type === 'currency') ?? allGroups.value[0]
+    if (first) selectGroup(first.type)
+  }
+})
+
+function ownEditFor (t: TierNode) {
+  return props.config.edits.find(e => e.kind === 'item' && slug(e.base) === t.tier) as Extract<FilterEdit, { kind: 'item' }> | undefined
+}
+
+function patchTier (patch: StylePatch) {
+  if (!selType.value || !selTier.value) return
+  if (isOwnGroup.value) {
+    const own = tier.value && ownEditFor(tier.value)
+    if (own) props.store.edit({ ...own, patch })
+    return
+  }
+  props.store.edit({ kind: 'style', type: selType.value, tier: selTier.value, patch })
+}
+
+function setTierVisibility (v: Visibility) {
+  if (!selType.value || !selTier.value) return
+  if (isOwnGroup.value) {
+    const own = tier.value && ownEditFor(tier.value)
+    if (own) props.store.edit({ ...own, visibility: v, patch: {} })
+    return
+  }
+  props.store.edit({ kind: 'visibility', type: selType.value, tier: selTier.value, visibility: v })
+}
+
+function moveBase (to: string) {
+  if (!movingBase.value || !selType.value || !selTier.value || !to) return
+  props.store.edit({ kind: 'move', type: selType.value, base: movingBase.value, from: selTier.value, to })
+  selTier.value = to
+}
+
+const groupHiddenByMe = computed(() => props.config.edits.some(e => e.kind === 'group' && e.type === selType.value))
+function toggleGroup () {
+  if (!selType.value) return
+  props.store.edit({ kind: 'group', type: selType.value, hidden: !groupHiddenByMe.value })
+}
+
+function iconFor (kind: FilterEdit['kind']): string {
+  switch (kind) {
+    case 'move': return 'fas fa-exchange-alt'
+    case 'style': return 'fas fa-palette'
+    case 'visibility': return 'fas fa-eye'
+    case 'group': return 'fas fa-eye-slash'
+    case 'item': return 'fas fa-star'
+  }
+}
+
+async function pickSource (name: string) {
+  if (!name || name === props.config.sourceName) return
+  props.config.sourceName = name
+  await props.store.load()
+}
+
+async function refresh () {
+  await props.store.listFiles()
+  await props.store.load()
+}
+
+function openFolder () {
+  hostRequest('filter-folder', { dir: props.config.folder }).catch(() => {})
+}
+</script>
+
+<style module>
+.layout {
+  display: grid;
+  grid-template-columns: 14rem minmax(0, 1fr) 19rem;
+  height: min(36rem, 70vh);
+  min-height: 0;
+}
+.tree {
+  border-right: 1px solid var(--w-line);
+  padding-bottom: 8px;
+}
+.mid {
+  padding: 8px var(--w-pad);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.side {
+  border-left: 1px solid var(--w-line);
+  padding: 10px var(--w-pad);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.groupHead {
+  padding-bottom: 4px;
+}
+.groupTitle {
+  font-family: var(--w-head);
+  font-size: var(--w-head-size);
+}
+.tierRow {
+  display: grid;
+  grid-template-columns: 6rem 12rem minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  padding: 6px 8px;
+  background: var(--w-panel-2);
+  border: 1px solid transparent;
+  border-radius: var(--w-radius-sm);
+  color: var(--w-fg);
+  text-align: left;
+  cursor: pointer;
+}
+.tierRow:hover {
+  border-color: var(--w-line);
+}
+.active {
+  background: var(--w-accent-soft);
+  border-color: var(--w-line-strong);
+}
+.tierName {
+  font-size: var(--w-text-sm);
+  color: var(--w-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.bases {
+  font-size: var(--w-text-sm);
+  color: var(--w-dim);
+}
+.off {
+  opacity: 0.5;
+  text-decoration: line-through;
+}
+.changes {
+  max-height: min(36rem, 70vh);
+  padding: 6px 0;
+}
+.changeRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px var(--w-pad);
+  border-bottom: 1px solid var(--w-line-soft);
+}
+.failed {
+  background: rgba(224, 103, 90, 0.08);
+}
+.select {
+  background: var(--w-panel-2);
+  color: var(--w-fg);
+  border: 1px solid var(--w-line);
+  border-radius: var(--w-radius-sm);
+  padding: 2px 4px;
+}
+</style>
