@@ -23,6 +23,9 @@ import { POB_BUILDS_TYPE } from './pob-builds/widget'
 import WidgetCampaign from './campaign/WidgetCampaign.vue'
 import CampaignEditor from './campaign/campaign-editor.vue'
 import { CAMPAIGN_TYPE } from './campaign/widget'
+import WidgetRunTimer from './campaign/WidgetRunTimer.vue'
+import RunTimerEditor from './campaign/run-timer-editor.vue'
+import { RUN_TIMER_TYPE } from './campaign/run-timer'
 import WidgetAtlas from './atlas/WidgetAtlas.vue'
 import AtlasEditor from './atlas/atlas-editor.vue'
 import { ATLAS_TYPE } from './atlas/widget'
@@ -33,6 +36,12 @@ import WidgetFarming from './farming/WidgetFarming.vue'
 import WidgetMechanics from './mechanics/WidgetMechanics.vue'
 import MechanicsEditor from './mechanics/mechanics-editor.vue'
 import { MECHANICS_TYPE } from './mechanics/widget'
+import WidgetMapMods from './map-mods/WidgetMapMods.vue'
+import MapModsEditor from './map-mods/map-mods-editor.vue'
+import { MAP_MODS_TYPE } from './map-mods/widget'
+import WidgetLabGems from './lab-gems/WidgetLabGems.vue'
+import WidgetLeagueInvest from './league-invest/WidgetLeagueInvest.vue'
+import WidgetBossRuns from './boss-runs/WidgetBossRuns.vue'
 
 type WidgetComponent = Component & { widget: WidgetSpec }
 
@@ -42,10 +51,15 @@ export const wokeWidgets: WidgetComponent[] = [
   WidgetMarketTracker as unknown as WidgetComponent,
   WidgetPobBuilds as unknown as WidgetComponent,
   WidgetCampaign as unknown as WidgetComponent,
+  WidgetRunTimer as unknown as WidgetComponent,
   WidgetAtlas as unknown as WidgetComponent,
   WidgetLab as unknown as WidgetComponent,
   WidgetFarming as unknown as WidgetComponent,
-  WidgetMechanics as unknown as WidgetComponent
+  WidgetMechanics as unknown as WidgetComponent,
+  WidgetMapMods as unknown as WidgetComponent,
+  WidgetLabGems as unknown as WidgetComponent,
+  WidgetLeagueInvest as unknown as WidgetComponent,
+  WidgetBossRuns as unknown as WidgetComponent
 ]
 
 const editors: Record<string, Component> = {
@@ -53,9 +67,11 @@ const editors: Record<string, Component> = {
   [TRADE_SEARCHES_TYPE]: TradeSearchesEditor,
   [POB_BUILDS_TYPE]: PobBuildsEditor,
   [CAMPAIGN_TYPE]: CampaignEditor,
+  [RUN_TIMER_TYPE]: RunTimerEditor,
   [ATLAS_TYPE]: AtlasEditor,
   [LAB_TYPE]: LabEditor,
-  [MECHANICS_TYPE]: MechanicsEditor
+  [MECHANICS_TYPE]: MechanicsEditor,
+  [MAP_MODS_TYPE]: MapModsEditor
 }
 
 export function wokeSettingsFor (wmType: string | undefined): Component | undefined {

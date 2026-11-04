@@ -8,6 +8,8 @@ import { TRADE_SEARCHES_TYPE, hotkeyTarget } from './trade-searches/widget'
 import type { TradeSearchesWidget } from './trade-searches/widget'
 import { LAB_TYPE, hotkeyTarget as labHotkeyTarget } from './lab/lab'
 import type { LabWidget } from './lab/lab'
+import { MAP_MODS_TYPE, MAP_MODS_TARGET } from './map-mods/widget'
+import type { MapModsWidget } from './map-mods/widget'
 
 export function wokeShortcutsFor (widget: Widget): ShortcutAction[] {
   if (widget.wmType === REGEX_LIBRARY_TYPE) {
@@ -51,6 +53,17 @@ export function wokeShortcutsFor (widget: Widget): ShortcutAction[] {
     }
     if (lab.hotkeyExternal) {
       actions.push({ shortcut: lab.hotkeyExternal, keepModKeys: true, action: { type: 'trigger-event', target: labHotkeyTarget(widget.wmId, 'external') } })
+    }
+    return actions
+  }
+  if (widget.wmType === MAP_MODS_TYPE) {
+    const mapMods = widget as MapModsWidget
+    const actions: ShortcutAction[] = []
+    if (mapMods.hotkey) {
+      actions.push({ shortcut: mapMods.hotkey, action: { type: 'copy-item', target: MAP_MODS_TARGET, focusOverlay: true } })
+    }
+    if (mapMods.regexHotkey && mapMods.regexText) {
+      actions.push({ shortcut: mapMods.regexHotkey, action: { type: 'stash-search', text: mapMods.regexText } })
     }
     return actions
   }
