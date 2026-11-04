@@ -279,3 +279,79 @@ export function describeEdit (e: FilterEdit): string {
     case 'item': return `Own rule for ${e.base} (${e.visibility === 'Hide' ? 'hidden' : 'restyled'})`
   }
 }
+
+// ---- re-homing edits that no longer fit ----
+
+export interface RehomeOption {
+  type: string
+  tier?: string
+  label: string
+}
+
+function tiersOf (doc: FilterDoc, type: string, withBases = false): string[] {
+  const out: string[] = []
+  for (const b of blocksOf(doc, type)) {
+    if (b.tier && !b.disabled && (!withBases || baseTypeCondition(b)) && !out.includes(b.tier)) out.push(b.tier)
+  }
+  return out
+}
+
+// Groups whose last segment matches ("maps->influenced" ~ "influenced"), or
+// that are a parent or child of it, for when NeverSink renames, moves or
+// splits a group.
+function similarTypes (doc: FilterDoc, type: string): string[] {
+  const last = type.split('->').pop()!
+  const out: string[] = []
+  for (const b of doc.blocks) {
+    if (!b.type || b.type === type || out.includes(b.type)) continue
+    if (b.type.split('->').pop() === last || b.type.startsWith(type + '->') || type.startsWith(b.type + '->')) out.push(b.type)
+  }
+  return out
+}
+
+// Groups that list `base` in a BaseType condition now.
+function typesWithBase (doc: FilterDoc, base: string): string[] {
+  const out: string[] = []
+  for (const b of doc.blocks) {
+    if (b.type && !b.disabled && blockHasBase(b, base) && !out.includes(b.type)) out.push(b.type)
+  }
+  return out
+}
+
+const pretty = (type: string) => type.replace(/->/g, ' › ')
+
+// Where a failed edit could go in this filter version, best guesses first.
+export function rehomeOptions (doc: FilterDoc, edit: FilterEdit): RehomeOption[] {
+  const types = (preferBase?: string) => {
+    const list = [edit.type, ...similarTypes(doc, edit.type)]
+    if (preferBase) list.unshift(...typesWithBase(doc, preferBase).filter(t => !list.includes(t)))
+    return list.filter(t => blocksOf(doc, t).length)
+  }
+  const out: RehomeOption[] = []
+  switch (edit.kind) {
+    case 'group':
+      for (const t of similarTypes(doc, edit.type)) out.push({ type: t, label: pretty(t) })
+      break
+    case 'style':
+    case 'visibility':
+      for (const t of types()) for (const tier of tiersOf(doc, t)) out.push({ type: t, tier, label: `${pretty(t)} ${tier}` })
+      break
+    case 'move':
+      for (const t of types(edit.base)) for (const tier of tiersOf(doc, t, true)) out.push({ type: t, tier, label: `${pretty(t)} ${tier}` })
+      break
+    case 'item':
+      for (const t of types(edit.base)) for (const tier of tiersOf(doc, t)) out.push({ type: t, tier, label: `${pretty(t)} ${tier}` })
+      break
+  }
+  return out
+}
+
+// The edit pointed at a new group/tier. A move keeps its base and uses the
+// tier as its destination.
+export function rehome (edit: FilterEdit, opt: RehomeOption): FilterEdit {
+  switch (edit.kind) {
+    case 'group': return { ...edit, type: opt.type }
+    case 'move': return { ...edit, type: opt.type, to: opt.tier ?? edit.to }
+    default: return { ...edit, type: opt.type, tier: opt.tier ?? edit.tier }
+  }
+}

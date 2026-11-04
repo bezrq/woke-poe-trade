@@ -27,11 +27,17 @@
       <input v-model="reloadViaChat" type="checkbox">
       <span>After saving, type <code>/itemfilter &lt;name&gt;</code> in chat so the game reloads the filter</span>
     </label>
+    <label class="flex items-center gap-2 ml-6">
+      <input v-model="reloadWhenSafe" type="checkbox" :disabled="!reloadViaChat">
+      <span>Only in town or hideout (otherwise it waits for your next visit). "Reload now" in the editor skips the wait.</span>
+    </label>
 
     <div class="text-sm" style="color: var(--w-dim);">
       Edits are stored as a list of changes (moves, restyles, hidden tiers, your own item rules) keyed by NeverSink's
       $type and $tier tags, and are reapplied every time the filter is opened. When NeverSink updates, changes that
-      no longer fit (an item left the group, a tier was renamed) are flagged under Changes. If the chat command doesn't
+      no longer fit (an item left the group, a tier was renamed) are flagged under Changes, where you can give each one a new home.
+      Filters you follow on the website (the game's OnlineFilters folder) can be picked too; they're read only, so edits are saved
+      as a local copy that won't auto-update. If the chat command doesn't
       pick up the change, use the refresh button next to the filter in Options › Game.
     </div>
   </div>
@@ -54,7 +60,8 @@ export default defineComponent({
       folder: configModelValue(() => props.configWidget, 'folder'),
       fallbackAreaLevel: configModelValue(() => props.configWidget, 'fallbackAreaLevel'),
       saveMode: configModelValue(() => props.configWidget, 'saveMode'),
-      reloadViaChat: configModelValue(() => props.configWidget, 'reloadViaChat')
+      reloadViaChat: configModelValue(() => props.configWidget, 'reloadViaChat'),
+      reloadWhenSafe: configModelValue(() => props.configWidget, 'reloadWhenSafe')
     }
   }
 })

@@ -17,11 +17,17 @@ export interface LootFilterWidget extends Widget {
   folder: string
   // The downloaded NeverSink file the edits are applied to.
   sourceName: string
+  // The source is an online filter (OnlineFilters folder, read only):
+  // sourceName is its id and sourceTitle its name. Saves always go to a copy.
+  sourceOnline: boolean
+  sourceTitle: string
   // 'copy' writes "<source> (woke).filter", 'overwrite' replaces the source
   // (keeping a .bak of the first original).
   saveMode: SaveMode
   // After saving, type `/itemfilter <name>` in chat to make the game reload it.
   reloadViaChat: boolean
+  // Hold that chat command until you're in town or your hideout.
+  reloadWhenSafe: boolean
   edits: FilterEdit[]
   // NeverSink version the edits were last saved against, to spot updates.
   lastVersion: string | null
@@ -37,8 +43,11 @@ export function initLootFilterWidget (w: LootFilterWidget) {
   w.editorHotkey = 'Alt + Shift + F'
   w.folder = ''
   w.sourceName = ''
+  w.sourceOnline = false
+  w.sourceTitle = ''
   w.saveMode = 'copy'
   w.reloadViaChat = true
+  w.reloadWhenSafe = true
   w.edits = []
   w.lastVersion = null
   w.fallbackAreaLevel = 83
@@ -52,6 +61,9 @@ export function normalizeLootFilterWidget (w: LootFilterWidget) {
   if (typeof w.sourceName !== 'string') w.sourceName = ''
   if (w.saveMode !== 'overwrite') w.saveMode = 'copy'
   if (typeof w.reloadViaChat !== 'boolean') w.reloadViaChat = true
+  if (typeof w.reloadWhenSafe !== 'boolean') w.reloadWhenSafe = true
+  if (typeof w.sourceOnline !== 'boolean') w.sourceOnline = false
+  if (typeof w.sourceTitle !== 'string') w.sourceTitle = ''
   if (!Array.isArray(w.edits)) w.edits = []
   if (w.lastVersion === undefined) w.lastVersion = null
   if (typeof w.fallbackAreaLevel !== 'number') w.fallbackAreaLevel = 83
@@ -66,7 +78,11 @@ export function parseEditorHotkeyTarget (target: string): number | null {
   return m ? Number(m[1]) : null
 }
 
-export function outputName (w: Pick<LootFilterWidget, 'sourceName' | 'saveMode'>): string {
+export function outputName (w: Pick<LootFilterWidget, 'sourceName' | 'saveMode' | 'sourceOnline' | 'sourceTitle'>): string {
+  if (w.sourceOnline) {
+    const safe = (w.sourceTitle || w.sourceName).replace(/[<>:"/\\|?*]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 80)
+    return `${safe || 'Online filter'} (woke).filter`
+  }
   if (w.saveMode === 'overwrite') return w.sourceName
   return w.sourceName.replace(/\.filter$/i, '') + ' (woke).filter'
 }
