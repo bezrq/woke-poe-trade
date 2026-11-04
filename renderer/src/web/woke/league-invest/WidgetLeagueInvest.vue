@@ -6,7 +6,7 @@
       <template #card>
         <div style="padding: 4px var(--w-pad) 6px;" class="flex flex-col gap-0.5">
           <div v-for="r in ranked.slice(0, 5)" :key="opportunityKey(r.opportunity)" class="flex justify-between gap-2">
-            <span class="w-trunc">{{ r.opportunity.name }}<span v-if="r.opportunity.variant" class="w-dim"> {{ r.opportunity.variant }}</span></span>
+            <span class="flex items-center gap-1 min-w-0"><WIcon :src="art(r.opportunity)" fallback="fas fa-coins" /><span class="w-trunc">{{ r.opportunity.name }}<span v-if="r.opportunity.variant" class="w-dim"> {{ r.opportunity.variant }}</span></span></span>
             <span class="w-num whitespace-nowrap"><span class="w-up">+{{ Math.round((r.opportunity.median - 1) * 100) }}%</span>
               <span v-if="r.chaos != null" class="w-dim"> · {{ formatChaos(r.chaos, snapshot?.divine ?? null) }}</span></span>
           </div>
@@ -15,7 +15,8 @@
         </div>
       </template>
     </DockItem>
-    <WPanel :title="config.wmTitle || 'League investments'" icon="divine" width="36rem" max-height="80vh">
+    <WPanel ref="panel" :title="config.wmTitle || 'League investments'" icon="divine" width="36rem" max-height="80vh"
+      :updated="snapshot?.ts ?? null" :fresh-min="40" :stale-min="180">
       <template #actions>
         <WChip clickable :active="showChanged" title="Items a patch changed this league" @click="showChanged = !showChanged"><i class="fas fa-exclamation-triangle" /> Changed {{ changed.length }}</WChip>
         <WChip clickable :active="showData" @click="showData = !showData"><i class="fas fa-database" /> Past leagues {{ histories.length }}</WChip>
@@ -37,7 +38,7 @@
         <span v-if="config.dayOverride == null && start" class="w-faint">started {{ start }}</span>
         <span v-else-if="config.dayOverride == null" style="color: var(--w-warn);">start date unknown, enter the day</span>
         <button v-else class="w-accent hover:underline" @click="config.dayOverride = null">use start date</button>
-        <template v-if="snapshot?.divine"><span class="w-faint">·</span><span class="inline-flex items-center gap-1"><img src="/images/divine.png" class="w-4 h-4"> = {{ Math.round(snapshot.divine) }}c</span></template>
+        <template v-if="snapshot?.divine"><span class="w-faint">·</span><span class="inline-flex items-center gap-1"><WIcon currency="divine" title="Divine Orb" /> = {{ Math.round(snapshot.divine) }}c</span></template>
       </template>
 
       <div v-if="showChanged" :class="$style.data">
@@ -67,11 +68,16 @@
           <span class="w-trunc">{{ h.league }}</span>
           <span class="w-faint text-xs">from {{ h.start }} · {{ h.days }} days · {{ h.items.length }} items</span>
           <span v-if="!h.imported" class="w-faint text-xs" title="Ships with the app">built in</span>
-          <button v-else class="w-icon-btn" title="Remove" @click="remove(h.league)"><i class="fas fa-times" /></button>
+          <button v-else class="w-icon-btn" title="Remove (Undo in the note)" @click="remove(h)"><i class="fas fa-times" /></button>
         </div>
       </div>
 
-      <WEmpty v-if="note" :art="{ currency: 'divine' }">{{ note }}</WEmpty>
+      <WSkeleton v-if="!historiesLoaded" :rows="6" />
+      <WEmpty v-else-if="note" :art="{ currency: 'divine' }">{{ note }}
+        <template v-if="!histories.length" #actions>
+          <WButton size="sm" variant="primary" icon="fas fa-file-import" :disabled="importing" @click="fileInput?.click()">Import files</WButton>
+        </template>
+      </WEmpty>
       <template v-else>
         <div v-if="plan.length" :class="$style.hero">
           <div><div :class="$style.k">Spend</div><div :class="$style.big" class="w-num">{{ fmt(planCost) }}</div></div>
@@ -81,7 +87,7 @@
         <template v-if="plan.length">
           <div class="w-group-label">Suggested split</div>
           <div v-for="line in plan" :key="key(line.opportunity)" class="w-row" :class="$style.planGrid">
-            <span class="w-trunc">{{ line.qty }}× {{ label(line.opportunity) }}<i v-if="line.thin" class="fas fa-exclamation-circle w-faint ml-1" :title="THIN_PLAN" /></span>
+            <span class="w-trunc flex items-center gap-1"><WIcon :src="art(line.opportunity)" fallback="fas fa-coins" />{{ line.qty }}× {{ label(line.opportunity) }}<i v-if="line.thin" class="fas fa-exclamation-circle w-faint ml-1" :title="THIN_PLAN" /></span>
             <WPrice :chaos="line.cost" :divine="snapshot?.divine" class="w-dim" />
             <span class="w-num w-up text-right" title="Typical value at the end of the hold, in today's divines">≈ {{ fmtDiv(divOf(line.cost) * line.opportunity.median) }}</span>
           </div>
@@ -91,8 +97,9 @@
         <div class="w-row w-row--head" :class="$style.rankGrid">
           <span>Item</span><span class="text-right">Now</span><span class="text-right">Median</span><span class="text-right">Leagues</span><span class="text-right">Up days</span>
         </div>
-        <div v-for="r in rows" :key="key(r.opportunity)" class="w-row" :class="$style.rankGrid">
-          <span class="w-trunc" :title="r.opportunity.type">
+        <div v-for="r in rows" :key="key(r.opportunity)" class="w-row" :class="$style.rankGrid" @contextmenu="rowMenu($event, r.opportunity, r.changed)">
+          <span class="w-trunc flex items-center gap-1" :title="r.opportunity.type">
+            <WIcon :src="art(r.opportunity)" fallback="fas fa-coins" />
             <i v-if="r.changed" class="fas fa-exclamation-triangle mr-1" style="color: var(--w-warn);" title="Changed this league: past leagues may not apply" />
             <i v-if="r.thin || r.opportunity.reliability < THIN_RELIABILITY" class="fas fa-exclamation-circle w-faint mr-1" :title="THIN_ROW" />{{ label(r.opportunity) }}<span class="w-faint text-xs ml-1">{{ r.opportunity.type }}</span>
             <span v-if="mixed(r.opportunity)" class="text-xs ml-1" style="color: var(--w-warn);" :title="perLeague(r.opportunity)">mixed</span>
@@ -128,7 +135,8 @@ export default {
 import { inject, computed, shallowRef, watch } from 'vue'
 import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
-import { WPanel, WField, WSegmented, WChip, WButton, WPrice, WEmpty } from '../ui'
+import { WPanel, WField, WSegmented, WChip, WButton, WPrice, WEmpty, WIcon, WSkeleton, openMenu, toast } from '../ui'
+import { ninjaIcon } from '../ui/game-icons'
 import { useLeagues } from '@/web/background/Leagues'
 import { useMarketCollector } from '../market/collector'
 import { latestSnapshots } from '../market/db'
@@ -180,8 +188,10 @@ const importMsg = shallowRef('')
 const importError = shallowRef(false)
 const fileInput = shallowRef<HTMLInputElement | null>(null)
 
+const historiesLoaded = shallowRef(false)
 async function reloadHistories () {
   try { histories.value = await allLeagues() } catch { histories.value = [] }
+  historiesLoaded.value = true
 }
 reloadHistories()
 
@@ -337,9 +347,37 @@ function isWantedCsv (path: string): boolean {
   return !/^(Standard|Hardcore|HC |Ruthless|SSF)/i.test(name)
 }
 
-async function remove (name: string) {
-  await deleteLeague(name)
+const panel = shallowRef<InstanceType<typeof WPanel> | null>(null)
+
+// No "are you sure": remove now, offer Undo (P9).
+async function remove (h: LeagueHistory) {
+  await deleteLeague(h.league)
   await reloadHistories()
+  toast(`Removed ${h.league}`, {
+    anchor: panel.value?.el,
+    undo: () => { saveLeague(h).then(reloadHistories).catch(() => {}) }
+  })
+}
+
+function art (o: Opportunity) {
+  return ninjaIcon(o.type, o.name) ?? undefined
+}
+
+function rowMenu (e: MouseEvent, o: Opportunity, isChangedNow: boolean) {
+  openMenu(e, [
+    { label: 'Copy name', icon: 'far fa-copy', action: () => { navigator.clipboard.writeText(o.name).catch(() => {}) } },
+    ...(isChangedNow
+      ? []
+      : [{
+          label: 'Mark as changed this league',
+          icon: 'fas fa-exclamation-triangle',
+          action: () => {
+            const before = props.config.changedItems ?? ''
+            props.config.changedItems = [before.trimEnd(), o.name].filter(Boolean).join('\n')
+            toast(`Marked ${o.name} as changed`, { anchor: panel.value?.el, undo: () => { props.config.changedItems = before } })
+          }
+        }])
+  ])
 }
 
 function key (o: Opportunity) { return opportunityKey(o) }
