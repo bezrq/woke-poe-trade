@@ -42,6 +42,9 @@ import { MAP_MODS_TYPE } from './map-mods/widget'
 import WidgetMapScan from './map-mods/WidgetMapScan.vue'
 import MapScanEditor from './map-mods/map-scan-editor.vue'
 import { MAP_SCAN_TYPE } from './map-mods/scan'
+import WidgetEssenceScan from './essence-scan/WidgetEssenceScan.vue'
+import EssenceScanEditor from './essence-scan/essence-scan-editor.vue'
+import { ESSENCE_SCAN_TYPE } from './essence-scan/widget'
 import WidgetLabGems from './lab-gems/WidgetLabGems.vue'
 import WidgetLeagueInvest from './league-invest/WidgetLeagueInvest.vue'
 import WidgetBossRuns from './boss-runs/WidgetBossRuns.vue'
@@ -61,6 +64,7 @@ export const wokeWidgets: WidgetComponent[] = [
   WidgetMechanics as unknown as WidgetComponent,
   WidgetMapMods as unknown as WidgetComponent,
   WidgetMapScan as unknown as WidgetComponent,
+  WidgetEssenceScan as unknown as WidgetComponent,
   WidgetLabGems as unknown as WidgetComponent,
   WidgetLeagueInvest as unknown as WidgetComponent,
   WidgetBossRuns as unknown as WidgetComponent
@@ -76,6 +80,7 @@ const editors: Record<string, Component> = {
   [LAB_TYPE]: LabEditor,
   [MAP_MODS_TYPE]: MapModsEditor,
   [MAP_SCAN_TYPE]: MapScanEditor,
+  [ESSENCE_SCAN_TYPE]: EssenceScanEditor,
   [MECHANICS_TYPE]: MechanicsEditor
 }
 

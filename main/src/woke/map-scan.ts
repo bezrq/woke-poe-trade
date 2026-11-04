@@ -1,14 +1,15 @@
-// Map scan mode, main side: while it's on and the game is focused, takes a
-// screenshot a few times a second, asks the vision worker for the hovered
-// tooltip, and sends newly read tooltips to the overlay. A tooltip is re-read
-// whenever its text changes, so rerolling the same map gives a new reading.
+// Scan modes, main side: while one is on and the game is focused, it takes a
+// screenshot a few times a second, asks the vision worker to read the text
+// under the cursor, and sends new readings to the overlay. Text is re-read
+// whenever it changes, so rerolling the same map gives a new reading.
+// Used by map scan (map tooltips) and essence scan (essence monolith labels).
 import { uIOhook } from 'uiohook-napi'
 import type { ServerEvents } from '../server'
 import type { Logger } from '../RemoteLogger'
 import type { GameWindow } from '../windowing/GameWindow'
 import { OcrWorker } from '../vision/link-main'
+import type { ScanOptions, ScanResult } from './map-scan-vision'
 
-const FRAME_MS = 150
 // Stop after this long without the game focused, so it can't run forever.
 const IDLE_STOP_MS = 30 * 60 * 1000
 
@@ -20,7 +21,40 @@ export interface MapScanReading {
   ocrMs: number
 }
 
-export class MapScanner {
+export interface ScannerKind {
+  // Event topic for the overlay, e.g. 'map-scan'.
+  topic: string
+  // Shown in errors, e.g. 'Map scan mode'.
+  name: string
+  frameMs: number
+  read: (worker: OcrWorker, image: { width: number, height: number, data: Uint8Array }, opts: ScanOptions) => Promise<ScanResult>
+}
+
+export const MAP_SCAN: ScannerKind = {
+  topic: 'map-scan',
+  name: 'Map scan mode',
+  frameMs: 150,
+  read: async (worker, image, opts) => await worker.scanMapTooltip(image, opts)
+}
+
+export const ESSENCE_SCAN: ScannerKind = {
+  topic: 'essence-scan',
+  name: 'Essence scan mode',
+  frameMs: 200,
+  read: async (worker, image, opts) => await worker.scanEssenceLabel(image, opts)
+}
+
+// One OCR worker shared by all scan modes (each would load tesseract + opencv).
+let sharedWorker: Promise<OcrWorker> | null = null
+async function getWorker (): Promise<OcrWorker> {
+  sharedWorker ??= OcrWorker.create().then(async (w) => {
+    await w.updateOptions('en')
+    return w
+  })
+  return await sharedWorker
+}
+
+export class ScreenScanner {
   private worker: OcrWorker | null = null
   private timer: ReturnType<typeof setTimeout> | undefined
   private running = false
@@ -36,7 +70,8 @@ export class MapScanner {
   constructor (
     private readonly server: ServerEvents,
     private readonly logger: Logger,
-    private readonly poeWindow: GameWindow
+    private readonly poeWindow: GameWindow,
+    private readonly kind: ScannerKind = MAP_SCAN
   ) {
     uIOhook.on('mousemove', (e) => {
       this.mouse = { x: e.x, y: e.y }
@@ -47,11 +82,15 @@ export class MapScanner {
 
   async start (): Promise<{ running: boolean }> {
     if (process.platform !== 'win32') {
-      throw new Error('Map scan mode needs Windows (it uses the game screenshot API).')
+      throw new Error(`${this.kind.name} needs Windows (it uses the game screenshot API).`)
     }
     if (!this.worker) {
-      this.worker = await OcrWorker.create()
-      await this.worker.updateOptions('en')
+      try {
+        this.worker = await getWorker()
+      } catch (err) {
+        sharedWorker = null
+        throw err
+      }
     }
     if (!this.running) {
       this.running = true
@@ -86,7 +125,7 @@ export class MapScanner {
     const id = this.loopId
     this.timer = setTimeout(() => {
       this.frame().finally(() => { if (this.running && id === this.loopId) this.schedule() })
-    }, FRAME_MS)
+    }, this.kind.frameMs)
   }
 
   private async frame () {
@@ -102,7 +141,7 @@ export class MapScanner {
 
     try {
       const data = this.poeWindow.screenshot()
-      const res = await this.worker!.scanMapTooltip(
+      const res = await this.kind.read(this.worker!,
         { width: bounds.width, height: bounds.height, data },
         { cursor, stableSig: this.prevSig, lastReadSig: this.lastReadSig })
       this.failures = 0
@@ -127,7 +166,7 @@ export class MapScanner {
       }
     } catch (err) {
       this.failures++
-      if (this.failures === 1) this.logger.write(`error [map-scan] ${String(err)}`)
+      if (this.failures === 1) this.logger.write(`error [${this.kind.topic}] ${String(err)}`)
       if (this.failures >= 5) {
         this.stop('OCR isn\'t working. Check that the OCR files are installed (the same ones APT\'s heist gem OCR uses).')
       }
@@ -141,7 +180,7 @@ export class MapScanner {
   private send (data: unknown) {
     this.server.sendEventTo('broadcast', {
       name: 'MAIN->CLIENT::woke-event',
-      payload: { topic: 'map-scan', data }
+      payload: { topic: this.kind.topic, data }
     })
   }
 }
