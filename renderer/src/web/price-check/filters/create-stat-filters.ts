@@ -337,6 +337,10 @@ export function calculatedStatToFilter (
     if (translation.negate) {
       filterAdjustmentForNegate(filter.roll)
     }
+
+    filter.roll.better = (calc.stat.better === StatBetter.NotComparable)
+      ? 0
+      : (typeof filter.roll.min === 'number') ? 1 : -1
   }
 
   return filter
