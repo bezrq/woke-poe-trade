@@ -15,6 +15,7 @@ import { OverlayVisibility } from './windowing/OverlayVisibility'
 import { GameLogWatcher } from './host-files/GameLogWatcher'
 import { HttpProxy } from './proxy'
 import { initWoke, initWokeOverlay } from './woke'
+import { perfMark } from './woke/perf'
 
 if (!app.requestSingleInstanceLock()) {
   app.exit()
@@ -28,6 +29,7 @@ app.enableSandbox()
 let tray: AppTray
 
 app.on('ready', async () => {
+  perfMark('app ready')
   tray = new AppTray(eventPipe)
   const logger = new Logger(eventPipe)
   const gameLogWatcher = new GameLogWatcher(eventPipe, logger)
@@ -40,9 +42,11 @@ app.on('ready', async () => {
   setTimeout(
     async () => {
       const overlay = new OverlayWindow(eventPipe, logger, poeWindow)
+      perfMark('overlay window created')
       new OverlayVisibility(eventPipe, overlay, gameConfig)
       initWokeOverlay(eventPipe, overlay)
       const shortcuts = await Shortcuts.create(logger, overlay, poeWindow, gameConfig, eventPipe)
+      perfMark('hotkeys ready')
       eventPipe.onEventAnyClient('CLIENT->MAIN::update-host-config', (cfg) => {
         overlay.updateOpts(cfg.overlayKey, cfg.windowTitle)
         shortcuts.updateActions(cfg.shortcuts, cfg.stashScroll, cfg.logKeys, cfg.restoreClipboard, cfg.language)
@@ -53,9 +57,11 @@ app.on('ready', async () => {
       })
       uIOhook.start()
       const port = await startServer(appUpdater, logger)
+      perfMark('server listening')
       // TODO: move up (currently crashes)
       logger.write(`info ${os.type()} ${os.release} / v${app.getVersion()}`)
       overlay.loadAppPage(port)
+      perfMark('overlay page requested')
       tray.serverPort = port
     },
     // fixes(linux): window is black instead of transparent

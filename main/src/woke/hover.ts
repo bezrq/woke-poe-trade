@@ -17,11 +17,14 @@ interface Zone {
   id: string
   rect: Rectangle
   activate: boolean
+  inside?: boolean
 }
 
 export class WokeHoverTracker {
   private zones = new Map<string, Zone[]>()
-  private inside = new Set<string>()
+  // All zones in one array, rebuilt when zones change, so the mousemove
+  // handler (hundreds of calls a second with a gaming mouse) allocates nothing.
+  private flat: Zone[] = []
   private listening = false
   private dwellTimer: ReturnType<typeof setTimeout> | null = null
   private activatedByUs = false
@@ -31,13 +34,19 @@ export class WokeHoverTracker {
     private overlay: OverlayWindow
   ) {
     this.server.onEventAnyClient('OVERLAY->MAIN::woke-hover-zones', ({ owner, zones }) => {
-      const converted = zones.map(z => ({
+      const prev = this.zones.get(owner) ?? []
+      const converted: Zone[] = zones.map(z => ({
         id: z.id,
         activate: Boolean(z.activate),
-        rect: toScreenRect({ x: z.x, y: z.y, width: z.width, height: z.height })
+        rect: toScreenRect({ x: z.x, y: z.y, width: z.width, height: z.height }),
+        inside: prev.find(p => p.id === z.id)?.inside ?? false
       }))
+      for (const p of prev) {
+        if (p.inside && !converted.some(z => z.id === p.id)) this.emit(p.id, false)
+      }
       if (converted.length) this.zones.set(owner, converted)
       else this.zones.delete(owner)
+      this.flat = [...this.zones.values()].flat()
       this.updateListening()
     })
   }
@@ -50,26 +59,20 @@ export class WokeHoverTracker {
     } else if (!want && this.listening) {
       uIOhook.removeListener('mousemove', this.handleMouseMove)
       this.listening = false
-      for (const id of this.inside) this.emit(id, false)
-      this.inside.clear()
       this.leaveActivateZone()
     }
   }
 
   private readonly handleMouseMove = (e: UiohookMouseEvent) => {
     let inActivateZone = false
-    const nowInside = new Set<string>()
-    for (const list of this.zones.values()) {
-      for (const zone of list) {
-        if (contains(zone.rect, e.x, e.y)) {
-          nowInside.add(zone.id)
-          if (zone.activate) inActivateZone = true
-        }
+    for (const zone of this.flat) {
+      const inside = contains(zone.rect, e.x, e.y)
+      if (inside !== zone.inside) {
+        zone.inside = inside
+        this.emit(zone.id, inside)
       }
+      if (inside && zone.activate) inActivateZone = true
     }
-    for (const id of nowInside) if (!this.inside.has(id)) this.emit(id, true)
-    for (const id of this.inside) if (!nowInside.has(id)) this.emit(id, false)
-    this.inside = nowInside
 
     if (inActivateZone) this.enterActivateZone()
     else this.leaveActivateZone()
@@ -79,7 +82,7 @@ export class WokeHoverTracker {
     if (this.dwellTimer || this.activatedByUs || this.overlay.isInteractable) return
     this.dwellTimer = setTimeout(() => {
       this.dwellTimer = null
-      if (!this.overlay.isInteractable && [...this.inside].some(id => this.isActivateZone(id))) {
+      if (!this.overlay.isInteractable && this.flat.some(z => z.inside && z.activate)) {
         this.overlay.assertOverlayActive()
         this.activatedByUs = true
       }
@@ -95,13 +98,6 @@ export class WokeHoverTracker {
       this.activatedByUs = false
       if (this.overlay.isInteractable) this.overlay.assertGameActive()
     }
-  }
-
-  private isActivateZone (id: string): boolean {
-    for (const list of this.zones.values()) {
-      if (list.some(z => z.id === id && z.activate)) return true
-    }
-    return false
   }
 
   private emit (id: string, inside: boolean) {
