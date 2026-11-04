@@ -134,8 +134,9 @@ function permutations (letters: string[]): string[] {
   return [...out]
 }
 
-// The game's search box takes at most 50 characters.
-export const SEARCH_LIMIT = 50
+// The game's search box takes at most 250 characters (it was 50 before 3.21),
+// like the map and regex library searches.
+export const SEARCH_LIMIT = 250
 
 function exactRegex (colours: GemColour[]): string | null {
   if (colours.some(c => c === 'w')) return null

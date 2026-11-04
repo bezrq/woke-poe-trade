@@ -75,8 +75,12 @@ function queued<T> (fn: () => Promise<T>): Promise<T> {
 
 function csvCell (v: unknown): string {
   const s = v == null ? '' : String(v)
-  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
+  return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
 }
+
+// Excel reads a CSV without a byte order mark as the PC's ANSI code page,
+// which garbles names like "Doppelgänger Guise" or "Maelström of Chaos".
+const UTF8_BOM = '\uFEFF'
 
 type Args = Record<string, unknown>
 
@@ -89,9 +93,10 @@ export const sessionHandlers: Record<string, (args: Args) => Promise<unknown>> =
     return await queued(async () => {
       const all = await loadAll()
       const old = all.get(s.id)
-      // The league can change when a session is edited; drop the old file.
-      if (old && sessionFile(old) !== sessionFile(s)) await fs.rm(sessionFile(old), { force: true })
       await writeAtomic(sessionFile(s), JSON.stringify(s))
+      // The league can change when a session is edited; drop the old file,
+      // once the new one is written (a failed write keeps the session).
+      if (old && sessionFile(old) !== sessionFile(s)) await fs.rm(sessionFile(old), { force: true })
       all.set(s.id, s)
       return true
     })
@@ -123,7 +128,7 @@ export const sessionHandlers: Record<string, (args: Args) => Promise<unknown>> =
   'sessions-export': async ({ rows }) => {
     const list = (rows as Array<Record<string, unknown>>) ?? []
     const cols = list.length ? Object.keys(list[0]) : []
-    const text = [cols.join(','), ...list.map(r => cols.map(c => csvCell(r[c])).join(','))].join('\r\n')
+    const text = UTF8_BOM + [cols.join(','), ...list.map(r => cols.map(c => csvCell(r[c])).join(','))].join('\r\n')
     const file = path.join(root(), `maps-${new Date().toISOString().slice(0, 10)}.csv`)
     await writeAtomic(file, text)
     shell.showItemInFolder(file)
