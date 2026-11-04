@@ -43,7 +43,7 @@ export const MECHANIC_ICONS: Record<string, { src?: string, item?: string, fa: s
   blight: { item: 'Clear Oil', fa: 'fas fa-tint' },
   harvest: { item: 'Wild Crystallised Lifeforce', fa: 'fas fa-seedling' },
   legion: { item: 'Timeless Karui Splinter', fa: 'fas fa-shield-alt' },
-  breach: { item: 'Splinter of Xoph', fa: 'fas fa-hand-paper' },
+  breach: { item: 'Breach Ring', fa: 'fas fa-hand-paper' },
   heist: { item: "Rogue's Marker", fa: 'fas fa-mask' },
   lab: { item: 'Offering to the Goddess', fa: 'fas fa-dungeon' },
   sanctum: { item: 'Forbidden Tome', fa: 'fas fa-book' },

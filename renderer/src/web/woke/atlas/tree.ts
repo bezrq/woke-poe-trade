@@ -104,17 +104,29 @@ export function parseAtlasData (json: unknown): Map<number, AtlasNode> {
 // mechanic word found in the name or stats.
 const MECHANICS = [
   'Breach', 'Legion', 'Delirium', 'Expedition', 'Harvest', 'Ritual', 'Blight', 'Essence',
-  'Abyss', 'Strongbox', 'Beyond', 'Shrine', 'Harbinger', 'Incursion', 'Delve', 'Betrayal',
+  'Abyss', 'Strongbox', 'Beyond', 'Shrine', 'Harbinger', 'Incursion', 'Delve', 'Sulphite', 'Betrayal',
   'Metamorph', 'Torment', 'Bestiary', 'Beast', 'Ultimatum', 'Heist', 'Sanctum', 'Eldritch',
   'Maven', 'Searing Exarch', 'Eater of Worlds', 'Rogue Exile', 'Kirac', 'Einhar', 'Alva',
   'Niko', 'Jun', 'Synthesis', 'Scarab', 'Boss', 'Unique', 'Map', 'Divination', 'Currency',
   'Gem', 'Fragment', 'Influence', 'Conqueror', 'Elder', 'Shaper', 'Tempest', 'Domination'
 ]
 
+// Words that name a mechanic another way: its NPC, its currency, its bosses.
+const SAME_AS: Record<string, string> = {
+  'Beast': 'Bestiary',
+  'Einhar': 'Bestiary',
+  'Niko': 'Delve',
+  'Sulphite': 'Delve',
+  'Alva': 'Incursion',
+  'Jun': 'Betrayal',
+  'Searing Exarch': 'Eldritch',
+  'Eater of Worlds': 'Eldritch'
+}
+
 export function mechanicOf (node: AtlasNode): string {
   const text = `${node.name} ${node.stats.join(' ')}`
   for (const m of MECHANICS) {
-    if (new RegExp(`\\b${m}`, 'i').test(text)) return m === 'Beast' ? 'Bestiary' : m
+    if (new RegExp(`\\b${m}`, 'i').test(text)) return SAME_AS[m] ?? m
   }
   return 'General'
 }

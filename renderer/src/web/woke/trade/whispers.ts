@@ -33,7 +33,9 @@ export type TradeEvent =
   { kind: 'offline', at: number } |
   { kind: 'afk', at: number, on: boolean }
 
-// Trade site tags (as in "listed for 120 divine") to item names.
+// Trade site tags (as in "listed for 120 divine") to item names. The first
+// tag for a name is the trade site's own (APT's item data `tradeTag`), the
+// others are short forms people type.
 export const CURRENCY_TAGS: Record<string, string> = {
   'chaos': 'Chaos Orb',
   'divine': 'Divine Orb',
@@ -45,6 +47,7 @@ export const CURRENCY_TAGS: Record<string, string> = {
   'alt': 'Orb of Alteration',
   'fusing': 'Orb of Fusing',
   'chrome': 'Chromatic Orb',
+  'jewellers': "Jeweller's Orb",
   'jew': "Jeweller's Orb",
   'chance': 'Orb of Chance',
   'scour': 'Orb of Scouring',
@@ -54,6 +57,7 @@ export const CURRENCY_TAGS: Record<string, string> = {
   'regret': 'Orb of Regret',
   'blessed': 'Blessed Orb',
   'annul': 'Orb of Annulment',
+  'ancient-orb': 'Ancient Orb',
   'ancient': 'Ancient Orb',
   'orb-of-binding': 'Orb of Binding',
   'orb-of-horizons': 'Orb of Horizons',

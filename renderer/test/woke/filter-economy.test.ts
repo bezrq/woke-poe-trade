@@ -51,6 +51,27 @@ const PRICES: PriceItem[] = [
 const noUniques = () => []
 const lookup = () => priceLookup(PRICES, noUniques)
 
+describe('price groups', () => {
+  // NeverSink lists resonators in its fossil tiers ("Fossils and Resonators").
+  it('values resonators in the fossil tiers', () => {
+    const doc = parseFilter([
+      'Show # $type->currency->fossil $tier->t1',
+      '\tClass == "Delve Stackable Socketable Currency"',
+      '\tBaseType == "Fractured Fossil"',
+      '',
+      'Hide # $type->currency->fossil $tier->exhide',
+      '\tClass == "Delve Stackable Socketable Currency"',
+      '\tBaseType == "Prime Chaotic Resonator"',
+      ''
+    ].join('\n'))
+    const prices = priceLookup([
+      { type: 'Fossil', name: 'Fractured Fossil', variant: '', chaos: 200 },
+      { type: 'Resonator', name: 'Prime Chaotic Resonator', variant: '', chaos: 150 }
+    ], noUniques)
+    expect(auditBases(doc, prices, 50).map(v => v.base).sort()).toEqual(['Fractured Fossil', 'Prime Chaotic Resonator'])
+  })
+})
+
 describe('tier ranks', () => {
   it('reads tN, suffixed currency tiers, and skips special ones', () => {
     expect(tierRank('t1', ['t1', 't2'])).toBe(1)

@@ -72,13 +72,12 @@ export const MECHANICS: Mechanic[] = [
         types: ['Currency'],
         match: /^(Exotic Coinage|Scrap Metal|Astragali|Burial Medallion)$/,
         tag: i => EXPEDITION_VENDORS[i.name]
-      },
-      { label: 'Artifacts', types: ['Artifact'], limit: 8 }
+      }
     ],
     scarabs: /Expedition/,
     tips: [
       'Run logbooks for the faction whose vendor currency is worth most per unit.',
-      'Place explosives on remnants that add artifact quantity or rarity first.',
+      'Place explosives on remnants that add vendor currency quantity or rarity first.',
       'Skip remnants your build cannot handle; one bad remnant can brick the run.'
     ],
     zone: /^Expedition/i
@@ -141,14 +140,12 @@ export const MECHANICS: Mechanic[] = [
     label: 'Breach',
     short: 'BRC',
     icon: 'fas fa-hand-paper',
-    groups: [
-      { label: 'Splinters', types: ['Fragment'], match: /^Splinter of / },
-      { label: 'Breachstones', types: ['Fragment'], match: /Breachstone$/, limit: 8 },
-      { label: 'Blessings', types: ['Currency', 'Fragment'], match: /^Blessing of / }
-    ],
+    // Breach splinters, Breachstones and Blessings are no longer in the game;
+    // breaches drop Breach Rings (rare, corrupted), which poe.ninja doesn't price.
+    groups: [],
     scarabs: /Breach/,
     tips: [
-      'Sell splinters in stacks of 100 or combine them into Breachstones, whichever this list says is worth more.'
+      'Breaches drop Breach Rings, which come corrupted: check their mods before vendoring.'
     ],
     zone: /Breach/i
   },
@@ -158,12 +155,11 @@ export const MECHANICS: Mechanic[] = [
     short: 'LGN',
     icon: 'fas fa-shield-alt',
     groups: [
-      { label: 'Splinters and emblems', types: ['Fragment'], match: /^Timeless .*(Splinter|Emblem)$/ },
-      { label: 'Incubators', types: ['Incubator'], limit: 8 }
+      { label: 'Splinters and emblems', types: ['Fragment'], match: /^Timeless .*(Splinter|Emblem)$/ }
     ],
     scarabs: /Legion/,
     tips: [
-      'Open the generals and sergeants first: they carry the splinter and incubator drops.'
+      'Open the generals and sergeants first: they carry the splinter drops.'
     ],
     zone: /Legion/i
   },

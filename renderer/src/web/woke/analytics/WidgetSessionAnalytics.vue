@@ -237,6 +237,7 @@ import { evaluateBoss, priceResolver } from '../boss-runs/calc'
 import { useSessionStore } from './store'
 import { tradeTotals, tradesInRange, useTradeLog } from '../trade/log-store'
 import { isModuleOn } from '../modules'
+import { useVisibleClock } from '../shared/visible-clock'
 import {
   MIN_UNITS_FOR_RANGE, buildRow, chanceBetter, exportRows, filterSessions, formatDuration, formatSessionDate,
   inRange, isBigDrop, mapTileRows, perHour, rateFor, runProfit, sessionTotals, sessionUnits, sortRows, strategyRows
@@ -303,8 +304,11 @@ const leagues = useLeagues()
 const league = computed(() => leagues.selectedId.value ?? '')
 const unitLabel = computed(() => props.config.unit === 'div' ? 'div' : 'c')
 
+// "Last 7 days" and "Today" are counted from now: read the clock when the
+// panel comes on screen (the overlay runs for days) and when data changes.
 const now = shallowRef(Date.now())
-watch(() => store.sessions.value, () => { now.value = Date.now() })
+useVisibleClock(() => props.config, () => { now.value = Date.now() }, 60_000)
+watch([() => store.sessions.value, () => tradeLog.trades.value], () => { now.value = Date.now() })
 
 const inView = computed(() => filterSessions(store.sessions.value, props.config.range, league.value, now.value))
 

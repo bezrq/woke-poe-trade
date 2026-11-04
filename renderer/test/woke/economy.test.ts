@@ -15,6 +15,10 @@ import { BOSSES } from '@/web/woke/boss-runs/bosses'
 import { evaluateBoss, priceResolver, observedRates, parseRunTime, formatRunTime } from '@/web/woke/boss-runs/calc'
 import type { BossPrefs } from '@/web/woke/boss-runs/calc'
 import { DumpImporter } from '@/web/woke/league-invest/dumps'
+import { MECHANICS } from '@/web/woke/mechanics/data'
+import { MECHANIC_ICONS } from '@/web/woke/ui/game-icons'
+import { mechanicOf } from '@/web/woke/atlas/tree'
+import type { AtlasNode } from '@/web/woke/atlas/tree'
 import { rankOpportunities } from '@/web/woke/league-invest/invest'
 
 describe('poe.ninja', () => {
@@ -113,6 +117,41 @@ describe('essence corruption', () => {
   it('reads OCR-ish lines', () => {
     expect(parseMonolith(['Deafenlng Essence of Misery', 'Shrieking Essence 0f Greed'])?.essences.map(e => e.name))
       .toEqual(['Deafening Essence of Misery', 'Shrieking Essence of Greed'])
+  })
+})
+
+describe('league mechanics', () => {
+  // APT's item data: what the game has now (Breach splinters, Incubators and
+  // Expedition artifacts are gone).
+  const names = new Set([...fs.readFileSync(path.join(__dirname, '../../public/data/en/items.ndjson'), 'utf8')
+    .matchAll(/"name":"((?:[^"\\]|\\.)*)"/g)].map(m => JSON.parse(`"${m[1]}"`) as string))
+
+  it('prices only items that exist', () => {
+    const empty: string[] = []
+    for (const m of MECHANICS) {
+      for (const g of m.groups) {
+        if (g.types?.some(t => ['Artifact', 'Incubator'].includes(t))) empty.push(`${m.id}: ${g.label}`)
+        if (g.match && ![...names].some(n => g.match!.test(n))) empty.push(`${m.id}: ${g.label}`)
+      }
+    }
+    expect(empty).toEqual([])
+  })
+
+  it('mechanic icons show items that exist', () => {
+    const missing = Object.entries(MECHANIC_ICONS).filter(([, i]) => i.item && !names.has(i.item)).map(([id]) => id)
+    expect(missing).toEqual([])
+  })
+})
+
+describe('atlas tree', () => {
+  const notable = (name: string, stats: string[]): AtlasNode => ({ id: 1, name, stats, kind: 'notable' })
+
+  it('groups notables by mechanic, whoever the stat names', () => {
+    // Real atlas notables (GGG's atlastree-export).
+    expect(mechanicOf(notable('Mighty Hunter', ['Einhar has 100% increased Cooldown Recovery Rate in your Maps']))).toBe('Bestiary')
+    expect(mechanicOf(notable('Frantic Mining', ['Your Maps have +20% chance to contain Niko', 'Scarabs dropped in your Maps have 20% increased chance to be Sulphite Scarabs']))).toBe('Delve')
+    expect(mechanicOf(notable('Sulphite Infusion', ['Your White Tier Maps grant 400 additional Voltaxic Sulphite on Completion']))).toBe('Delve')
+    expect(mechanicOf(notable('Etched by Acid', ['Your Maps have 10% chance to award double progress towards encountering The Eater of Worlds']))).toBe('Eldritch')
   })
 })
 

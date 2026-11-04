@@ -39,13 +39,12 @@ export const ECONOMY_GROUPS: EconomyGroup[] = [
   { type: 'fragments->scarabs', label: 'Scarabs', ninja: ['Scarab'] },
   { type: 'fragments', label: 'Fragments', ninja: ['Fragment'] },
   { type: 'currency->essence', label: 'Essences', ninja: ['Essence'] },
-  { type: 'currency->fossil', label: 'Fossils', ninja: ['Fossil'] },
+  // NeverSink tiers resonators together with fossils.
+  { type: 'currency->fossil', label: 'Fossils and resonators', ninja: ['Fossil', 'Resonator'] },
   { type: 'currency->oil', label: 'Oils', ninja: ['Oil'] },
   { type: 'currency->deliriumorbs', label: 'Delirium orbs', ninja: ['DeliriumOrb'] },
   { type: 'currency->trial->omen', label: 'Omens', ninja: ['Omen'] },
   { type: 'currency->trial->tattoo', label: 'Tattoos', ninja: ['Tattoo'] },
-  { type: 'currency->incubators', label: 'Incubators', ninja: ['Incubator'] },
-  { type: 'currency->resonator', label: 'Resonators', ninja: ['Resonator'] },
   { type: 'currency->ducats', label: 'Ducats', ninja: ['Ducat'] }
 ]
 

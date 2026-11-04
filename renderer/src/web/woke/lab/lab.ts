@@ -49,6 +49,13 @@ export function dateInUrl (url: string): string | null {
   return /(\d{4}-\d{2}-\d{2})/.exec(url)?.[1] ?? null
 }
 
+// The layout's date when it's from before today's lab (days start at
+// midnight UTC), else null.
+export function staleLayoutDate (url: string | null, now: number): string | null {
+  const d = url ? dateInUrl(url) : null
+  return d && d < new Date(now).toISOString().slice(0, 10) ? d : null
+}
+
 // Finds the layout image on a poelab page (runs inside the page).
 export const FIND_LAYOUT_JS = `(() => {
   const pick = document.getElementById('notesImg') ||

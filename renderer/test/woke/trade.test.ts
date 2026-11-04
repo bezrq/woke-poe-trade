@@ -3,7 +3,9 @@
 // Driven by testing/fixtures/client-logs/trade-hideout.txt.
 import { describe, it, expect } from 'vitest'
 import { fixture } from '../helpers/game-data'
-import { parseOffer, parsePrice, parseTradeLine, offerLabel, priceLabel } from '@/web/woke/trade/whispers'
+import fs from 'fs'
+import path from 'path'
+import { CURRENCY_TAGS, parseOffer, parsePrice, parseTradeLine, offerLabel, priceLabel } from '@/web/woke/trade/whispers'
 import { applyEvent, front, markSent, markTraded, newBook, nextStep, prune, queue, recordFor, skip, OPEN_FOR_MS } from '@/web/woke/trade/book'
 import type { Offer, TradeBook } from '@/web/woke/trade/book'
 import { DEFAULT_REPLIES, fillReply, replyText } from '@/web/woke/trade/widget'
@@ -86,6 +88,25 @@ describe('trade whispers', () => {
     expect(p(': Trade accepted.')).toMatchObject({ kind: 'trade-accepted' })
     expect(p(': That character is not online.')).toMatchObject({ kind: 'offline' })
     expect(p(': AFK mode is now ON. Autoreply "brb"')).toMatchObject({ kind: 'afk', on: true })
+  })
+})
+
+describe('currency tags', () => {
+  // The trade site writes prices with its currency tags ("listed for 40
+  // jewellers"); APT's item data has the same tags.
+  it('knows the trade site tag of every currency it names', () => {
+    const tags = new Map<string, string>()
+    for (const line of fs.readFileSync(path.join(__dirname, '../../public/data/en/items.ndjson'), 'utf8').split('\n')) {
+      if (!line.includes('"tradeTag"')) continue
+      const item = JSON.parse(line) as { name: string, tradeTag: string }
+      tags.set(item.name, item.tradeTag)
+    }
+    const wrong = [...new Set(Object.values(CURRENCY_TAGS))]
+      .filter(name => tags.has(name) && CURRENCY_TAGS[tags.get(name)!] !== name)
+      .map(name => `${name}: the site writes "${tags.get(name)}"`)
+    expect(wrong).toEqual([])
+    expect(parsePrice('40 jewellers')).toEqual({ amount: 40, currency: "Jeweller's Orb" })
+    expect(priceLabel({ amount: 40, currency: "Jeweller's Orb" })).toBe('40 jewellers')
   })
 })
 
