@@ -43,6 +43,7 @@ import WidgetMechanics from './mechanics/WidgetMechanics.vue'
 import MechanicsEditor from './mechanics/mechanics-editor.vue'
 import { MECHANICS_TYPE } from './mechanics/widget'
 import WidgetMapMods from './map-mods/WidgetMapMods.vue'
+import WidgetMapCheck from './map-mods/WidgetMapCheck.vue'
 import MapModsEditor from './map-mods/map-mods-editor.vue'
 import { MAP_MODS_TYPE } from './map-mods/widget'
 import WidgetMapScan from './map-mods/WidgetMapScan.vue'
@@ -72,6 +73,7 @@ export const wokeWidgets: WidgetComponent[] = [
   WidgetFarming as unknown as WidgetComponent,
   WidgetMechanics as unknown as WidgetComponent,
   WidgetMapMods as unknown as WidgetComponent,
+  WidgetMapCheck as unknown as WidgetComponent,
   WidgetMapScan as unknown as WidgetComponent,
   WidgetEssenceScan as unknown as WidgetComponent,
   WidgetLabGems as unknown as WidgetComponent,
