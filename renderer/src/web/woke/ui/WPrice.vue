@@ -9,6 +9,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { formatAmount } from './format'
 
 // Shows a chaos value, switching to divines when it is worth at least one.
 // Pass unit to force one, e.g. so "then" and "now" in a row use the same unit.
@@ -24,9 +25,7 @@ const useDivine = computed(() => {
 })
 const text = computed(() => {
   if (props.chaos == null) return ''
-  const v = useDivine.value ? props.chaos / props.divine! : props.chaos
-  const a = Math.abs(v)
-  return a >= 100 ? Math.round(v).toString() : a >= 10 ? v.toFixed(useDivine.value ? 1 : 0) : v.toFixed(1)
+  return formatAmount(useDivine.value ? props.chaos / props.divine! : props.chaos)
 })
 </script>
 

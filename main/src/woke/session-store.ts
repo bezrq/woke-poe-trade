@@ -5,19 +5,16 @@
 // Layout: <userData>/woke-sessions/<league>/<session id>.json
 import { promises as fs } from 'fs'
 import path from 'path'
-import { app, shell } from 'electron'
+import { shell } from 'electron'
+import { dataDir, leagueName, listDir, safeName, writeAtomic, writeQueue } from './data-files'
 
 // Same as the renderer's SessionRecord (woke/analytics/types.ts); kept loose here.
 interface SessionRecord { id: string, league: string, [k: string]: unknown }
 
-const root = () => path.join(app.getPath('userData'), 'woke-sessions')
-
-function safeName (s: string): string {
-  return s.replace(/[^\w .-]/g, '_').slice(0, 80) || '_'
-}
+const root = () => dataDir('woke-sessions')
 
 function leagueDir (league: unknown): string {
-  return path.join(root(), safeName(typeof league === 'string' && league ? league : 'Unknown league'))
+  return path.join(root(), leagueName(league))
 }
 
 function sessionFile (s: { id: unknown, league: unknown }): string {
@@ -25,20 +22,6 @@ function sessionFile (s: { id: unknown, league: unknown }): string {
   return path.join(leagueDir(s.league), `${safeName(s.id)}.json`)
 }
 
-async function writeAtomic (file: string, data: string) {
-  await fs.mkdir(path.dirname(file), { recursive: true })
-  const tmp = `${file}.tmp`
-  await fs.writeFile(tmp, data, 'utf8')
-  await fs.rename(tmp, file)
-}
-
-async function readDir (dir: string): Promise<string[]> {
-  try {
-    return await fs.readdir(dir)
-  } catch {
-    return []
-  }
-}
 
 // Every session, read once and kept in memory: a league is a few hundred
 // small files at most.
@@ -48,9 +31,9 @@ function loadAll (): Promise<Map<string, SessionRecord>> {
   if (!cache) {
     cache = (async () => {
       const out = new Map<string, SessionRecord>()
-      for (const league of await readDir(root())) {
+      for (const league of await listDir(root())) {
         const dir = path.join(root(), league)
-        for (const name of await readDir(dir)) {
+        for (const name of await listDir(dir)) {
           if (!name.endsWith('.json')) continue
           try {
             const s = JSON.parse(await fs.readFile(path.join(dir, name), 'utf8')) as SessionRecord
@@ -66,12 +49,7 @@ function loadAll (): Promise<Map<string, SessionRecord>> {
 }
 
 // Writes go one at a time so two saves never interleave.
-let queue: Promise<unknown> = Promise.resolve()
-function queued<T> (fn: () => Promise<T>): Promise<T> {
-  const next = queue.catch(() => {}).then(fn)
-  queue = next
-  return next
-}
+const queued = writeQueue()
 
 function csvCell (v: unknown): string {
   const s = v == null ? '' : String(v)

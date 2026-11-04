@@ -1,7 +1,10 @@
 <template>
   <Widget :config="{ ...config, anchor }" move-handles="none" :removable="false" :inline-edit="false">
     <template v-if="item">
-      <MapCheck v-if="isMapLike"
+      <!-- woke: Map mods replaces APT's map check for the items it rates. -->
+      <WokeMapVerdictCard v-if="wokeMap"
+        :result="wokeMap.result" :config="wokeMap.config" />
+      <MapCheck v-else-if="isMapLike"
         :item="item" :config="config.maps" />
       <ItemInfo v-else
         :item="item" />
@@ -47,7 +50,7 @@ export default {
 </script>
 
 <script setup lang="ts">
-import { computed, inject, ref } from 'vue'
+import { computed, inject, ref, watch } from 'vue'
 import { MainProcess } from '@/web/background/IPC'
 import { ItemCategory, ItemRarity, parseClipboard, ParsedItem } from '@/parser'
 import { registerActions } from './hotkeyable-actions'
@@ -56,6 +59,8 @@ import type { WidgetManager } from '../overlay/interfaces'
 import Widget from '../overlay/Widget.vue'
 import MapCheck from '../map-check/MapCheck.vue'
 import ItemInfo from './ItemInfo.vue'
+import WokeMapVerdictCard from '@/web/woke/map-mods/MapVerdictCard.vue'
+import { wokeMapCheck, ensureMapModsConfig, isMapLike as wokeIsMapLike } from '@/web/woke/map-mods/check'
 
 const props = defineProps<{
   config: ItemCheckWidget
@@ -96,6 +101,10 @@ const anchor = computed(() => {
       : ((width - poePanelWidth) / width) * 100
   }
 })
+
+// Sets Map mods up (with APT's ratings brought over) the first time a map is checked.
+watch(item, (it) => { if (it && wokeIsMapLike(it)) ensureMapModsConfig() })
+const wokeMap = computed(() => item.value ? wokeMapCheck(item.value) : null)
 
 const isMapLike = computed(() => {
   if (!item.value) return false

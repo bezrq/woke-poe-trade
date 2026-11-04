@@ -2,7 +2,7 @@
   <Widget :config="config" move-handles="corners" :inline-edit="false">
     <!-- While you play: an icon with a badge for open offers that peeks when
          one arrives (A1); resting on it opens the offers with buttons (B1). -->
-    <DockItem ref="dockRef" id="trade" icon="fas fa-handshake" :art="CURRENCY_ICONS.divine" title="Trades" :show="shown.length > 0"
+    <DockItem ref="dockRef" id="trade" title="Trades" :show="shown.length > 0"
       :badge="sellCount || null" :tone="anyInArea ? 'up' : 'accent'" :led="book.afk ? 'warn' : null" :wm-id="config.wmId"
       card-width="23rem" interactive @open-change="onCard">
       <template #card>
@@ -81,10 +81,11 @@ export default {
 
 <script setup lang="ts">
 import { computed, inject, nextTick, onUnmounted, reactive, shallowRef, watch } from 'vue'
-import { Host, MainProcess } from '@/web/background/IPC'
+import { MainProcess } from '@/web/background/IPC'
+import { AppConfig } from '@/web/Config'
 import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
-import { WPanel, WTabs, WEmpty, WButton, WBanner, WSkeleton, WKbd, openMenu, toast, CURRENCY_ICONS } from '../ui'
+import { WPanel, WTabs, WEmpty, WButton, WBanner, WSkeleton, WKbd, openMenu, toast } from '../ui'
 import { gameIcon } from '../ui/game-icons'
 import DockItem from '../dock/DockItem.vue'
 import { hideWhilePlaying } from '../dock/dock'
@@ -92,13 +93,15 @@ import { usePriceIndex } from '../market/price-index'
 import { priceResolver } from '../boss-runs/calc'
 import { useLeagues } from '@/web/background/Leagues'
 import { logTail } from '../campaign/log-tail'
+import { onGameLog } from '../shared/game-log'
 import OfferRow from './OfferRow.vue'
 import { applyEvent, dismiss, front, markSent, markTraded, newBook, prune, queue, recordFor, skip } from './book'
 import type { Offer, TradeBook, TradeRecord } from './book'
 import { DEFAULT_REPLIES, parseHotkeyTarget, replyText } from './widget'
 import type { ReplyId } from './widget'
 import { offerLabel, parseTradeLine, priceLabel } from './whispers'
-import { bulkDelta, formatValue, priceChaos } from './value'
+import { bulkDelta, priceChaos } from './value'
+import { formatChaos } from '../ui/format'
 import { tradeTotals, tradesInRange, useTradeLog } from './log-store'
 
 const props = defineProps<{
@@ -138,7 +141,7 @@ const px = computed(() => {
 function valueText (o: Offer): string | null {
   const c = priceChaos(o.price, px.value)
   if (c == null) return null
-  const text = formatValue(c, divine.value)
+  const text = formatChaos(c, divine.value)
   // "120 div" next to a price of "120 div" says nothing.
   return text === priceLabel(o.price) ? null : text
 }
@@ -199,7 +202,7 @@ const panel = shallowRef<InstanceType<typeof WPanel> | null>(null)
 const seenAtStart = new Set<string>()
 
 function handle (line: string, live: boolean) {
-  const ev = parseTradeLine(line)
+  const ev = parseTradeLine(line, Date.now(), AppConfig().language)
   if (!ev) return
   // Live lines use this computer's clock, so offers age the same way
   // whatever the log's clock says. Trades keep the log's time: it names
@@ -224,8 +227,8 @@ function announce (o: Offer) {
 let replayed = false
 const seenLive = new Set<string>()
 
-const logListener = Host.onEvent('MAIN->CLIENT::game-log', (e) => {
-  for (const line of e.lines) {
+onGameLog((lines) => {
+  for (const { line } of lines) {
     if (seenAtStart.has(line)) continue
     if (!replayed) seenLive.add(line)
     handle(line, true)
@@ -238,7 +241,7 @@ logTail().then(tail => {
   const until = Date.now() + 60_000
   for (const line of tail.lines) {
     if (seenLive.has(line)) continue
-    const ev = parseTradeLine(line, 0)
+    const ev = parseTradeLine(line, 0, AppConfig().language)
     if (!ev || ev.at < since || ev.at > until) continue
     // The same line may also arrive live if it was written as the app
     // started: count it once.
@@ -341,7 +344,6 @@ function onCard (open: boolean) {
 }
 
 onUnmounted(() => {
-  logListener.abort()
   hotkeys.abort()
   clearInterval(clock)
 })
@@ -359,7 +361,7 @@ const today = computed(() => tradeTotals(tradesInRange(leagueTrades.value, 'toda
 const league = computed(() => tradeTotals(leagueTrades.value))
 const net = (t: { sold: number, spent: number }) => t.sold - t.spent
 function money (chaos: number): string {
-  return formatValue(chaos, divine.value) || '0 c'
+  return formatChaos(chaos, divine.value)
 }
 function signed (chaos: number): string {
   return `${chaos >= 0 ? '+' : '−'}${money(Math.abs(chaos))}`

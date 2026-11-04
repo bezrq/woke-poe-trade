@@ -13,7 +13,8 @@ import type { DockLed, DockTone } from './dock'
 
 const props = withDefaults(defineProps<{
   id: string
-  icon: string
+  // Left out: the module's own icon (modules.ts), the same as everywhere else.
+  icon?: string
   art?: string | null
   title: string
   show: boolean
@@ -25,7 +26,8 @@ const props = withDefaults(defineProps<{
   cardWidth?: string
   interactive?: boolean
 }>(), {
-  art: null,
+  icon: undefined,
+  art: undefined,
   badge: null,
   tone: 'accent',
   led: null,

@@ -1,6 +1,6 @@
 <template>
   <Widget :config="config" move-handles="corners" :inline-edit="false">
-    <DockItem id="map-scan" :art="mechanicIcon('map').src" icon="fas fa-crosshairs" title="Map scan" :show="running || paused || !!message"
+    <DockItem id="map-scan" title="Map scan" :show="running || paused || !!message"
       :led="message ? 'error' : paused ? 'warn' : running ? 'on' : null" :badge="rolling ? rolls.length : null"
       :wm-id="config.wmId" card-width="18rem">
       <template #card>
@@ -120,7 +120,6 @@ import Widget from '@/web/overlay/Widget.vue'
 import { WPanel, WButton, WEmpty, WKbd, toast } from '../ui'
 import { hostRequest } from '../shared/host'
 import DockItem from '../dock/DockItem.vue'
-import { mechanicIcon } from '../ui/game-icons'
 import { hideWhilePlaying } from '../dock/dock'
 import { DEFAULT_JUICE_WEIGHTS, defaultProfile, juiceScore, rateMods, shortLabel } from './rules'
 import type { ModRating, Verdict } from './rules'

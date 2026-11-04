@@ -165,7 +165,7 @@
 <script setup lang="ts">
 import { computed, shallowRef, watch } from 'vue'
 import { DateTime } from 'luxon'
-import { AppConfig, saveConfig, pushHostConfig, getConfigForHost } from '@/web/Config'
+import { AppConfig, saveConfig, pushHostConfig } from '@/web/Config'
 import type { Config } from '@/web/Config'
 import { Host } from '@/web/background/IPC'
 import { useLeagues } from '@/web/background/Leagues'
@@ -174,7 +174,7 @@ import { hostRequest } from '../shared/host'
 import { ensureWokeConfig } from '../modules'
 import PresetBar from '../switchboard/PresetBar.vue'
 import ModuleList from '../switchboard/ModuleList.vue'
-import { buildHotkeyList } from '../switchboard/hotkey-list'
+import { fieldKey, hotkeyFields } from '../settings/hotkey-fields'
 
 interface FoundLog { path: string, source: 'running' | 'standalone' | 'steam' | 'folder', modified: number, size: number }
 interface Prefs {
@@ -282,15 +282,15 @@ async function setPref (patch: Partial<Prefs>) {
 const keys = computed(() => {
   // Worked out when the step opens, after module picks.
   if (STEPS[step.value].id !== 'ready') return []
-  const rows = buildHotkeyList(AppConfig(), getConfigForHost().shortcuts).filter(r => !r.off)
-  const first = (label: string) => rows.find(r => r.label === label)
+  const fields = hotkeyFields(AppConfig()).filter(f => !f.off && fieldKey(f))
   const out: Array<{ key: string, label: string }> = [{ key: AppConfig().overlayKey, label: 'Open or close the overlay' }]
-  const pc = first('Price check')
-  if (pc) out.push({ key: pc.key, label: 'Price check the item under your cursor' })
-  for (const r of rows) {
+  const pc = fields.find(f => f.id === 'pc')
+  if (pc) out.push({ key: fieldKey(pc)!, label: 'Price check the item under your cursor' })
+  // Then the toolkit's own keys (fields of a placed widget: "<wmId>-…").
+  for (const f of fields) {
     if (out.length >= 10) break
-    if (r === pc || r.label === 'Show / hide overlay' || r.module === 'APT') continue
-    out.push({ key: r.key, label: `${r.module}: ${r.label}` })
+    if (!/^\d/.test(f.id)) continue
+    out.push({ key: fieldKey(f)!, label: f.label })
   }
   return out
 })

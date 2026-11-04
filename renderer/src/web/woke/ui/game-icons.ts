@@ -4,6 +4,7 @@
 // Awesome icons are only for UI actions the game has no art for.
 import { ITEM_BY_REF } from '@/assets/data'
 import type { BaseType } from '@/assets/data/interfaces'
+import { MODULES } from '../modules'
 
 type Ns = BaseType['namespace']
 
@@ -64,4 +65,22 @@ export function ninjaIcon (type: string, name: string): string | null {
   if (name === 'Divine Orb') return CURRENCY_ICONS.divine
   const ns: Ns = /^Unique/.test(type) ? 'UNIQUE' : /Gem/.test(type) ? 'GEM' : type === 'DivinationCard' ? 'DIVINATION_CARD' : 'ITEM'
   return gameIcon(name, ns)
+}
+
+// A module's icon: its game art (null when it has none or the art isn't
+// loaded) and the Font Awesome fallback. Same everywhere it's drawn.
+export function moduleIcon (moduleId: string): { art: string | null, fa: string } {
+  const m = MODULES.find(_ => _.id === moduleId)
+  if (!m) return { art: null, fa: 'fas fa-window-maximize' }
+  const i = m.icon
+  const art = i.mechanic ? mechanicIcon(i.mechanic).src
+    : i.currency ? CURRENCY_ICONS[i.currency] ?? null
+      : i.item ? gameIcon(i.item)
+        : null
+  return { art, fa: i.fa }
+}
+
+export function moduleIconForWidget (wmType: string): { art: string | null, fa: string } | null {
+  const m = MODULES.find(_ => _.widgetTypes.includes(wmType))
+  return m ? moduleIcon(m.id) : null
 }

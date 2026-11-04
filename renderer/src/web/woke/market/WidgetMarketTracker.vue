@@ -1,7 +1,7 @@
 <template>
   <Widget :config="config" move-handles="corners" :inline-edit="false" :readonly="true">
     <!-- Town and hideout, while a watched item is past one of your alerts. -->
-    <DockItem id="market" :art="CURRENCY_ICONS.divine" icon="fas fa-chart-line" title="Market alerts" :show="dockShow" :badge="unseenAlerts || null"
+    <DockItem id="market" title="Market alerts" :show="dockShow" :badge="unseenAlerts || null"
       tone="down" :wm-id="config.wmId" card-width="20rem" @open-change="onCard">
       <template #card>
         <div style="padding: 4px var(--w-pad) 6px;" class="flex flex-col gap-0.5">
@@ -146,13 +146,13 @@ import { useMarketCollector } from './collector'
 import { dailyHistory, dailyRowsForDate, latestSnapshots, snapshotAtOrBefore } from './db'
 import { computeMovers, trendThen } from './analysis'
 import { WPanel, WTabs, WSegmented, WSelect, WField, WPrice, WDelta, WSpark, WEmpty, WChip, WIcon, WKbd, WSkeleton, WBanner, ninjaIcon, openMenu, toast } from '../ui'
+import { copyText } from '../ui/copy'
 import type { Mover } from './analysis'
 import { isThin, itemKey, thinTitle, utcDate } from './types'
 import type { PriceItem, Snapshot } from './types'
 import { PERIOD_MS, checkAlert } from './widget'
 import type { WatchedItem } from './widget'
 import DockItem from '../dock/DockItem.vue'
-import { CURRENCY_ICONS } from '../ui/game-icons'
 import { useZone } from '../shared/zone'
 
 const props = defineProps<{
@@ -378,9 +378,7 @@ function toggleWatch (item: { type: string, name: string, variant: string }) {
 const panel = shallowRef<InstanceType<typeof WPanel> | null>(null)
 
 function copyName (item: { name: string }) {
-  navigator.clipboard.writeText(item.name)
-    .then(() => toast(`Copied "${item.name}"`, { anchor: panel.value?.el, ms: 1800 }))
-    .catch(() => {})
+  copyText(item.name).then(ok => { if (ok) toast(`Copied "${item.name}"`, { anchor: panel.value?.el, ms: 1800 }) })
 }
 
 function rowMenu (e: MouseEvent, item: { type: string, name: string, variant: string }) {

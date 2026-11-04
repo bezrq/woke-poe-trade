@@ -15,11 +15,12 @@
         <span class="w-dim text-sm">(counted as 0)</span>
       </div>
     </div>
-    <ui-checkbox v-model="autoPause">Pause the session after 5 minutes without a zone change (resumes on the next zone)</ui-checkbox>
+    <w-toggle v-model="autoPause">Pause the session after 5 minutes without a zone change (resumes on the next zone)</w-toggle>
   </div>
 </template>
 
 <script lang="ts">
+import WToggle from '../ui/WToggle.vue'
 import { computed, defineComponent } from 'vue'
 import WHotkeyCell from '../ui/WHotkeyCell.vue'
 import { configProp, configModelValue } from '@/web/settings/utils'
@@ -28,7 +29,7 @@ import type { FarmingWidget } from './farming'
 
 export default defineComponent({
   name: 'Farming profit',
-  components: { WHotkeyCell },
+  components: { WToggle, WHotkeyCell },
   props: configProp<FarmingWidget>(),
   setup (props) {
     const w = () => props.configWidget

@@ -1,7 +1,7 @@
 <template>
   <Widget :config="config" move-handles="corners" :inline-edit="false">
     <!-- In the lab: an icon (letter = difficulty) whose card shows the layout. -->
-    <DockItem ref="dockRef" id="lab" :art="mechanicIcon('lab').src" icon="fas fa-dungeon" title="Labyrinth" :show="inLab" :badge="labDiff ? labLabel(labDiff)[0] : null"
+    <DockItem ref="dockRef" id="lab" title="Labyrinth" :show="inLab" :badge="labDiff ? labLabel(labDiff)[0] : null"
       :wm-id="config.wmId" card-width="34rem" @open-change="now = Date.now()">
       <template #card>
         <div class="flex justify-between w-dim text-xs" style="padding: 4px var(--w-pad);">
@@ -75,12 +75,12 @@ import { Host, MainProcess } from '@/web/background/IPC'
 import { AppConfig } from '@/web/Config'
 import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
+import { formatDuration } from '../ui/format'
 import { WPanel, WKbd, WListItem, WBanner } from '../ui'
-import { DEFAULT_LAB_URLS, DIFFICULTIES, FIND_LAYOUT_JS, difficultyForAreaLevel, formatDuration, isPlazaArea, labLabel, msUntilLabReset, parseHotkeyTarget, staleLayoutDate } from './lab'
+import { DEFAULT_LAB_URLS, DIFFICULTIES, FIND_LAYOUT_JS, difficultyForAreaLevel, isPlazaArea, labLabel, msUntilLabReset, parseHotkeyTarget, staleLayoutDate } from './lab'
 import { useZone } from '../shared/zone'
 import { hostRequest } from '../shared/host'
 import DockItem from '../dock/DockItem.vue'
-import { mechanicIcon } from '../ui/game-icons'
 import { hideWhilePlaying } from '../dock/dock'
 import type { LabDifficulty, OpenTarget } from './lab'
 

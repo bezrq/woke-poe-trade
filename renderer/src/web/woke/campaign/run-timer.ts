@@ -5,6 +5,7 @@
 import type { Widget, Anchor } from '@/web/overlay/widgets'
 import type { LogEvent } from './log-parse'
 import { actFromAreaId } from './log-parse'
+import { formatClock } from '../ui/format'
 
 export const RUN_TIMER_TYPE = 'woke-run-timer'
 
@@ -434,16 +435,9 @@ export function headlineDelta (rows: SplitRow[]): number | null {
 // ---- formatting ----
 
 // 1:12:04 over an hour, 14:31 under.
-export function formatRunTime (ms: number): string {
-  const s = Math.floor(Math.max(0, ms) / 1000)
-  const h = Math.floor(s / 3600)
-  const m = Math.floor((s % 3600) / 60)
-  const sec = String(s % 60).padStart(2, '0')
-  return h ? `${h}:${String(m).padStart(2, '0')}:${sec}` : `${m}:${sec}`
-}
 
 // −0:42 (ahead) / +1:05 (behind).
 export function formatDelta (ms: number): string {
   const sign = ms < 0 ? '−' : '+'
-  return sign + formatRunTime(Math.abs(ms))
+  return sign + formatClock(Math.abs(ms))
 }

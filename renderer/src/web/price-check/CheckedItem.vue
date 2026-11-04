@@ -9,11 +9,14 @@
       <woke-filter-verdict-chip :item="item" />
     </filter-name>
     <woke-roll-presets :stats="itemStats" :item="item" @apply="searchAfterPreset" />
-    <price-prediction v-if="showPredictedPrice" class="mb-4"
-      :item="item" />
-    <price-trend v-else
-      :item="item"
-      :filters="itemFilters" />
+    <!-- woke: the improved verdict below shows poeprices and poe.ninja once listings load. -->
+    <template v-if="!wokeVerdictShown">
+      <price-prediction v-if="showPredictedPrice" class="mb-4"
+        :item="item" />
+      <price-trend v-else
+        :item="item"
+        :filters="itemFilters" />
+    </template>
     <filters-block
       ref="filtersComponent"
       :filters="itemFilters"
@@ -81,6 +84,7 @@ import { AppConfig } from '@/web/Config'
 import { FilterPreset } from './filters/interfaces'
 import { PriceCheckWidget } from '../overlay/interfaces'
 import { useLeagues } from '@/web/background/Leagues'
+import { priceView } from '@/web/woke/price-insight/view'
 
 let _showSupportLinksCounter = 0
 
@@ -248,7 +252,10 @@ export default defineComponent({
 
     const { t } = useI18n()
 
+    const wokeVerdictShown = computed(() => priceView.value === 'improved' && tradeAPI.value === 'trade' && doSearch.value)
+
     return {
+      wokeVerdictShown,
       t,
       itemFilters,
       itemStats,

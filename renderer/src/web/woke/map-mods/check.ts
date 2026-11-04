@@ -105,3 +105,11 @@ export function ensureMapModsConfig (): MapModsWidget | null {
   if (w.wmFlags[0] === 'uninitialized' || !Array.isArray(w.profiles)) initMapModsWidget(w)
   return w
 }
+
+// APT's item info window shows this instead of its own map check when Map
+// mods is on (null: not a map we rate, or the module is off).
+export function wokeMapCheck (item: ParsedItem): { result: MapCheckResult, config: MapModsWidget } | null {
+  if (!isMapLike(item)) return null
+  const config = findMapModsConfig()
+  return config ? { result: checkMap(item, config), config } : null
+}

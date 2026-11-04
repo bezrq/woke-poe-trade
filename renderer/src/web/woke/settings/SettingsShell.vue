@@ -203,17 +203,18 @@ function quit () {
 // ---------- pages and sidebar ----------
 const pageId = shallowRef('game')
 
-// APT's stash search and stopwatch can be placed many times: one page each.
+// APT's stopwatch can be placed many times: one page each. (Stash search
+// strings live in the Regex library.)
 const dynamicPages = computed<SettingsPage[]>(() => (clone.value?.widgets ?? [])
-  .filter(w => w.wmType === 'stash-search' || w.wmType === 'timer')
+  .filter(w => w.wmType === 'timer')
   .map(w => ({
     id: `widget:${w.wmId}`,
-    name: w.wmTitle || (w.wmType === 'timer' ? 'Stopwatch' : 'Stash search'),
-    description: w.wmType === 'timer' ? 'A stopwatch on the overlay.' : 'Stash search strings on one key each.',
+    name: w.wmTitle || 'Stopwatch',
+    description: 'A stopwatch on the overlay.',
     group: 'modules',
     sub: 'Tools',
-    icon: w.wmType === 'timer' ? { fa: 'fas fa-stopwatch' } : { art: '/images/stash.png', fa: 'fas fa-search' },
-    find: [w.wmType === 'timer' ? 'Stopwatch' : 'Stash search']
+    icon: { fa: 'fas fa-stopwatch' },
+    find: ['Stopwatch']
   })))
 
 const allPages = computed(() => [...PAGES, ...dynamicPages.value])

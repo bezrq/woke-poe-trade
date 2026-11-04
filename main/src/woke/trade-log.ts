@@ -3,66 +3,31 @@
 // down every settings save.
 //
 // Layout: <userData>/woke-trades/<league>.json  (an array of trades)
-import { promises as fs } from 'fs'
 import path from 'path'
-import { app } from 'electron'
+import { dataDir, leagueName, listDir, readJsonStrict, writeAtomic, writeQueue } from './data-files'
 
 // Same as the renderer's TradeRecord (woke/trade/book.ts); kept loose here.
 interface TradeRecord { id: string, league: string, at: number, [k: string]: unknown }
 
-const root = () => path.join(app.getPath('userData'), 'woke-trades')
-
-function safeName (s: string): string {
-  return s.replace(/[^\w .-]/g, '_').slice(0, 80) || '_'
-}
+const root = () => dataDir('woke-trades')
 
 function leagueFile (league: unknown): string {
-  return path.join(root(), `${safeName(typeof league === 'string' && league ? league : 'Unknown league')}.json`)
+  return path.join(root(), `${leagueName(league)}.json`)
 }
 
-async function writeAtomic (file: string, data: string) {
-  await fs.mkdir(path.dirname(file), { recursive: true })
-  const tmp = `${file}.tmp`
-  await fs.writeFile(tmp, data, 'utf8')
-  await fs.rename(tmp, file)
-}
-
-// A league's trades. Only a missing file means "no trades yet": a file that
-// can't be read right now (locked by antivirus or a sync tool) throws, so the
-// read-change-write below never replaces a league of trades with one. A file
-// that isn't valid JSON is moved aside, kept for the player, and starts over.
+// A league's trades (see readJsonStrict: a locked file throws, never reads as empty).
 async function readFile (file: string): Promise<TradeRecord[]> {
-  let text: string
-  try {
-    text = await fs.readFile(file, 'utf8')
-  } catch (e) {
-    if ((e as NodeJS.ErrnoException).code === 'ENOENT') return []
-    throw e
-  }
-  let list: unknown
-  try {
-    list = JSON.parse(text)
-  } catch {
-    await fs.rename(file, `${file}.broken-${Date.now()}`)
-    return []
-  }
+  const list = await readJsonStrict<unknown>(file, [])
   return Array.isArray(list) ? list.filter((t): t is TradeRecord => t && typeof t.id === 'string') : []
 }
 
-// Writes go one at a time so two saves never interleave.
-let queue: Promise<unknown> = Promise.resolve()
-function queued<T> (fn: () => Promise<T>): Promise<T> {
-  const next = queue.catch(() => {}).then(fn)
-  queue = next
-  return next
-}
+const queued = writeQueue()
 
 type Args = Record<string, unknown>
 
 export const tradeLogHandlers: Record<string, (args: Args) => Promise<unknown>> = {
   'trades-list': async () => {
-    let names: string[] = []
-    try { names = await fs.readdir(root()) } catch {}
+    const names = await listDir(root())
     const out: TradeRecord[] = []
     for (const name of names) {
       if (!name.endsWith('.json')) continue

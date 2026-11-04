@@ -67,15 +67,6 @@ export function trendThen (items: PriceItem[], period: '24h' | '7d'): PriceItem[
   return out
 }
 
-export function formatChaos (chaos: number, divine: number | null): string {
-  const sign = chaos < 0 ? '-' : ''
-  const a = Math.abs(chaos)
-  if (divine && a >= divine) {
-    return `${sign}${(a / divine).toFixed(a >= divine * 10 ? 0 : 1)} div`
-  }
-  return `${sign}${a >= 10 ? Math.round(a) : a.toFixed(1)} c`
-}
-
 export function formatChange (change: number): string {
   const pct = change * 100
   return `${pct >= 0 ? '+' : ''}${Math.abs(pct) >= 10 ? Math.round(pct) : pct.toFixed(1)}%`

@@ -38,18 +38,20 @@ test('a module switched off: no widget, no hotkeys', async ({ overlay, fakeApp }
   expect(keys).not.toContain('Ctrl+Alt+D')
 })
 
-test('first run: picking the Leveling preset switches mapping tools off', async ({ overlay, fakeApp }) => {
+test('first run: the setup window picks tools; the overlay shows no second picker', async ({ overlay, fakeApp }) => {
   await overlay.boot({ firstRun: true, overlayActive: true })
   const page = overlay.page
-  await page.getByRole('button', { name: 'Choose tools' }).click()
+  await expect(page.getByText('Set up your toolkit')).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Choose tools' })).toHaveCount(0)
+  // The setup window is the same page with #setup.
+  await page.goto(`${fakeApp.url}#setup`)
+  await page.reload()
+  await page.getByRole('button', { name: /Tools/ }).click()
   await page.getByRole('radio', { name: 'Leveling' }).click()
-  await overlay.snap('first run setup, Leveling picked')
-  await page.getByRole('button', { name: 'Done' }).click()
-  await expect(page.getByText('Set up your toolkit')).toBeHidden()
-  fakeApp.focusGame() // back to the game: settings save
-  await expect.poll(() => fakeApp.readConfig()?.woke?.setupDone).toBe(true)
+  await overlay.snap('setup window, Leveling picked')
+  await page.getByRole('button', { name: 'Next' }).click()
+  await expect.poll(() => fakeApp.readConfig()?.woke?.off ?? []).toContain('map-scan')
   const off: string[] = fakeApp.readConfig().woke.off
-  expect(off).toContain('map-scan')
   expect(off).toContain('market')
   expect(off).not.toContain('campaign')
   expect(off).not.toContain('run-timer')

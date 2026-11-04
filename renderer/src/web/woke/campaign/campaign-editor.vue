@@ -9,16 +9,11 @@
     <div>
       <div class="mb-1">Route</div>
       <div class="flex flex-col gap-1">
-        <ui-checkbox v-model="leagueStart">League start: trials, the Den and other extra stops</ui-checkbox>
-        <ui-checkbox v-model="library">Siosa's library gem stop in Act 3</ui-checkbox>
+        <w-toggle v-model="leagueStart">League start: trials, the Den and other extra stops</w-toggle>
+        <w-toggle v-model="library">Siosa's library gem stop in Act 3</w-toggle>
         <label class="flex items-center gap-2">
           <span>Bandits</span>
-          <select v-model="bandit" class="w-input rounded px-1 leading-6 w-40">
-            <option value="kill">Kill all</option>
-            <option value="oak">Help Oak</option>
-            <option value="kraityn">Help Kraityn</option>
-            <option value="alira">Help Alira</option>
-          </select>
+          <w-select v-model="bandit" :options="BANDITS" class="w-40" />
         </label>
         <div class="flex items-center gap-2">
           <span class="w-dim">Step {{ Math.min(configWidget.step + 1, total) }} of {{ total }}</span>
@@ -30,13 +25,13 @@
     <div>
       <div class="mb-1">Display</div>
       <div class="flex flex-col gap-1">
-        <ui-checkbox v-model="cardOpen">Show the guide card (off: one line in the strip)</ui-checkbox>
+        <w-toggle v-model="cardOpen">Show the guide card (off: one line in the strip)</w-toggle>
         <label class="flex items-center gap-2">
           <span>Steps on the card</span>
           <input v-model.number="cardSteps" type="number" min="1" max="8" class="w-input rounded px-1 leading-6 w-16">
         </label>
-        <ui-checkbox v-model="hideAfterCampaign">Hide in maps and hideouts once the campaign is done</ui-checkbox>
-        <ui-checkbox v-model="showBuild">Show the active PoB build's tree and main gems on the card</ui-checkbox>
+        <w-toggle v-model="hideAfterCampaign">Hide in maps and hideouts once the campaign is done</w-toggle>
+        <w-toggle v-model="showBuild">Show the active PoB build's tree and main gems on the card</w-toggle>
       </div>
     </div>
 
@@ -81,8 +76,16 @@
 </template>
 
 <script lang="ts">
+import WToggle from '../ui/WToggle.vue'
+import WSelect from '../ui/WSelect.vue'
+
+const BANDITS = [
+  { value: 'kill', label: 'Kill all' },
+  { value: 'oak', label: 'Help Oak' },
+  { value: 'kraityn', label: 'Help Kraityn' },
+  { value: 'alira', label: 'Help Alira' }
+]
 import { defineComponent, computed } from 'vue'
-import UiCheckbox from '@/web/ui/UiCheckbox.vue'
 import WHotkeyCell from '../ui/WHotkeyCell.vue'
 import { configProp, configModelValue } from '@/web/settings/utils'
 import { nextId } from '../shared/library'
@@ -94,7 +97,7 @@ import type { RouteOptions } from './route-parse'
 
 export default defineComponent({
   name: 'Campaign tracker',
-  components: { UiCheckbox, WHotkeyCell },
+  components: { WToggle, WSelect, WHotkeyCell },
   props: configProp<CampaignWidget>(),
   setup (props) {
     migrateCampaign(props.configWidget)
@@ -105,6 +108,7 @@ export default defineComponent({
       })
     }
     return {
+      BANDITS,
       acts: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
       actLabel,
       total: computed(() => bundledRoute(props.configWidget.route).steps.length),

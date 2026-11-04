@@ -5,8 +5,8 @@
 // separated "quoted terms" must all match, `|` inside a term is OR, and a
 // leading `!` negates the whole term.
 
-// PoE's search box accepts at most 250 characters.
-export const MAX_SEARCH_LENGTH = 250
+import { MAX_SEARCH_LENGTH } from '../shared/library'
+export { MAX_SEARCH_LENGTH }
 
 export interface MapRegexInput {
   avoid: string[]

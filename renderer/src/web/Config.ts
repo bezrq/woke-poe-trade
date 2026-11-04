@@ -7,6 +7,7 @@ import type { StashSearchWidget } from './stash-search/widget'
 import { wokeGlobalShortcuts, wokeShortcutsFor } from './woke/shortcuts'
 import { filterAptShortcuts, needsGameLog } from './woke/modules'
 import { MAP_CHECK_TYPE, initMapCheckWidget } from './woke/map-mods/map-check'
+import { moveStashSearchToLibrary } from './woke/regex-library/apt-import'
 import type { WokeModulesConfig } from './woke/modules'
 import type { ItemCheckWidget } from './item-check/widget'
 import type { ItemSearchWidget } from './item-search/widget'
@@ -177,6 +178,8 @@ export const defaultConfig = (): Config => ({
       res.push(...widget.defaultInstances())
     }
     for (const config of res) {
+      // woke: the Regex library replaces APT's Stash search.
+      if (config.wmType === 'stash-search') continue
       config.wmId = widgets.length + 1
       widgets.push(config)
     }
@@ -444,6 +447,8 @@ function upgradeConfig (_config: Config): Config {
   if (!config.widgets.some(w => w.wmType === MAP_CHECK_TYPE)) {
     config.widgets.push(initMapCheckWidget(Math.max(0, ...config.widgets.map(w => w.wmId)) + 1))
   }
+  // woke: Stash search strings move into the Regex library.
+  moveStashSearchToLibrary(config.widgets as Array<Record<string, any> & { wmId: number, wmType: string }>)
   /* eslint-enable */
 
   return config as unknown as Config

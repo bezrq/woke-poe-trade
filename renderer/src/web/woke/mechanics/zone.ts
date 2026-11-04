@@ -1,7 +1,5 @@
 // Tracks which league mechanic is in the current zone, from Client.txt.
-import { onUnmounted } from 'vue'
-import { Host } from '@/web/background/IPC'
-import { parseLogLine } from '../campaign/log-parse'
+import { onGameLog } from '../shared/game-log'
 import { mechanicForZone } from './data'
 
 // League NPCs log their dialogue to Client.txt ("] Einhar, Beastmaster: …"),
@@ -35,20 +33,17 @@ export function mechanicForSpeaker (line: string): string | undefined {
 // Calls back with the mechanic of the zone you're in, or null on entering a
 // zone that has none (town, hideout, a plain map), so the icon can hide.
 export function useMechanicZone (onMechanic: (id: string | null) => void): void {
-  const listener = Host.onEvent('MAIN->CLIENT::game-log', (e) => {
-    for (const line of e.lines) {
+  onGameLog((lines) => {
+    for (const { line, ev } of lines) {
       const npc = mechanicForSpeaker(line)
       if (npc) { onMechanic(npc); continue }
-      const ev = parseLogLine(line)
-      if (!ev) continue
-      if (ev.kind === 'area') {
+      if (ev?.kind === 'area') {
         // A new instance: forget the last zone's mechanic unless this one has its own.
         onMechanic(mechanicForZone(ev.areaId)?.id ?? null)
-      } else if (ev.kind === 'zone') {
+      } else if (ev?.kind === 'zone') {
         const mech = mechanicForZone(ev.name)
         if (mech) onMechanic(mech.id)
       }
     }
   })
-  onUnmounted(() => { listener.abort() })
 }

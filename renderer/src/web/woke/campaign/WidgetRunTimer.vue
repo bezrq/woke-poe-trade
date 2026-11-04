@@ -1,16 +1,16 @@
 <template>
   <Widget :config="config" move-handles="corners" :inline-edit="false" :readonly="true">
     <!-- With the campaign tracker placed, the run time is in its icon. -->
-    <DockItem id="run-timer" icon="fas fa-stopwatch" title="Run timer" :show="!docked && !!run && !run.finished"
+    <DockItem id="run-timer" title="Run timer" :show="!docked && !!run && !run.finished"
       :badge="delta != null ? formatDelta(delta) : null" :tone="delta == null ? 'accent' : delta <= 0 ? 'up' : 'down'"
       :wm-id="config.wmId" card-width="17rem" @open-change="cardShown = $event">
       <template #card>
         <div v-if="run" class="flex flex-col gap-1" style="padding: 6px var(--w-pad) 8px;">
           <div class="w-head-font w-accent w-trunc">{{ actLabel(run.act) }}<template v-if="run.zone"> · {{ run.zone }}</template></div>
-          <div class="flex justify-between w-num"><span class="w-dim">Run</span><span>{{ formatRunTime(total) }}</span></div>
+          <div class="flex justify-between w-num"><span class="w-dim">Run</span><span>{{ formatClock(total) }}</span></div>
           <div v-if="current" class="flex justify-between w-num"><span class="w-dim">Act</span>
-            <span>{{ formatRunTime(current.segmentMs ?? 0) }}<span v-if="current.cmpSegmentMs != null" class="w-faint"> / {{ formatRunTime(current.cmpSegmentMs) }}</span></span></div>
-          <div class="flex justify-between w-num"><span class="w-dim">Zone</span><span>{{ formatRunTime(total - run.zoneSinceMs) }}</span></div>
+            <span>{{ formatClock(current.segmentMs ?? 0) }}<span v-if="current.cmpSegmentMs != null" class="w-faint"> / {{ formatClock(current.cmpSegmentMs) }}</span></span></div>
+          <div class="flex justify-between w-num"><span class="w-dim">Zone</span><span>{{ formatClock(total - run.zoneSinceMs) }}</span></div>
           <div v-if="delta != null" class="flex justify-between w-num"><span class="w-dim">vs {{ cmpLabel }}</span>
             <span :class="delta <= 0 ? 'w-up' : 'w-down'">{{ formatDelta(delta) }}</span></div>
           <div v-if="run.runningSince == null" class="w-num" style="color: var(--w-warn);">paused</div>
@@ -26,15 +26,15 @@
             {{ run.finished ? (isComplete(run) ? 'Campaign done' : 'Run ended') : actLabel(run.act) }}<template v-if="!run.finished && run.zone"> · {{ run.zone }}</template>
           </span>
           <span :class="$style.sep" />
-          <span><span :class="$style.k">Run</span> <span :class="$style.time" class="w-num">{{ formatRunTime(total) }}</span></span>
+          <span><span :class="$style.k">Run</span> <span :class="$style.time" class="w-num">{{ formatClock(total) }}</span></span>
           <span v-if="current">
-            <span :class="$style.k">Act</span> <span class="w-num">{{ formatRunTime(current.segmentMs ?? 0) }}</span>
-            <span v-if="current.cmpSegmentMs != null" class="w-num w-faint"> / {{ formatRunTime(current.cmpSegmentMs) }}</span>
+            <span :class="$style.k">Act</span> <span class="w-num">{{ formatClock(current.segmentMs ?? 0) }}</span>
+            <span v-if="current.cmpSegmentMs != null" class="w-num w-faint"> / {{ formatClock(current.cmpSegmentMs) }}</span>
           </span>
           <span v-if="delta != null" class="w-num" :class="delta <= 0 ? 'w-up' : 'w-down'">{{ formatDelta(delta) }}</span>
           <template v-if="!run.finished">
             <span :class="$style.sep" />
-            <span class="w-dim">Zone <span class="w-num" style="color: var(--w-fg);">{{ formatRunTime(total - run.zoneSinceMs) }}</span></span>
+            <span class="w-dim">Zone <span class="w-num" style="color: var(--w-fg);">{{ formatClock(total - run.zoneSinceMs) }}</span></span>
           </template>
           <span v-if="!run.finished && run.runningSince == null" class="w-num" style="color: var(--w-warn);">paused</span>
         </template>
@@ -80,7 +80,7 @@
           <div :class="$style.hero">
             <div>
               <div :class="$style.k">Run time</div>
-              <div :class="$style.big" class="w-num">{{ formatRunTime(total) }}</div>
+              <div :class="$style.big" class="w-num">{{ formatClock(total) }}</div>
             </div>
             <div class="text-right">
               <div :class="$style.k">vs {{ cmpLabel }}</div>
@@ -99,10 +99,10 @@
                 <span v-else-if="r.level != null && r.state === 'done'" class="w-faint">lv {{ r.level }}</span>
               </span>
               <span class="text-right w-num" :class="r.gold ? $style.gold : (r.state === 'done' ? 'w-dim' : '')">
-                {{ r.segmentMs != null ? formatRunTime(r.segmentMs) : '—' }}
+                {{ r.segmentMs != null ? formatClock(r.segmentMs) : '—' }}
               </span>
               <span class="text-right w-num" :class="r.state !== 'done' && 'w-faint'">
-                {{ r.totalMs != null ? formatRunTime(r.totalMs) : (r.cmpTotalMs != null ? formatRunTime(r.cmpTotalMs) : '—') }}
+                {{ r.totalMs != null ? formatClock(r.totalMs) : (r.cmpTotalMs != null ? formatClock(r.cmpTotalMs) : '—') }}
               </span>
               <span class="text-right w-num" :class="r.deltaMs == null ? 'w-faint' : (r.deltaMs <= 0 ? 'w-up' : 'w-down')">
                 {{ r.deltaMs != null ? formatDelta(r.deltaMs) : '—' }}
@@ -111,7 +111,7 @@
             <div v-for="m in (config.subSplits ? r.marks : [])" :key="m.id" class="w-row" :class="[$style.grid, $style.mark, m.totalMs == null && 'w-faint']">
               <span class="w-trunc">{{ m.label }}</span>
               <span />
-              <span class="text-right w-num">{{ m.totalMs != null ? formatRunTime(m.totalMs) : (m.cmpTotalMs != null ? formatRunTime(m.cmpTotalMs) : '—') }}</span>
+              <span class="text-right w-num">{{ m.totalMs != null ? formatClock(m.totalMs) : (m.cmpTotalMs != null ? formatClock(m.cmpTotalMs) : '—') }}</span>
               <span class="text-right w-num" :class="m.deltaMs == null ? 'w-faint' : (m.deltaMs <= 0 ? 'w-up' : 'w-down')">
                 {{ m.deltaMs != null ? formatDelta(m.deltaMs) : '—' }}
               </span>
@@ -134,7 +134,7 @@
                 <WChip v-if="pb?.id === r.id" :class="$style.pbChip">PB</WChip>
                 <WChip v-else-if="cmp?.id === r.id" active>racing</WChip>
               </span>
-              <span class="text-right w-num" :class="!isComplete(r) && 'w-faint'">{{ formatRunTime(runTotal(r) ?? lastSplit(r)) }}</span>
+              <span class="text-right w-num" :class="!isComplete(r) && 'w-faint'">{{ formatClock(runTotal(r) ?? lastSplit(r)) }}</span>
               <span class="text-right w-num w-dim">{{ formatDate(r.startedAt) }}</span>
               <button class="w-icon-btn" title="Delete run (Undo in the note)" @click.stop="removeRun(r.id)"><i class="fas fa-times text-xs" /></button>
             </div>
@@ -142,8 +142,8 @@
         </template>
 
         <template #footer>
-          <span v-if="pbTotal != null">PB <span class="w-num">{{ formatRunTime(pbTotal) }}</span></span>
-          <span v-if="sob != null">Sum of best <span class="w-num">{{ formatRunTime(sob) }}</span></span>
+          <span v-if="pbTotal != null">PB <span class="w-num">{{ formatClock(pbTotal) }}</span></span>
+          <span v-if="sob != null">Sum of best <span class="w-num">{{ formatClock(sob) }}</span></span>
           <span v-if="config.compareTo != null && cmp && cmp.id !== pb?.id" class="ml-auto">
             <button class="w-accent hover:underline" @click="config.compareTo = null">Race PB instead</button>
           </span>
@@ -169,22 +169,24 @@ export default {
 
 <script setup lang="ts">
 import { inject, computed, shallowRef, onUnmounted } from 'vue'
-import { Host, MainProcess } from '@/web/background/IPC'
+import { MainProcess } from '@/web/background/IPC'
 import { AppConfig, saveConfig } from '@/web/Config'
 import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
+import { formatClock } from '../ui/format'
 import { useVisibleClock } from '../shared/visible-clock'
 import { WPanel, WTabs, WChip, WEmpty, toast } from '../ui'
 import DockItem from '../dock/DockItem.vue'
 import { hideWhilePlaying, tickWhile } from '../dock/dock'
-import { actLabel, parseLogLine } from './log-parse'
+import { actLabel } from './log-parse'
 import {
-  applyRunEvent, comparisonRun, endRun, formatDelta, formatRunTime, headlineDelta, isComplete,
+  applyRunEvent, comparisonRun, endRun, formatDelta, headlineDelta, isComplete,
   migrateRunTimer, parseHotkeyTarget, pauseRun, personalBest, resumeRun, runElapsed, runTotal, splitRows, startRun, sumOfBest
 } from './run-timer'
 import { CAMPAIGN_TYPE } from './widget'
 import { isWidgetTypeOn } from '../modules'
-import { logTail, linesAfter } from './log-tail'
+import { followGameLog } from '../shared/game-log'
+import type { LogLine } from '../shared/game-log'
 import type { CampaignRun } from './run-timer'
 
 const props = defineProps<{
@@ -271,13 +273,12 @@ function formatDate (ts: number) {
   return new Date(ts).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
 }
 
-function applyLines (lines: string[], ts: number) {
+function applyLines (lines: LogLine[]) {
   let changed = false
-  for (const line of lines) {
-    const ev = parseLogLine(line)
-    if (ev && applyRunEvent(props.config, ev, ts)) changed = true
+  for (const { ev, at } of lines) {
+    if (ev && applyRunEvent(props.config, ev, at)) changed = true
   }
-  props.config.lastLogAt = ts
+  if (lines.length) props.config.lastLogAt = lines[lines.length - 1].at
   if (changed) {
     now.value = Date.now()
     // Log events arrive while the game has focus, when APT doesn't save config.
@@ -285,18 +286,10 @@ function applyLines (lines: string[], ts: number) {
   }
 }
 
-let caughtUp = false
-const queued: string[][] = []
-const logListener = Host.onEvent('MAIN->CLIENT::game-log', (e) => {
-  if (!caughtUp) { queued.push(e.lines); return }
-  applyLines(e.lines, Date.now())
-})
 // Splits reached while the app was closed, timed by the log's own clock.
-logTail().then(tail => {
-  for (const { line, at } of linesAfter(tail, props.config.lastLogAt)) applyLines([line], at)
-}).finally(() => {
-  caughtUp = true
-  for (const lines of queued.splice(0)) applyLines(lines, Date.now())
+followGameLog({
+  since: () => props.config.lastLogAt,
+  onLines: (lines) => applyLines(lines)
 })
 
 const hotkeys = MainProcess.onEvent('MAIN->CLIENT::widget-action', (e) => {
@@ -307,7 +300,6 @@ const hotkeys = MainProcess.onEvent('MAIN->CLIENT::widget-action', (e) => {
 })
 
 onUnmounted(() => {
-  logListener.abort()
   hotkeys.abort()
 })
 </script>

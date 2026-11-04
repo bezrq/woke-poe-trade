@@ -6,12 +6,10 @@
       <span>Hotkey: open in your browser</span>
       <w-hotkey-cell v-model="hotkeyExternal" />
       <span>Hotkeys open</span>
-      <select v-model="defaultDifficulty" class="w-input rounded px-1 leading-6 w-40">
-        <option v-for="d in DIFFICULTIES" :key="d" :value="d">{{ labLabel(d) }}</option>
-      </select>
+      <w-select v-model="defaultDifficulty" :options="DIFFICULTIES.map(d => ({ value: d, label: labLabel(d) }))" class="w-40" />
     </div>
     <div class="w-dim text-sm">Pressing the overlay hotkey again closes the layout.</div>
-    <ui-checkbox v-model="autoOpen">Load the layout into the lab icon when I enter Aspirants' Plaza (difficulty from the area level)</ui-checkbox>
+    <w-toggle v-model="autoOpen">Load the layout into the lab icon when I enter Aspirants' Plaza (difficulty from the area level)</w-toggle>
     <label class="flex flex-col gap-1">
       <span>Lab notes</span>
       <textarea v-model="notes" rows="4" class="w-input rounded px-1"
@@ -32,6 +30,8 @@
 </template>
 
 <script lang="ts">
+import WToggle from '../ui/WToggle.vue'
+import WSelect from '../ui/WSelect.vue'
 import { computed, defineComponent } from 'vue'
 import WHotkeyCell from '../ui/WHotkeyCell.vue'
 import { configProp, configModelValue } from '@/web/settings/utils'
@@ -40,7 +40,7 @@ import type { LabDifficulty, LabWidget } from './lab'
 
 export default defineComponent({
   name: 'Labyrinth',
-  components: { WHotkeyCell },
+  components: { WToggle, WSelect, WHotkeyCell },
   props: configProp<LabWidget>(),
   setup (props) {
     return {

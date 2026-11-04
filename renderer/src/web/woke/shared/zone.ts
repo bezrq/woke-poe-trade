@@ -1,10 +1,12 @@
 // Where you are right now, from Client.txt: one shared reading for every
 // module, so dock icons can show only where they're useful.
-import { shallowReactive } from 'vue'
-import { Host } from '@/web/background/IPC'
-import { actFromAreaId, isTownLike, parseLogLine } from '../campaign/log-parse'
-import { lineTime, logTail } from '../campaign/log-tail'
-import { bossAreaIds } from './boss-areas'
+import { effectScope, shallowReactive } from 'vue'
+import { actFromAreaId, isTownLike } from '../campaign/log-parse'
+import type { LogEvent } from '../campaign/log-parse'
+import { followGameLog } from './game-log'
+import { BOSS_ARENAS, bossAreaIds } from './boss-areas'
+
+export { BOSS_ARENAS }
 
 export type ZoneKind = 'campaign' | 'town' | 'hideout' | 'map' | 'lab' | 'boss' | 'other'
 
@@ -16,27 +18,6 @@ export interface ZoneState {
   kind: ZoneKind | null
   // When the current instance was generated (ms), 0 if unknown.
   enteredAt: number
-}
-
-// Pinnacle boss arenas by their "You have entered" name, next to the area
-// ids in boss-areas.ts (pairs as Client.txt logs them, e.g.
-// MapWorldsPrimordialBoss3 -> "Absence of Patience and Wisdom"). Add names
-// here when a fight isn't recognised. [] = a boss fight with no boss runs entry.
-export const BOSS_ARENAS: Record<string, string[]> = {
-  "The Shaper's Realm": ['shaper', 'uber-shaper'],
-  'Absence of Value and Meaning': ['uber-elder', 'uber-uber-elder'],
-  'Eye of the Storm': ['uber-sirus'],
-  // The Maven's own fight (MavenBoss).
-  'Absence of Mercy and Empathy': ['maven', 'uber-maven'],
-  // Maven's Invitations (MavenHub), not the Maven fight.
-  "The Maven's Crucible": ['feared'],
-  'Absence of Patience and Wisdom': ['exarch', 'uber-exarch'],
-  'Absence of Symmetry and Harmony': ['eater', 'uber-eater'],
-  // The Infinite Hunger and The Black Star.
-  'Seething Chyme': [],
-  'Polaric Void': [],
-  'Cortex': ['uber-cortex'],
-  'The Feared': ['feared']
 }
 
 const LAB_ZONES = new Set(["Aspirants' Plaza", "Aspirant's Trial"])
@@ -60,10 +41,8 @@ export function zoneKind (areaId: string, name: string): ZoneKind {
 
 export const zone = shallowReactive<ZoneState>({ areaId: '', areaLevel: null, name: '', kind: null, enteredAt: 0 })
 
-// Returns whether the line said where you are.
-function apply (line: string, at: number): boolean {
-  const ev = parseLogLine(line)
-  if (!ev) return false
+function apply (ev: LogEvent | null, at: number) {
+  if (!ev) return
   if (ev.kind === 'area') {
     zone.areaId = ev.areaId
     zone.areaLevel = ev.areaLevel
@@ -73,29 +52,22 @@ function apply (line: string, at: number): boolean {
   } else if (ev.kind === 'zone') {
     zone.name = ev.name
     zone.kind = zoneKind(zone.areaId, ev.name)
-  } else {
-    return false
   }
-  return true
 }
 
 let started = false
-let live = false
 
-// Starts listening (once) and returns the shared state.
+// Starts listening (once) and returns the shared state. The start-up tail
+// says where you were when the app started.
 export function useZone (): ZoneState {
   if (started) return zone
   started = true
-  Host.onEvent('MAIN->CLIENT::game-log', (e) => {
-    // Only a zone change makes the startup tail out of date; chat and
-    // other lines arrive all the time.
-    for (const line of e.lines) if (apply(line, Date.now())) live = true
-  })
-  // Where you were when the app started, unless a zone change came first.
-  logTail().then(tail => {
-    if (live) return
-    for (const line of tail.lines) apply(line, lineTime(line) ?? 0)
-  }).catch(() => {})
+  // Outside any component: lives as long as the app.
+  const scope = effectScope(true)
+  scope.run(() => followGameLog({
+    since: () => 0,
+    onLines: (lines) => { for (const l of lines) apply(l.ev, l.at) }
+  }))
   return zone
 }
 

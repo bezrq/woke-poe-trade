@@ -1,11 +1,12 @@
 // Loads the source filter, applies the widget's edits, and saves the result.
 import { computed, onUnmounted, shallowRef, ref, watch } from 'vue'
-import { Host, MainProcess } from '@/web/background/IPC'
+import { MainProcess } from '@/web/background/IPC'
 import { hostRequest } from '../shared/host'
 import { customSoundsIn, installPackSounds } from './sounds'
 import { ruleBlocks } from './rules'
 import { applyPresetChanges, presetBlocks, presetsOn } from './presets'
-import { isTownLike, parseLogLine } from '../campaign/log-parse'
+import { isTownLike } from '../campaign/log-parse'
+import { onGameLog } from '../shared/game-log'
 import { parseFilter, serializeFilter } from './parse'
 import type { FilterDoc } from './parse'
 import { addEdit, applyEdits, nextEditId } from './edits'
@@ -105,9 +106,8 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
   let reloadTimer: ReturnType<typeof setTimeout> | undefined
   // Area levels of the last few maps (or campaign zones), for the strictness ladder.
   let recentAreas: number[] = []
-  const logListener = Host.onEvent('MAIN->CLIENT::game-log', (e) => {
-    for (const line of e.lines) {
-      const ev = parseLogLine(line)
+  const stopLog = onGameLog((lines) => {
+    for (const { ev } of lines) {
       if (ev?.kind !== 'area') continue
       const safe = /town/i.test(ev.areaId) || isTownLike(ev.areaId)
       inSafeZone.value = safe
@@ -129,7 +129,7 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
     }
   })
   onUnmounted(() => {
-    logListener.abort()
+    stopLog()
     clearTimeout(reloadTimer)
   })
 

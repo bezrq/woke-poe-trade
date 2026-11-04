@@ -1,7 +1,7 @@
 <template>
   <Widget :config="config" move-handles="corners" :inline-edit="false" :readonly="true">
     <!-- In the lab: the best font gem per colour, inside the lab icon's card. -->
-    <DockItem id="lab-gems" into="lab" icon="fas fa-gem" title="Divine Font, best per colour" :show="inLab" :wm-id="config.wmId">
+    <DockItem id="lab-gems" into="lab" title="Divine Font, best per colour" :show="inLab" :wm-id="config.wmId">
       <template #card>
         <div style="padding: 2px var(--w-pad) 6px;">
           <div v-for="r in rolls" :key="r.color" class="flex items-center gap-2">
@@ -132,10 +132,11 @@ import { inject, computed, shallowRef, watch } from 'vue'
 import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
 import { WPanel, WTabs, WSelect, WSegmented, WField, WPrice, WEmpty, WChip, WSkeleton, openMenu, toast } from '../ui'
+import { copyText } from '../ui/copy'
 import { useLeagues } from '@/web/background/Leagues'
 import { useMarketCollector } from '../market/collector'
 import { latestSnapshots } from '../market/db'
-import { formatChaos } from '../market/analysis'
+import { formatChaos } from '../ui/format'
 import type { Snapshot } from '../market/types'
 import { GEM_STATES, colorRolls, evByState, gemPrices, pickProfit, pickValue, specificPicks, thinGems } from './font'
 import type { GemColor, GemState, SpecificPick } from './font'
@@ -240,7 +241,7 @@ function gemMenu (e: MouseEvent, name: string) {
       icon: 'far fa-copy',
       keys: 'Ctrl + C',
       action: () => {
-        navigator.clipboard.writeText(name).then(() => toast(`Copied "${name}"`, { ms: 1800 })).catch(() => {})
+        copyText(name).then(ok => { if (ok) toast(`Copied "${name}"`, { ms: 1800 }) })
       }
     }
   ])

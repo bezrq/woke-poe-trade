@@ -6,7 +6,7 @@
       Paste a pathofexile.com/trade search link (live searches end in <code>/live</code>).
       Each search can have one hotkey for the overlay browser and one for your normal browser.
     </div>
-    <ui-checkbox v-model="followLeague" class="mb-2">Open searches in the league picked in price check settings, even if they were saved in an older league</ui-checkbox>
+    <w-toggle v-model="followLeague" class="mb-2">Open searches in the league picked in price check settings, even if they were saved in an older league</w-toggle>
     <dnd-container tag="div" class="flex flex-col gap-y-3"
       v-model="entries" item-key="id"
       handle="[data-qa=drag-handle]" :animation="200" :force-fallback="true">
@@ -57,6 +57,7 @@
 </template>
 
 <script lang="ts">
+import WToggle from '../ui/WToggle.vue'
 import { computed, defineComponent, shallowRef } from 'vue'
 import DndContainer from 'vuedraggable'
 import WHotkeyCell from '../ui/WHotkeyCell.vue'
@@ -67,7 +68,7 @@ import type { TradeSearchEntry, TradeSearchesWidget } from './widget'
 
 export default defineComponent({
   name: 'Trade searches',
-  components: { DndContainer, WHotkeyCell },
+  components: { WToggle, DndContainer, WHotkeyCell },
   props: configProp<TradeSearchesWidget>(),
   setup (props) {
     const ioMode = shallowRef<'import' | 'export' | null>(null)

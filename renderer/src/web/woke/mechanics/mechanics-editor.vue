@@ -1,6 +1,6 @@
 <template>
   <div class="max-w-xl p-2 flex flex-col gap-3">
-    <ui-checkbox v-model="autoSwitch">Switch tab when I enter a mechanic's zone (Azurite Mine, Sacred Grove, safehouses…)</ui-checkbox>
+    <w-toggle v-model="autoSwitch">Switch tab when I enter a mechanic's zone (Azurite Mine, Sacred Grove, safehouses…)</w-toggle>
     <div>
       <div class="mb-1">Show these mechanics</div>
       <div class="grid gap-1" style="grid-template-columns: repeat(3, minmax(0, 1fr));">
@@ -29,6 +29,7 @@
 </template>
 
 <script lang="ts">
+import WToggle from '../ui/WToggle.vue'
 import { defineComponent } from 'vue'
 import UiCheckbox from '@/web/ui/UiCheckbox.vue'
 import { configProp, configModelValue } from '@/web/settings/utils'
@@ -38,7 +39,7 @@ import type { MechanicsWidget } from './widget'
 
 export default defineComponent({
   name: 'League mechanics',
-  components: { UiCheckbox },
+  components: { WToggle, UiCheckbox },
   props: configProp<MechanicsWidget>(),
   setup (props) {
     return {

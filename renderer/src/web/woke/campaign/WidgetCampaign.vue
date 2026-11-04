@@ -2,7 +2,7 @@
   <Widget :config="config" move-handles="corners" :inline-edit="false" :readonly="true">
     <!-- While you play: one icon (act badge, green while ahead of your best);
          the strip and guide below show only with the overlay open. -->
-    <DockItem ref="dockRef" id="campaign" :art="CURRENCY_ICONS.wisdom" icon="fas fa-route" title="Campaign" :show="dockShow"
+    <DockItem ref="dockRef" id="campaign" title="Campaign" :show="dockShow"
       :badge="s.act ? actShort(s.act) : null" :tone="dockTone" :wm-id="config.wmId" card-width="24rem"
       @open-change="cardShown = $event">
       <template #card>
@@ -25,10 +25,10 @@
           <div v-else class="w-dim">Route finished. Good luck in maps.</div>
           <div v-if="note" :class="$style.callout" class="whitespace-pre-wrap">{{ note }}</div>
           <div v-if="timer" class="flex gap-2 w-num" :class="$style.build">
-            <span class="w-dim">Run</span> {{ formatRunTime(timer.total) }}
+            <span class="w-dim">Run</span> {{ formatClock(timer.total) }}
             <span v-if="timer.delta != null" :class="timer.delta <= 0 ? 'w-up' : 'w-down'">{{ formatDelta(timer.delta) }}</span>
             <span v-if="timer.paused" style="color: var(--w-warn);">paused</span>
-            <span v-if="timer.act" class="ml-auto w-dim">act {{ formatRunTime(timer.act) }}</span>
+            <span v-if="timer.act" class="ml-auto w-dim">act {{ formatClock(timer.act) }}</span>
           </div>
           <CampaignBuild :config="config" :show-tree="false" :max-links="1" />
         </div>
@@ -63,7 +63,7 @@
           </template>
           <template v-if="timer">
             <span :class="$style.sep" />
-            <span><span :class="$style.k">Run</span> <span class="w-num">{{ formatRunTime(timer.total) }}</span></span>
+            <span><span :class="$style.k">Run</span> <span class="w-num">{{ formatClock(timer.total) }}</span></span>
             <span v-if="timer.delta != null" class="w-num" :class="timer.delta <= 0 ? 'w-up' : 'w-down'">{{ formatDelta(timer.delta) }}</span>
             <span v-if="timer.paused" class="w-num" style="color: var(--w-warn);">paused</span>
           </template>
@@ -131,17 +131,17 @@ export default {
 
 <script setup lang="ts">
 import { inject, computed, reactive, shallowRef, watch, onUnmounted } from 'vue'
-import { Host, MainProcess } from '@/web/background/IPC'
+import { MainProcess } from '@/web/background/IPC'
 import { AppConfig, saveConfig } from '@/web/Config'
 import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
+import { formatClock } from '../ui/format'
 import { useVisibleClock } from '../shared/visible-clock'
 import RouteParts from './RouteParts.vue'
 import DockItem from '../dock/DockItem.vue'
-import { CURRENCY_ICONS } from '../ui/game-icons'
 import { hideWhilePlaying, tickWhile } from '../dock/dock'
 import { reportProblem } from '../dock/health'
-import { actFromAreaId, actLabel, parseLogLine } from './log-parse'
+import { actFromAreaId, actLabel } from './log-parse'
 import CampaignBuild from './CampaignBuild.vue'
 import type { LogEvent } from './log-parse'
 import { emptyState, migrateCampaign, parseHotkeyTarget } from './widget'
@@ -149,9 +149,10 @@ import type { CampaignWidget } from './widget'
 import { advanceOnEnter, resyncTo, stepsLeftInAct, upcoming, xpState } from './route-parse'
 import type { RouteStep } from './route-parse'
 import { bundledRoute, routeData } from './route-data'
-import { logTail, linesAfter } from './log-tail'
+import { followGameLog } from '../shared/game-log'
+import type { LogLine } from '../shared/game-log'
 import {
-  RUN_TIMER_TYPE, comparisonRun, formatDelta, formatRunTime, headlineDelta, runElapsed, splitRows
+  RUN_TIMER_TYPE, comparisonRun, formatDelta, headlineDelta, runElapsed, splitRows
 } from './run-timer'
 import type { RunTimerWidget } from './run-timer'
 import { isWidgetTypeOn } from '../modules'
@@ -356,14 +357,14 @@ function follow (c: SeenChar) {
 }
 
 const logMissing = shallowRef(false)
+// Replayed lines from the start-up read don't peek the next step.
 let caughtUp = false
-const queued: string[][] = []
 
-function applyLines (lines: string[], at: number) {
+function applyLines (lines: LogLine[]) {
   let changed = false
-  for (const line of lines) {
-    const ev = parseLogLine(line)
-    if (ev && apply(ev)) changed = true
+  let at = 0
+  for (const { ev, at: lineAt } of lines) {
+    if (ev && apply(ev)) { changed = true; at = lineAt }
   }
   if (changed) {
     now.value = Date.now()
@@ -373,19 +374,14 @@ function applyLines (lines: string[], at: number) {
   }
 }
 
-const logListener = Host.onEvent('MAIN->CLIENT::game-log', (e) => {
-  if (!caughtUp) { queued.push(e.lines); return }
-  applyLines(e.lines, Date.now())
-})
-
 // Catch up on what happened while the app was closed, then go live.
-logTail().then(tail => {
-  logMissing.value = tail.path == null
-  reportProblem('client-log', logMissing.value ? 'Client.txt not found, so the campaign tracker can\'t follow you. Set its path in Settings → General.' : null)
-  for (const { line, at } of linesAfter(tail, props.config.state.updatedAt)) applyLines([line], at)
-}).finally(() => {
-  caughtUp = true
-  for (const lines of queued.splice(0)) applyLines(lines, Date.now())
+followGameLog({
+  since: () => props.config.state.updatedAt,
+  onLines: (lines, live) => { caughtUp = live; applyLines(lines) },
+  onTail: (tail) => {
+    logMissing.value = tail.path == null
+    reportProblem('client-log', logMissing.value ? 'Client.txt not found, so the campaign tracker can\'t follow you. Set its path in Settings → General.' : null)
+  }
 })
 
 const hotkeys = MainProcess.onEvent('MAIN->CLIENT::widget-action', (e) => {
@@ -397,7 +393,6 @@ const hotkeys = MainProcess.onEvent('MAIN->CLIENT::widget-action', (e) => {
 })
 
 onUnmounted(() => {
-  logListener.abort()
   hotkeys.abort()
 })
 </script>

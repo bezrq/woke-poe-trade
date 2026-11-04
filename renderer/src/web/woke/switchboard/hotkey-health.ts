@@ -1,11 +1,13 @@
-// Hotkey problems for the warning in the tab bar and the hotkey list:
-// two actions on one key, and keys another program holds (reported by main
-// when it registers them).
+// Hotkey problems for the warning in the tab bar, the health icon and the
+// settings window: two actions on one key, and keys another program holds
+// (reported by main when it registers them). Read from the same field list
+// the Hotkeys page edits, so a new hotkey is checked as soon as it's listed.
 import { computed, shallowRef } from 'vue'
-import { AppConfig, getConfigForHost } from '@/web/Config'
+import { AppConfig } from '@/web/Config'
 import { MainProcess } from '@/web/background/IPC'
 import { hostRequest } from '../shared/host'
-import { buildHotkeyList, normalizeKey } from './hotkey-list'
+import { normalizeKey } from '../ui/hotkey-context'
+import { fieldKey, hotkeyFields, hotkeyUses } from '../settings/hotkey-fields'
 
 const failed = shallowRef<string[]>([])
 let listening = false
@@ -23,8 +25,18 @@ function listen () {
 
 export function useHotkeyHealth () {
   listen()
-  const rows = computed(() => buildHotkeyList(AppConfig(), getConfigForHost().shortcuts))
-  const clashKeys = computed(() => [...new Set(rows.value.filter(r => !r.off && r.conflicts.length).map(r => r.key))])
+  const fields = computed(() => hotkeyFields(AppConfig()))
+  const clashKeys = computed(() => {
+    const uses = hotkeyUses(fields.value)
+    const shown = new Map<string, string>()
+    for (const f of fields.value) {
+      const k = fieldKey(f)
+      if (!k || f.off) continue
+      const norm = normalizeKey(k)
+      if ((uses.get(norm)?.length ?? 0) > 1 && !shown.has(norm)) shown.set(norm, k)
+    }
+    return [...shown.values()]
+  })
   const failedNorm = computed(() => new Set(failed.value.map(normalizeKey)))
   const problems = computed(() => clashKeys.value.length + failed.value.length)
   const summary = computed(() => {
@@ -33,5 +45,5 @@ export function useHotkeyHealth () {
     if (failed.value.length) parts.push(`Held by another program: ${failed.value.join(', ')}`)
     return parts.join('. ')
   })
-  return { rows, failed, failedNorm, problems, summary }
+  return { failed, failedNorm, problems, summary }
 }

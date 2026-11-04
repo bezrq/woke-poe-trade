@@ -26,6 +26,7 @@
 <script setup lang="ts">
 import { computed, shallowRef, watch } from 'vue'
 import { WSegmented } from '../ui'
+import { formatChaos } from '../ui/format'
 import { chartGeometry, HistoryPoint, HistoryRange, RANGE_LABEL, seriesChange } from './history'
 
 const props = defineProps<{
@@ -59,11 +60,7 @@ const shownDots = computed(() => {
 
 const unitDiv = computed(() => Boolean(props.divine && points.value.some(p => p.chaos >= props.divine!)))
 function fmt (chaos: number) {
-  if (unitDiv.value) {
-    const v = chaos / props.divine!
-    return `${v >= 100 ? Math.round(v) : v.toFixed(1)} div`
-  }
-  return `${chaos >= 100 ? Math.round(chaos) : chaos >= 10 ? chaos.toFixed(0) : chaos.toFixed(1)}c`
+  return formatChaos(chaos, props.divine, unitDiv.value ? 'div' : 'chaos')
 }
 
 const emptyText = computed(() => {

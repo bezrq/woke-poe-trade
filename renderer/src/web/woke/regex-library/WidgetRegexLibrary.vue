@@ -1,7 +1,7 @@
 <template>
   <Widget :config="config" move-handles="corners" :inline-edit="false">
     <!-- Town and hideout: your hotkeyed strings at a glance. -->
-    <DockItem id="regex-library" :art="mechanicIcon('stash').src" icon="fas fa-search" title="Regex library" :show="dockShow" :wm-id="config.wmId" card-width="20rem">
+    <DockItem id="regex-library" title="Regex library" :show="dockShow" :wm-id="config.wmId" card-width="20rem">
       <template #card>
         <div style="padding: 4px 0 6px;">
           <button v-for="e in glance" :key="e.id" type="button" class="w-row w-full text-left" style="grid-template-columns: minmax(0, 1fr) auto;"
@@ -33,8 +33,8 @@
           <WKbd v-if="entry.hotkey && config.enableHotkeys" :keys="entry.hotkey" class="ml-auto" />
           <template v-if="entry.name" #sub><span class="w-mono">{{ effectiveText(entry) }}</span></template>
           <template #actions>
-            <button @click="copy(entry)" class="w-icon-btn" :class="{ 'w-up': copiedId === entry.id }" title="Copy to clipboard">
-              <i :class="copiedId === entry.id ? 'fas fa-check' : 'far fa-copy'" />
+            <button @click="copy(entry)" class="w-icon-btn" :class="{ 'w-up': copied === String(entry.id) }" title="Copy to clipboard">
+              <i :class="copied === String(entry.id) ? 'fas fa-check' : 'far fa-copy'" />
             </button>
           </template>
         </WListItem>
@@ -88,10 +88,10 @@ import { pushHostConfig } from '@/web/Config'
 import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
 import { WPanel, WField, WChip, WKbd, WEmpty, WListItem, WButton, openMenu, toast } from '../ui'
+import { useCopy } from '../ui/copy'
 import { MAX_SEARCH_LENGTH, canNegate, effectiveText, groupByCategory, matchesFilter } from './widget'
 import type { RegexEntry } from './widget'
 import DockItem from '../dock/DockItem.vue'
-import { mechanicIcon } from '../ui/game-icons'
 import { useZone } from '../shared/zone'
 
 const props = defineProps<{
@@ -110,7 +110,7 @@ if (props.config.wmFlags[0] === 'uninitialized') {
 }
 
 const filter = shallowRef('')
-const copiedId = shallowRef<number | null>(null)
+const { copied, copy: copyText } = useCopy(1200)
 
 const groups = computed(() => groupByCategory(
   props.config.entries.filter(e => matchesFilter(e, filter.value))))
@@ -134,11 +134,7 @@ function stashSearch (text: string) {
 }
 
 async function copy (entry: RegexEntry) {
-  try {
-    await navigator.clipboard.writeText(effectiveText(entry))
-    copiedId.value = entry.id
-    setTimeout(() => { if (copiedId.value === entry.id) copiedId.value = null }, 1200)
-  } catch {}
+  await copyText(effectiveText(entry), String(entry.id))
 }
 
 const panel = shallowRef<InstanceType<typeof WPanel> | null>(null)

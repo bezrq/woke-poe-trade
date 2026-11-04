@@ -1,7 +1,7 @@
 <template>
   <Widget :config="config" move-handles="corners" :inline-edit="false">
     <!-- In the hideout, while you set up the map device: the strategy you picked. -->
-    <DockItem id="atlas" icon="fas fa-globe" :title="selected?.name || 'Atlas strategy'" :show="!!selected && zone.kind === 'hideout'"
+    <DockItem id="atlas" :title="selected?.name || 'Atlas strategy'" :show="!!selected && zone.kind === 'hideout'"
       :wm-id="config.wmId" card-width="21rem">
       <template #card>
         <div v-if="selected" style="padding: 4px var(--w-pad) 6px;" class="flex flex-col gap-0.5">
@@ -16,6 +16,8 @@
             <span class="w-dim">Map regex</span>
             <code class="w-trunc" style="font-family: var(--w-num);">{{ selected.regex }}</code>
             <button v-if="wm.active.value" class="w-icon-btn" title="Copy" @click="copy(selected.regex)"><i :class="copied === selected.regex ? 'fas fa-check' : 'far fa-copy'" /></button>
+            <button v-if="wm.active.value" class="w-icon-btn" title="Save to the Regex library"
+              @click="toast(SAVE_MESSAGE[saveToRegexLibrary({ name: selected.name, text: selected.regex, category: 'Atlas' })])"><i class="far fa-bookmark" /></button>
           </div>
         </div>
       </template>
@@ -161,6 +163,7 @@ import { MainProcess } from '@/web/background/IPC'
 import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
 import { WPanel, WField, WButton, WEmpty, WListItem, WIcon, WBanner, WSkeleton, openMenu, toast, useCopy } from '../ui'
+import { SAVE_MESSAGE, saveToRegexLibrary } from '../regex-library/save'
 import { ninjaIcon } from '../ui/game-icons'
 import type { AtlasStrategy } from './widget'
 import { AppConfig } from '@/web/Config'
@@ -170,7 +173,7 @@ import { parseGuideText, parseScarabs, priceScarabs } from './guide'
 import { usePriceIndex } from '../market/price-index'
 import DockItem from '../dock/DockItem.vue'
 import { useZone } from '../shared/zone'
-import { formatChaos } from '../market/analysis'
+import { formatChaos } from '../ui/format'
 import { FARMING_TYPE, strategyStats } from '../farming/farming'
 import type { FarmingWidget } from '../farming/farming'
 import { decodeTree, diffTrees, extractTreeCode, overview } from './tree'

@@ -7,7 +7,7 @@
 //                                          daily/<YYYY-MM-DD>.json (array)
 import { promises as fs } from 'fs'
 import path from 'path'
-import { app } from 'electron'
+import { dataDir, readJson, safeName, writeAtomic } from './data-files'
 
 // Same as the renderer's types (market/types.ts); kept loose here.
 interface Snapshot { league: string, ts: number, items: unknown[], divine: number | null }
@@ -15,29 +15,15 @@ interface DailyRow { league: string, date: string, type: string, name: string, v
 
 const SNAPSHOT_RETENTION_MS = 3 * 24 * 60 * 60 * 1000
 
-const root = () => path.join(app.getPath('userData'), 'woke-market')
+const root = () => dataDir('woke-market')
 const IMPORTED_MARK = () => path.join(root(), 'imported-from-indexeddb')
 
 function leagueDir (league: unknown): string {
   if (typeof league !== 'string' || !league) throw new Error('No league given.')
   // League names are short words with spaces; keep the folder name safe.
-  return path.join(root(), league.replace(/[^\w .-]/g, '_').slice(0, 80))
+  return path.join(root(), safeName(league))
 }
 
-async function writeAtomic (file: string, data: string) {
-  await fs.mkdir(path.dirname(file), { recursive: true })
-  const tmp = `${file}.tmp`
-  await fs.writeFile(tmp, data, 'utf8')
-  await fs.rename(tmp, file)
-}
-
-async function readJson<T> (file: string): Promise<T | null> {
-  try {
-    return JSON.parse(await fs.readFile(file, 'utf8')) as T
-  } catch {
-    return null
-  }
-}
 
 async function listNames (dir: string, ext: string): Promise<string[]> {
   try {

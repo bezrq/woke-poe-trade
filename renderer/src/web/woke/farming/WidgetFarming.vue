@@ -2,18 +2,18 @@
   <Widget :config="config" move-handles="corners" :inline-edit="false" :readonly="true">
     <!-- During a session, in maps and hideout: an icon with divines per hour
          (the map clock while you're in a map). -->
-    <DockItem ref="dockRef" id="farming" :art="CURRENCY_ICONS.chaos" icon="fas fa-coins" title="Farming" :show="dockShow" :badge="dockBadge"
+    <DockItem ref="dockRef" id="farming" title="Farming" :show="dockShow" :badge="dockBadge"
       :tone="t.profit < 0 ? 'down' : 'up'" :led="s && s.runningSince == null ? 'warn' : null" :wm-id="config.wmId"
       card-width="18rem" @open-change="cardShown = $event">
       <template #card>
         <div v-if="s" class="flex flex-col gap-0.5 w-num" style="padding: 6px var(--w-pad) 8px;">
           <div v-if="s.strategy" class="w-head-font w-accent w-trunc">{{ s.strategy }}</div>
-          <div v-if="mapClock != null" class="flex justify-between"><span class="w-dim">This map</span><span>{{ formatHms(mapClock) }}</span></div>
+          <div v-if="mapClock != null" class="flex justify-between"><span class="w-dim">This map</span><span>{{ formatClock(mapClock, true) }}</span></div>
           <div v-if="lastRun" class="flex justify-between gap-2"><span class="w-dim">Last map</span><span class="w-trunc"><span :class="runResult(lastRun) >= 0 ? 'w-up' : 'w-down'">{{ fmt(runResult(lastRun)) }}</span><span class="w-dim ml-1">{{ lastRun.name }}</span></span></div>
           <div class="flex justify-between"><span class="w-dim">Profit</span><span :class="t.profit >= 0 ? 'w-up' : 'w-down'">{{ fmt(t.profit) }}</span></div>
           <div class="flex justify-between"><span class="w-dim">Per hour</span><span>{{ t.perHour != null ? fmt(t.perHour) : '—' }}</span></div>
           <div class="flex justify-between"><span class="w-dim">Maps</span><span>{{ s.maps }}<span v-if="t.perMap != null" class="w-dim"> · {{ fmt(t.perMap) }} each</span></span></div>
-          <div class="flex justify-between"><span class="w-dim">Time</span><span>{{ formatHms(elapsed(s, now)) }}<span v-if="mapShare != null" class="w-dim"> · {{ Math.round(mapShare * 100) }}% in maps</span></span></div>
+          <div class="flex justify-between"><span class="w-dim">Time</span><span>{{ formatClock(elapsed(s, now), true) }}<span v-if="mapShare != null" class="w-dim"> · {{ Math.round(mapShare * 100) }}% in maps</span></span></div>
           <div v-if="s.runningSince == null" class="text-xs" style="color: var(--w-warn);">Paused<template v-if="s.autoPaused">; resumes when you change zone</template></div>
           <div v-if="config.lootHotkey" class="text-xs w-faint">Hover loot and press <WKbd :keys="config.lootHotkey" /> to add it</div>
         </div>
@@ -55,7 +55,7 @@
               </div>
               <div>
                 <div :class="$style.k">Time</div>
-                <div :class="$style.big" class="w-num">{{ formatHms(elapsed(s, now)) }}</div>
+                <div :class="$style.big" class="w-num">{{ formatClock(elapsed(s, now), true) }}</div>
               </div>
             </div>
             <div :class="$style.stats">
@@ -76,7 +76,7 @@
             <div v-if="run" :class="$style.mapLine">
               <div class="min-w-0">
                 <div :class="$style.k">This map</div>
-                <div class="w-trunc"><span style="color: var(--w-fg);">{{ run.name }}</span><span class="w-dim"> · {{ formatHms(run.mapMs + liveMs(true)).replace(/^0:/, '') }}<template v-if="runDrops(run)"> · {{ runDrops(run) }} drop{{ runDrops(run) === 1 ? '' : 's' }}</template></span></div>
+                <div class="w-trunc"><span style="color: var(--w-fg);">{{ run.name }}</span><span class="w-dim"> · {{ formatClock(run.mapMs + liveMs(true)) }}<template v-if="runDrops(run)"> · {{ runDrops(run) }} drop{{ runDrops(run) === 1 ? '' : 's' }}</template></span></div>
               </div>
               <div v-if="lastRun" class="text-right min-w-0">
                 <div :class="$style.k">Last map</div>
@@ -86,7 +86,7 @@
             <div v-if="s.autoPaused" class="text-xs w-dim"><i class="fas fa-pause-circle" /> Paused after 5 minutes without a zone change. Resumes when you change zone.</div>
             <div v-if="config.lootHotkey" class="text-xs w-faint">Hover an item in game and press <WKbd :keys="config.lootHotkey" /> to add it.</div>
             <div v-if="t.missingPrices" class="text-xs" style="color: var(--w-warn);">{{ t.missingPrices }} item(s) have no price and count as 0.</div>
-            <ui-checkbox v-model="config.autoCountMaps" class="text-sm">Count maps from Client.txt</ui-checkbox>
+            <w-toggle v-model="config.autoCountMaps" class="text-sm">Count maps from Client.txt</w-toggle>
 
             <div class="relative">
               <WField v-model="lootQuery" icon="fas fa-plus" placeholder="Add loot… (e.g. Divine Orb)" class="w-full" />
@@ -173,26 +173,24 @@ export default {
 </script>
 
 <script setup lang="ts">
+import WToggle from '../ui/WToggle.vue'
 import { inject, computed, shallowRef, onUnmounted, watch, nextTick } from 'vue'
 import { useVisibleClock } from '../shared/visible-clock'
-import { Host } from '@/web/background/IPC'
 import { AppConfig, saveConfig } from '@/web/Config'
 import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
-import UiCheckbox from '@/web/ui/UiCheckbox.vue'
 import { WPanel, WTabs, WField, WButton, WEmpty, WKbd, WIcon, WBanner, toast } from '../ui'
 import { ninjaIcon } from '../ui/game-icons'
 import { MainProcess } from '@/web/background/IPC'
 import { parseClipboard } from '@/parser'
 import { getDetailsId } from '@/web/price-check/trends/getDetailsId'
 import { usePriceIndex } from '../market/price-index'
-import { formatChaos } from '../market/analysis'
+import { formatChaos, formatClock } from '../ui/format'
 import { itemKey } from '../market/types'
 import type { PriceItem } from '../market/types'
-import { parseLogLine } from '../campaign/log-parse'
+import { onGameLog } from '../shared/game-log'
 import { useZone } from '../shared/zone'
 import DockItem from '../dock/DockItem.vue'
-import { CURRENCY_ICONS } from '../ui/game-icons'
 import { tickWhile } from '../dock/dock'
 import { ATLAS_TYPE } from '../atlas/widget'
 import { parseScarabs, priceScarabs } from '../atlas/guide'
@@ -200,7 +198,7 @@ import { useLeagues } from '@/web/background/Leagues'
 import { useSessionStore } from '../analytics/store'
 import { ANALYTICS_TYPE } from '../analytics/types'
 import type { AtlasWidget } from '../atlas/widget'
-import { FARMING_LOOT_TARGET, addLoot as addLootTo, costsForStrategy, countNewMap, currentRun, elapsed, formatHms, historyToRecords, isMapArea, isMapSideArea, lineValue, maybeAutoPause, nameRun, pauseSession, newSession, onZoneChange, rememberCosts, removeLoot, sellPrice, sellRules, startRun, strategyStats, toSessionRecord, totals } from './farming'
+import { FARMING_LOOT_TARGET, addLoot as addLootTo, costsForStrategy, countNewMap, currentRun, elapsed, historyToRecords, isMapArea, isMapSideArea, lineValue, maybeAutoPause, nameRun, pauseSession, newSession, onZoneChange, rememberCosts, removeLoot, sellPrice, sellRules, startRun, strategyStats, toSessionRecord, totals } from './farming'
 import type { CostLine, LiveRun, LootLine, PricedRef } from './farming'
 
 const props = defineProps<{
@@ -255,7 +253,7 @@ const mapClock = computed(() => {
   return Math.max(0, now.value - Math.max(sess.lastZoneAt, sess.runningSince))
 })
 const dockBadge = computed(() => {
-  if (mapClock.value != null) return formatHms(mapClock.value).replace(/^0:/, '')
+  if (mapClock.value != null) return formatClock(mapClock.value)
   const ph = t.value.perHour
   if (ph == null) return null
   const div = prices.snapshot.value?.divine
@@ -478,12 +476,11 @@ function removeCost (line: CostLine) {
 
 // Zone changes: count newly generated maps, book map vs other time, and
 // resume an auto-paused session.
-const logListener = Host.onEvent('MAIN->CLIENT::game-log', (e) => {
+onGameLog((lines) => {
   const sess = props.config.session
   if (!sess) return
   let changed = false
-  for (const line of e.lines) {
-    const ev = parseLogLine(line)
+  for (const { ev } of lines) {
     if (ev?.kind === 'zone') {
       nameRun(sess, ev.name)
       continue
@@ -533,7 +530,6 @@ const itemListener = MainProcess.onEvent('MAIN->CLIENT::item-text', (e) => {
   saveConfig()
 })
 onUnmounted(() => { itemListener.abort() })
-onUnmounted(() => { logListener.abort() })
 </script>
 
 <style module>

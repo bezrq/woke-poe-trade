@@ -1,6 +1,6 @@
 <template>
   <Widget :config="config" move-handles="corners" :inline-edit="false">
-    <DockItem id="essence-scan" :art="mechanicIcon('essence').src" icon="fas fa-flask" title="Essence scan" :show="running || paused || !!message"
+    <DockItem id="essence-scan" title="Essence scan" :show="running || paused || !!message"
       :led="message ? 'error' : paused ? 'warn' : running ? 'on' : null" :badge="unseenCorrupt || null"
       :wm-id="config.wmId" card-width="18rem" @open-change="onCard">
       <template #card>
@@ -101,10 +101,10 @@ import { computed, inject, onUnmounted, shallowRef } from 'vue'
 import { MainProcess } from '@/web/background/IPC'
 import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
+import { formatChaos } from '../ui/format'
 import { WPanel, WButton, WEmpty, WKbd, WPrice, toast } from '../ui'
 import { hostRequest } from '../shared/host'
 import DockItem from '../dock/DockItem.vue'
-import { mechanicIcon } from '../ui/game-icons'
 import { hideWhilePlaying } from '../dock/dock'
 import { usePriceIndex } from '../market/price-index'
 import { parseMonolith, rateMonolith, shortEssenceName } from './essences'
@@ -167,7 +167,7 @@ function rate (lines: string[]): PricedMonolith | null {
 }
 
 function fmt (c: number) {
-  return `${c >= 10 ? Math.round(c) : c.toFixed(1)}c`
+  return formatChaos(c, null)
 }
 
 function estimateTitle (r: PricedMonolith) {

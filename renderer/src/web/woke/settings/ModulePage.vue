@@ -36,7 +36,6 @@ import { computed } from 'vue'
 import type { Component } from 'vue'
 import type { Config } from '@/web/Config'
 import type { Widget } from '@/web/overlay/widgets'
-import SettingsStashSearch from '@/web/stash-search/stash-search-editor.vue'
 import SettingsStopwatch from '@/web/stopwatch/settings-stopwatch.vue'
 import { WButton, WEmpty, WSettingRow, WSettingSection, WToggle } from '../ui'
 import { MODULES, ensureWokeConfig, isModuleOn, setModuleOn } from '../modules'
@@ -48,14 +47,13 @@ import { PAGE_BY_ID } from './pages'
 const props = defineProps<{
   config: Config
   page: SettingsPage
-  // A single widget instance (APT's stash search and stopwatch can have many).
+  // A single widget instance (APT's stopwatch can have many).
   widgetId?: number
 }>()
 const emit = defineEmits<{ (e: 'open' | 'add', value: string): void }>()
 
 const APT_EDITORS: Record<string, Component> = {
-  'stash-search': SettingsStashSearch,
-  'timer': SettingsStopwatch
+  timer: SettingsStopwatch
 }
 const editorFor = (type: string) => wokeSettingsFor(type) ?? APT_EDITORS[type]
 
