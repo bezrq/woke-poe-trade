@@ -165,7 +165,7 @@ function staleOf (url: string) {
 const overlayKey = computed(() => AppConfig().overlayKey)
 
 const now = shallowRef(Date.now())
-useVisibleClock(props.config, () => { now.value = Date.now() }, 30 * 1000)
+useVisibleClock(() => props.config, () => { now.value = Date.now() }, 30 * 1000)
 const resetIn = computed(() => formatDuration(msUntilLabReset(now.value)))
 
 function urlFor (d: LabDifficulty): string {

@@ -246,7 +246,7 @@ const note = computed(() => {
 
 const now = shallowRef(Date.now())
 // Ticks only while the widget is on screen.
-useVisibleClock(props.config, () => { now.value = Date.now() }, 1000)
+useVisibleClock(() => props.config, () => { now.value = Date.now() }, 1000)
 // ...and while the dock card is open.
 const cardShown = shallowRef(false)
 onUnmounted(tickWhile(() => cardShown.value, () => { now.value = Date.now() }, 1000))

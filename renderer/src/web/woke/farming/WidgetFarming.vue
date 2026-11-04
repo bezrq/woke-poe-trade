@@ -230,7 +230,7 @@ const tab = shallowRef<'session' | 'costs' | 'history'>('session')
 const prices = usePriceIndex()
 const now = shallowRef(Date.now())
 // Every second on screen; every 15 s while hidden, so auto-pause still works.
-useVisibleClock(props.config, () => {
+useVisibleClock(() => props.config, () => {
   now.value = Date.now()
   const sess = props.config.session
   if (sess && props.config.autoPause !== false && maybeAutoPause(sess, now.value)) saveConfig()

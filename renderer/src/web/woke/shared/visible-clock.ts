@@ -6,16 +6,19 @@ import { computed, inject, onUnmounted, watch } from 'vue'
 import type { Widget } from '@/web/overlay/widgets'
 import type { WidgetManager } from '@/web/overlay/interfaces'
 
-export function useWidgetVisible (config: Widget) {
+// `config` is a getter: the widget's config object is replaced whenever the
+// whole config is (a settings change), and a captured one stops updating.
+export function useWidgetVisible (getConfig: () => Widget) {
   const wm = inject<WidgetManager>('wm')
   return computed(() => {
+    const config = getConfig()
     if (config.wmWants !== 'show') return false
     if (config.wmFlags.includes('invisible-on-blur') && wm && !wm.active.value) return false
     return true
   })
 }
 
-export function useVisibleClock (config: Widget, fn: () => void, visibleMs: number, hiddenMs: number | null = null) {
+export function useVisibleClock (config: () => Widget, fn: () => void, visibleMs: number, hiddenMs: number | null = null) {
   const visible = useWidgetVisible(config)
   let timer: ReturnType<typeof setInterval> | undefined
   const start = (show: boolean) => {

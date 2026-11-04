@@ -119,25 +119,42 @@ export class GameLogWatcher {
   }
 
   private async readToEOF () {
-    if (!this._state) return
+    const state = this._state
+    if (!state) return
 
-    const { file, readBuff, offset } = this._state
-    const { bytesRead } = await file.read(readBuff, 0, readBuff.length, offset)
+    const { file, readBuff, offset } = state
+    let bytesRead: number
+    try {
+      ({ bytesRead } = await file.read(readBuff, 0, readBuff.length, offset))
+    } catch {
+      // woke: the file was closed meanwhile (switched to the running game's log).
+      state.isReading = false
+      return
+    }
+    if (this._state !== state) return
 
     if (bytesRead) {
-      const str = readBuff.toString('utf8', 0, bytesRead)
+      // woke: only whole lines. A chunk can end mid-line (or mid-character);
+      // the rest is read with the next chunk instead of arriving as a broken line.
+      let used = readBuff.lastIndexOf(10, bytesRead - 1) + 1
+      if (used === 0) {
+        if (bytesRead < readBuff.length) {
+          // Half a line at the end of the file: wait for the game to finish it.
+          state.isReading = false
+          return
+        }
+        used = bytesRead
+      }
+      const str = readBuff.toString('utf8', 0, used)
       const lines = str.split('\n').map(line => line.trim()).filter(line => line.length)
       this.server.sendEventTo('broadcast', {
         name: 'MAIN->CLIENT::game-log',
         payload: { lines }
       })
-    }
-
-    if (bytesRead) {
-      this._state.offset += bytesRead
+      state.offset += used
       this.readToEOF()
     } else {
-      this._state.isReading = false
+      state.isReading = false
     }
   }
 }

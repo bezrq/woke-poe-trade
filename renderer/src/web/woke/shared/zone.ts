@@ -48,9 +48,10 @@ export function zoneKind (areaId: string, name: string): ZoneKind {
 
 export const zone = shallowReactive<ZoneState>({ areaId: '', areaLevel: null, name: '', kind: null, enteredAt: 0 })
 
-function apply (line: string, at: number): void {
+// Returns whether the line said where you are.
+function apply (line: string, at: number): boolean {
   const ev = parseLogLine(line)
-  if (!ev) return
+  if (!ev) return false
   if (ev.kind === 'area') {
     zone.areaId = ev.areaId
     zone.areaLevel = ev.areaLevel
@@ -60,7 +61,10 @@ function apply (line: string, at: number): void {
   } else if (ev.kind === 'zone') {
     zone.name = ev.name
     zone.kind = zoneKind(zone.areaId, ev.name)
+  } else {
+    return false
   }
+  return true
 }
 
 let started = false
@@ -71,8 +75,9 @@ export function useZone (): ZoneState {
   if (started) return zone
   started = true
   Host.onEvent('MAIN->CLIENT::game-log', (e) => {
-    live = true
-    for (const line of e.lines) apply(line, Date.now())
+    // Only a zone change makes the startup tail out of date; chat and
+    // other lines arrive all the time.
+    for (const line of e.lines) if (apply(line, Date.now())) live = true
   })
   // Where you were when the app started, unless a zone change came first.
   logTail().then(tail => {
