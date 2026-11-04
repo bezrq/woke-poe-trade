@@ -5,7 +5,7 @@ import type { Logger } from '../RemoteLogger'
 import type { GameWindow } from '../windowing/GameWindow'
 import { importBuild, listBuilds, openBuild, readBuild, showBuild } from './pob-builds'
 import { listFilters, readFilter, writeFilter, showFilterFolder } from './loot-filter'
-import { ScreenScanner, MAP_SCAN, ESSENCE_SCAN } from './map-scan'
+import { ScreenScanner, MAP_SCAN, ESSENCE_SCAN, checkOcr, readAllEssenceLabels } from './map-scan'
 import { WokeHoverTracker } from './hover'
 import type { OverlayWindow } from '../windowing/OverlayWindow'
 import { perfSnapshot, startProcessSampler } from './perf'
@@ -22,7 +22,8 @@ const handlers: Record<string, Handler> = {
   'filter-read': readFilter,
   'filter-write': writeFilter,
   'filter-folder': showFilterFolder,
-  'perf-stats': async () => perfSnapshot()
+  'perf-stats': async () => perfSnapshot(),
+  'ocr-check': async () => checkOcr()
 }
 
 export function initWoke (server: ServerEvents, logger: Logger, poeWindow: GameWindow): void {
@@ -33,6 +34,7 @@ export function initWoke (server: ServerEvents, logger: Logger, poeWindow: GameW
     handlers[`${kind.topic}-reread`] = async () => scanner.reread()
     handlers[`${kind.topic}-status`] = async () => ({ running: scanner.isRunning })
   }
+  handlers['essence-scan-once'] = async () => await readAllEssenceLabels(poeWindow)
 
   server.onEventAnyClient('CLIENT->MAIN::woke-request', ({ id, op, args }) => {
     const handler = handlers[op]

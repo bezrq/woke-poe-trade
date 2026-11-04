@@ -12,7 +12,10 @@
       Scan mode reads the tooltip of the map under your mouse with on-screen text recognition,
       so no key press is needed per map. It re-reads whenever the tooltip changes, so rerolling the same
       map (chaos spamming) updates the verdict. Ratings come from the active profile in the Map mods widget.
-      It needs Windows and the OCR files used by APT's heist gem reader.
+      It only reads once the cursor rests on a map, and stops by itself after 3 minutes with nothing to read.
+      A map that would pass but had lines it couldn't read clearly shows "?" instead of RUN; use the
+      Map mods hotkey on it for an exact read.
+      It needs Windows and the OCR files used by APT's heist gem reader; the widget says if they're missing.
     </div>
   </div>
 </template>

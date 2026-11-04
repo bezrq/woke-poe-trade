@@ -6,7 +6,7 @@ import { HeistGemFinder } from './HeistGemFinder'
 import { ImageData } from './utils'
 import { scanTooltip } from '../woke/map-scan-vision'
 import type { ScanOptions } from '../woke/map-scan-vision'
-import { scanEssenceLabel } from '../woke/essence-scan-vision'
+import { scanEssenceLabel, scanAllEssenceLabels } from '../woke/essence-scan-vision'
 
 let _heistGems: HeistGemFinder
 let _changeLangPromise = Promise.resolve()
@@ -34,6 +34,11 @@ const WorkerBody = {
   async scanEssenceLabel (screenshot: ImageData, opts: ScanOptions) {
     await _changeLangPromise
     return scanEssenceLabel(screenshot, opts)
+  },
+  // woke essence scan: one pass over the whole screen
+  async scanAllEssenceLabels (screenshot: ImageData) {
+    await _changeLangPromise
+    return scanAllEssenceLabels(screenshot)
   }
 }
 Comlink.expose(WorkerBody, nodeEndpoint(parentPort!))

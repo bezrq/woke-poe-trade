@@ -138,8 +138,7 @@ export function findTextBands (data: Uint8Array, cols: number, rows: number, lin
 // (labels are centred), and returns the group nearest the cursor that has
 // at least two lines: the monster name plus at least one essence.
 // Exported for tests.
-export function pickLabelBlock (bands: Band[], lineH: number, cursorY: number):
-  { x0: number, x1: number, y0: number, y1: number, lines: number } | null {
+function groupBands (bands: Band[], lineH: number): Band[][] {
   const groups: Band[][] = []
   for (const b of bands) {
     const g = groups[groups.length - 1]
@@ -148,6 +147,12 @@ export function pickLabelBlock (bands: Band[], lineH: number, cursorY: number):
     if (last && b.y0 - last.y1 <= lineH * 0.9 && centred) g.push(b)
     else groups.push([b])
   }
+  return groups
+}
+
+export function pickLabelBlock (bands: Band[], lineH: number, cursorY: number):
+  { x0: number, x1: number, y0: number, y1: number, lines: number } | null {
+  const groups = groupBands(bands, lineH)
   let best: Band[] | null = null
   let bestDist = Infinity
   for (const g of groups) {
@@ -165,6 +170,86 @@ export function pickLabelBlock (bands: Band[], lineH: number, cursorY: number):
     y1: best[best.length - 1].y1,
     lines: best.length
   }
+}
+
+export interface LabelReading {
+  lines: string[]
+  // Centre of the label, in image pixels.
+  at: { x: number, y: number }
+}
+
+// Most labels read in one whole-screen pass; each costs one OCR call.
+const MAX_LABELS = 12
+
+// One-shot read of every label-like text block on screen. The screen is cut
+// into overlapping vertical tiles so labels side by side aren't merged into
+// one band; a block touching a tile edge is left to the neighbouring tile.
+// Non-essence blocks (HUD, chat) are OCR'd too and dropped by the overlay.
+export function scanAllEssenceLabels (img: ImageData): { labels: LabelReading[], elapsed: number } {
+  let elapsed = 0
+  const H = img.height
+  const W = img.width
+  const lineH = Math.max(8, Math.round(H * 0.0185))
+  const full = Bindings.cvMatFromImage(img)
+  const gray = new cv.Mat()
+  const mask = new cv.Mat()
+  elapsed += timeIt(() => {
+    cv.cvtColor(full, gray, cv.COLOR_BGR2GRAY)
+    cv.threshold(gray, mask, TEXT_GRAY_MIN, 255, cv.THRESH_BINARY)
+  })
+
+  const tileW = Math.min(W, Math.round(H * 0.5))
+  const step = Math.max(1, Math.round(tileW / 2))
+  const blocks: Array<{ x0: number, x1: number, y0: number, y1: number }> = []
+  elapsed += timeIt(() => {
+    for (let tx = 0; tx < W; tx += step) {
+      const tw = Math.min(tileW, W - tx)
+      if (tw < lineH * 3) break
+      const tile = mask.roi(new cv.Rect(tx, 0, tw, H))
+      const data = tile.clone()
+      tile.delete()
+      const bands = findTextBands(data.data as Uint8Array, data.cols, data.rows, lineH)
+      data.delete()
+      for (const g of groupBands(bands, lineH)) {
+        if (g.length < 2 || g.length > 8) continue
+        const x0 = Math.min(...g.map(b => b.x0))
+        const x1 = Math.max(...g.map(b => b.x1))
+        const cut = (x0 <= 1 && tx > 0) || (x1 >= tw - 2 && tx + tw < W)
+        if (cut) continue
+        const b = { x0: tx + x0, x1: tx + x1, y0: g[0].y0, y1: g[g.length - 1].y1 }
+        const cx = (b.x0 + b.x1) / 2
+        const cy = (b.y0 + b.y1) / 2
+        if (blocks.some(o => cx >= o.x0 && cx <= o.x1 && cy >= o.y0 && cy <= o.y1)) continue
+        blocks.push(b)
+      }
+      if (tx + tw >= W) break
+    }
+  })
+
+  const labels: LabelReading[] = []
+  tessApi.SetVariable('tessedit_pageseg_mode', '6')
+  for (const b of blocks.slice(0, MAX_LABELS)) {
+    const pad = Math.round(lineH / 2)
+    const x0 = Math.max(0, b.x0 - pad)
+    const y0 = Math.max(0, b.y0 - pad)
+    const rect = new cv.Rect(x0, y0, Math.min(W, b.x1 + pad) - x0, Math.min(H, b.y1 + pad) - y0)
+    const roi = mask.roi(rect)
+    const ocrImg = new cv.Mat()
+    elapsed += timeIt(() => {
+      cv.bitwise_not(roi, ocrImg)
+      cv.resize(ocrImg, ocrImg, new cv.Size(0, 0), 1.5, 1.5, cv.INTER_LINEAR)
+    })
+    roi.delete()
+    Bindings.ocrSetImage(ocrImg.data, ocrImg.cols, ocrImg.rows, ocrImg.channels())
+    ocrImg.delete()
+    elapsed += timeIt(() => { tessApi.Recognize() })
+    const text: string = tessApi.GetUTF8Text()
+    const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 2)
+    if (lines.length) labels.push({ lines, at: { x: (b.x0 + b.x1) / 2, y: (b.y0 + b.y1) / 2 } })
+  }
+
+  gray.delete(); mask.delete(); full.delete()
+  return { labels, elapsed }
 }
 
 function clamp (v: number, lo: number, hi: number) {
