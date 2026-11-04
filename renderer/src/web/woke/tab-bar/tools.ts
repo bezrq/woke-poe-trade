@@ -6,6 +6,8 @@ import type { WidgetMenu } from '@/web/overlay/widgets'
 export interface TabBarConfig extends WidgetMenu {
   pinned?: number[]
   labels?: Record<number, string>
+  // Taken off the bar with ×; listed under "Removed from bar" in the add list.
+  dismissed?: number[]
 }
 
 const ICONS: Record<string, string> = {
