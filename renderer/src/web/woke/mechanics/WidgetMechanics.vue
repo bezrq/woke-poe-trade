@@ -2,7 +2,7 @@
   <Widget :config="config" move-handles="corners" :inline-edit="false" :readonly="true">
     <div class="flex gap-2 min-h-0 items-start">
       <!-- Collapsed: a small see-through icon; hovering it shows the glance card. -->
-      <div v-if="!config.expanded" ref="glanceEl" :class="$style.glanceRoot" data-w-panel>
+      <div v-if="!config.expanded && iconShown" ref="glanceEl" :class="$style.glanceRoot" data-w-panel>
         <!-- Not a <button>, so it can be dragged; a click without dragging expands. -->
         <span v-if="!showGlance" data-widget-drag :class="$style.icon"
           :title="`League mechanics: ${mech.label}. Rest the mouse here for prices; with the overlay open, drag to move or click to expand.`"
@@ -43,7 +43,7 @@
       </div>
 
       <!-- Expanded: rail of mechanics, prices, then scarabs and tips. -->
-      <WPanel v-else :title="config.wmTitle || 'League mechanics'" width="40rem" max-height="70vh" :scroll="false">
+      <WPanel v-else-if="config.expanded" :title="config.wmTitle || 'League mechanics'" width="40rem" max-height="70vh" :scroll="false">
         <template #actions>
           <button class="w-icon-btn" :class="{ 'w-icon-btn--on': config.autoSwitch }" @click="config.autoSwitch = !config.autoSwitch"
             :title="config.autoSwitch ? 'Switches mechanic when you enter its zone. Click to turn off.' : 'Click to switch mechanic when you enter its zone'">
@@ -232,8 +232,12 @@ function step (dir: number) {
 const zoneMech = shallowRef<string | null>(null)
 useMechanicZone((id) => {
   zoneMech.value = id
-  if (props.config.autoSwitch && !props.config.hidden.includes(id)) props.config.tab = id
+  if (id && props.config.autoSwitch && !props.config.hidden.includes(id)) props.config.tab = id
 })
+// The icon is contextual: it shows only in a zone with a mechanic (it used to
+// show the last or default tab, Delve, everywhere). With the overlay open it
+// always shows, so it can be moved or opened.
+const iconShown = computed(() => wm.active.value || (zoneMech.value != null && !props.config.hidden.includes(zoneMech.value)))
 
 // ---- Glance (hover) ----
 const glanceEl = shallowRef<HTMLElement | null>(null)
