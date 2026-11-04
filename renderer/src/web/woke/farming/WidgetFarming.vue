@@ -142,6 +142,7 @@ export default {
 
 <script setup lang="ts">
 import { inject, computed, shallowRef, onUnmounted } from 'vue'
+import { useVisibleClock } from '../shared/visible-clock'
 import { Host } from '@/web/background/IPC'
 import { AppConfig, saveConfig } from '@/web/Config'
 import type { WidgetManager } from '@/web/overlay/interfaces'
@@ -187,12 +188,12 @@ const tab = shallowRef<'session' | 'costs' | 'history'>('session')
 
 const prices = usePriceIndex()
 const now = shallowRef(Date.now())
-const clock = setInterval(() => {
+// Every second on screen; every 15 s while hidden, so auto-pause still works.
+useVisibleClock(props.config, () => {
   now.value = Date.now()
   const sess = props.config.session
   if (sess && props.config.autoPause !== false && maybeAutoPause(sess, now.value)) saveConfig()
-}, 1000)
-onUnmounted(() => { clearInterval(clock) })
+}, 1000, 15000)
 
 const s = computed(() => props.config.session)
 const price = (r: PricedRef) => prices.price(r)

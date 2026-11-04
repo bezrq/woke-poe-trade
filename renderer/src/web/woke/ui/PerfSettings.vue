@@ -1,14 +1,23 @@
 <template>
   <div class="p-2 flex flex-col gap-4 max-w-2xl">
     <div class="flex items-center gap-2">
+      <span :class="[$style.dot, $style[health.level]]" />
+      <div class="flex-1">{{ health.text }}</div>
+      <label class="flex items-center gap-1 text-sm text-gray-500">
+        <input v-model="advanced" type="checkbox"> Advanced
+      </label>
+    </div>
+
+    <div v-if="error" class="text-red-400 text-sm">Couldn't read the app's numbers: {{ error }}</div>
+
+    <template v-if="advanced">
+    <div class="flex items-center gap-2">
       <div class="flex-1 text-gray-500 text-sm">
         Timings from this session. Updates every few seconds while this page is open.
         Use "Copy report" and paste it in the project chat to share the numbers.
       </div>
       <button class="btn" @click="copyReport">{{ copied ? 'Copied' : 'Copy report' }}</button>
     </div>
-
-    <div v-if="error" class="text-red-400 text-sm">Couldn't read the app's numbers: {{ error }}</div>
 
     <section>
       <div class="mb-1">Startup</div>
@@ -71,6 +80,7 @@
         </table>
       </template>
     </section>
+    </template>
   </div>
 </template>
 
@@ -81,7 +91,7 @@ export default {
 </script>
 
 <script setup lang="ts">
-import { computed, onUnmounted, shallowRef } from 'vue'
+import { computed, onUnmounted, shallowRef, watch } from 'vue'
 import { hostRequest } from '../shared/host'
 import { rendererPerf } from '../shared/perf'
 import type { TimingRow } from '../shared/perf'
@@ -98,6 +108,11 @@ interface MainPerf {
     byType: Array<{ type: string, cpuPercent: number, memoryMb: number }>
   }>
 }
+
+const ADVANCED_KEY = 'woke.perfAdvanced'
+const advanced = shallowRef(false)
+try { advanced.value = localStorage.getItem(ADVANCED_KEY) === '1' } catch {}
+watch(advanced, v => { try { localStorage.setItem(ADVANCED_KEY, v ? '1' : '0') } catch {} })
 
 const main = shallowRef<MainPerf | null>(null)
 const renderer = shallowRef(rendererPerf())
@@ -140,6 +155,19 @@ const cpuWhilePlaying = computed(() => {
   const playing = (main.value?.processes ?? []).filter(p => p.gameFocused)
   if (!playing.length) return null
   return Math.round(playing.reduce((a, p) => a + p.cpuPercent, 0) / playing.length * 10) / 10
+})
+
+// One line for everyone; the tables are under Advanced.
+const health = computed<{ level: 'good' | 'warn' | 'bad' | 'unknown', text: string }>(() => {
+  const cpu = cpuWhilePlaying.value ?? latest.value?.cpuPercent ?? null
+  if (cpu == null) return { level: 'unknown', text: 'Measuring… the first reading comes 15 seconds after launch.' }
+  const hiccups = renderer.value.freezes.count
+  const mb = latest.value?.memoryMb
+  const where = cpuWhilePlaying.value != null ? 'while you play' : 'right now'
+  const text = `Overlay using ${cpu}% CPU ${where}${mb ? `, ${mb} MB` : ''}.` +
+    (hiccups ? ` ${hiccups} short freeze${hiccups > 1 ? 's' : ''} this session.` : '')
+  const level = cpu >= 15 || hiccups >= 20 ? 'bad' : cpu >= 5 || hiccups >= 5 ? 'warn' : 'good'
+  return { level, text: level === 'good' ? `${text} All good.` : text }
 })
 
 function fmt (ms: number) {
@@ -187,4 +215,8 @@ async function copyReport () {
 .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .where { color: rgb(113, 128, 150); width: 1%; white-space: nowrap; }
 .chip { margin-left: 6px; white-space: nowrap; }
+.dot { width: 10px; height: 10px; border-radius: 5px; flex: none; background: rgb(113, 128, 150); }
+.dot.good { background: rgb(72, 187, 120); }
+.dot.warn { background: rgb(236, 201, 75); }
+.dot.bad { background: rgb(245, 101, 101); }
 </style>

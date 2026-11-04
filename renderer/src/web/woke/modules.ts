@@ -79,6 +79,8 @@ export const PRESETS: Preset[] = [
 export interface WokeModulesConfig {
   setupDone: boolean
   off: string[]
+  // Hides (and shows again) every toolkit panel at once.
+  hideAllHotkey?: string | null
 }
 
 interface ConfigLike {

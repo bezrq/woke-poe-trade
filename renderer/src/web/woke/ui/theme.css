@@ -209,3 +209,9 @@
 :root:not([data-woke-theme="classic"]) #overlay-window .border-gray-700,
 :root:not([data-woke-theme="classic"]) #overlay-window .border-gray-800 { border-color: var(--w-line); }
 :root:not([data-woke-theme="classic"]) #overlay-window .rounded { border-radius: var(--w-radius-sm); }
+
+/* "Hide all panels" hotkey (shared/hide-all.ts). */
+body[data-woke-hidden] [data-w-panel] { display: none !important; }
+
+/* Panel size (ui/scale.ts). */
+[data-w-panel] { zoom: var(--w-ui-scale, 1); }

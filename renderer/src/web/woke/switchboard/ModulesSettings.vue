@@ -23,6 +23,16 @@
         <span class="w-dim" style="font-size: 11px">{{ s.on ? 'On' : 'Off' }}</span>
       </div>
     </div>
+    <div class="flex items-center gap-3">
+      <div class="flex-1">
+        <div>Hide all toolkit panels</div>
+        <div class="text-gray-500 text-sm">
+          Press once to hide every panel, again to bring them back. While the game has focus, panels don't take
+          clicks anyway; this is for clearing the screen.
+        </div>
+      </div>
+      <hotkey-input v-model="hideAllHotkey" />
+    </div>
   </div>
 </template>
 
@@ -38,6 +48,7 @@ import type { Config } from '@/web/Config'
 import { WButton } from '../ui'
 import { ensureWokeConfig, modulesNeeding } from '../modules'
 import type { ModuleDef } from '../modules'
+import HotkeyInput from '@/web/settings/HotkeyInput.vue'
 import ModuleList from './ModuleList.vue'
 import PresetBar from './PresetBar.vue'
 
@@ -47,6 +58,10 @@ const props = defineProps<{ config: Config }>()
 ensureWokeConfig(props.config)
 const woke = computed(() => ensureWokeConfig(props.config))
 const setupQueued = shallowRef(false)
+const hideAllHotkey = computed({
+  get: () => woke.value.woke.hideAllHotkey ?? null,
+  set: (v: string | null) => { woke.value.woke.hideAllHotkey = v }
+})
 
 function names (list: ModuleDef[]) {
   return list.map(m => m.name).join(', ')

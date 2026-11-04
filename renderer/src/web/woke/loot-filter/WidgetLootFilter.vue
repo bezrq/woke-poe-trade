@@ -25,7 +25,7 @@ import { LOOT_FILTER_TYPE } from './widget'
 export default {
   widget: {
     type: LOOT_FILTER_TYPE,
-    instances: 'single',
+    instances: 'multi',
     trNameKey: 'Loot filter'
   } satisfies WidgetSpec
 }

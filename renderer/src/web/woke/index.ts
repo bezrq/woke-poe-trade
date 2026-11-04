@@ -11,6 +11,7 @@ import AppearanceSettings from './ui/AppearanceSettings.vue'
 import ModulesSettings from './switchboard/ModulesSettings.vue'
 import SetupOverlay from './switchboard/SetupOverlay.vue'
 import PerfSettings from './ui/PerfSettings.vue'
+import HotkeysSettings from './switchboard/HotkeysSettings.vue'
 import type { Component } from 'vue'
 import type { WidgetSpec } from '@/web/overlay/interfaces'
 
@@ -43,6 +44,7 @@ import WidgetMechanics from './mechanics/WidgetMechanics.vue'
 import MechanicsEditor from './mechanics/mechanics-editor.vue'
 import { MECHANICS_TYPE } from './mechanics/widget'
 import WidgetMapMods from './map-mods/WidgetMapMods.vue'
+import WidgetMapCheck from './map-mods/WidgetMapCheck.vue'
 import MapModsEditor from './map-mods/map-mods-editor.vue'
 import { MAP_MODS_TYPE } from './map-mods/widget'
 import WidgetMapScan from './map-mods/WidgetMapScan.vue'
@@ -72,6 +74,7 @@ export const wokeWidgets: WidgetComponent[] = [
   WidgetFarming as unknown as WidgetComponent,
   WidgetMechanics as unknown as WidgetComponent,
   WidgetMapMods as unknown as WidgetComponent,
+  WidgetMapCheck as unknown as WidgetComponent,
   WidgetMapScan as unknown as WidgetComponent,
   WidgetEssenceScan as unknown as WidgetComponent,
   WidgetLabGems as unknown as WidgetComponent,
@@ -103,7 +106,7 @@ export function wokeSettingsFor (wmType: string | undefined): Component | undefi
 export { wokeShortcutsFor } from './shortcuts'
 
 // Extra pages for APT's main settings window (shown next to "General").
-export const wokeGeneralSettings: Component[] = [AppearanceSettings, ModulesSettings, PerfSettings]
+export const wokeGeneralSettings: Component[] = [AppearanceSettings, ModulesSettings, HotkeysSettings, PerfSettings]
 
 // Mounted once inside APT's overlay window: first-run module setup.
 export const WokeOverlay = SetupOverlay

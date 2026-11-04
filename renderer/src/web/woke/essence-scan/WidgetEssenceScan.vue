@@ -75,7 +75,7 @@ import type { EssenceScanWidget } from './widget'
 export default {
   widget: {
     type: ESSENCE_SCAN_TYPE,
-    instances: 'single',
+    instances: 'multi',
     trNameKey: 'Essence scan'
   } satisfies WidgetSpec
 }
