@@ -30,7 +30,8 @@ export function initWoke (server: ServerEvents, logger: Logger, poeWindow: GameW
     handlers[`${kind.topic}-start`] = async () => await scanner.start()
     handlers[`${kind.topic}-stop`] = async () => scanner.stop()
     handlers[`${kind.topic}-reread`] = async () => scanner.reread()
-    handlers[`${kind.topic}-status`] = async () => ({ running: scanner.isRunning })
+    handlers[`${kind.topic}-status`] = async () => ({ running: scanner.isRunning, rolling: scanner.isRolling })
+    if (kind.canRoll) handlers[`${kind.topic}-roll`] = async () => await scanner.roll()
   }
 
   server.onEventAnyClient('CLIENT->MAIN::woke-request', ({ id, op, args }) => {
