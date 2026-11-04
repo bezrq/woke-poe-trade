@@ -4,7 +4,7 @@
       <button class="w-icon-btn" title="Close" @click="emit('close')"><i class="fas fa-times" /></button>
     </template>
     <template #toolbar>
-      <WSelect :model-value="config.sourceName" :options="fileOptions" style="max-width: 20rem;" @update:model-value="pickSource" />
+      <WSelect :model-value="sourceKey" :options="fileOptions" style="max-width: 20rem;" @update:model-value="pickSource" />
       <WButton size="sm" variant="ghost" icon="fas fa-sync" title="Reload the file list and the filter" @click="refresh" />
       <WField v-model="search" type="search" icon="fas fa-search" placeholder="Find an item or base type" style="width: 16rem;" />
       <span class="grow" />
@@ -104,6 +104,9 @@
           <span class="w-trunc">{{ describeEdit(s.edit) }}</span>
           <span v-if="!s.ok" class="text-xs" style="color: var(--w-warn);"> · {{ s.message }}</span>
         </span>
+        <WSelect v-if="!s.ok && homes(s.edit).length" :model-value="''" style="max-width: 16rem;"
+          :options="[{ value: '', label: 'Give it a new home…' }, ...homes(s.edit).map((o, i) => ({ value: String(i), label: o.label }))]"
+          @update:model-value="v => v !== '' && store.replaceEdit(rehome(s.edit, homes(s.edit)[Number(v)]))" />
         <WButton size="sm" variant="ghost" @click="store.removeEdit(s.edit.id)">Undo</WButton>
       </div>
     </div>
@@ -112,10 +115,15 @@
       <div class="flex items-center gap-2 w-full">
         <span class="text-xs grow w-trunc" :style="store.error.value ? 'color: var(--w-down)' : ''" :class="store.error.value ? '' : 'w-dim'">
           <template v-if="store.error.value">{{ store.error.value }}</template>
-          <template v-else>Saves to <span class="w-num">{{ outName }}</span><template v-if="store.dirty.value"> · unsaved changes</template><template v-else-if="store.lastSaved.value"> · saved</template></template>
+          <template v-else>
+            Saves to <span class="w-num">{{ outName }}</span>
+            <span v-if="config.sourceOnline" style="color: var(--w-warn);" title="Edits can't be written into an online filter, so they go into a local copy. Pick that copy in game. When the online filter updates, reopen the editor and save again."> (local copy: won't auto-update)</span>
+            <template v-if="store.dirty.value"> · unsaved changes</template><template v-else-if="store.lastSaved.value"> · saved</template>
+            <template v-if="store.pendingReload.value"> · reloads when you're next in town or hideout</template>
+          </template>
         </span>
         <WButton size="sm" variant="ghost" icon="fas fa-folder-open" @click="openFolder">Folder</WButton>
-        <WButton v-if="config.reloadViaChat" size="sm" variant="ghost" title="Type /itemfilter in chat to reload the saved filter" @click="store.reloadInGame()">Reload in game</WButton>
+        <WButton v-if="config.reloadViaChat" size="sm" variant="ghost" title="Type /itemfilter in chat now to reload the saved filter" @click="store.reloadInGame(true)">Reload now</WButton>
         <WButton size="sm" variant="primary" :disabled="store.saving.value || !store.doc.value" @click="store.save()">{{ config.reloadViaChat ? 'Save + reload' : 'Save' }}</WButton>
       </div>
     </template>
@@ -130,7 +138,8 @@ import StyleEditor from './StyleEditor.vue'
 import type { LootFilterStore } from './store'
 import { outputName } from './widget'
 import type { LootFilterWidget } from './widget'
-import { OWN_RULE_TYPE, describeEdit, moveTargets, readStyle, slug } from './edits'
+import { OWN_RULE_TYPE, describeEdit, moveTargets, readStyle, rehome, rehomeOptions, slug } from './edits'
+import type { RehomeOption } from './edits'
 import type { FilterEdit, StylePatch } from './edits'
 import type { Visibility } from './parse'
 import { buildTree, findBase, groupName } from './groups'
@@ -166,12 +175,17 @@ const tabOptions = computed(() => [
   { value: 'changes', label: 'Changes', count: props.config.edits.length }
 ])
 
+// Online filters are keyed "online:<id>" in the picker.
+const sourceKey = computed(() => props.config.sourceOnline ? `online:${props.config.sourceName}` : props.config.sourceName)
+
 const fileOptions = computed(() => {
   const opts = props.store.files.value
-    .filter(f => !/\(woke\)\.filter$/i.test(f.name))
-    .map(f => ({ value: f.name, label: f.name.replace(/\.filter$/i, '') }))
-  if (props.config.sourceName && !opts.some(o => o.value === props.config.sourceName)) {
-    opts.unshift({ value: props.config.sourceName, label: props.config.sourceName.replace(/\.filter$/i, '') })
+    .filter(f => f.online || !/\(woke\)\.filter$/i.test(f.name))
+    .map(f => f.online
+      ? { value: `online:${f.name}`, label: `${f.title ?? f.name} (online, read only)` }
+      : { value: f.name, label: f.name.replace(/\.filter$/i, '') })
+  if (props.config.sourceName && !opts.some(o => o.value === sourceKey.value)) {
+    opts.unshift({ value: sourceKey.value, label: props.config.sourceOnline ? `${props.config.sourceTitle} (online)` : props.config.sourceName.replace(/\.filter$/i, '') })
   }
   if (!opts.length) opts.push({ value: '', label: 'No .filter files found' })
   return opts
@@ -182,11 +196,15 @@ const banner = computed(() => {
   const failed = s.failed.value.length
   if (s.updatedSinceSave.value) {
     const total = s.statuses.value.length
-    return `NeverSink ${s.baseVersion.value} found (you last saved against ${props.config.lastVersion}). ${total - failed} of ${total} changes reapplied${failed ? `, ${failed} need a look under Changes` : ''}. Save to update the game's copy.`
+    return `NeverSink ${s.baseVersion.value} found (you last saved against ${props.config.lastVersion}). ${total - failed} of ${total} changes reapplied${failed ? `, ${failed} need a new home under Changes` : ''}. Save to update the game's copy.`
   }
-  if (failed) return `${failed} change(s) no longer fit this filter. See Changes.`
+  if (failed) return `${failed} change${failed > 1 ? 's need' : ' needs'} a new home in this filter version. See Changes.`
   return null
 })
+
+function homes (edit: FilterEdit): RehomeOption[] {
+  return props.store.doc.value ? rehomeOptions(props.store.doc.value, edit).slice(0, 40) : []
+}
 
 function shortName (g: GroupNode): string {
   if (g.type.startsWith('untagged:')) return 'Untagged rules'
@@ -282,9 +300,13 @@ function iconFor (kind: FilterEdit['kind']): string {
   }
 }
 
-async function pickSource (name: string) {
-  if (!name || name === props.config.sourceName) return
+async function pickSource (key: string) {
+  if (!key || key === sourceKey.value) return
+  const online = key.startsWith('online:')
+  const name = online ? key.slice('online:'.length) : key
   props.config.sourceName = name
+  props.config.sourceOnline = online
+  props.config.sourceTitle = online ? (props.store.files.value.find(f => f.online && f.name === name)?.title ?? name) : ''
   await props.store.load()
 }
 

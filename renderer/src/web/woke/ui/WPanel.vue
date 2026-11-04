@@ -1,5 +1,5 @@
 <template>
-  <div class="w-surface" :class="$style.panel" :style="{ width, maxHeight }">
+  <div class="w-surface" :class="$style.panel" :style="{ width, maxHeight }" data-w-panel>
     <div v-if="title || $slots.title || $slots.actions" :class="$style.head" data-widget-drag>
       <span :class="$style.title" class="w-trunc">
         <slot name="title">{{ title }}</slot>

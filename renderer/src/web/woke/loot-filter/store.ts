@@ -13,7 +13,7 @@ import type { LootFilterWidget } from './widget'
 // First line of every file the editor writes; marks a filter as ours.
 export const WOKE_MARK = '# WOKE-LOOT-FILTER-EDITOR'
 
-export interface FilterFile { name: string, size: number, mtime: number }
+export interface FilterFile { name: string, size: number, mtime: number, online?: boolean, title?: string }
 
 function stem (name: string): string {
   return name.replace(/\.filter$/i, '')
@@ -39,10 +39,21 @@ export function useLootFilter (config: LootFilterWidget) {
 
   // AreaLevel conditions use the level of the last map/zone entered.
   const areaLevel = ref<number | null>(null)
+  // Town or hideout (null until Client.txt shows an area change).
+  const inSafeZone = ref<boolean | null>(null)
+  // A reload held until the next town/hideout visit.
+  const pendingReload = ref(false)
   const logListener = Host.onEvent('MAIN->CLIENT::game-log', (e) => {
     for (const line of e.lines) {
       const ev = parseLogLine(line)
-      if (ev?.kind === 'area' && !/hideout|town/i.test(ev.areaId)) areaLevel.value = ev.areaLevel
+      if (ev?.kind !== 'area') continue
+      const safe = /hideout|town/i.test(ev.areaId)
+      inSafeZone.value = safe
+      if (!safe) areaLevel.value = ev.areaLevel
+      if (safe && pendingReload.value) {
+        pendingReload.value = false
+        sendReload()
+      }
     }
   })
   onUnmounted(() => { logListener.abort() })
@@ -73,16 +84,21 @@ export function useLootFilter (config: LootFilterWidget) {
     if (!config.sourceName) {
       await listFiles()
       // Pick the most recently changed NeverSink file as a starting point.
-      const ns = files.value.find(f => /neversink/i.test(f.name) && !/\(woke\)/i.test(f.name))
-      if (ns) config.sourceName = ns.name
-      else return
+      const ns = files.value.find(f => !f.online && /neversink/i.test(f.name) && !/\(woke\)/i.test(f.name)) ??
+        files.value.find(f => f.online && /neversink/i.test(f.title ?? ''))
+      if (!ns) return
+      config.sourceName = ns.name
+      config.sourceOnline = Boolean(ns.online)
+      config.sourceTitle = ns.title ?? ''
     }
     loading.value = true
     error.value = null
     try {
-      let { text } = await hostRequest<{ text: string }>('filter-read', { dir: config.folder, name: config.sourceName })
+      let { text } = await hostRequest<{ text: string }>('filter-read', { dir: config.folder, name: config.sourceName, online: config.sourceOnline })
       baseNeedsBackup.value = false
-      if (text.startsWith(WOKE_MARK)) {
+      if (config.sourceOnline) {
+        // Read only; saves go to a local copy.
+      } else if (text.startsWith(WOKE_MARK)) {
         // Our own output (overwrite mode): the original lives in the .bak.
         text = (await hostRequest<{ text: string }>('filter-read', { dir: config.folder, name: config.sourceName + '.bak' })).text
       } else if (config.saveMode === 'overwrite') {
@@ -105,6 +121,12 @@ export function useLootFilter (config: LootFilterWidget) {
     rebuild()
   }
 
+  // Points a failed edit at a new group/tier (after a NeverSink update).
+  function replaceEdit (next: FilterEdit) {
+    config.edits = config.edits.map(e => e.id === next.id ? next : e)
+    rebuild()
+  }
+
   function removeEdit (id: number) {
     config.edits = config.edits.filter(e => e.id !== id)
     rebuild()
@@ -114,7 +136,7 @@ export function useLootFilter (config: LootFilterWidget) {
     const d = doc.value!
     return [
       WOKE_MARK,
-      `# Made from "${config.sourceName}"${d.version ? ` (NeverSink ${d.version})` : ''} with ${config.edits.length} change(s).`,
+      `# Made from "${config.sourceOnline ? `${config.sourceTitle} (online filter, this copy doesn't auto-update)` : config.sourceName}"${d.version ? ` (NeverSink ${d.version})` : ''} with ${config.edits.length} change(s).`,
       '# This file is rewritten on every save from the loot filter editor; change it there.',
       ''
     ]
@@ -126,7 +148,7 @@ export function useLootFilter (config: LootFilterWidget) {
     error.value = null
     try {
       const name = outputName(config)
-      if (config.saveMode === 'overwrite' && baseNeedsBackup.value) {
+      if (!config.sourceOnline && config.saveMode === 'overwrite' && baseNeedsBackup.value) {
         await hostRequest('filter-write', { dir: config.folder, name: config.sourceName + '.bak', text: baseText.value })
         baseNeedsBackup.value = false
       }
@@ -144,8 +166,18 @@ export function useLootFilter (config: LootFilterWidget) {
     }
   }
 
-  // One chat command, sent because the user pressed Save.
-  function reloadInGame () {
+  // One chat command, sent because the user pressed Save. With
+  // reloadWhenSafe it waits until town/hideout, so it never lands mid-fight.
+  function reloadInGame (force = false) {
+    if (!force && config.reloadWhenSafe && inSafeZone.value !== true) {
+      pendingReload.value = true
+      return
+    }
+    pendingReload.value = false
+    sendReload()
+  }
+
+  function sendReload () {
     MainProcess.sendEvent({
       name: 'CLIENT->MAIN::user-action',
       payload: { action: 'paste-in-chat', text: `/itemfilter ${stem(outputName(config))}` }
@@ -166,10 +198,13 @@ export function useLootFilter (config: LootFilterWidget) {
     baseVersion,
     updatedSinceSave,
     areaLevel,
+    inSafeZone,
+    pendingReload,
     listFiles,
     load,
     edit,
     removeEdit,
+    replaceEdit,
     save,
     reloadInGame
   }
