@@ -140,6 +140,14 @@ describe('league mechanics', () => {
     expect(found).toEqual(['npc:bestiary', 'zone:delve', 'npc:delve'])
   })
 
+  it('knows the league NPCs by the names the game logs', () => {
+    const say = (who: string) => mechanicForSpeaker(`2026/11/04 20:04:10 1 2 [INFO Client 1] ${who}: Exile!`)
+    expect(say('Alva, Master Explorer')).toBe('incursion')
+    expect(say('Jun, Veiled Master')).toBe('betrayal')
+    expect(say('Niko, Master of the Depths')).toBe('delve')
+    expect(say('Rog')).toBe('expedition')
+  })
+
   it('player chat is never an NPC', () => {
     expect(mechanicForSpeaker('2026/11/04 20:04:10 1 2 [INFO Client 1] @From Einhar, Beastmaster: wtb')).toBeUndefined()
     expect(mechanicForSpeaker('2026/11/04 20:04:10 1 2 [INFO Client 1] #Einhar, Beastmaster: hi')).toBeUndefined()
