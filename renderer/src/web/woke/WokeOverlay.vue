@@ -1,5 +1,5 @@
 <template>
-  <SetupOverlay />
+  <HiddenNote />
   <Dock />
   <ToolkitHealth />
   <OverlayLayer />
@@ -7,7 +7,7 @@
 </template>
 
 <script setup lang="ts">
-import SetupOverlay from './switchboard/SetupOverlay.vue'
+import HiddenNote from './switchboard/HiddenNote.vue'
 import Dock from './dock/Dock.vue'
 import ToolkitHealth from './dock/ToolkitHealth.vue'
 import OverlayLayer from './ui/OverlayLayer.vue'

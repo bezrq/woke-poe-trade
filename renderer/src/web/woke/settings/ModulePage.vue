@@ -53,7 +53,7 @@ const props = defineProps<{
 const emit = defineEmits<{ (e: 'open' | 'add', value: string): void }>()
 
 const APT_EDITORS: Record<string, Component> = {
-  'timer': SettingsStopwatch
+  timer: SettingsStopwatch
 }
 const editorFor = (type: string) => wokeSettingsFor(type) ?? APT_EDITORS[type]
 

@@ -8,7 +8,7 @@
           anything it was polling.
         </div>
       </div>
-      <w-button size="sm" @click="runSetupAgain">{{ setupQueued ? 'Setup opens when you close settings' : 'Run setup again' }}</w-button>
+      <w-button size="sm" @click="runSetupAgain">Run setup again</w-button>
     </div>
     <div :class="$style.box">
       <preset-bar :config="woke" />
@@ -43,9 +43,10 @@ export default {
 </script>
 
 <script setup lang="ts">
-import { computed, shallowRef } from 'vue'
+import { computed } from 'vue'
 import type { Config } from '@/web/Config'
 import { WButton } from '../ui'
+import { hostRequest } from '../shared/host'
 import { ensureWokeConfig, modulesNeeding } from '../modules'
 import type { ModuleDef } from '../modules'
 import WHotkeyCell from '../ui/WHotkeyCell.vue'
@@ -57,7 +58,6 @@ const props = defineProps<{ config: Config }>()
 
 ensureWokeConfig(props.config)
 const woke = computed(() => ensureWokeConfig(props.config))
-const setupQueued = shallowRef(false)
 const hideAllHotkey = computed({
   get: () => woke.value.woke.hideAllHotkey ?? null,
   set: (v: string | null) => { woke.value.woke.hideAllHotkey = v }
@@ -97,9 +97,9 @@ const services = computed(() => {
   ]
 })
 
+// Opens the setup window (the same one as on first launch).
 function runSetupAgain () {
-  woke.value.woke.setupDone = false
-  setupQueued.value = true
+  hostRequest('setup-open', null).catch(() => {})
 }
 </script>
 
