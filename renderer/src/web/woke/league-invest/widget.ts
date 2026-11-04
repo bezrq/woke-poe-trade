@@ -16,4 +16,17 @@ export interface LeagueInvestWidget extends Widget {
   leagueStart: string
   // Manual league day; null = computed from the start date.
   dayOverride: number | null
+  // Items a patch changed this league, one per line (name, or part of a
+  // name, e.g. "Scarab"). Past-league history says little about them.
+  changedItems?: string
+  hideChanged?: boolean
+}
+
+export function changedMatchers (text: string | undefined): string[] {
+  return (text ?? '').split(/\r?\n/).map(l => l.trim().toLowerCase()).filter(l => l && !l.startsWith('#'))
+}
+
+export function isChanged (name: string, matchers: string[]): boolean {
+  const n = name.toLowerCase()
+  return matchers.some(m => n.includes(m))
 }

@@ -45,3 +45,23 @@ export async function loadLeagues (): Promise<LeagueHistory[]> {
   const all = await request(db.transaction('leagues').objectStore('leagues').getAll()) as LeagueHistory[]
   return all.sort((a, b) => a.start.localeCompare(b.start))
 }
+
+// Past leagues shipped with the app (built by scripts/build-invest-bundle.ts,
+// marked imported = 0). Loaded on demand so they stay out of startup.
+let bundled: Promise<LeagueHistory[]> | null = null
+export function loadBundledLeagues (): Promise<LeagueHistory[]> {
+  if (!bundled) {
+    bundled = import('./bundled/leagues.json')
+      .then(m => (m.default as unknown as LeagueHistory[]).map(h => ({ ...h, imported: 0 })))
+      .catch(() => [])
+  }
+  return bundled
+}
+
+// Your imports plus built-in leagues you haven't imported yourself.
+export async function allLeagues (): Promise<LeagueHistory[]> {
+  const [mine, builtIn] = await Promise.all([loadLeagues().catch(() => []), loadBundledLeagues()])
+  const have = new Set(mine.map(h => h.league))
+  return [...mine, ...builtIn.filter(h => !have.has(h.league))]
+    .sort((a, b) => a.start.localeCompare(b.start))
+}
