@@ -11,7 +11,7 @@
         <img v-if="peekImg" :src="peekImg" :class="$style.cardImg" alt="Today's layout">
         <WBanner v-else-if="peekError">Couldn't load the layout ({{ peekError }}). Open the overlay and click the icon for poelab's page.</WBanner>
         <div v-else-if="peekDiff" :class="$style.cardSkel" aria-busy="true" aria-label="Loading today's layout" />
-        <div v-else class="w-dim text-xs" style="padding: 6px var(--w-pad);">Enter Aspirant's Plaza to load the layout.</div>
+        <div v-else class="w-dim text-xs" style="padding: 6px var(--w-pad);">Enter Aspirants' Plaza to load the layout.</div>
         <WBanner v-if="peekImg && staleOf(peekImg)" tone="warn">Today's layout isn't posted yet. This one is from {{ staleOf(peekImg) }}.</WBanner>
         <div v-if="config.notes.trim()" class="whitespace-pre-wrap w-dim text-xs" style="padding: 4px var(--w-pad);">{{ config.notes }}</div>
       </template>
@@ -76,7 +76,7 @@ import { AppConfig } from '@/web/Config'
 import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
 import { WPanel, WKbd, WListItem, WBanner } from '../ui'
-import { DEFAULT_LAB_URLS, DIFFICULTIES, FIND_LAYOUT_JS, PLAZA_ZONE, dateInUrl, difficultyForAreaLevel, formatDuration, labLabel, msUntilLabReset, parseHotkeyTarget } from './lab'
+import { DEFAULT_LAB_URLS, DIFFICULTIES, FIND_LAYOUT_JS, dateInUrl, difficultyForAreaLevel, formatDuration, isPlazaArea, labLabel, msUntilLabReset, parseHotkeyTarget } from './lab'
 import { useZone } from '../shared/zone'
 import { hostRequest } from '../shared/host'
 import DockItem from '../dock/DockItem.vue'
@@ -127,7 +127,7 @@ watch(webviewEl, (el, old) => {
 })
 
 // In the lab, the dock icon shows the layout; nothing opens over the game.
-// Entering Aspirant's Plaza loads that difficulty's layout in the background.
+// Entering Aspirants' Plaza loads that difficulty's layout in the background.
 const zone = useZone()
 const inLab = computed(() => zone.kind === 'lab')
 const labDiff = computed<LabDifficulty | null>(() => inLab.value && zone.areaLevel != null ? difficultyForAreaLevel(zone.areaLevel) : null)
@@ -136,8 +136,8 @@ const peekImg = shallowRef<string | null>(null)
 const peekError = shallowRef<string | null>(null)
 let peekDay = ''
 const dockRef = shallowRef<InstanceType<typeof DockItem> | null>(null)
-watch(() => [zone.name, labDiff.value] as const, async ([name, d]) => {
-  if (name !== PLAZA_ZONE || !d || props.config.autoOpen === false) return
+watch(() => [zone.areaId, zone.enteredAt, labDiff.value] as const, async ([areaId, _at, d]) => {
+  if (!isPlazaArea(areaId) || !d || props.config.autoOpen === false) return
   // Reuse the layout only within the same lab day (resets at midnight UTC),
   // and retry when what we got was yesterday's because today's wasn't up.
   const day = new Date().toISOString().slice(0, 10)

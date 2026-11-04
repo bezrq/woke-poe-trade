@@ -192,7 +192,7 @@ export const PAGES: SettingsPage[] = [
     description: "Today's lab layout, and Divine Font gem values.",
     modules: ['lab', 'lab-gems'],
     widgets: ['woke-lab', 'woke-lab-gems'],
-    find: ['Lab layout', 'poelab', "Aspirant's Plaza", 'Lab notes', 'Lab gems']
+    find: ['Lab layout', 'poelab', "Aspirants' Plaza", 'Lab notes', 'Lab gems']
   },
   {
     id: 'map-mods',
