@@ -1,0 +1,58 @@
+{
+  "kind": "map",
+  "source": "Guy, 2560x1440, PoE screenshot-0002",
+  "cursor": {
+    "x": 1240,
+    "y": 590
+  },
+  "tier": 16,
+  "props": {
+    "quantity": 87,
+    "rarity": 161,
+    "packSize": 33,
+    "currency": 92
+  },
+  "mods": [
+    "Area is Influenced by the Originator's Memories",
+    "Rare Monsters have Physical Thorns reflecting # Physical Damage",
+    "Rare Monsters have Elemental Thorns reflecting # Elemental Damage",
+    "Monsters deal #% extra Physical Damage as Lightning",
+    "Unique Bosses are Possessed",
+    "Monster Damage Penetrates #% Elemental Resistances",
+    "Players have #% less Cooldown Recovery Rate",
+    "Players are targeted by a Meteor when they use a Flask"
+  ],
+  "modLines": [
+    "Area is Influenced by the Originator's Memories",
+    "Rare Monsters have Physical Thorns reflecting 1500 Physical Damage",
+    "Rare Monsters have Elemental Thorns reflecting 2500 Elemental Damage",
+    "Monsters deal 96% extra Physical Damage as Lightning",
+    "Unique Bosses are Possessed",
+    "Monster Damage Penetrates 15% Elemental Resistances",
+    "Players have 40% less Cooldown Recovery Rate",
+    "Players are targeted by a Meteor when they use a Flask"
+  ],
+  "lines": [
+    "Sorrow Bearings",
+    "Map (Tier 16)",
+    "Monster Level: 83",
+    "Item Quantity: +87%",
+    "Item Rarity: +161%",
+    "Monster Pack Size: +33%",
+    "More Currency: +92%",
+    "Area is Influenced by the Originator's Memories",
+    "Rare Monsters have Physical Thorns reflecting 1500 Physical Damage",
+    "Rare Monsters have Elemental Thorns reflecting 2500 Elemental Damage",
+    "Monsters deal 96% extra Physical Damage as Lightning",
+    "Unique Bosses are Possessed",
+    "Monster Damage Penetrates 15% Elemental Resistances",
+    "Players have 40% less Cooldown Recovery Rate",
+    "Players are targeted by a Meteor when they use a Flask"
+  ],
+  "box": {
+    "x": 780,
+    "y": 0,
+    "width": 920,
+    "height": 560
+  }
+}

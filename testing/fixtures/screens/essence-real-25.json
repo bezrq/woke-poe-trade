@@ -1,0 +1,20 @@
+{
+  "kind": "essence",
+  "source": "Guy, 2560x1440, PoE screenshot-0025",
+  "cursor": {
+    "x": 952,
+    "y": 535
+  },
+  "essences": [
+    "Screaming Essence of Misery",
+    "Screaming Essence of Rage",
+    "Screaming Essence of Scorn"
+  ],
+  "corrupted": false,
+  "box": {
+    "x": 660,
+    "y": 225,
+    "width": 585,
+    "height": 285
+  }
+}

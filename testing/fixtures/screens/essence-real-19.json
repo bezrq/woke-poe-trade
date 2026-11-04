@@ -1,0 +1,19 @@
+{
+  "kind": "essence",
+  "source": "Guy, 2560x1440, PoE screenshot-0019",
+  "cursor": {
+    "x": 755,
+    "y": 850
+  },
+  "essences": [
+    "Weeping Essence of Woe",
+    "Wailing Essence of Spite"
+  ],
+  "corrupted": false,
+  "box": {
+    "x": 460,
+    "y": 550,
+    "width": 590,
+    "height": 275
+  }
+}

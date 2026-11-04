@@ -1,0 +1,50 @@
+{
+  "kind": "map",
+  "source": "Guy, 2560x1440, PoE screenshot-0011",
+  "cursor": {
+    "x": 2100,
+    "y": 1010
+  },
+  "tier": 14,
+  "props": {
+    "quantity": 46,
+    "rarity": 27,
+    "packSize": 18
+  },
+  "mods": [
+    "Players cannot inflict Exposure",
+    "Monsters' skills Chain # additional times",
+    "Monsters cannot be Taunted",
+    "Monsters Maim on Hit with Attacks",
+    "Monsters' Action Speed cannot be modified to below Base Value",
+    "Monsters' Movement Speed cannot be modified to below Base Value"
+  ],
+  "modLines": [
+    "Players cannot inflict Exposure",
+    "Monsters' skills Chain 2 additional times",
+    "Monsters cannot be Taunted",
+    "Monsters Maim on Hit with Attacks",
+    "Monsters' Action Speed cannot be modified to below Base Value",
+    "Monsters' Movement Speed cannot be modified to below Base Value"
+  ],
+  "lines": [
+    "Ancient Vector",
+    "Map (Tier 14)",
+    "Monster Level: 81",
+    "Item Quantity: +46%",
+    "Item Rarity: +27%",
+    "Monster Pack Size: +18%",
+    "Players cannot inflict Exposure",
+    "Monsters' skills Chain 2 additional times",
+    "Monsters cannot be Taunted",
+    "Monsters Maim on Hit with Attacks",
+    "Monsters' Action Speed cannot be modified to below Base Value",
+    "Monsters' Movement Speed cannot be modified to below Base Value"
+  ],
+  "box": {
+    "x": 1675,
+    "y": 505,
+    "width": 865,
+    "height": 485
+  }
+}

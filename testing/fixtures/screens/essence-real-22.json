@@ -1,0 +1,22 @@
+{
+  "kind": "essence",
+  "source": "Guy, 2560x1440, PoE screenshot-0022",
+  "cursor": {
+    "x": 1318,
+    "y": 615
+  },
+  "note": "health bar covers most of \"Weeping Essence of Greed\"",
+  "essences": [
+    "Screaming Essence of Suffering",
+    "Weeping Essence of Greed",
+    "Screaming Essence of Envy"
+  ],
+  "corrupted": false,
+  "box": {
+    "x": 1025,
+    "y": 265,
+    "width": 585,
+    "height": 325
+  },
+  "knownMiss": "a health bar covers part of the label"
+}

@@ -1,0 +1,19 @@
+{
+  "kind": "essence-all",
+  "source": "Guy, 2560x1440: the monolith labels of screenshot-0025 and screenshot-0017 in one frame",
+  "cursor": {
+    "x": 1280,
+    "y": 720
+  },
+  "labels": [
+    [
+      "Screaming Essence of Misery",
+      "Screaming Essence of Rage",
+      "Screaming Essence of Scorn"
+    ],
+    [
+      "Wailing Essence of Anger",
+      "Screaming Essence of Doubt"
+    ]
+  ]
+}

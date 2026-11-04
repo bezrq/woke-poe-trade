@@ -1,7 +1,9 @@
 // OCR tests: the vision worker's code (opencv + tesseract, as shipped with
 // APT) reads the screenshots in fixtures/screens, and the overlay's parsers
 // turn the text into map mods / essences. Each screenshot's .json says what
-// should come out.
+// should come out. They're real 2560x1440 game screenshots, blacked out away
+// from the tooltip to keep them small; main/ocr-bench reads the same ones and
+// reports accuracy in more detail.
 //
 // Needs the OCR files: `npm run get:ocr` (CI caches them).
 import { describe, it, expect, beforeAll } from 'vitest'
@@ -15,6 +17,8 @@ const require = createRequire(import.meta.url)
 const SCREENS = path.resolve(__dirname, '../fixtures/screens')
 const OCR_DIR = process.env.WOKE_OCR_DIR ?? path.resolve(__dirname, '../.cache/cv-ocr')
 const haveOcr = fs.existsSync(path.join(OCR_DIR, 'opencv.js'))
+// The model the app's scans read with (map-scan.ts useScanModel).
+const SCAN_MODEL = path.resolve(__dirname, '../../renderer/public/data/ocr/poe.traineddata')
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 let V: any
@@ -23,11 +27,19 @@ interface Screen {
   file: string
   cursor: { x: number, y: number }
   kind: 'map' | 'essence' | 'essence-all'
-  synthetic?: boolean
+  // What the screenshot shows that makes it hard, if anything.
+  note?: string
+  // Not checked: the scan reads from the first property line down, not the
+  // header ("Map (Tier 16)").
   tier?: number
   props?: Record<string, number>
+  // Matcher strings of the map mods, as the overlay's data has them.
   mods?: string[]
+  // Map mod lines the game data doesn't have (Valdo maps).
+  unmatched?: number
   essences?: string[]
+  // A known misread: the test expects it to fail until the scan gets better.
+  knownMiss?: string
   labels?: string[][]
 }
 
@@ -79,40 +91,33 @@ describe.skipIf(!haveOcr)('OCR on game screenshots', () => {
     V = require('../fake-host/dist/vision-lib.cjs')
     await V.Bindings.init(OCR_DIR)
     await V.Bindings.changeLanguage('en', OCR_DIR)
+    V.Bindings.loadModelData(new Uint8Array(fs.readFileSync(SCAN_MODEL)), 'poe')
   })
 
   const matcher = new TooltipMatcher(areaMods())
 
   for (const screen of screens('map')) {
-    it(`map scan reads the mods on ${screen.file}`, () => {
+    it(`map scan reads ${screen.file}`, () => {
       const lines = readMapTooltip(screen)
       const parsed = matcher.parse(lines)
-      expect(parsed, `parsed from:\n${lines.join('\n')}`).not.toBeNull()
-      expect(parsed!.mods.map(m => m.matcher).sort(), `read:\n${lines.join('\n')}`).toEqual([...screen.mods!].sort())
-      expect(parsed!.weak, 'lines read with low confidence').toEqual([])
-    })
-
-    // The synthetic screenshots use an older tooltip layout (a grey "Map
-    // Tier:" line; the game now shows the tier in the header) and the grey
-    // labels come out garbled there ("VWIAE TER: 16"). On real screenshots
-    // the labels read fine (see the "Make OCR scans accurate" work, which adds
-    // real labelled samples). Kept as an expected failure until these
-    // screenshots are replaced by real ones.
-    it.fails(`map scan reads tier and properties on ${screen.file}`, () => {
-      const parsed = matcher.parse(readMapTooltip(screen))
-      expect(parsed!.tier).toBe(screen.tier)
-      expect(parsed!.props).toMatchObject(screen.props!)
+      const read = `read:\n${lines.join('\n')}`
+      expect(parsed, read).not.toBeNull()
+      expect(parsed!.mods.map(m => m.matcher).sort(), read).toEqual([...screen.mods!].sort())
+      expect(parsed!.weak.length, `lines read with low confidence; ${read}`).toBe(screen.unmatched ?? 0)
+      expect(parsed!.props, read).toMatchObject(screen.props!)
     })
   }
 
   for (const screen of screens('essence')) {
-    it(`essence scan reads ${screen.file}`, () => {
+    const test = screen.knownMiss ? it.fails : it
+    test(`essence scan reads ${screen.file}${screen.knownMiss ? ` (known miss: ${screen.knownMiss})` : ''}`, () => {
       const img = loadScreen(screen.file)
       const first = V.scanEssenceLabel({ ...img, data: img.data.slice() }, { cursor: screen.cursor, stableSig: null, lastReadSig: null })
       expect(first.sig, 'label found near the cursor').toBeTruthy()
       const second = V.scanEssenceLabel(img, { cursor: screen.cursor, stableSig: first.sig, lastReadSig: null })
-      const mono = parseMonolith(second.lines ?? [])
-      expect(mono?.essences.map(e => e.name), `read:\n${(second.lines ?? []).join('\n')}`).toEqual(screen.essences)
+      const lines: string[] = (second.lineImages ?? []).map((l: unknown) => V.ocrLine(l).trim()).filter(Boolean)
+      const mono = parseMonolith(lines)
+      expect(mono?.essences.map(e => e.name), `read:\n${lines.join('\n')}`).toEqual(screen.essences)
     })
   }
 
