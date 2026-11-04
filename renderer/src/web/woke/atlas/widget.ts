@@ -93,7 +93,7 @@ async function load (url: string) {
     const cached = localStorage.getItem(CACHE_KEY)
     if (cached) {
       const { url: cachedUrl, json, at } = JSON.parse(cached) as { url: string, json: unknown, at?: number }
-      if (cachedUrl === url) {
+      if (cachedUrl === url && loadingUrl === url) {
         atlasData.value = parseAtlasData(json)
         if (at && Date.now() - at < CACHE_MAX_AGE_MS) return
       }
@@ -104,6 +104,8 @@ async function load (url: string) {
   if (!res.ok) throw new Error(`Atlas data download failed (${res.status})`)
   const json: unknown = await res.json()
   const parsed = parseAtlasData(json)
+  // The data URL changed while this one downloaded: keep the newer data.
+  if (loadingUrl !== url) return
   atlasData.value = parsed
   try {
     localStorage.setItem(CACHE_KEY, JSON.stringify({ url, json, at: Date.now() }))
