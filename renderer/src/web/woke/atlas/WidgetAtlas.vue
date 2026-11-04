@@ -6,7 +6,7 @@
       <template #card>
         <div v-if="selected" style="padding: 4px var(--w-pad) 6px;" class="flex flex-col gap-0.5">
           <div v-for="(p, i) in pricedScarabs" :key="i" class="flex justify-between gap-2">
-            <span class="w-trunc">{{ p.qty > 1 ? p.qty + '× ' : '' }}{{ p.name }}</span>
+            <span class="flex items-center gap-1 min-w-0"><WIcon :src="p.item ? ninjaIcon(p.item.type, p.item.name) ?? undefined : undefined" fallback="fas fa-bug" /><span class="w-trunc">{{ p.qty > 1 ? p.qty + '× ' : '' }}{{ p.name }}</span></span>
             <span v-if="p.item" class="w-num w-dim">{{ formatChaos(p.item.chaos * p.qty, prices.snapshot.value?.divine ?? null) }}</span>
           </div>
           <div v-if="scarabCost != null" class="flex justify-between w-num"><span class="w-dim">Scarabs per map</span>
@@ -15,13 +15,14 @@
           <div v-if="selected.regex" class="flex items-center gap-1 text-xs">
             <span class="w-dim">Map regex</span>
             <code class="w-trunc" style="font-family: var(--w-num);">{{ selected.regex }}</code>
-            <button v-if="wm.active.value" class="w-icon-btn" title="Copy" @click="copy(selected.regex)"><i :class="copied ? 'fas fa-check' : 'far fa-copy'" /></button>
+            <button v-if="wm.active.value" class="w-icon-btn" title="Copy" @click="copy(selected.regex)"><i :class="copied === selected.regex ? 'fas fa-check' : 'far fa-copy'" /></button>
           </div>
         </div>
       </template>
     </DockItem>
     <div class="flex gap-2 min-h-0 items-start">
-      <WPanel :title="config.wmTitle || 'Atlas strategies'" icon="map" width="17rem">
+      <WPanel ref="panel" :title="config.wmTitle || 'Atlas strategies'" icon="map" width="17rem"
+        :updated="prices.snapshot.value?.ts ?? null" :fresh-min="60" :stale-min="360">
         <template #actions>
           <button class="w-icon-btn" :class="{ 'w-icon-btn--on': sortByProfit }" title="Best earning first (from Farming profit history)"
             @click="sortByProfit = !sortByProfit"><i class="fas fa-sort-amount-down" /></button>
@@ -39,21 +40,32 @@
           </div>
           <WField v-else v-model="filter" icon="fas fa-search" placeholder="Filter strategies…" class="grow" />
         </template>
-        <WListItem v-for="s in shown" :key="s.id" :active="config.selectedId === s.id" @select="config.selectedId = s.id">
+        <WListItem v-for="s in shown" :key="s.id" :active="config.selectedId === s.id" @select="config.selectedId = s.id"
+          @contextmenu="rowMenu($event, s)" @keydown.delete.prevent="remove(s)" @keydown.c.ctrl.prevent="s.regex && copy(s.regex)">
           <span class="w-trunc">{{ s.name || 'Untitled' }}</span>
           <span v-if="earnings.get(s.name)" class="ml-auto w-num text-xs" :class="earnings.get(s.name)!.perHour >= 0 ? 'w-up' : 'w-down'"
             :title="`${earnings.get(s.name)!.hours.toFixed(1)} h farmed`">{{ fmt(earnings.get(s.name)!.perHour) }}/h</span>
           <template #sub>{{ [s.league, ...s.tags].filter(Boolean).join(' · ') }}</template>
         </WListItem>
         <WEmpty v-if="!config.strategies.length" :art="{ mechanic: 'map' }">
-          No strategies yet. Paste one from a guide with the button above, or add them in settings.
+          No strategies yet. Paste one from a guide, or add them in settings.
+          <template #actions><WButton size="sm" variant="primary" icon="fas fa-paste" @click="pasteOpen = true">Paste a strategy</WButton></template>
+        </WEmpty>
+        <WEmpty v-else-if="!shown.length" icon="fas fa-search">
+          No strategy matches "{{ filter }}".
+          <template #actions><WButton size="sm" variant="ghost" @click="filter = ''">Clear filter</WButton></template>
         </WEmpty>
       </WPanel>
 
-      <WPanel v-if="selected" size-key="detail" :title="selected.name || 'Untitled'" width="26rem">
+      <WPanel v-if="selected" size-key="detail" :title="selected.name || 'Untitled'" icon="map" width="26rem" :busy="!!selected.treeUrl && !atlasData && !atlasDataError">
+        <template v-if="decodeError || (atlasDataError && !atlasData)" #banner>
+          <WBanner>{{ decodeError ? `This atlas tree link can't be read: ${decodeError}` : `Atlas tree data didn't load: ${atlasDataError}` }}
+            <template v-if="!decodeError" #actions><WButton size="sm" @click="retryAtlasData(config.dataUrl)">Retry</WButton></template>
+          </WBanner>
+        </template>
         <template v-if="treeLink || selected.regex" #toolbar>
           <WButton v-if="treeLink" :href="treeLink" size="sm" variant="primary" icon="fas fa-external-link-alt">Open atlas tree</WButton>
-          <WButton v-if="selected.regex" size="sm" :icon="copied ? 'fas fa-check' : 'far fa-copy'" @click="copy(selected.regex)">{{ copied ? 'Copied' : 'Copy map regex' }}</WButton>
+          <WButton v-if="selected.regex" size="sm" :icon="copied === selected.regex ? 'fas fa-check' : 'far fa-copy'" @click="copy(selected.regex)">{{ copied === selected.regex ? 'Copied' : 'Copy map regex' }}</WButton>
           <WButton v-if="selected.regex" size="sm" icon="fas fa-search" @click="pasteSearch(selected.regex)" title="Types it into the in-game search box">Search with regex</WButton>
         </template>
 
@@ -64,7 +76,8 @@
               <span v-if="scarabCost != null" class="ml-auto normal-case tracking-normal w-accent">{{ fmt(scarabCost) }} per map</span>
             </div>
             <template v-if="pricedScarabs.length">
-              <div v-for="(p, i) in pricedScarabs" :key="i" class="flex gap-2">
+              <div v-for="(p, i) in pricedScarabs" :key="i" class="flex items-center gap-2">
+                <WIcon :src="p.item ? ninjaIcon(p.item.type, p.item.name) ?? undefined : undefined" fallback="fas fa-bug" />
                 <span class="w-num w-dim">{{ p.qty }}×</span>
                 <span class="w-trunc" :title="p.item ? p.item.name : 'No poe.ninja match'">{{ p.item?.name ?? p.name }}</span>
                 <span class="ml-auto w-num w-dim">{{ p.item ? fmt(p.item.chaos * p.qty) : '?' }}</span>
@@ -91,16 +104,15 @@
           <div>
             <div :class="$style.heading">What to allocate</div>
             <div v-if="!selected.treeUrl" class="w-faint">Add an atlas tree link in settings to see the allocation.</div>
-            <div v-else-if="decodeError" class="w-down">{{ decodeError }}</div>
-            <div v-else-if="atlasDataError && !atlasData" class="w-down">{{ atlasDataError }}</div>
-            <div v-else-if="!atlasData" class="w-faint">Loading atlas tree data…</div>
+            <div v-else-if="decodeError || (atlasDataError && !atlasData)" class="w-faint">See the note above.</div>
+            <WSkeleton v-else-if="!atlasData" :rows="4" :value="false" />
             <template v-else-if="view">
               <div class="w-dim pb-1 text-xs">
                 <span class="w-num">{{ view.total }}</span> points · <span class="w-num">{{ notableCount }}</span> notables and keystones · <span class="w-num">{{ view.small }}</span> small
                 <span v-if="view.unknown"> · {{ view.unknown }} not in the tree data (outdated link or data)</span>
               </div>
               <div v-for="g in view.groups" :key="g.mechanic" :class="$style.group">
-                <div class="w-accent text-xs">{{ g.mechanic }} <span class="w-faint">{{ g.nodes.length }}</span></div>
+                <div class="w-accent text-xs flex items-center gap-1"><WIcon :mechanic="g.mechanic.toLowerCase()" fallback="fas fa-circle" />{{ g.mechanic }} <span class="w-faint w-num">{{ g.nodes.length }}</span></div>
                 <div class="flex flex-wrap gap-x-2">
                   <span v-for="n in g.nodes" :key="n.id" :title="n.stats.join('\n')"
                     :class="n.kind === 'keystone' ? 'font-semibold' : ''">{{ n.name }}</span>
@@ -148,9 +160,11 @@ import { inject, computed, shallowRef, watch } from 'vue'
 import { MainProcess } from '@/web/background/IPC'
 import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
-import { WPanel, WField, WButton, WEmpty, WListItem } from '../ui'
+import { WPanel, WField, WButton, WEmpty, WListItem, WIcon, WBanner, WSkeleton, openMenu, toast, useCopy } from '../ui'
+import { ninjaIcon } from '../ui/game-icons'
+import type { AtlasStrategy } from './widget'
 import { AppConfig } from '@/web/Config'
-import { emptyStrategy, strategyMatches, useAtlasData } from './widget'
+import { emptyStrategy, strategyMatches, useAtlasData, retryAtlasData } from './widget'
 import { parseGuideText, parseScarabs, priceScarabs } from './guide'
 import { usePriceIndex } from '../market/price-index'
 import DockItem from '../dock/DockItem.vue'
@@ -183,7 +197,8 @@ watch(() => props.config.dataUrl, (url) => { useAtlasData(url) })
 
 const filter = shallowRef('')
 const compareId = shallowRef<number | null>(null)
-const copied = shallowRef(false)
+const { copied, copy } = useCopy()
+const panel = shallowRef<InstanceType<typeof WPanel> | null>(null)
 
 const pasteOpen = shallowRef(false)
 const pasteText = shallowRef('')
@@ -282,12 +297,36 @@ const diff = computed(() => {
   return { added: names(d.added), removed: names(d.removed) }
 })
 
-async function copy (text: string) {
-  try {
-    await navigator.clipboard.writeText(text)
-    copied.value = true
-    setTimeout(() => { copied.value = false }, 1200)
-  } catch {}
+// No "are you sure": remove now, offer Undo (P9).
+function remove (s: AtlasStrategy) {
+  const before = props.config.strategies
+  const selectedBefore = props.config.selectedId
+  props.config.strategies = before.filter(o => o.id !== s.id)
+  if (props.config.selectedId === s.id) props.config.selectedId = null
+  toast(`Removed "${s.name || 'Untitled'}"`, {
+    anchor: panel.value?.el,
+    undo: () => { props.config.strategies = before; props.config.selectedId = selectedBefore }
+  })
+}
+
+function duplicate (s: AtlasStrategy) {
+  const copyOf = { ...JSON.parse(JSON.stringify(s)) as AtlasStrategy, id: emptyStrategy(props.config.strategies).id, name: `${s.name || 'Untitled'} (copy)` }
+  props.config.strategies.push(copyOf)
+  props.config.selectedId = copyOf.id
+}
+
+function rowMenu (e: MouseEvent, s: AtlasStrategy) {
+  const link = s === selected.value ? treeLink.value : undefined
+  openMenu(e, [
+    ...(link ? [{ label: 'Open atlas tree', icon: 'fas fa-external-link-alt', action: () => { window.open(link) } }] : []),
+    ...(s.regex
+      ? [{ label: 'Copy map regex', icon: 'far fa-copy', keys: 'Ctrl + C', action: () => { copy(s.regex).catch(() => {}) } },
+          { label: 'Search with regex', icon: 'fas fa-search', action: () => pasteSearch(s.regex) }]
+      : []),
+    { label: 'Duplicate', icon: 'far fa-clone', action: () => duplicate(s) },
+    { separator: true },
+    { label: 'Remove', icon: 'fas fa-trash', keys: 'Del', danger: true, action: () => remove(s) }
+  ])
 }
 
 function pasteSearch (text: string) {

@@ -4,14 +4,16 @@
     <template v-if="mode === 'card'">
       <SampleCard v-if="sample && match" :store="store" :config="config" :facts="sample" :match="match" :area-level="effectiveAreaLevel"
         @close="close" @open-editor="openEditorFromCard" @area-level="areaOverride = $event" />
-      <WPanel v-else title="Filter rule for this item" width="24rem">
+      <WPanel v-else title="Filter rule for this item" icon="wisdom" width="24rem" :resizable="false">
         <template #actions><button class="w-icon-btn" title="Close" @click="close"><i class="fas fa-times" /></button></template>
-        <WEmpty :icon="store.loading.value ? 'fas fa-spinner fa-spin' : 'fas fa-filter'">
-          <template v-if="store.loading.value">Reading the filter…</template>
-          <template v-else-if="store.error.value">{{ store.error.value }}</template>
-          <template v-else>No filter picked yet. Open the editor and choose your NeverSink filter.</template>
+        <template v-if="store.error.value" #banner>
+          <WBanner>{{ store.error.value }}<template #actions><WButton size="sm" @click="retry">Retry</WButton></template></WBanner>
+        </template>
+        <WSkeleton v-if="store.loading.value" :rows="3" />
+        <WEmpty v-else-if="!store.error.value" :art="{ item: 'Orb of Scouring' }">
+          No filter picked yet. Open the editor and choose your NeverSink filter.
         </WEmpty>
-        <template #footer><WButton size="sm" @click="mode = 'editor'">Open editor</WButton></template>
+        <template #footer><WButton size="sm" variant="primary" @click="mode = 'editor'">Open editor</WButton></template>
       </WPanel>
     </template>
     <FilterEditor v-else :store="store" :config="config" :focus="focus" @close="close" />
@@ -37,7 +39,7 @@ import { MainProcess } from '@/web/background/IPC'
 import { parseClipboard } from '@/parser'
 import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
-import { WPanel, WEmpty, WButton } from '../ui'
+import { WPanel, WEmpty, WButton, WBanner, WSkeleton } from '../ui'
 import SampleCard from './SampleCard.vue'
 import FilterEditor from './FilterEditor.vue'
 import { useLootFilter } from './store'
@@ -81,6 +83,11 @@ async function ensureLoaded () {
   }
 }
 ensureLoaded()
+
+async function retry () {
+  await store.listFiles()
+  await store.load()
+}
 
 const itemEvents = MainProcess.onEvent('MAIN->CLIENT::item-text', (e) => {
   if (e.target !== LOOT_FILTER_SAMPLE_TARGET) return

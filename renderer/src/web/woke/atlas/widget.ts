@@ -82,6 +82,12 @@ export function useAtlasData (url: string) {
   return { atlasData, atlasDataError }
 }
 
+// After a failed download: try the same URL again.
+export function retryAtlasData (url: string) {
+  loadingUrl = null
+  return useAtlasData(url)
+}
+
 async function load (url: string) {
   try {
     const cached = localStorage.getItem(CACHE_KEY)
