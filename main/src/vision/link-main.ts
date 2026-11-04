@@ -3,7 +3,7 @@ import * as Comlink from 'comlink'
 import nodeEndpoint from 'comlink/dist/umd/node-adapter'
 import type { WorkerAPI } from './link-worker'
 import type { ImageData } from './utils'
-import type { ScanOptions } from '../woke/map-scan-vision'
+import type { ScanOptions, LineImage } from '../woke/map-scan-vision'
 import { app } from 'electron'
 import path from 'path'
 import { perfTime } from '../woke/perf'
@@ -55,6 +55,12 @@ export class OcrWorker {
     await this.ready
     return await this.api.scanMapTooltip(
       Comlink.transfer(image, [image.data.buffer]), opts)
+  }
+
+  async ocrLines (lines: LineImage[]) {
+    await this.ready
+    return await this.api.ocrLines(
+      Comlink.transfer(lines, lines.map(l => l.data.buffer)))
   }
 
   async scanAllEssenceLabels (image: ImageData) {

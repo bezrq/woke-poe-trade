@@ -7,11 +7,12 @@ import { uIOhook } from 'uiohook-napi'
 import { app, screen } from 'electron'
 import fs from 'fs'
 import path from 'path'
+import os from 'os'
 import type { ServerEvents } from '../server'
 import type { Logger } from '../RemoteLogger'
 import type { GameWindow } from '../windowing/GameWindow'
 import { OcrWorker } from '../vision/link-main'
-import type { ScanOptions, ScanResult } from './map-scan-vision'
+import type { ScanOptions, ScanResult, LineImage } from './map-scan-vision'
 import { perfRecord } from './perf'
 
 // Stop after this long without the game focused, so it can't run forever.
@@ -76,6 +77,8 @@ export interface ScannerKind {
   cropHalfWidth: number
   // Rolling mode: lock onto the hovered tooltip and read only that box.
   canRoll?: boolean
+  // The worker returns line images, OCR'd here across the worker pool.
+  pooledLines?: boolean
   read: (worker: OcrWorker, image: { width: number, height: number, data: Uint8Array }, opts: ScanOptions) => Promise<ScanResult>
 }
 
@@ -86,6 +89,7 @@ export const MAP_SCAN: ScannerKind = {
   noReadingStopMs: 3 * 60 * 1000,
   cropHalfWidth: 0.6,
   canRoll: true,
+  pooledLines: true,
   read: async (worker, image, opts) => await worker.scanMapTooltip(image, opts)
 }
 
@@ -111,6 +115,45 @@ async function getWorker (): Promise<OcrWorker> {
     return w
   })
   return await sharedWorker
+}
+
+// Extra workers that only OCR text lines, so a tooltip's ~15 lines are read
+// in parallel. Each holds its own tesseract + opencv (100-200 MB), so they
+// only exist while map scan runs, and stop with the shared worker.
+const POOL_SIZE = Math.max(1, Math.min(3, os.cpus().length - 2))
+let linePool: Array<Promise<OcrWorker | null>> = []
+
+function warmLinePool () {
+  if (linePool.length) return
+  for (let i = 0; i < POOL_SIZE; i++) {
+    linePool.push(OcrWorker.create()
+      .then(async (w) => { await w.updateOptions('en'); return w })
+      .catch(() => null))
+  }
+}
+
+function stopLinePool () {
+  const pool = linePool
+  linePool = []
+  for (const p of pool) p.then(async w => { await w?.terminate() }).catch(() => {})
+}
+
+// OCRs line images on the main worker plus every pool worker that's loaded,
+// each pulling the next line, and returns the text in the original order.
+async function ocrLinesPooled (lines: LineImage[], main: OcrWorker): Promise<string[]> {
+  const pool = await Promise.all(linePool.map(async p => await Promise.race([p, Promise.resolve(null)])))
+  const workers = [main, ...pool.filter((w): w is OcrWorker => w != null)]
+  const out = new Array<string>(lines.length).fill('')
+  // Longest lines first, so no worker is left with a big one at the end.
+  const order = lines.map((_, i) => i).sort((a, b) => lines[b].width - lines[a].width)
+  let next = 0
+  await Promise.all(workers.map(async (w) => {
+    while (next < order.length) {
+      const i = order[next++]
+      out[i] = (await w.ocrLines([lines[i]]))[0]
+    }
+  }))
+  return out
 }
 
 function scannerStopped (scanner: ScreenScanner) {
@@ -156,6 +199,7 @@ function releaseWorker () {
     const worker = sharedWorker
     sharedWorker = null
     worker.then(async w => { await w.terminate() }).catch(() => {})
+    stopLinePool()
   }, WORKER_IDLE_MS)
 }
 
@@ -265,6 +309,7 @@ export class ScreenScanner {
       sharedWorker = null
       throw err
     }
+    if (this.kind.pooledLines) warmLinePool()
     if (!this.running) {
       this.running = true
       this.paused = false
@@ -388,6 +433,14 @@ export class ScreenScanner {
           this.send({ type: 'clear' })
         }
         return
+      }
+      if (res.lineImages) {
+        const t1 = performance.now()
+        res.lines = res.lineImages.length ? await ocrLinesPooled(res.lineImages, this.worker!) : []
+        res.lines = res.lines.filter(l => l.length > 2)
+        perfRecord(`${this.kind.name}: OCR ${res.lineImages.length} lines`, performance.now() - t1)
+        res.elapsed += performance.now() - t1
+        if (!this.running) return
       }
       if (res.lines) {
         perfRecord(`${this.kind.name}: read text`, res.elapsed)
