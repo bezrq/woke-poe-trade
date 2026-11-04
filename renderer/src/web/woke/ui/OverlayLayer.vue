@@ -15,6 +15,9 @@
     </template>
   </div>
 
+  <div v-for="(g, i) in guides" :key="`g${i}`" :class="[$style.guide, g.axis === 'x' ? $style.gx : $style.gy]"
+    :style="g.axis === 'x' ? { left: `${g.at}px` } : { top: `${g.at}px` }" />
+
   <div v-for="t in list" :key="t.id" :class="[$style.toast, 'w-enter']" :style="{ left: `${t.x / scale}px`, top: `${t.y / scale}px` }" role="status">
     <span class="w-trunc">{{ t.text }}</span>
     <button v-if="t.undo" type="button" :class="$style.undo" @click="undoToast(t.id)">Undo</button>
@@ -27,9 +30,11 @@
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import WKbd from './WKbd.vue'
 import { closeMenu, menuState, toasts, undoToast, type MenuEntry } from './layer'
+import { snapGuides } from './snap'
 
 const menu = menuState
 const list = toasts
+const guides = snapGuides
 const menuEl = ref<HTMLElement | null>(null)
 const hl = ref(-1)
 const size = ref({ w: 0, h: 0 })
@@ -122,6 +127,9 @@ onUnmounted(() => window.removeEventListener('keydown', onKey))
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5); pointer-events: auto;
   zoom: var(--w-ui-scale, 1);
 }
+.guide { position: fixed; z-index: 999; pointer-events: none; }
+.gx { top: 0; bottom: 0; width: 0; border-left: 1px dashed var(--w-info); }
+.gy { left: 0; right: 0; height: 0; border-top: 1px dashed var(--w-info); }
 .undo { color: var(--w-accent); font-weight: 600; padding: 0 4px; }
 .undo:hover { text-decoration: underline; }
 </style>

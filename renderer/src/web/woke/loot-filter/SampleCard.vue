@@ -1,5 +1,5 @@
 <template>
-  <WPanel title="Filter rule for this item" width="27rem" max-height="85vh">
+  <WPanel title="Filter rule for this item" size-key="sample" width="27rem" max-height="85vh">
     <template #actions>
       <span class="w-faint text-xs">{{ store.doc.value?.strictness ?? '' }} {{ store.doc.value?.version ?? '' }}</span>
       <button class="w-icon-btn" title="Close" @click="emit('close')"><i class="fas fa-times" /></button>
