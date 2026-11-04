@@ -23,6 +23,9 @@ import { POB_BUILDS_TYPE } from './pob-builds/widget'
 import WidgetCampaign from './campaign/WidgetCampaign.vue'
 import CampaignEditor from './campaign/campaign-editor.vue'
 import { CAMPAIGN_TYPE } from './campaign/widget'
+import WidgetRunTimer from './campaign/WidgetRunTimer.vue'
+import RunTimerEditor from './campaign/run-timer-editor.vue'
+import { RUN_TIMER_TYPE } from './campaign/run-timer'
 import WidgetAtlas from './atlas/WidgetAtlas.vue'
 import AtlasEditor from './atlas/atlas-editor.vue'
 import { ATLAS_TYPE } from './atlas/widget'
@@ -36,6 +39,9 @@ import { MAP_MODS_TYPE } from './map-mods/widget'
 import WidgetMapScan from './map-mods/WidgetMapScan.vue'
 import MapScanEditor from './map-mods/map-scan-editor.vue'
 import { MAP_SCAN_TYPE } from './map-mods/scan'
+import WidgetLabGems from './lab-gems/WidgetLabGems.vue'
+import WidgetLeagueInvest from './league-invest/WidgetLeagueInvest.vue'
+import WidgetBossRuns from './boss-runs/WidgetBossRuns.vue'
 
 type WidgetComponent = Component & { widget: WidgetSpec }
 
@@ -45,11 +51,15 @@ export const wokeWidgets: WidgetComponent[] = [
   WidgetMarketTracker as unknown as WidgetComponent,
   WidgetPobBuilds as unknown as WidgetComponent,
   WidgetCampaign as unknown as WidgetComponent,
+  WidgetRunTimer as unknown as WidgetComponent,
   WidgetAtlas as unknown as WidgetComponent,
   WidgetLab as unknown as WidgetComponent,
   WidgetFarming as unknown as WidgetComponent,
   WidgetMapMods as unknown as WidgetComponent,
-  WidgetMapScan as unknown as WidgetComponent
+  WidgetMapScan as unknown as WidgetComponent,
+  WidgetLabGems as unknown as WidgetComponent,
+  WidgetLeagueInvest as unknown as WidgetComponent,
+  WidgetBossRuns as unknown as WidgetComponent
 ]
 
 const editors: Record<string, Component> = {
@@ -57,6 +67,7 @@ const editors: Record<string, Component> = {
   [TRADE_SEARCHES_TYPE]: TradeSearchesEditor,
   [POB_BUILDS_TYPE]: PobBuildsEditor,
   [CAMPAIGN_TYPE]: CampaignEditor,
+  [RUN_TIMER_TYPE]: RunTimerEditor,
   [ATLAS_TYPE]: AtlasEditor,
   [LAB_TYPE]: LabEditor,
   [MAP_MODS_TYPE]: MapModsEditor,
