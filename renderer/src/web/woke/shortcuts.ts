@@ -12,6 +12,8 @@ import { MAP_MODS_TYPE, MAP_MODS_TARGET } from './map-mods/widget'
 import type { MapModsWidget } from './map-mods/widget'
 import { MAP_SCAN_TYPE, scanHotkeyTarget } from './map-mods/scan'
 import type { MapScanWidget } from './map-mods/scan'
+import { ESSENCE_SCAN_TYPE, essenceHotkeyTarget } from './essence-scan/widget'
+import type { EssenceScanWidget } from './essence-scan/widget'
 
 export function wokeShortcutsFor (widget: Widget): ShortcutAction[] {
   if (widget.wmType === REGEX_LIBRARY_TYPE) {
@@ -73,6 +75,11 @@ export function wokeShortcutsFor (widget: Widget): ShortcutAction[] {
     const scan = widget as MapScanWidget
     if (!scan.hotkey) return []
     return [{ shortcut: scan.hotkey, keepModKeys: true, action: { type: 'trigger-event', target: scanHotkeyTarget(widget.wmId) } }]
+  }
+  if (widget.wmType === ESSENCE_SCAN_TYPE) {
+    const scan = widget as EssenceScanWidget
+    if (!scan.hotkey) return []
+    return [{ shortcut: scan.hotkey, keepModKeys: true, action: { type: 'trigger-event', target: essenceHotkeyTarget(widget.wmId) } }]
   }
   return []
 }
