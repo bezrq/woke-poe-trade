@@ -41,6 +41,8 @@ export const MODULES: ModuleDef[] = [
 
   { id: 'map-mods', name: 'Map mods', description: 'Danger strip on price check and map regex', group: 'mapping', widgetTypes: ['woke-map-mods'], needs: ['hotkeys'] },
   { id: 'map-scan', name: 'Map scan', description: 'Reads map tooltips on screen', group: 'mapping', widgetTypes: ['woke-map-scan'], needs: ['ocr', 'hotkeys'] },
+  { id: 'essence-scan', name: 'Essence scan', description: 'Reads essence monoliths and flags MEDS', group: 'mapping', widgetTypes: ['woke-essence-scan'], needs: ['ocr', 'hotkeys', 'prices'] },
+  { id: 'loot-filter', name: 'Loot filter editor', description: 'Edit the NeverSink rule for a sampled item', group: 'mapping', widgetTypes: ['woke-loot-filter'], needs: ['log', 'hotkeys'] },
   { id: 'atlas', name: 'Atlas strategies', description: 'Tree, scarabs and regex per strategy', group: 'mapping', widgetTypes: ['woke-atlas-strategies'], needs: ['network'] },
   { id: 'mechanics', name: 'League mechanics', description: 'Picks and Betrayal board for the zone', group: 'mapping', widgetTypes: ['woke-mechanics'], needs: ['log', 'prices'] },
 
@@ -67,7 +69,7 @@ export interface Preset {
 
 export const PRESETS: Preset[] = [
   { id: 'everything', label: 'Everything', on: 'all' },
-  { id: 'mapper', label: 'Mapper', on: ['market', 'farming', 'boss-runs', 'map-mods', 'map-scan', 'atlas', 'mechanics', 'trade-searches', 'regex-library'] },
+  { id: 'mapper', label: 'Mapper', on: ['market', 'farming', 'boss-runs', 'map-mods', 'map-scan', 'essence-scan', 'loot-filter', 'atlas', 'mechanics', 'trade-searches', 'regex-library'] },
   { id: 'leveling', label: 'Leveling', on: ['campaign', 'run-timer', 'lab', 'pob-builds', 'regex-library'] },
   { id: 'trader', label: 'Trader', on: ['market', 'league-invest', 'lab-gems', 'trade-searches', 'regex-library'] },
   { id: 'price-check-only', label: 'Price check only', on: [] }

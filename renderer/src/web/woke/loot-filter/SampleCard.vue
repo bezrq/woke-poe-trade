@@ -1,0 +1,283 @@
+<template>
+  <WPanel title="Filter rule for this item" width="27rem" max-height="85vh">
+    <template #actions>
+      <span class="w-faint text-xs">{{ store.doc.value?.strictness ?? '' }} {{ store.doc.value?.version ?? '' }}</span>
+      <button class="w-icon-btn" title="Close" @click="emit('close')"><i class="fas fa-times" /></button>
+    </template>
+
+    <div :class="$style.body">
+      <div class="flex items-center gap-2">
+        <span :class="$style.itemName" class="w-trunc grow">{{ facts.name || facts.baseType }}</span>
+        <label class="flex items-center gap-1 text-xs w-dim" title="AreaLevel conditions use this. It follows the last map or zone you entered.">
+          Area lvl
+          <input v-model.number="areaLevelModel" type="number" min="1" max="86" :class="$style.num">
+        </label>
+      </div>
+
+      <div v-if="!match.final" class="w-dim text-sm">
+        No rule matches this item, so it drops with the game's default look.
+      </div>
+
+      <template v-else>
+        <div :class="$style.section">
+          <div class="w-group-label" :class="$style.label">{{ isOwn ? 'Your own rule' : 'Matched rule' }}</div>
+          <div class="flex items-center gap-2">
+            <span>{{ groupName(final.type) }}</span>
+            <span class="w-faint">›</span>
+            <span class="w-accent">{{ final.tier ?? 'untagged' }}</span>
+            <span class="grow" />
+            <span class="w-num w-faint text-xs">{{ final.added ? 'added' : `line ${final.line}` }}</span>
+          </div>
+          <div :class="$style.conds">
+            <div v-for="(c, i) in match.final.conditions" :key="i" class="w-trunc">
+              <span :class="tri(c.result).cls">{{ tri(c.result).icon }}</span>
+              {{ conditionText(c.condition) }}
+            </div>
+          </div>
+          <div class="flex items-center gap-3" style="margin-top: 4px;">
+            <LabelPreview :text="facts.baseType ?? facts.name" :actions="match.actions" :visibility="match.visibility" :scale="1.15" />
+          </div>
+          <div v-if="match.layers.length" class="text-xs w-dim">
+            Also styled by: {{ match.layers.map(l => `${groupName(l.block.type)} ${l.block.tier ?? ''}`).join(', ') }}
+          </div>
+          <div v-for="u in match.uncertain.slice(0, 2)" :key="u.block.index" class="text-xs" style="color: var(--w-warn);">
+            Might be caught earlier by {{ groupName(u.block.type) }} {{ u.block.tier }} (can't tell {{ unknownKeys(u).join(', ') }} from the copy).
+          </div>
+        </div>
+
+        <div v-if="alsoIn.length" class="text-xs w-dim flex flex-wrap items-center gap-1">
+          <span>Also listed in</span>
+          <WChip v-for="a in alsoIn" :key="a.type + a.tier" clickable @click="emit('open-editor', { type: a.type, tier: a.tier })">{{ groupName(a.type) }} › {{ a.tier }}</WChip>
+        </div>
+
+        <div v-if="moveTiers.length" :class="$style.section">
+          <div class="w-group-label" :class="$style.label">Move this item to tier</div>
+          <button v-for="t in moveTiers" :key="t.tier" :class="[$style.tierRow, { [$style.current]: t.tier === final.tier }]"
+            @click="moveTo(t.tier)">
+            <span :class="$style.tierName">{{ t.tier }}</span>
+            <LabelPreview :text="facts.baseType ?? ''" :actions="t.actions" :visibility="t.visibility" :extras="false" />
+            <span class="grow" />
+            <span class="text-xs" :class="t.tier === final.tier ? 'w-accent' : 'w-faint'">{{ t.tier === final.tier ? 'current' : `${t.count} items` }}</span>
+          </button>
+        </div>
+        <div v-else-if="!isOwn" class="text-xs w-dim">
+          This rule doesn't list items by name, so moving to another tier isn't possible. Restyle it, or give this item its own rule.
+        </div>
+
+        <div :class="$style.section">
+          <div class="w-group-label" :class="$style.label">Change the look</div>
+          <WSegmented v-if="!isOwn" v-model="scope" :options="scopeOptions" />
+          <StyleEditor :look="editLook" :visibility="editVisibility" :preview-text="facts.baseType ?? facts.name"
+            :copy-from="scope === 'tier' ? [] : copyFrom"
+            @patch="onPatch" @visibility="onVisibility" />
+          <WButton v-if="isOwn" size="sm" variant="ghost" icon="fas fa-undo" @click="removeOwnRule">Remove my own rule for this item</WButton>
+        </div>
+      </template>
+    </div>
+
+    <template #footer>
+      <div class="flex items-center gap-2 w-full">
+        <span class="text-xs grow" :class="store.error.value ? '' : 'w-dim'" :style="store.error.value ? 'color: var(--w-down)' : ''">
+          {{ store.error.value ?? (store.dirty.value ? 'Unsaved changes' : (store.lastSaved.value ? 'Saved' : '')) }}
+        </span>
+        <WButton size="sm" variant="ghost" @click="emit('open-editor')">Open editor</WButton>
+        <WButton size="sm" variant="primary" :disabled="store.saving.value" @click="store.save()">{{ config.reloadViaChat ? 'Save + reload' : 'Save' }}</WButton>
+      </div>
+    </template>
+  </WPanel>
+</template>
+
+<script setup lang="ts">
+import { computed, ref } from 'vue'
+import { WPanel, WButton, WSegmented, WChip } from '../ui'
+import LabelPreview from './LabelPreview.vue'
+import StyleEditor from './StyleEditor.vue'
+import type { LootFilterStore } from './store'
+import type { LootFilterWidget } from './widget'
+import type { ItemFacts } from './item-facts'
+import type { BlockMatch, MatchResult, Tri } from './match'
+import { formatCondition } from './parse'
+import type { FilterCondition, Visibility } from './parse'
+import { OWN_RULE_TYPE, blocksOf, moveTargets, readStyle } from './edits'
+import type { StylePatch } from './edits'
+import { findBase, groupName } from './groups'
+
+const props = defineProps<{
+  store: LootFilterStore
+  config: LootFilterWidget
+  facts: ItemFacts
+  match: MatchResult
+  areaLevel: number
+}>()
+
+const emit = defineEmits<{
+  (e: 'close'): void
+  (e: 'open-editor', at?: { type: string, tier: string }): void
+  (e: 'area-level', v: number): void
+}>()
+
+const areaLevelModel = computed({
+  get: () => props.areaLevel,
+  set: (v: number) => emit('area-level', v)
+})
+
+const final = computed(() => props.match.final!.block)
+const isOwn = computed(() => final.value.type === OWN_RULE_TYPE)
+const base = computed(() => props.facts.baseType ?? '')
+
+// The NeverSink rule behind an own rule, so moves and tier edits still work.
+const ownEdit = computed(() => props.config.edits.find(e => e.kind === 'item' && e.base === base.value) as Extract<typeof props.config.edits[number], { kind: 'item' }> | undefined)
+const origin = computed(() => isOwn.value && ownEdit.value
+  ? { type: ownEdit.value.type, tier: ownEdit.value.tier }
+  : { type: final.value.type ?? '', tier: final.value.tier ?? '' })
+
+function tierInfo (tier: string) {
+  const doc = props.store.doc.value!
+  const blocks = blocksOf(doc, origin.value.type, tier).filter(b => !b.disabled)
+  const first = blocks[0]
+  const count = blocks.reduce((n, b) => n + (b.conditions.find(c => c.key === 'BaseType' && c.op === '==')?.values.length ?? 0), 0)
+  return { tier, actions: first?.actions ?? [], visibility: first?.visibility ?? 'Show', count, look: readStyle(first?.actions ?? []) }
+}
+
+const moveTiers = computed(() => {
+  const doc = props.store.doc.value
+  if (!doc || isOwn.value || !base.value) return []
+  const hasBase = final.value.conditions.some(c => c.key === 'BaseType' && c.op === '==' && c.values.includes(base.value))
+  if (!hasBase) return []
+  return moveTargets(doc, origin.value.type).map(tierInfo)
+})
+
+const copyFrom = computed(() => {
+  const doc = props.store.doc.value
+  if (!doc || !origin.value.type) return []
+  return moveTargets(doc, origin.value.type).map(t => tierInfo(t))
+})
+
+// Other rules that list this base by name (e.g. single vs stacked currency).
+const alsoIn = computed(() => {
+  const doc = props.store.doc.value
+  if (!doc || !base.value) return []
+  return findBase(doc, base.value)
+    .filter(r => r.base === base.value && !(r.type === final.value.type && r.tier === final.value.tier))
+    .slice(0, 4)
+})
+
+function moveTo (tier: string) {
+  if (tier === final.value.tier) return
+  props.store.edit({ kind: 'move', type: origin.value.type, base: base.value, from: final.value.tier ?? '', to: tier })
+}
+
+const scope = ref<'item' | 'tier'>('item')
+const scopeOptions = computed(() => {
+  const count = tierInfo(final.value.tier ?? '').count
+  return [
+    { value: 'item', label: 'Just this item' },
+    { value: 'tier', label: `Whole tier${count ? ` (${count} items)` : ''}` }
+  ]
+})
+
+const editLook = computed<StylePatch>(() => readStyle(props.match.final!.block.actions))
+const editVisibility = computed<Visibility>(() => final.value.visibility)
+
+function onPatch (patch: StylePatch) {
+  if (scope.value === 'tier' && !isOwn.value) {
+    props.store.edit({ kind: 'style', type: origin.value.type, tier: origin.value.tier, patch })
+  } else {
+    props.store.edit({ kind: 'item', type: origin.value.type, tier: origin.value.tier, base: base.value, visibility: editVisibility.value, patch })
+  }
+}
+
+function onVisibility (v: Visibility) {
+  if (scope.value === 'tier' && !isOwn.value) {
+    props.store.edit({ kind: 'visibility', type: origin.value.type, tier: origin.value.tier, visibility: v })
+  } else {
+    props.store.edit({ kind: 'item', type: origin.value.type, tier: origin.value.tier, base: base.value, visibility: v, patch: {} })
+  }
+}
+
+function removeOwnRule () {
+  if (ownEdit.value) props.store.removeEdit(ownEdit.value.id)
+}
+
+function tri (r: Tri) {
+  if (r === true) return { icon: '✓', cls: 'w-up' }
+  if (r === false) return { icon: '✗', cls: 'w-down' }
+  return { icon: '?', cls: 'w-faint' }
+}
+
+function conditionText (c: FilterCondition): string {
+  if (c.key === 'BaseType' && c.values.length > 3) {
+    const hit = c.values.find(v => v === base.value || base.value.includes(v))
+    return `BaseType ${c.op} … ${hit ? `"${hit}"` : ''} … (${c.values.length} items)`
+  }
+  return formatCondition(c)
+}
+
+function unknownKeys (m: BlockMatch): string[] {
+  return [...new Set(m.conditions.filter(c => c.result === null).map(c => c.condition.key))]
+}
+
+</script>
+
+<style module>
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 10px var(--w-pad);
+}
+.itemName {
+  font-family: var(--w-head);
+  font-size: 15px;
+}
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.label {
+  padding: 0;
+}
+.conds {
+  font-family: var(--w-num);
+  font-size: 11px;
+  color: var(--w-dim);
+  line-height: 1.6;
+}
+.tierRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 3px 8px;
+  background: var(--w-panel-2);
+  border: 1px solid var(--w-line-soft);
+  border-radius: var(--w-radius-sm);
+  color: var(--w-fg);
+  text-align: left;
+  cursor: pointer;
+}
+.tierRow:hover {
+  border-color: var(--w-line-strong);
+}
+.current {
+  background: var(--w-accent-soft);
+  border-color: var(--w-line-strong);
+}
+.tierName {
+  width: 5.5rem;
+  flex-shrink: 0;
+  font-size: var(--w-text-sm);
+  color: var(--w-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.num {
+  width: 3.2rem;
+  background: var(--w-panel-2);
+  color: var(--w-fg);
+  border: 1px solid var(--w-line);
+  border-radius: var(--w-radius-sm);
+  padding: 1px 4px;
+}
+</style>

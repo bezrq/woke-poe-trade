@@ -1,0 +1,281 @@
+// User edits to a filter, stored as a list of operations rather than a
+// modified file. They are keyed by NeverSink's $type/$tier tags and base type
+// names, so the same list can be reapplied to every new NeverSink version.
+import type { FilterAction, FilterBlock, FilterCondition, FilterDoc, Visibility } from './parse'
+
+export type Colour = [number, number, number, number]
+
+export interface StylePatch {
+  fontSize?: number
+  text?: Colour
+  border?: Colour | null
+  background?: Colour
+  // null removes the action.
+  sound?: { id: string, volume: number } | null
+  effect?: { color: string, temp: boolean } | null
+  icon?: { size: number, color: string, shape: string } | null
+}
+
+interface EditBase {
+  id: number
+  // Group tag ($type), e.g. "currency" or "maps->influenced".
+  type: string
+}
+
+export type FilterEdit =
+  | EditBase & { kind: 'move', base: string, from: string, to: string }
+  | EditBase & { kind: 'style', tier: string, patch: StylePatch }
+  | EditBase & { kind: 'visibility', tier: string, visibility: Visibility }
+  | EditBase & { kind: 'group', hidden: boolean }
+  | EditBase & { kind: 'item', tier: string, base: string, visibility: Visibility, patch: StylePatch }
+
+// A FilterEdit before it gets an id.
+export type NewFilterEdit = FilterEdit extends infer E ? (E extends FilterEdit ? Omit<E, 'id'> : never) : never
+
+export interface EditStatus {
+  edit: FilterEdit
+  ok: boolean
+  // Blocks the edit changed (or added).
+  blocks: number
+  message?: string
+}
+
+export const OWN_RULE_TYPE = 'woke->own'
+
+// ---- style helpers ----
+
+function colour (args: string[]): Colour {
+  const [r, g, b, a] = args.map(Number)
+  return [r ?? 0, g ?? 0, b ?? 0, Number.isFinite(a) ? a : 255]
+}
+
+export function readStyle (actions: FilterAction[]): StylePatch {
+  const style: StylePatch = {}
+  for (const a of actions) {
+    switch (a.key) {
+      case 'SetFontSize': style.fontSize = Number(a.args[0]); break
+      case 'SetTextColor': style.text = colour(a.args); break
+      case 'SetBorderColor': style.border = colour(a.args); break
+      case 'SetBackgroundColor': style.background = colour(a.args); break
+      case 'PlayAlertSound':
+      case 'PlayAlertSoundPositional':
+        style.sound = { id: a.args[0], volume: Number(a.args[1] ?? 300) }
+        break
+      case 'PlayEffect': style.effect = { color: a.args[0], temp: a.args[1] === 'Temp' }; break
+      case 'MinimapIcon':
+        style.icon = Number(a.args[0]) < 0 ? null : { size: Number(a.args[0]), color: a.args[1], shape: a.args[2] }
+        break
+    }
+  }
+  return style
+}
+
+// The game's defaults when a block sets nothing (approximate, for previews).
+export const DEFAULT_TEXT: Colour = [200, 200, 200, 255]
+export const DEFAULT_BG: Colour = [0, 0, 0, 240]
+export const DEFAULT_FONT = 32
+
+function setAction (actions: FilterAction[], key: string, args: string[] | null, also: string[] = []): FilterAction[] {
+  const keys = [key, ...also]
+  const idx = actions.findIndex(a => keys.includes(a.key))
+  const rest = actions.filter(a => !keys.includes(a.key))
+  if (!args) return rest
+  const next = { key, args }
+  if (idx < 0) return [...rest, next]
+  rest.splice(Math.min(idx, rest.length), 0, next)
+  return rest
+}
+
+const rgba = (c: Colour) => c.map(n => String(Math.round(n)))
+
+export function applyStyle (block: FilterBlock, patch: StylePatch): void {
+  let actions = block.actions
+  if (patch.fontSize !== undefined) actions = setAction(actions, 'SetFontSize', [String(patch.fontSize)])
+  if (patch.text !== undefined) actions = setAction(actions, 'SetTextColor', rgba(patch.text))
+  if (patch.border !== undefined) actions = setAction(actions, 'SetBorderColor', patch.border ? rgba(patch.border) : null)
+  if (patch.background !== undefined) actions = setAction(actions, 'SetBackgroundColor', rgba(patch.background))
+  if (patch.sound !== undefined) {
+    actions = setAction(actions, 'PlayAlertSound', patch.sound ? [patch.sound.id, String(patch.sound.volume)] : null, ['PlayAlertSoundPositional', 'CustomAlertSound', 'CustomAlertSoundOptional'])
+  }
+  if (patch.effect !== undefined) {
+    actions = setAction(actions, 'PlayEffect', patch.effect ? [patch.effect.color, ...(patch.effect.temp ? ['Temp'] : [])] : null)
+  }
+  if (patch.icon !== undefined) {
+    actions = setAction(actions, 'MinimapIcon', patch.icon ? [String(patch.icon.size), patch.icon.color, patch.icon.shape] : null)
+  }
+  block.actions = actions
+  block.dirty = true
+}
+
+function setVisibility (block: FilterBlock, visibility: Visibility): void {
+  if (block.visibility === visibility) return
+  block.visibility = visibility
+  if (visibility === 'Hide') {
+    // A hidden drop shouldn't still beam, ping or show on the minimap.
+    block.actions = block.actions.filter(a => !['PlayAlertSound', 'PlayAlertSoundPositional', 'CustomAlertSound', 'CustomAlertSoundOptional', 'PlayEffect', 'MinimapIcon'].includes(a.key))
+    if (!block.actions.some(a => a.key === 'DisableDropSound')) block.actions.push({ key: 'DisableDropSound', args: ['True'] })
+  }
+  block.dirty = true
+}
+
+// ---- lookups ----
+
+export function blocksOf (doc: FilterDoc, type: string, tier?: string): FilterBlock[] {
+  return doc.blocks.filter(b => b.type === type && (tier === undefined || b.tier === tier))
+}
+
+function baseTypeCondition (b: FilterBlock): FilterCondition | undefined {
+  return b.conditions.find(c => c.key === 'BaseType' && c.op === '==')
+}
+
+export function blockHasBase (b: FilterBlock, base: string): boolean {
+  return baseTypeCondition(b)?.values.includes(base) ?? false
+}
+
+// Tiers of a group that list base types, i.e. where an item can be moved to.
+export function moveTargets (doc: FilterDoc, type: string): string[] {
+  const out: string[] = []
+  for (const b of blocksOf(doc, type)) {
+    if (b.tier && !b.disabled && baseTypeCondition(b) && !out.includes(b.tier)) out.push(b.tier)
+  }
+  return out
+}
+
+export function slug (text: string): string {
+  return text.toLowerCase().replace(/[^a-z0-9]+/g, '')
+}
+
+// ---- applying ----
+
+function applyOne (doc: FilterDoc, edit: FilterEdit): EditStatus {
+  switch (edit.kind) {
+    case 'group': {
+      const blocks = doc.blocks.filter(b => b.type === edit.type || b.type?.startsWith(edit.type + '->'))
+      if (!blocks.length) return { edit, ok: false, blocks: 0, message: 'Group not found in this filter' }
+      if (edit.hidden) for (const b of blocks) if (b.visibility !== 'Hide') setVisibility(b, 'Hide')
+      return { edit, ok: true, blocks: blocks.length }
+    }
+    case 'visibility': {
+      const blocks = blocksOf(doc, edit.type, edit.tier)
+      if (!blocks.length) return { edit, ok: false, blocks: 0, message: 'Tier not found in this filter' }
+      for (const b of blocks) setVisibility(b, edit.visibility)
+      return { edit, ok: true, blocks: blocks.length }
+    }
+    case 'style': {
+      const blocks = blocksOf(doc, edit.type, edit.tier)
+      if (!blocks.length) return { edit, ok: false, blocks: 0, message: 'Tier not found in this filter' }
+      for (const b of blocks) applyStyle(b, edit.patch)
+      return { edit, ok: true, blocks: blocks.length }
+    }
+    case 'move': {
+      const sources = blocksOf(doc, edit.type).filter(b => b.tier !== edit.to && blockHasBase(b, edit.base))
+      const targets = blocksOf(doc, edit.type, edit.to).filter(b => baseTypeCondition(b))
+      if (!targets.length) return { edit, ok: false, blocks: 0, message: `Tier ${edit.to} not found` }
+      if (!sources.length && !targets.some(b => blockHasBase(b, edit.base))) {
+        return { edit, ok: false, blocks: 0, message: `${edit.base} is no longer in this group` }
+      }
+      for (const b of sources) {
+        const c = baseTypeCondition(b)!
+        c.values = c.values.filter(v => v !== edit.base)
+        b.dirty = true
+        // An empty BaseType list is a syntax error in the game; drop the block.
+        if (!c.values.length) b.disabled = true
+      }
+      for (const b of targets) {
+        const c = baseTypeCondition(b)!
+        if (!c.values.includes(edit.base)) {
+          c.values = [...c.values, edit.base].sort((a, z) => a.localeCompare(z))
+          b.dirty = true
+        }
+      }
+      return { edit, ok: true, blocks: sources.length + targets.length }
+    }
+    case 'item': {
+      const tierBlocks = blocksOf(doc, edit.type, edit.tier)
+      const source = tierBlocks.find(b => blockHasBase(b, edit.base)) ?? tierBlocks[0]
+      if (!source) return { edit, ok: false, blocks: 0, message: 'Tier not found in this filter' }
+      const conditions = source.conditions
+        .filter(c => c.key !== 'BaseType')
+        .map(c => ({ ...c, values: [...c.values] }))
+      conditions.push({ key: 'BaseType', op: '==', count: null, values: [edit.base] })
+      const clone: FilterBlock = {
+        ...source,
+        index: -1,
+        line: source.line,
+        disabled: false,
+        comment: `$type->${OWN_RULE_TYPE} $tier->${slug(edit.base)} woke: own rule for ${edit.base} (from ${edit.type} ${edit.tier})`,
+        type: OWN_RULE_TYPE,
+        tier: slug(edit.base),
+        conditions,
+        actions: source.actions.map(a => ({ ...a, args: [...a.args] })),
+        continue: false,
+        raw: [],
+        dirty: true,
+        added: true
+      }
+      setVisibility(clone, edit.visibility)
+      applyStyle(clone, edit.patch)
+      const at = doc.chunks.indexOf(source)
+      doc.chunks.splice(at, 0, clone)
+      doc.blocks.splice(doc.blocks.indexOf(source), 0, clone)
+      doc.blocks.forEach((b, i) => { b.index = i })
+      return { edit, ok: true, blocks: 1 }
+    }
+  }
+}
+
+// Mutates `doc` (a fresh parse of the source filter).
+export function applyEdits (doc: FilterDoc, edits: FilterEdit[]): EditStatus[] {
+  return edits.map(e => applyOne(doc, e))
+}
+
+// ---- recording ----
+
+let lastId = Date.now()
+export function nextEditId (): number {
+  lastId = Math.max(lastId + 1, Date.now())
+  return lastId
+}
+
+// Adds an edit, folding it into an earlier one with the same target.
+export function addEdit (list: FilterEdit[], edit: FilterEdit): FilterEdit[] {
+  const same = (e: FilterEdit): boolean => {
+    if (e.kind !== edit.kind || e.type !== edit.type) return false
+    switch (edit.kind) {
+      case 'move': return (e as typeof edit).base === edit.base
+      case 'item': return (e as typeof edit).base === edit.base
+      case 'style': return (e as typeof edit).tier === edit.tier
+      case 'visibility': return (e as typeof edit).tier === edit.tier
+      case 'group': return true
+    }
+    return false
+  }
+  const prev = list.find(same)
+  if (!prev) {
+    if (edit.kind === 'group' && !edit.hidden) return list
+    return [...list, edit]
+  }
+  let merged: FilterEdit | null = edit
+  if (edit.kind === 'style' && prev.kind === 'style') {
+    merged = { ...edit, id: prev.id, patch: { ...prev.patch, ...edit.patch } }
+  } else if (edit.kind === 'move' && prev.kind === 'move') {
+    // Moving back to where it started undoes the move.
+    merged = prev.from === edit.to ? null : { ...edit, id: prev.id, from: prev.from }
+  } else if (edit.kind === 'item' && prev.kind === 'item') {
+    merged = { ...edit, id: prev.id, patch: { ...prev.patch, ...edit.patch } }
+  } else if (edit.kind === 'group' && !edit.hidden) {
+    merged = null
+  }
+  return merged ? list.map(e => e === prev ? merged! : e) : list.filter(e => e !== prev)
+}
+
+export function describeEdit (e: FilterEdit): string {
+  const group = e.type.replace(/->/g, ' › ')
+  switch (e.kind) {
+    case 'move': return `${e.base}: ${group} ${e.from} → ${e.to}`
+    case 'style': return `Restyled ${group} ${e.tier}`
+    case 'visibility': return `${e.visibility} ${group} ${e.tier}`
+    case 'group': return `Hid the whole ${group} group`
+    case 'item': return `Own rule for ${e.base} (${e.visibility === 'Hide' ? 'hidden' : 'restyled'})`
+  }
+}

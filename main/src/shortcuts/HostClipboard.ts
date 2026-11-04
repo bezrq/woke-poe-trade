@@ -1,7 +1,9 @@
 import { clipboard, Clipboard } from 'electron'
 import type { Logger } from '../RemoteLogger'
 
-const POLL_DELAY = 48
+// woke: 48 → 24. The wait between PoE writing the item text and us noticing
+// it averages half this delay, so the price check opens ~12 ms sooner.
+const POLL_DELAY = 24
 const POLL_LIMIT = 500
 
 // PoE must read clipboard within this timeframe,

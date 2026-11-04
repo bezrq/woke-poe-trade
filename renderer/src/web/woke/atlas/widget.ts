@@ -3,6 +3,7 @@ import type { Widget, Anchor } from '@/web/overlay/widgets'
 import { importList, matchesQuery, nextId, str, strList } from '../shared/library'
 import { DEFAULT_ATLAS_DATA_URL, parseAtlasData } from './tree'
 import type { AtlasNode } from './tree'
+import { perfTimeAsync, whenIdle } from '../shared/perf'
 
 export const ATLAS_TYPE = 'woke-atlas-strategies'
 
@@ -58,8 +59,10 @@ export function exportStrategies (list: AtlasStrategy[]): string {
     ({ name, league, tags, treeUrl, scarabs, device, regex, notes })), null, 2)
 }
 
-// Atlas tree data, fetched once per session (and cached in localStorage).
+// Atlas tree data (about 1.4 MB), cached in localStorage and downloaded again
+// only when the cache is a week old, so startup doesn't refetch it every time.
 const CACHE_KEY = 'woke-atlas-data'
+const CACHE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000
 const atlasData = shallowRef<Map<number, AtlasNode> | null>(null)
 const atlasDataError = shallowRef('')
 let loadingUrl: string | null = null
@@ -69,8 +72,11 @@ export function useAtlasData (url: string) {
   if (loadingUrl !== target) {
     loadingUrl = target
     atlasDataError.value = ''
-    load(target).catch((err: Error) => {
-      if (loadingUrl === target) atlasDataError.value = err.message
+    // Off the startup path: reading the cache parses a large JSON.
+    whenIdle(() => {
+      perfTimeAsync('Atlas: load tree data', load(target)).catch((err: Error) => {
+        if (loadingUrl === target) atlasDataError.value = err.message
+      })
     })
   }
   return { atlasData, atlasDataError }
@@ -80,8 +86,11 @@ async function load (url: string) {
   try {
     const cached = localStorage.getItem(CACHE_KEY)
     if (cached) {
-      const { url: cachedUrl, json } = JSON.parse(cached) as { url: string, json: unknown }
-      if (cachedUrl === url) atlasData.value = parseAtlasData(json)
+      const { url: cachedUrl, json, at } = JSON.parse(cached) as { url: string, json: unknown, at?: number }
+      if (cachedUrl === url) {
+        atlasData.value = parseAtlasData(json)
+        if (at && Date.now() - at < CACHE_MAX_AGE_MS) return
+      }
     }
   } catch {}
 
@@ -91,6 +100,6 @@ async function load (url: string) {
   const parsed = parseAtlasData(json)
   atlasData.value = parsed
   try {
-    localStorage.setItem(CACHE_KEY, JSON.stringify({ url, json }))
+    localStorage.setItem(CACHE_KEY, JSON.stringify({ url, json, at: Date.now() }))
   } catch {}
 }
