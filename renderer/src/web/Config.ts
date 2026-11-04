@@ -444,7 +444,7 @@ function upgradeConfig (_config: Config): Config {
   return config as unknown as Config
 }
 
-function getConfigForHost (): HostConfig {
+export function getConfigForHost (): HostConfig {
   const actions: ShortcutAction[] = []
 
   const config = AppConfig()
