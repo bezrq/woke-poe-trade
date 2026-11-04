@@ -9,6 +9,7 @@
 
 import './shared/perf'
 import './ui'
+import './app/prefetch'
 import WokeOverlayRoot from './WokeOverlay.vue'
 import type { Component } from 'vue'
 import type { WidgetSpec } from '@/web/overlay/interfaces'

@@ -325,6 +325,10 @@ button.chipText:hover { text-decoration: underline; }
   gap: 8px;
   padding: 3px var(--w-pad);
   font-size: var(--w-fs-md);
+  /* Up to 200 rows, ~30 on screen: the browser skips laying out and
+     painting the rest until they scroll into view. */
+  content-visibility: auto;
+  contain-intrinsic-size: auto 30px;
 }
 .row:nth-child(odd) { background: var(--w-panel-2); }
 .cost {
