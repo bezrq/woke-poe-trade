@@ -27,6 +27,9 @@ export interface ScannerKind {
   // Shown in errors, e.g. 'Map scan mode'.
   name: string
   frameMs: number
+  // Only this much of the screen either side of the cursor is sent to the
+  // vision worker, as a fraction of the window height.
+  cropHalfWidth: number
   read: (worker: OcrWorker, image: { width: number, height: number, data: Uint8Array }, opts: ScanOptions) => Promise<ScanResult>
 }
 
@@ -34,6 +37,7 @@ export const MAP_SCAN: ScannerKind = {
   topic: 'map-scan',
   name: 'Map scan mode',
   frameMs: 150,
+  cropHalfWidth: 0.6,
   read: async (worker, image, opts) => await worker.scanMapTooltip(image, opts)
 }
 
@@ -41,6 +45,7 @@ export const ESSENCE_SCAN: ScannerKind = {
   topic: 'essence-scan',
   name: 'Essence scan mode',
   frameMs: 200,
+  cropHalfWidth: 0.3,
   read: async (worker, image, opts) => await worker.scanEssenceLabel(image, opts)
 }
 
@@ -72,10 +77,11 @@ export class ScreenScanner {
     private readonly logger: Logger,
     private readonly poeWindow: GameWindow,
     private readonly kind: ScannerKind = MAP_SCAN
-  ) {
-    uIOhook.on('mousemove', (e) => {
-      this.mouse = { x: e.x, y: e.y }
-    })
+  ) {}
+
+  // Only listened to while scanning: mouse events arrive at polling rate.
+  private readonly onMouseMove = (e: { x: number, y: number }) => {
+    this.mouse = { x: e.x, y: e.y }
   }
 
   get isRunning () { return this.running }
@@ -99,6 +105,7 @@ export class ScreenScanner {
       this.lastActive = Date.now()
       this.failures = 0
       this.loopId++
+      uIOhook.on('mousemove', this.onMouseMove)
       this.schedule()
       this.emitState()
     }
@@ -110,6 +117,7 @@ export class ScreenScanner {
       this.running = false
       this.loopId++
       clearTimeout(this.timer)
+      uIOhook.removeListener('mousemove', this.onMouseMove)
       this.emitState(reason)
     }
     return { running: false }
@@ -140,10 +148,16 @@ export class ScreenScanner {
     if (cursor.x < 0 || cursor.y < 0 || cursor.x >= bounds.width || cursor.y >= bounds.height) return
 
     try {
-      const data = this.poeWindow.screenshot()
+      const shot = this.poeWindow.screenshot()
+      // Send only a vertical strip around the cursor: less to copy into the
+      // worker and to colour-convert there.
+      const half = Math.round(bounds.height * this.kind.cropHalfWidth)
+      const x0 = Math.max(0, cursor.x - half)
+      const x1 = Math.min(bounds.width, cursor.x + half)
+      const data = cropColumns(shot, bounds.width, bounds.height, x0, x1)
       const res = await this.kind.read(this.worker!,
-        { width: bounds.width, height: bounds.height, data },
-        { cursor, stableSig: this.prevSig, lastReadSig: this.lastReadSig })
+        { width: x1 - x0, height: bounds.height, data },
+        { cursor: { x: cursor.x - x0, y: cursor.y }, originX: x0, stableSig: this.prevSig, lastReadSig: this.lastReadSig })
       this.failures = 0
       this.prevSig = res.sig
       if (res.sig == null) {
@@ -183,4 +197,16 @@ export class ScreenScanner {
       payload: { topic: this.kind.topic, data }
     })
   }
+}
+
+// Copies columns x0..x1 of a 4-byte-per-pixel image.
+function cropColumns (data: Uint8Array, width: number, height: number, x0: number, x1: number): Uint8Array {
+  if (x0 === 0 && x1 === width) return data
+  const rowBytes = (x1 - x0) * 4
+  const out = new Uint8Array(rowBytes * height)
+  for (let y = 0; y < height; y++) {
+    const from = (y * width + x0) * 4
+    out.set(data.subarray(from, from + rowBytes), y * rowBytes)
+  }
+  return out
 }

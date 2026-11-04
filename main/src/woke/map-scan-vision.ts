@@ -15,6 +15,8 @@ const GREY_MAX = hsvToU8(360, 14, 100)
 
 export interface ScanOptions {
   cursor: { x: number, y: number }
+  // Left edge of the image within the game window, when main sent a strip.
+  originX?: number
   // OCR only when this frame's signature equals `stableSig` (unchanged for
   // two frames, so not mid-animation) and differs from `lastReadSig`.
   stableSig: string | null
@@ -86,7 +88,7 @@ export function scanTooltip (img: ImageData, opts: ScanOptions): ScanResult {
   let bits = ''
   for (let i = 0; i < small.data.length; i++) bits += small.data[i] > 40 ? '1' : '0'
   small.delete()
-  const sig = `${Math.round((x0 + box.x) / 8)},${Math.round(box.y / 8)}:${hashBits(bits)}`
+  const sig = `${Math.round(((opts.originX ?? 0) + x0 + box.x) / 8)},${Math.round(box.y / 8)}:${hashBits(bits)}`
 
   const result: ScanResult = {
     sig,
