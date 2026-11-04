@@ -59,7 +59,18 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
   const buildSig = computed(() => JSON.stringify(buildInput.value ? [buildInput.value, cfg().buildRules] : null))
   // Price moves and the safety net's current list are part of the file too.
   const safetyList = shallowRef<string>('')
-  const extraSig = () => hash(JSON.stringify([cfg().priceTiers.on ? cfg().priceTiers.moves : [], cfg().safetyNet.on ? safetyList.value : '']))
+  // woke: with NeverSink from GitHub, the version, style and level are part
+  // of the file as well (a new style used to read "saved" until you saved).
+  const sourceSig = () => {
+    const ns = cfg().neversink
+    return ns.on ? [ns.version, ns.style, ns.level] : []
+  }
+  const extraSig = () => {
+    const parts: unknown[] = [cfg().priceTiers.on ? cfg().priceTiers.moves : [], cfg().safetyNet.on ? safetyList.value : '']
+    const src = sourceSig()
+    if (src.length) parts.push(src)
+    return hash(JSON.stringify(parts))
+  }
   const signature = () => JSON.stringify([cfg().edits, hash(buildSig.value), extraSig()])
   // The build part is only known once the build file is read, so start from
   // what the last save used.
@@ -251,18 +262,32 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
   async function checkForUpdate (force = false) {
     const ns = cfg().neversink
     if (!ns.on || checking.value) return
-    if (!force && ns.checkedAt && Date.now() - ns.checkedAt < 20 * 3600 * 1000 && !(ns.latest && ns.latest !== ns.version)) return
+    const fresh = !force && ns.checkedAt != null && Date.now() - ns.checkedAt < 20 * 3600 * 1000
+    if (fresh && !(ns.latest && ns.latest !== ns.version)) return
     checking.value = true
     try {
-      const latest = await hostRequest<{ version: string, changes: string }>('ns-latest', {})
-      ns.latest = latest.version
-      ns.latestChanges = latest.changes
-      ns.checkedAt = Date.now()
-      if (!ns.version || latest.version === ns.version) { updateReady.value = null; return }
-      const got = await hostRequest<{ version: string }>('ns-download', { style: ns.style })
-      if (got.version === ns.version) { updateReady.value = null; return }
-      const { text } = await hostRequest<{ text: string }>('ns-read', { version: got.version, style: ns.style, level: ns.level })
-      updateReady.value = { version: got.version, ...fitOf(text) }
+      // woke: within the day, reuse what GitHub said and the copy already
+      // downloaded. Every load (each strictness switch) used to download all
+      // seven files again while an update was waiting.
+      let latest = ns.latest
+      if (!fresh || !latest) {
+        const got = await hostRequest<{ version: string, changes: string }>('ns-latest', {})
+        latest = got.version
+        ns.latest = got.version
+        ns.latestChanges = got.changes
+        ns.checkedAt = Date.now()
+      }
+      if (!ns.version || latest === ns.version) { updateReady.value = null; return }
+      let version = latest
+      let text: string
+      try {
+        text = (await hostRequest<{ text: string }>('ns-read', { version, style: ns.style, level: ns.level })).text
+      } catch {
+        version = (await hostRequest<{ version: string }>('ns-download', { style: ns.style })).version
+        if (version === ns.version) { updateReady.value = null; return }
+        text = (await hostRequest<{ text: string }>('ns-read', { version, style: ns.style, level: ns.level })).text
+      }
+      updateReady.value = { version, ...fitOf(text) }
     } catch (e) {
       // Offline or GitHub down: try again next time, quietly (P13).
       console.warn('[loot filter] NeverSink update check failed', e)
@@ -314,6 +339,8 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
     if (next === before) return null
     ns.level = next
     await load()
+    // A newer switch (a second key press) saves its own level.
+    if (cfg().neversink.level !== next) return null
     if (doc.value) await save()
     return () => { setLevel(before).catch(() => {}) }
   }
@@ -376,7 +403,13 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
     return stem(outputName(cfg())).toLowerCase() !== name.toLowerCase()
   })
 
+  // woke: loads can overlap (two strictness steps in a row, a quick change
+  // of file). Only the newest one may set the text, or the editor could end
+  // up on the level or file you just left.
+  let loadSeq = 0
+
   async function load () {
+    const seq = ++loadSeq
     if (cfg().neversink.on) {
       loading.value = true
       error.value = null
@@ -384,6 +417,7 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
       try {
         const ns = cfg().neversink
         const got = await readNeverSink(ns.version, ns.level)
+        if (seq !== loadSeq) return
         ns.version = got.version
         baseNeedsBackup.value = false
         baseText.value = got.text
@@ -391,17 +425,19 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
         baseVersion.value = doc.value?.version ?? null
         checkForUpdate().catch(() => {})
       } catch (e) {
+        if (seq !== loadSeq) return
         error.value = `Can't get NeverSink's filter from GitHub: ${(e as Error).message}`
         baseText.value = null
         doc.value = null
       } finally {
-        loading.value = false
+        if (seq === loadSeq) loading.value = false
       }
       readGameFilter().catch(() => {})
       return
     }
     if (!cfg().sourceName) {
       await listFiles()
+      if (seq !== loadSeq) return
       // Pick the most recently changed NeverSink file as a starting point.
       const ns = files.value.find(f => !f.online && /neversink/i.test(f.name) && !/\(woke\)/i.test(f.name)) ??
         files.value.find(f => f.online && /neversink/i.test(f.title ?? ''))
@@ -414,7 +450,9 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
     error.value = null
     prices.wantPrices()
     try {
-      let { text } = await hostRequest<{ text: string }>('filter-read', { dir: cfg().folder, name: cfg().sourceName, online: cfg().sourceOnline })
+      const source = cfg().sourceName
+      let { text } = await hostRequest<{ text: string }>('filter-read', { dir: cfg().folder, name: source, online: cfg().sourceOnline })
+      if (seq !== loadSeq) return
       baseNeedsBackup.value = false
       if (cfg().sourceOnline) {
         // Read only; saves go to a local copy.
@@ -422,13 +460,15 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
         // Our own output. Overwrite mode keeps the original in the .bak; a
         // copy-mode output names its source in the header instead.
         try {
-          text = (await hostRequest<{ text: string }>('filter-read', { dir: cfg().folder, name: cfg().sourceName + '.bak' })).text
+          text = (await hostRequest<{ text: string }>('filter-read', { dir: cfg().folder, name: source + '.bak' })).text
         } catch (e) {
           const from = /^# Made from "([^"]+\.filter)"/m.exec(text)?.[1]
-          if (!from || from === cfg().sourceName) throw e
+          if (!from || from === source) throw e
           text = (await hostRequest<{ text: string }>('filter-read', { dir: cfg().folder, name: from })).text
+          if (seq !== loadSeq) return
           cfg().sourceName = from
         }
+        if (seq !== loadSeq) return
       } else if (cfg().saveMode === 'overwrite') {
         baseNeedsBackup.value = true
       }
@@ -436,11 +476,12 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
       rebuild()
       baseVersion.value = doc.value?.version ?? null
     } catch (e) {
+      if (seq !== loadSeq) return
       error.value = `Can't open ${cfg().sourceName}: ${(e as Error).message}`
       baseText.value = null
       doc.value = null
     } finally {
-      loading.value = false
+      if (seq === loadSeq) loading.value = false
     }
   }
 

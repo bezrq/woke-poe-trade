@@ -89,6 +89,8 @@ const STYLES = ['', 'ABYSS', 'ALLOY', 'AZURITE', 'COBALT', 'CRIMSON', 'ELDER', '
 const styleOptions = STYLES.map(s => ({ value: s, label: s ? s.charAt(0) + s.slice(1).toLowerCase() : 'Default' }))
 
 async function pickLevel (i: number) {
+  // woke: clicking the level you're on used to pause the ladder, silently.
+  if (i === props.config.neversink.level) return
   const wasPaused = props.config.strictAuto.paused
   if (props.config.strictAuto.on) props.config.strictAuto.paused = true
   const undo = await props.store.setLevel(i)
