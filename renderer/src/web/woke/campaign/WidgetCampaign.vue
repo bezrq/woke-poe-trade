@@ -52,7 +52,7 @@ export default {
 <script setup lang="ts">
 import { inject, computed, shallowRef, watch, onUnmounted } from 'vue'
 import { Host } from '@/web/background/IPC'
-import { AppConfig } from '@/web/Config'
+import { AppConfig, saveConfig } from '@/web/Config'
 import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
 import { WPanel } from '../ui'
@@ -101,6 +101,7 @@ const actNote = computed(() => s.value.act != null ? (props.config.actNotes[Stri
 
 const logListener = Host.onEvent('MAIN->CLIENT::game-log', (e) => {
   const state = props.config.state
+  let changed = false
   for (const line of e.lines) {
     const ev = parseLogLine(line)
     if (!ev) continue
@@ -119,7 +120,11 @@ const logListener = Host.onEvent('MAIN->CLIENT::game-log', (e) => {
       state.level = ev.level
     }
     state.updatedAt = Date.now()
+    changed = true
   }
+  // APT saves config when the overlay loses focus; log events arrive while
+  // the game has focus, so save here to keep progress across restarts.
+  if (changed) saveConfig()
 })
 onUnmounted(() => { logListener.abort() })
 
