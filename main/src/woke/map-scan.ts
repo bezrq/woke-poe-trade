@@ -3,7 +3,6 @@
 // under the cursor, and sends new readings to the overlay. Text is re-read
 // whenever it changes, so rerolling the same map gives a new reading.
 // Used by map scan (map tooltips) and essence scan (essence monolith labels).
-import { uIOhook } from 'uiohook-napi'
 import { screen } from 'electron'
 import fs from 'fs'
 import os from 'os'
@@ -16,11 +15,10 @@ import type { ScanOptions, ScanResult, LineImage } from './map-scan-vision'
 import { perfRecord } from './perf'
 import { ocrDir, USER_OCR_DIR } from './ocr-dir'
 
+// About one quad-tab cell, as a fraction of the game window height.
+const LOCK_LEAVE = 0.024
 // Stop after this long without the game focused, so it can't run forever.
 const IDLE_STOP_MS = 30 * 60 * 1000
-// Only take a screenshot once the cursor has rested this long.
-const REST_MS = 150
-
 // Files the OCR worker loads (the same ones APT's heist gem reader uses).
 // The worker swallows load errors, so they're checked up front instead.
 const OCR_FILES = ['tesseract-core-simd.js', 'opencv.js', 'eng.traineddata']
@@ -237,7 +235,6 @@ export class ScreenScanner {
   private timer: ReturnType<typeof setTimeout> | undefined
   private running = false
   private mouse = { x: 0, y: 0 }
-  private movedAt = 0
   // Cursor position of the last frame that found no tooltip; while the
   // cursor stays there, no screenshots are taken.
   private emptyAt: { x: number, y: number } | null = null
@@ -263,12 +260,6 @@ export class ScreenScanner {
     private readonly poeWindow: GameWindow,
     private readonly kind: ScannerKind = MAP_SCAN
   ) {}
-
-  // Only listened to while scanning: mouse events arrive at polling rate.
-  private readonly onMouseMove = (e: { x: number, y: number }) => {
-    this.mouse = { x: e.x, y: e.y }
-    this.movedAt = Date.now()
-  }
 
   get isRunning () { return this.running }
   get isRolling () { return this.rolling }
@@ -298,10 +289,7 @@ export class ScreenScanner {
     this.lastReadingAt = Date.now()
     this.emptyAt = null
     this.failures = 0
-    // mousemove only arrives once the cursor moves, so a scan started
-    // while resting on a map would otherwise read nothing.
     this.mouse = cursorInScreenPixels()
-    this.movedAt = 0
   }
 
   // Toggles rolling mode, starting the scanner if it's off.
@@ -345,7 +333,6 @@ export class ScreenScanner {
       runningScanners.add(this)
       this.fresh()
       this.loopId++
-      uIOhook.on('mousemove', this.onMouseMove)
       claimOcr(this)
       this.schedule()
       this.emitState()
@@ -366,7 +353,6 @@ export class ScreenScanner {
       this.unlock()
       this.loopId++
       clearTimeout(this.timer)
-      uIOhook.removeListener('mousemove', this.onMouseMove)
       scannerStopped(this)
       this.emitState(reason)
     }
@@ -396,7 +382,26 @@ export class ScreenScanner {
     this.lastActive = Date.now()
     const bounds = this.poeWindow.bounds
     if (!bounds.width || !bounds.height) return
+    // Asked for on every frame: the mouse hook reports no moves while a button
+    // is held, which would leave the position (and the badge) behind.
+    const now = cursorInScreenPixels()
+    const moved = now.x !== this.mouse.x || now.y !== this.mouse.y
+    this.mouse = now
     const cursor = { x: this.mouse.x - bounds.x, y: this.mouse.y - bounds.y }
+    // Rolling: a lock holds while the cursor stays on that item. Once it moves
+    // about a quad-tab cell away it may be on another one, so the tooltip is
+    // found again when it rests. Small drift between clicks keeps the lock.
+    if (this.lock && this.lockAt && moved) {
+      const dx = cursor.x - this.lockAt.x * bounds.width
+      const dy = cursor.y - this.lockAt.y * bounds.height
+      if (Math.hypot(dx, dy) > bounds.height * LOCK_LEAVE) {
+        this.lock = null
+        this.lockAt = null
+        this.prevSig = null
+        this.lastReadSig = null
+        this.emitState()
+      }
+    }
     const lock = this.lock
     if (!lock && (cursor.x < 0 || cursor.y < 0 || cursor.x >= bounds.width || cursor.y >= bounds.height)) return
     if (this.kind.noReadingStopMs && Date.now() - this.lastReadingAt > this.kind.noReadingStopMs) {
@@ -406,7 +411,7 @@ export class ScreenScanner {
     if (!lock) {
       // Wait for the cursor to rest, and skip frames while it sits where
       // there was nothing to read.
-      if (Date.now() - this.movedAt < REST_MS) return
+      if (moved) return
       if (this.emptyAt && this.emptyAt.x === this.mouse.x && this.emptyAt.y === this.mouse.y) return
     }
 

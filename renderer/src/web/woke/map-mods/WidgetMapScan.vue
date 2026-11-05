@@ -127,7 +127,7 @@ import { TooltipMatcher } from './tooltip-parse'
 import { allAreaMods } from './data'
 import { findMapModsConfig } from './check'
 import { activeProfile } from './widget'
-import { SAME_SLOT, initMapScanWidget, normalizeMapScanWidget, parseScanHotkeyTarget } from './scan'
+import { initMapScanWidget, normalizeMapScanWidget, parseScanHotkeyTarget, sameSlot } from './scan'
 
 const props = defineProps<{ config: MapScanWidget }>()
 const wm = inject<WidgetManager>('wm')!
@@ -168,6 +168,8 @@ const paused = shallowRef(false)
 const entries = shallowRef<Entry[]>([])
 const current = shallowRef<Entry | null>(null)
 let nextId = 1
+// Where the current roll count belongs.
+let rollSlot: { x: number, y: number } | null = null
 let matcher: TooltipMatcher | null = null
 
 const recent = computed(() => entries.value.slice(-8).reverse())
@@ -193,8 +195,8 @@ const profileName = computed(() => mapMods.value ? activeProfile(mapMods.value).
 const badgeStyle = computed(() => {
   const e = current.value
   if (!e) return {}
-  // Map tooltips open to the right of the item, so the badge goes left of the
-  // cursor unless there's no room.
+  // Map tooltips open above the item (and clear of it), so the badge stays level
+  // with the cursor: left of it, or just under it when there's no room on the left.
   if (e.at.x > 0.2) {
     return { right: `${(1 - e.at.x) * 100 + 1.5}%`, top: `${e.at.y * 100}%` }
   }
@@ -225,14 +227,23 @@ function onReading (reading: Reading) {
 
   // Same slot as an earlier reading (rerolling in place): replace it.
   const list = entries.value.slice()
-  const idx = list.findIndex(e => Math.hypot(e.at.x - reading.at.x, (e.at.y - reading.at.y)) < SAME_SLOT)
+  const aspect = window.innerWidth / window.innerHeight
+  const idx = list.findIndex(e => sameSlot(e.at, reading.at, aspect))
   const prev = idx >= 0 ? list[idx] : null
   let rollN: number | undefined
-  if (reading.rolling) {
+  // A map's mods mean a roll; other tooltips (gear, a map hovered on the way past
+  // with none) don't. Another slot starts a new count.
+  if (reading.rolling && scanned.mods.length) {
+    if (!rollSlot || !sameSlot(rollSlot, reading.at, aspect)) rolls.value = []
+    rollSlot = reading.at
     rollN = rolls.value.length + 1
     rolls.value = [...rolls.value, { n: rollN, verdict: verdict.verdict, juice: juice.score }]
   }
-  const passes = verdict.verdict === 'run' && (rollN != null || Boolean(prev && prev.verdict !== 'run'))
+  // The first read of a map is where it starts, not a reroll that passed.
+  // While rolling, a reading with no mods (a scoured map) isn't a roll, so it can't pass either.
+  const passes = verdict.verdict === 'run' && (rollN != null
+    ? rollN > 1
+    : !reading.rolling && Boolean(prev && prev.verdict !== 'run'))
   const entry: Entry = {
     id: nextId++,
     at: prev?.at ?? reading.at,
@@ -258,7 +269,7 @@ const events = MainProcess.onEvent('MAIN->CLIENT::woke-event', ({ topic, data })
     running.value = Boolean(d.running)
     paused.value = Boolean(d.paused)
     const nowRolling = Boolean(d.rolling)
-    if (nowRolling && !rolling.value) rolls.value = []
+    if (nowRolling && !rolling.value) { rolls.value = []; rollSlot = null }
     rolling.value = nowRolling
     locked.value = Boolean(d.locked)
     message.value = d.message ?? null
