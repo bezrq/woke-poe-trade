@@ -1,7 +1,7 @@
 ---
 id: WOKEPOET-16
 title: Fix map Current rolls max error and make the roll bar set min and max by click
-status: Ready
+status: Done
 priority: High
 effort: S
 assignee: unassigned
@@ -59,6 +59,19 @@ history:
     to: Ready
     user: Agent
     date: '2026-11-05T03:38:24.642Z'
+  - type: comment
+    user: Agent
+    comment: >-
+      PR squash-merged for branch
+      `flux/WOKEPOET-16-fix-map-current-rolls-max-error-and-make-the-roll-bar-set-mi`
+      — advanced to Done.
+    date: '2026-11-05T03:42:52.211Z'
+    id: c-2026-11-05t03-42-52-211z
+  - type: status_change
+    from: Ready
+    to: Done
+    user: Agent
+    date: '2026-11-05T03:42:52.211Z'
 needsAction: null
 branch: flux/WOKEPOET-16-fix-map-current-rolls-max-error-and-make-the-roll-bar-set-mi
 baselineCommit: a58632b0379617cbbaaebd67ac298914035552dd

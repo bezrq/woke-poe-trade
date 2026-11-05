@@ -59,7 +59,7 @@ branch: flux/WOKEPOET-17-build-panel-tooltip-can-stay-stuck-on-screen-when-the-o
 baselineCommit: a58632b0379617cbbaaebd67ac298914035552dd
 needsAction: null
 implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/90'
-swimlane: open-pr
+swimlane: null
 ---
 > **TL;DR:** Found reviewing PR #86 after it merged. The tooltip sits outside the panel, so closing the overlay while hovering leaves it on screen over the game. Fix that and two small regressions.
 
