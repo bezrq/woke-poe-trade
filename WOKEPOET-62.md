@@ -27,6 +27,15 @@ history:
     date: '2026-11-05T10:53:21.556Z'
     comment: Updated implementation link.
     id: a-2026-11-05t10-53-21-556z
+  - type: comment
+    user: Agent
+    comment: >-
+      Guard merged in #150. The test is still open: does holding a hotkey repeat
+      it on Windows? The pause before a key starts repeating can still let one
+      extra press through. Left open until someone tries it in game.
+    date: '2026-11-05T11:08:34.427Z'
+    selfAttested: true
+    id: c-2026-11-05t11-08-34-427z
 implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/150'
 ---
 > **TL;DR** C17. The hotkey callback has no repeat guard (Shortcuts.ts register), and GGG's rules allow one action per press. Whether Windows repeats these hotkeys needs a test. A guard keyed on the uIOhook keyup is cheap either way: ignore a hotkey until its key has been released.

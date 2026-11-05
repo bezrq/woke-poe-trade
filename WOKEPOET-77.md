@@ -125,6 +125,17 @@ history:
       Safe; duplicate keys; a Map mods off hint. "Want on Charts narrows the map
       search" is gone with per-tab ratings. PR #151.
     id: a-2026-11-05t10-53-50-962z
+  - type: activity
+    user: Agent
+    date: '2026-11-05T11:07:58.290Z'
+    comment: >-
+      Second review fixed in dc5ee85d: heist one row per stat (reduced rows
+      shared token `duc`), 5-letter minimum tokens on Heist and Charts, per-tab
+      highlight and auto-trim, curse wording row. Not fixed by choice: Charts
+      start empty (Guy's no-intermingling rule), caches on language change
+      (already true of the map list), strip not showing unrecognised lines.
+      Local checks pass. Merge requested.
+    id: a-2026-11-05t11-07-58-290z
 swimlane: null
 needsAction: null
 ---

@@ -1,7 +1,7 @@
 ---
 id: WOKEPOET-79
 title: 'Lab gems: leave thin-market gems out of EV'
-status: In Progress
+status: Done
 priority: None
 effort: None
 assignee: unassigned
@@ -67,9 +67,99 @@ history:
       changed: graphGaps in market/parse.ts counts a missing graph as 0 gaps, so
       such a gem would count as trusted; not confirmed in the live feed.
     id: a-2026-11-05t10-50-43-299z
+  - type: comment
+    user: Agent
+    comment: >-
+      **Merged and live on the dev copy.** PR #152 merged as f903d823; dev copy
+      is on master e7f02321. Review findings fixed, local checks passed.
+    date: '2026-11-05T11:08:14.643Z'
+    completionComment: true
+    id: c-2026-11-05t11-08-14-643z
+  - type: status_change
+    from: In Progress
+    to: Ready
+    user: Agent
+    date: '2026-11-05T11:08:14.643Z'
+  - type: comment
+    user: Agent
+    comment: >-
+      Merged as f903d823. Skip thin chip on the Lab gems window, saved and off
+      by default: thin gems count as 0 and leave the lists, the Bring table,
+      runner profit, dock card and Specific gem tab. Thin base gems keep their
+      price. No docs needed: no project doc describes this window.
+    completionComment: true
+    date: '2026-11-05T11:08:16.202Z'
+    id: c-2026-11-05t11-08-16-202z
+  - type: status_change
+    from: Ready
+    to: Done
+    user: Agent
+    date: '2026-11-05T11:08:16.516Z'
 swimlane: null
 needsAction: null
 implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/152'
+baselineCommit: ae9d149f9c555d42e467c95e82514624d060baa7
+diffSummary:
+  - file: docs/.vitepress/theme/landing/Landing.vue
+    additions: 363
+    deletions: 131
+  - file: docs/.vitepress/theme/landing/content.js
+    additions: 65
+    deletions: 23
+  - file: docs/public/shots/hero.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/readme-banner.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/story-essence.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/story-loot.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/story-maps.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/story-price.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/tour-boss-runs.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/tour-boss.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/tour-campaign-chip.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/tour-campaign.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/tour-filter-prices.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/tour-filter-rules.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/tour-map-mods.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/tour-market.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/tour-pob.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/tour-regex.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/tour-trade.webp
+    additions: 0
+    deletions: 0
+  - file: testing/e2e/landing-shots.spec.ts
+    additions: 211
+    deletions: 4
 ---
 > **TL;DR:** Gems marked "!" (thin market on poe.ninja) still inflate the Lab gems EVs. Add a saved toggle that leaves them out of the sums and the lists.
 
