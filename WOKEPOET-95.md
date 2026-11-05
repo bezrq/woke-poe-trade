@@ -1,7 +1,7 @@
 ---
 id: WOKEPOET-95
 title: Merge the Gear and Setups tabs in the build panel
-status: Grooming
+status: In Progress
 priority: None
 effort: None
 assignee: unassigned
@@ -52,7 +52,27 @@ history:
     date: '2026-11-05T11:21:12.051Z'
     selfAttested: true
     id: c-2026-11-05t11-21-12-051z
-swimlane: require-input
+  - type: comment
+    user: Agent
+    comment: >-
+      Guy picked E (vertical chain with icons, level/quality): "E seems much
+      more readable". No regex.
+    date: '2026-11-05T11:24:26.182Z'
+    id: c-2026-11-05t11-24-26-182z
+  - type: swimlane_change
+    swimlane: require-input
+    action: cleared
+    user: Agent
+    date: '2026-11-05T11:24:26.182Z'
+    comment: >-
+      Guy picked E (vertical chain with icons, level/quality): "E seems much
+      more readable". No regex.
+  - type: status_change
+    from: Grooming
+    to: In Progress
+    user: Agent
+    date: '2026-11-05T11:24:26.235Z'
+swimlane: null
 needsAction: null
 ---
 > **TL;DR:** Show each item's gems on its Gear row and drop the Setups tab. Mocks are up; waiting on Guy's pick. No code yet.
