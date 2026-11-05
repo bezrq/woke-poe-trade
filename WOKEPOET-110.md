@@ -97,6 +97,33 @@ history:
     selfAttested: true
     pin: true
     id: c-2026-11-05t14-23-54-146z
+  - type: comment
+    user: Agent
+    comment: >-
+      Guy picked outline style 2 and asked for it to be snappy, clear easily on
+      tab swaps, and run on demand. Proposed: one shortcut press takes one
+      screenshot; a fixed slot table plus tab and lit-slot pixel checks with no
+      OCR worker, target under about 200ms, to be measured. Clears on any click
+      or Ctrl+scroll, the shortcut, Esc, zone change, or a timeout; need to
+      confirm the hook sees clicks in game. Shortcut unset by default.
+      Unsupported tab: a brief note on the Flips dock icon, no popup. Waiting on
+      Guy's go, scarab tab first.
+    date: '2026-11-05T14:28:37.599Z'
+    selfAttested: true
+    pin: true
+    id: c-2026-11-05t14-28-37-599z
+  - type: comment
+    user: Agent
+    comment: >-
+      Guy's fourth requirement: the stash panel can sit in different screen
+      positions, for example with Faustus open. Proposed: locate the panel by a
+      fixed marker (Stash banner or frame) on each press, place slots relative
+      to it, and draw nothing if it isn't found. Untested; asked for a
+      screenshot with Faustus and the scarab tab open.
+    date: '2026-11-05T14:29:02.395Z'
+    selfAttested: true
+    pin: true
+    id: c-2026-11-05t14-29-02-395z
 swimlane: require-input
 needsAction: null
 ---
