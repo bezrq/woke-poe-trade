@@ -114,6 +114,13 @@
 /* Older listings recede: they are the ones most likely to be gone. */
 .w-pc-table tbody tr.w-pc-aging .w-pc-age { color: var(--w-faint); }
 .w-pc-table tbody tr.w-pc-stale > td { opacity: 0.5; }
+
+:root:not([data-woke-theme="classic"]) #overlay-window .w-pc-primary {
+  background: var(--w-accent);
+  color: var(--w-accent-fg);
+  font-family: var(--w-body);
+  font-weight: 600;
+}
 .w-pc-table tbody tr.w-pc-ignored > td { opacity: 0.4; }
 .w-pc-table tbody tr.w-pc-stale:hover > td,
 .w-pc-table tbody tr.w-pc-ignored:hover > td { opacity: 0.85; }

@@ -15,23 +15,25 @@
       <trade-links v-if="list"
         :get-link="makeTradeLink" />
     </div>
-    <price-verdict v-if="improved"
-      :item="item"
-      :insight="insight"
-      :divine="divine"
-      :loading="!list || !slowdownReady"
-      :total="list ? list.total : null"
-      :log-key="logKey"
-      :league="filters.trade.league" />
-    <price-drivers v-if="improved && list"
-      :key="list.id"
-      :item="item"
-      :filters="filters"
-      :stats="stats"
-      :insight="insight"
-      :options="insightOptions"
-      :divine="divine"
-      :ready="slowdownReady" />
+    <teleport v-if="improved && verdictSlot" :to="verdictSlot">
+      <price-verdict
+        :item="item"
+        :insight="insight"
+        :divine="divine"
+        :loading="!list || !slowdownReady"
+        :total="list ? list.total : null"
+        :log-key="logKey"
+        :league="filters.trade.league" />
+      <price-drivers v-if="list"
+        :key="list.id"
+        :item="item"
+        :filters="filters"
+        :stats="stats"
+        :insight="insight"
+        :options="insightOptions"
+        :divine="divine"
+        :ready="slowdownReady" />
+    </teleport>
     <div class="w-pc-scroll layout-column overflow-y-auto overflow-x-hidden">
       <table class="w-pc-table table-stripped w-full">
         <thead>
@@ -130,7 +132,7 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, computed, watch, PropType, inject, shallowReactive, shallowRef } from 'vue'
+import { defineComponent, computed, watch, PropType, inject, shallowReactive, shallowRef, ShallowRef } from 'vue'
 import { useI18nNs } from '@/web/i18n'
 import UiErrorBox from '@/web/ui/UiErrorBox.vue'
 import { requestTradeResultList, requestResults, createTradeRequest, PricingResult, SearchResult } from './pathofexile-trade'
@@ -294,6 +296,7 @@ export default defineComponent({
     const logKey = useCheckLog(props, searchResult, insight, slowdown.isReady)
 
     const showBrowser = inject<(url: string) => void>('builtin-browser')!
+    const verdictSlot = inject<ShallowRef<HTMLElement | null>>('price-verdict-slot', shallowRef(null))
 
     function makeTradeLink () {
       return (searchResult.value)
@@ -338,6 +341,7 @@ export default defineComponent({
       t,
       list: searchResult,
       improved,
+      verdictSlot,
       insight,
       insightOptions,
       divine,
@@ -415,10 +419,9 @@ export default defineComponent({
 }
 
 .legacyMessage {
-  @apply rounded p-2 mb-3;
-  @apply border border-gray-600;
-  background: var(--w-pc-raise, theme('colors.gray.700'));
-  text-wrap-style: balance;
-  text-align: center;
+  @apply mb-2;
+  font-family: var(--w-body);
+  font-size: 12px;
+  color: var(--w-dim);
 }
 </style>

@@ -1,39 +1,27 @@
 <template>
-  <div v-if="trend" class="flex items-center pb-4" style="min-height: 3rem;">
-    <div v-if="!isValuableBasetype && !slowdown.isReady.value" class="flex flex-1 justify-center">
+  <div v-if="trend" :class="$style.card">
+    <div v-if="!isValuableBasetype && !slowdown.isReady.value" class="flex flex-1 items-center">
       <div><i class="fas fa-dna fa-spin text-gray-600"></i></div>
       <i18n-t keypath="trade_result.getting_price" class="pl-2">
         <span class="text-gray-600">{{ t(':getting_price_from') }}</span>
       </i18n-t>
     </div>
     <template v-else>
-      <item-quick-price class="flex-1 text-base justify-center"
-        :price="trend.price"
-        :fraction="filters.stackSize != null"
-        :item-img="item.info.icon"
-        :item-base="item.uniqueBase ?? item.info"
-      >
-        <template #item v-if="isValuableBasetype">
-          <span class="text-gray-400">{{ t(':base_item') }}</span>
-        </template>
-      </item-quick-price>
-      <div v-if="trend.change" @click="openNinja" :class="$style['trend-btn']">
-        <div class="text-center">
-          <div class="leading-tight">
-            <i v-if="trend.change.forecast === 'down'" class="fas fa-angle-double-down pr-1 text-red-600"></i>
-            <i v-if="trend.change.forecast === 'up'" class="fas fa-angle-double-up pr-1 text-green-500"></i>
-            <span v-if="trend.change.forecast === 'const'" class="pr-1 text-gray-600 font-sans leading-none">±</span>
-            <span>{{ trend.change.text }}</span>
-          </div>
-          <div class="text-xs text-gray-500 leading-none">{{ t(':graph_7d') }}</div>
+      <div :class="$style.main">
+        <div :class="$style.source">poe.ninja<template v-if="isValuableBasetype">, {{ t(':base_item') }}</template></div>
+        <div :class="$style.value">
+          <span>{{ priceText }}</span>
+          <img :class="$style.coin" :src="trend.price.currency === 'div' ? '/images/divine.png' : '/images/chaos.png'" :alt="trend.price.currency">
         </div>
-        <div v-if="trend.change" class="w-12 h-8">
+      </div>
+      <div v-if="trend.change" @click="openNinja" :class="$style['trend-btn']">
+        <div class="w-12 h-8">
           <vue-apexcharts
             type="area"
             :options="{
               chart: { sparkline: { enabled: true }, animations: { enabled: false } },
-              stroke: { curve: 'smooth', width: 1, colors: ['#a0aec0'] /* gray.500 */ },
-              fill: { colors: ['#4a5568'] /* gray.700 */, type: 'solid' },
+              stroke: { curve: 'smooth', width: 1.5, colors: ['#7fb2e5'] },
+              fill: { colors: ['#7fb2e5'], type: 'solid', opacity: 0.12 },
               tooltip: { enabled: false },
               plotOptions: { area: { fillTo: 'end' } },
               yaxis: {
@@ -47,23 +35,28 @@
             }]"
           />
         </div>
+        <div class="text-right">
+          <div class="leading-tight whitespace-nowrap">
+            <i v-if="trend.change.forecast === 'down'" class="fas fa-angle-double-down pr-1 w-down"></i>
+            <i v-if="trend.change.forecast === 'up'" class="fas fa-angle-double-up pr-1 w-up"></i>
+            <span v-if="trend.change.forecast === 'const'" class="pr-1 w-faint">±</span>
+            <span>{{ trend.change.text }}</span>
+          </div>
+          <div class="leading-tight w-dim">{{ t(':graph_7d') }}</div>
+        </div>
       </div>
     </template>
   </div>
-  <div v-else-if="showFallback" class="flex items-center pb-4" style="min-height: 3rem;">
-    <item-quick-price class="flex-1 text-base justify-center"
-      currency-text
-      :item-img="item.info.icon"
-      :item-base="item.uniqueBase ?? item.info" />
+  <div v-else-if="showFallback" :class="$style.card">
+    <div :class="$style.source">poe.ninja has no price for this</div>
   </div>
 </template>
 
 <script lang="ts">
 import { defineComponent, defineAsyncComponent, PropType, computed, watch } from 'vue'
 import { useI18nNs } from '@/web/i18n'
-import { usePoeninja } from '@/web/background/Prices'
+import { usePoeninja, displayRounding } from '@/web/background/Prices'
 import { isValuableBasetype, getDetailsId } from './getDetailsId'
-import ItemQuickPrice from '@/web/ui/ItemQuickPrice.vue'
 // woke: apexcharts is a quarter of the startup bundle (550 KB) and only draws
 // this sparkline, so it loads separately; app/prefetch.ts fetches it once the
 // overlay is idle after startup, before the first price check needs it.
@@ -76,7 +69,6 @@ const slowdown = artificialSlowdown(800)
 
 export default defineComponent({
   components: {
-    ItemQuickPrice,
     VueApexcharts
   },
   props: {
@@ -116,6 +108,14 @@ export default defineComponent({
     return {
       t,
       trend,
+      priceText: computed(() => {
+        const price = trend.value?.price
+        if (!price) return ''
+        const fraction = props.filters.stackSize != null
+        return (price.min === price.max)
+          ? displayRounding(price.min, fraction)
+          : `${displayRounding(price.min, fraction)} ~ ${displayRounding(price.max, fraction)}`
+      }),
       openNinja () {
         window.open(trend.value!.url)
       },
@@ -169,17 +169,35 @@ function deltaFromGraph (graphPoints: Array<number | null>) {
 </script>
 
 <style lang="postcss" module>
+.card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 3rem;
+  margin: 0 -1rem 0.5rem;
+  padding: 8px 1rem;
+  background: var(--w-pc-well, transparent);
+  border-top: 1px solid var(--w-line-soft);
+  border-bottom: 1px solid var(--w-line);
+  font-family: var(--w-body);
+  font-variant-numeric: tabular-nums;
+}
+.main { flex: 1 1 auto; min-width: 0; }
+.source { font-size: 12px; color: var(--w-ninja); }
+.value { display: flex; align-items: center; gap: 6px; font-size: 24px; line-height: 30px; font-weight: 600; color: var(--w-fg); }
+.coin { width: 22px; height: 22px; object-fit: contain; }
 .trend-btn {
   display: flex;
   align-items: center;
-  @apply gap-x-2;
+  flex: none;
+  gap: 8px;
+  padding: 2px 6px;
+  border: 1px solid var(--w-line-soft);
+  border-radius: var(--w-r-sm);
+  font-size: var(--w-fs-xs);
+  color: var(--w-fg);
   cursor: pointer;
-  @apply rounded;
-  @apply -my-0.5 py-0.5;
-  @apply px-1;
 
-  &:hover {
-    @apply bg-gray-700;
-  }
+  &:hover { border-color: var(--w-line); background: var(--w-panel-3); }
 }
 </style>

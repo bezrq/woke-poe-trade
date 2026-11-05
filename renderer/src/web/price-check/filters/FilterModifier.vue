@@ -67,7 +67,7 @@
             </template>
           </ui-popover>
         </div>
-        <div class="flex-1 min-w-0 flex items-start gap-x-2">
+        <div class="min-w-0 flex items-start gap-x-2" :class="showSlider ? 'flex-none' : 'flex-1'">
           <span v-if="filter.not"
             :class="[$style['tag'], $style['tag-not']]">{{ t('filters.tag_not') }}</span>
           <span v-if="showTag"
@@ -79,14 +79,15 @@
             :options="rollOptions"
             :filter="filter" />
         </div>
-        <stat-roll-slider v-if="roll && roll.bounds && showBounds()"
-          class="ml-2 mr-4" style="width: 12.5rem;"
+        <stat-roll-slider v-if="roll && roll.bounds && showSlider"
+          class="flex-1 min-w-0 mr-2" :class="{ 'ml-2': showBoundsTagGap }"
           v-model="sliderValue"
           :roll="roll.value"
           :dp="roll.dp"
           :bounds="roll.bounds"
         />
-        <div style="width: calc(2*3rem + 1px)" />
+        <woke-roll-pick v-if="showRollPick" :filter="filter" />
+        <div v-else style="width: calc(2*3rem + 1px)" />
       </div>
     </div>
     <modifier-anointment class="self-center" :filter="filter" />
@@ -103,6 +104,8 @@ import ModifierAnointment from './FilterModifierAnointment.vue'
 import FilterModifierOptions, { RollOption } from './FilterModifierOptions.vue'
 import FilterModifierTiers from './FilterModifierTiers.vue'
 import WokeModWorthTag from '@/web/woke/price-insight/ModWorthTag.vue'
+import WokeRollPick from '@/web/woke/price-insight/RollPick.vue'
+import { canPickRoll, isOpenBound } from '@/web/woke/price-insight/roll-presets'
 import { AppConfig } from '@/web/Config'
 import { ItemCategory, ItemRarity, ParsedItem } from '@/parser'
 import { getTradeMaxQuality } from '@/parser/calc-q20.js'
@@ -111,7 +114,7 @@ import SourceInfo from './SourceInfo.vue'
 import { SearchMode as MercSearchMode } from './pseudo/mercenary.js'
 
 export default defineComponent({
-  components: { WokeModWorthTag, ItemModifierText, ModifierAnointment, FilterModifierOptions, FilterModifierTiers, SourceInfo, StatRollSlider, UiPopover },
+  components: { WokeModWorthTag, WokeRollPick, ItemModifierText, ModifierAnointment, FilterModifierOptions, FilterModifierTiers, SourceInfo, StatRollSlider, UiPopover },
   emits: ['update:groupExpanded'],
   props: {
     filter: {
@@ -326,6 +329,13 @@ export default defineComponent({
           )
         )),
       showBounds: () => props.item.rarity === ItemRarity.Unique,
+      // Map and heist stats have no real range to draw, only a placeholder top.
+      showSlider: computed(() => {
+        const bounds = props.filter.roll?.bounds
+        return Boolean(bounds && bounds.max > bounds.min && !isOpenBound(bounds.min) && !isOpenBound(bounds.max))
+      }),
+      showBoundsTagGap: computed(() => Boolean(showTag.value || props.filter.not)),
+      showRollPick: computed(() => canPickRoll(props.filter) && props.item.category !== ItemCategory.Map),
       inputFocus,
       toggleFilter,
       toggleExpanded,

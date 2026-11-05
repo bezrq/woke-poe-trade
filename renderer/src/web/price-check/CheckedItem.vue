@@ -1,14 +1,17 @@
 <template>
   <div v-if="show" class="p-4 layout-column min-h-0">
-    <woke-map-strip :item="item" class="mb-2" />
     <filter-name
       :filters="itemFilters"
       :item="item">
-      <woke-dust-chip v-if="item.dustEquivalent" :amount="item.dustEquivalent" />
+      <template #meta>
+        <woke-dust-chip v-if="item.dustEquivalent" :amount="item.dustEquivalent" />
+      </template>
       <woke-build-fit-chip :item="item" />
       <woke-filter-verdict-chip :item="item" />
     </filter-name>
-    <woke-roll-presets :stats="itemStats" :item="item" @apply="searchAfterPreset" />
+    <woke-map-strip :item="item" class="mb-2" />
+    <!-- woke: TradeListing puts the improved verdict here, above the mods. -->
+    <div ref="verdictSlot" class="shrink-0" />
     <!-- woke: the improved verdict below shows poeprices and poe.ninja once listings load. -->
     <template v-if="!wokeVerdictShown">
       <price-prediction v-if="showPredictedPrice" class="mb-4"
@@ -24,7 +27,11 @@
       :item="item"
       :presets="presets"
       @preset="selectPreset"
-      @submit="doSearch = true" />
+      @submit="doSearch = true">
+      <template #rolls>
+        <woke-roll-presets :stats="itemStats" :item="item" @apply="searchAfterPreset" />
+      </template>
+    </filters-block>
     <trade-listing
       v-if="tradeAPI === 'trade' && doSearch"
       ref="tradeService"
@@ -40,7 +47,7 @@
       @reset="resetTradeResults" />
     <div v-if="!doSearch" class="flex justify-between items-center">
       <div class="flex w-40" @mouseenter="handleSearchMouseenter">
-        <button class="btn" @click="doSearch = true" style="min-width: 5rem;">{{ t('Search') }}</button>
+        <button class="btn w-pc-primary" @click="doSearch = true" style="min-width: 5rem;">{{ t('Search') }}</button>
       </div>
       <trade-links v-if="tradeAPI === 'trade'"
         :get-link="makeTradeLink" />
@@ -61,7 +68,7 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, PropType, watch, ref, nextTick, computed, ComponentPublicInstance } from 'vue'
+import { defineComponent, PropType, watch, ref, nextTick, computed, provide, shallowRef, ComponentPublicInstance } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { ItemRarity, ItemCategory, ParsedItem } from '@/parser'
 import TradeListing from './trade/TradeListing.vue'
@@ -118,6 +125,9 @@ export default defineComponent({
   setup (props) {
     const widget = computed(() => AppConfig<PriceCheckWidget>('price-check')!)
     const leagues = useLeagues()
+
+    const verdictSlot = shallowRef<HTMLElement | null>(null)
+    provide('price-verdict-slot', verdictSlot)
 
     const presets = ref<{ active: string, presets: FilterPreset[] }>(null!)
     const itemFilters = computed(() => presets.value.presets.find(preset => preset.id === presets.value.active)!.filters)
@@ -255,6 +265,7 @@ export default defineComponent({
     const wokeVerdictShown = computed(() => priceView.value === 'improved' && tradeAPI.value === 'trade' && doSearch.value)
 
     return {
+      verdictSlot,
       wokeVerdictShown,
       t,
       itemFilters,

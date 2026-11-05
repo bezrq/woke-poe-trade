@@ -387,11 +387,10 @@ export default defineComponent({
 }
 
 .legacyMessage {
-  @apply rounded p-2 mb-3;
-  @apply border border-gray-600;
-  background: var(--w-pc-raise, theme('colors.gray.700'));
-  text-wrap-style: balance;
-  text-align: center;
+  @apply mb-2;
+  font-family: var(--w-body);
+  font-size: 12px;
+  color: var(--w-dim);
 }
 
 .marketRatioRow {

@@ -154,21 +154,6 @@ export function buildBlend (input: BlendInput): Blend {
 }
 
 /**
- * Positions for the price strip: a log scale across every listing and source,
- * padded a little so end dots are not cut off. Returns 0..1 for a chaos value.
- */
-export function stripScale (values: number[]): ((chaos: number) => number) | null {
-  const v = values.filter(n => n > 0 && Number.isFinite(n))
-  if (!v.length) return null
-  let lo = Math.log(Math.min(...v))
-  let hi = Math.log(Math.max(...v))
-  if (hi - lo < 0.2) { lo -= 0.1; hi += 0.1 }
-  const pad = (hi - lo) * 0.04
-  lo -= pad; hi += pad
-  return (chaos: number) => Math.min(Math.max((Math.log(Math.max(chaos, 1e-6)) - lo) / (hi - lo), 0), 1)
-}
-
-/**
  * The price to headline. Plenty of agreeing listings already say what this
  * exact search sells for, and other sources can't see its rolls, so they only
  * move the headline when listings are thin or missing.

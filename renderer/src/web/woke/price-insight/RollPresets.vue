@@ -1,6 +1,5 @@
 <template>
-  <div v-if="show" :class="$style.row">
-    <span :class="$style.lbl">Rolls</span>
+  <div v-if="show" :class="$style.row" data-roll-presets>
     <w-segmented :model-value="active" :options="options"
       :title="title"
       @update:model-value="pick" />
@@ -25,12 +24,13 @@ const emit = defineEmits<{ (e: 'apply', preset: RollPreset | 'value'): void }>()
 const showValue = computed(() => priceView.value === 'improved' && props.item.rarity === ItemRarity.Rare)
 
 const options = computed(() => [
-  { value: 'low', label: 'Low rolls' },
-  { value: 'current', label: 'Current rolls' },
+  { value: 'low', label: 'Low' },
+  { value: 'current', label: 'Approx' },
+  { value: 'high', label: 'High' },
   ...(showValue.value ? [{ value: 'value', label: 'By value' }] : [])
 ])
 
-const title = computed(() => 'Low rolls: any roll of each ticked mod\'s tier. Current rolls: a tight window around this item\'s rolls, or this roll and better on map stats.' +
+const title = computed(() => 'For every ticked mod. Low: any roll of its range. Approx: a tight window around this item\'s roll, or this roll and better on map stats. High: the best quarter of its range.' +
   (showValue.value ? ' By value: tight on the mods that carry the price, loose on the rest, mods worth nothing unticked.' : '') +
   ' Runs the search.')
 
@@ -100,11 +100,7 @@ function pick (value: string) {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 0.5rem;
-}
-.lbl {
-  font-size: var(--w-fs-md);
-  color: var(--w-dim);
+  margin-left: auto;
 }
 .src {
   font-size: var(--w-fs-xs);
