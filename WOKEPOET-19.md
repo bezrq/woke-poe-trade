@@ -57,6 +57,11 @@ history:
     to: Ready
     user: Agent
     date: '2026-11-05T05:04:55.404Z'
+  - type: activity
+    user: Agent
+    date: '2026-11-05T05:08:01.042Z'
+    comment: Task worktree automatically reclaimed (ready-or-terminal-status)
+    id: a-2026-11-05t05-08-01-042z
 needsAction: null
 branch: flux/WOKEPOET-19-keep-panel-resize-grips-reachable-all-edge-resize-clamp-to-s
 baselineCommit: 7896e164a82865073f89df1ab235131664e8c4a4

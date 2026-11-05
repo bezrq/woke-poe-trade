@@ -1,7 +1,7 @@
 ---
 id: WOKEPOET-26
 title: Map scan badge off the map; rolling stuck in quad tab
-status: In Progress
+status: Ready
 priority: Medium
 effort: S
 assignee: unassigned
@@ -50,6 +50,20 @@ history:
     comment: >-
       Guy's standing rule covers it: merge on review and local checks without
       waiting for GitHub CI. PR #96 went to the cloud merge.
+  - type: comment
+    user: Agent
+    comment: >-
+      Merged as 07e02af4 and running on the dev build. The scanner reads the OS
+      cursor each frame, and the roll lock drops when the cursor moves about a
+      quad cell away. Not yet confirmed on a real quad tab.
+    date: '2026-11-05T05:08:16.109Z'
+    completionComment: true
+    id: c-2026-11-05t05-08-16-109z
+  - type: status_change
+    from: In Progress
+    to: Ready
+    user: Agent
+    date: '2026-11-05T05:08:16.110Z'
 swimlane: null
 needsAction: null
 ---
