@@ -274,5 +274,5 @@ test('a tool placed from the launcher gets its default hotkeys straight away', a
   await expect(icon(overlay, 'Essence scan')).toBeVisible()
   // Hotkeys only register while the game has focus.
   overlay.app.focusGame(true)
-  await expect.poll(() => overlay.app.registeredHotkeys()).toContain('Alt + E')
+  await expect.poll(() => overlay.app.registeredHotkeys()).toContain('Alt+E')
 })
