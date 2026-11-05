@@ -6,7 +6,7 @@
         <div style="padding: 2px var(--w-pad) 6px;">
           <div v-for="r in rolls" :key="r.color" class="flex items-center gap-2">
             <span :class="[$style.dot, $style[r.color]]" />
-            <span class="w-trunc flex-1">{{ r.top[0]?.name ?? 'no prices yet' }}</span>
+            <span class="w-trunc flex-1">{{ r.top[0]?.name ?? (thinInPool(allPrices, thin, r.color) ? 'only thin prices' : 'no prices yet') }}</span>
             <WPrice v-if="r.top[0]" :chaos="r.top[0].chaos ?? 0" :divine="snapshot?.divine" />
             <span class="w-faint text-xs w-num" title="Expected value of a roll of this colour">EV <WPrice :chaos="r.ev" :divine="snapshot?.divine" /></span>
           </div>
@@ -27,6 +27,8 @@
             :options="[{ value: 'choose', label: 'I choose the version' }, { value: 'random', label: 'Random version' }]" />
           <WField v-model="config.minProfit" type="number" suffix="c profit min" style="width: 9rem;" />
         </template>
+        <WChip clickable :active="!!config.skipThin" title="Leave thin-market gems out: they count as 0 and leave the lists. Most gems are thin, so EVs become a floor."
+          @click="config.skipThin = !config.skipThin"><i class="fas fa-exclamation-circle" /> Skip thin</WChip>
         <WChip clickable :active="!!config.runner" title="Count the lab entry, the gem you insert and your run time"
           @click="config.runner = !config.runner"><i class="fas fa-running" /> Runner</WChip>
       </template>
@@ -64,12 +66,12 @@
           <span v-for="c in (['r', 'g', 'b'] as const)" :key="c" class="text-right w-num" :class="row.state === bestState[c] ? 'w-up' : 'w-dim'"
             :title="row.state === bestState[c] ? 'Best level / quality to bring for this colour' : undefined">{{ fmt(row.ev[c]) }}</span>
         </button>
-        <div v-for="(roll, i) in rolls" :key="roll.color" class="pb-1">
+        <div v-for="roll in rolls" :key="roll.color" class="pb-1">
           <div class="w-row" :class="$style.poolGrid">
             <span :class="[$style.dot, $style[roll.color]]" />
             <span>{{ COLOR_NAMES[roll.color] }} pool</span>
-            <span class="w-faint text-xs whitespace-nowrap">{{ roll.listed }}/{{ roll.poolSize }} priced · each {{ pct(roll.chanceEach) }}</span>
-            <span class="w-num text-right" :class="i === 0 ? 'w-up' : ''" title="Expected value of the best of the 3 offered gems">EV {{ fmt(roll.ev) }}</span>
+            <span class="w-faint text-xs whitespace-nowrap">{{ roll.listed }}/{{ roll.poolSize }} priced · <template v-if="config.skipThin">{{ thinInPool(allPrices, thin, roll.color) }} thin left out</template><template v-else>each {{ pct(roll.chanceEach) }}</template></span>
+            <span class="w-num text-right" :class="roll.ev > 0 && roll.ev === bestRoll ? 'w-up' : ''" title="Expected value of the best of the 3 offered gems">EV {{ fmt(roll.ev) }}</span>
           </div>
           <div v-for="g in roll.top" :key="g.name" class="w-row" :class="$style.gemGrid" @contextmenu="gemMenu($event, g.name)">
             <img v-if="gemIcon(g.name)" :src="gemIcon(g.name)!" :class="$style.icon" alt="" loading="lazy" decoding="async" draggable="false"><span v-else />
@@ -79,7 +81,7 @@
         </div>
         <div class="w-faint text-xs py-2" style="padding-left: var(--w-pad); padding-right: var(--w-pad);">
           The font shows 3 random transfigured gems of the colour you insert and you take one.
-          EV assumes you take the most valuable; unpriced gems count as 0.
+          EV assumes you take the most valuable; unpriced{{ config.skipThin ? ' and thin' : '' }} gems count as 0.
         </div>
       </template>
 
@@ -97,7 +99,7 @@
               <span class="text-right w-up w-num" :title="config.runner ? 'Profit after the base gem and the lab entry' : 'Profit after buying the base gem'">+<WPrice :chaos="profit(p)" :divine="snapshot?.divine" /></span>
             </button>
             <template v-if="expanded === p.baseName">
-              <div v-for="v in p.variants" :key="v.name" class="w-row" :class="$style.gemGrid" @contextmenu="gemMenu($event, v.name)">
+              <div v-for="v in shownVariants(p)" :key="v.name" class="w-row" :class="$style.gemGrid" @contextmenu="gemMenu($event, v.name)">
                 <img v-if="gemIcon(v.name)" :src="gemIcon(v.name)!" :class="$style.icon" alt="" loading="lazy" decoding="async" draggable="false"><span v-else />
                 <span class="w-trunc w-rarity-gem"><i v-if="thin.has(v.name)" class="fas fa-exclamation-circle w-faint mr-1" :title="THIN_NOTE" />{{ v.name }}</span>
                 <WPrice :chaos="v.chaos" :divine="snapshot?.divine" />
@@ -139,7 +141,7 @@ import { useMarketCollector } from '../market/collector'
 import { latestSnapshots } from '../market/db'
 import { formatChaos } from '../ui/format'
 import type { Snapshot } from '../market/types'
-import { GEM_STATES, colorRolls, evByState, gemPrices, pickProfit, pickValue, specificPicks, thinGems } from './font'
+import { GEM_STATES, colorRolls, evByState, gemPrices, pickProfit, pickValue, specificPicks, thinGems, thinInPool, withoutThinGems } from './font'
 import type { GemColor, GemState, SpecificPick } from './font'
 import type { LabGemsWidget } from './widget'
 import { gemIcon } from './icons'
@@ -191,8 +193,12 @@ async function load () {
 }
 watch([league, collector.revision], load, { immediate: true })
 
-const prices = computed(() => snapshot.value ? gemPrices(snapshot.value.items, props.config.gemState) : new Map<string, number>())
-const priceCount = computed(() => prices.value.size)
+const THIN_NOTE = 'Thin market: poe.ninja saw little trade on this gem, so its price may be fake.'
+const thin = computed(() => snapshot.value ? thinGems(snapshot.value.items, props.config.gemState) : new Set<string>())
+
+const allPrices = computed(() => snapshot.value ? gemPrices(snapshot.value.items, props.config.gemState) : new Map<string, number>())
+const prices = computed(() => props.config.skipThin ? withoutThinGems(allPrices.value, thin.value) : allPrices.value)
+const priceCount = computed(() => allPrices.value.size)
 const rolls = computed(() => colorRolls(prices.value, props.config.topN || 5))
 const picks = computed(() => {
   const mode = props.config.specificMode
@@ -203,14 +209,11 @@ const picks = computed(() => {
     .slice(0, 60)
 })
 
-const THIN_NOTE = 'Thin market: poe.ninja saw little trade on this gem, so its price may be fake.'
-const thin = computed(() => snapshot.value ? thinGems(snapshot.value.items, props.config.gemState) : new Set<string>())
-
-const stateEvs = computed(() => snapshot.value ? evByState(snapshot.value.items) : [])
+const stateEvs = computed(() => snapshot.value ? evByState(snapshot.value.items, !!props.config.skipThin) : [])
 const bestState = computed(() => {
   const best = { r: '', g: '', b: '' } as Record<GemColor, string>
   for (const c of ['r', 'g', 'b'] as const) {
-    let top = -1
+    let top = 0
     for (const row of stateEvs.value) if (row.ev[c] > top) { top = row.ev[c]; best[c] = row.state }
   }
   return best
@@ -231,6 +234,7 @@ const perHour = computed(() => {
 
 function value (p: SpecificPick) { return pickValue(p, props.config.specificMode) }
 function profit (p: SpecificPick) { return pickProfit(p, props.config.specificMode) - (props.config.runner ? entryCost.value : 0) }
+function shownVariants (p: SpecificPick) { return props.config.skipThin ? p.variants.filter(v => !thin.value.has(v.name)) : p.variants }
 function toggle (name: string) { expanded.value = expanded.value === name ? null : name }
 
 function gemMenu (e: MouseEvent, name: string) {

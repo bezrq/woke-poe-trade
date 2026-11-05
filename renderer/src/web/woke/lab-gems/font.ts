@@ -60,7 +60,8 @@ export function gemPrices (items: PriceItem[], state: GemState): Map<string, num
 }
 
 // Gem names whose price (the cheapest listing used above) comes from a thin
-// market on poe.ninja. Shown with a warning icon, not dropped.
+// market on poe.ninja. Shown with a warning icon, and dropped only when the
+// user asks (see withoutThinGems).
 export function thinGems (items: PriceItem[], state: GemState): Set<string> {
   const cheapest = new Map<string, PriceItem>()
   for (const item of items) {
@@ -73,10 +74,27 @@ export function thinGems (items: PriceItem[], state: GemState): Set<string> {
   return out
 }
 
+// Prices without the thin transfigured gems, which then count as unpriced: the
+// font can still offer one, so they stay in the pool at 0. Base gems stay, since
+// an unknown base price counts as free in pickProfit and would inflate profit.
+export function withoutThinGems (prices: Map<string, number>, thin: Set<string>): Map<string, number> {
+  const out = new Map(prices)
+  for (const color of GEM_COLORS) {
+    for (const name of TRANSFIGURED_GEMS[color]) if (thin.has(name)) out.delete(name)
+  }
+  return out
+}
+
+// How many priced gems of a colour's pool come from a thin market.
+export function thinInPool (prices: Map<string, number>, thin: Set<string>, color: GemColor): number {
+  return TRANSFIGURED_GEMS[color].filter(name => prices.has(name) && thin.has(name)).length
+}
+
 // Colour-roll EV for every gem state, to see which level/quality to bring.
-export function evByState (items: PriceItem[]): Array<{ state: GemState, ev: Record<GemColor, number> }> {
+export function evByState (items: PriceItem[], skipThin = false): Array<{ state: GemState, ev: Record<GemColor, number> }> {
   return GEM_STATES.map(state => {
-    const rolls = colorRolls(gemPrices(items, state), 1)
+    const prices = gemPrices(items, state)
+    const rolls = colorRolls(skipThin ? withoutThinGems(prices, thinGems(items, state)) : prices, 1)
     const ev = { r: 0, g: 0, b: 0 } as Record<GemColor, number>
     for (const roll of rolls) ev[roll.color] = roll.ev
     return { state, ev }
