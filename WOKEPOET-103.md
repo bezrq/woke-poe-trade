@@ -1,7 +1,7 @@
 ---
 id: WOKEPOET-103
 title: Remove permanent hints from the dock cards
-status: Grooming
+status: Ready
 priority: None
 effort: None
 assignee: unassigned
@@ -50,6 +50,19 @@ history:
     date: '2026-11-05T13:03:18.012Z'
     comment: Updated implementation link.
     id: a-2026-11-05t13-03-18-012z
+  - type: comment
+    user: Agent
+    comment: >-
+      PR #185 merged: Settings link on the Trades hint and a ✕ on both hints.
+      Waiting on the shared dev update to be live.
+    date: '2026-11-05T13:12:49.831Z'
+    completionComment: true
+    id: c-2026-11-05t13-12-49-831z
+  - type: status_change
+    from: Grooming
+    to: Ready
+    user: Agent
+    date: '2026-11-05T13:12:49.831Z'
 swimlane: null
 needsAction: null
 implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/185'
