@@ -60,7 +60,7 @@ export type UpdateInfo =
 
 // woke: what happened to the settings file at startup, for a notice.
 // newer and upgrade-failed come from the page; the rest from the host.
-export type ConfigNotice = 'restored' | 'reset' | 'unreadable' | 'newer' | 'upgrade-failed'
+export type ConfigNotice = 'restored' | 'reset' | 'unreadable' | 'newer' | 'upgrade-failed' | 'port-busy'
 
 export interface HostState {
   contents: string | null

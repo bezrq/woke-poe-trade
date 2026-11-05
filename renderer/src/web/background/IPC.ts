@@ -2,6 +2,8 @@ import type { IpcEvent, IpcEventPayload, UpdateInfo, HostState, ConfigNotice } f
 import { shallowRef } from 'vue'
 import Sockette from 'sockette'
 
+const MAX_LOG_CHARS = 256 * 1024
+
 class HostTransport {
   private evBus = new EventTarget()
   private socket!: Sockette
@@ -12,7 +14,11 @@ class HostTransport {
 
   async init () {
     this.onEvent('MAIN->CLIENT::log-entry', (entry) => {
-      this.logs.value += entry.message
+      // woke: logs last as long as the app does, so they can't grow for ever.
+      const logs = this.logs.value + entry.message
+      this.logs.value = logs.length > MAX_LOG_CHARS
+        ? logs.slice(logs.indexOf('\n', logs.length - MAX_LOG_CHARS / 2) + 1)
+        : logs
     })
     this.onEvent('MAIN->CLIENT::updater-state', (info) => {
       this.updateInfo.value = info

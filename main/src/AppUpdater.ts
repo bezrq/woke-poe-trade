@@ -1,5 +1,6 @@
 import { autoUpdater } from 'electron-updater'
 import type { ServerEvents } from './server'
+import type { Logger } from './RemoteLogger'
 import type { UpdateInfo } from '../../ipc/types'
 import { appPrefs } from './woke/app-prefs'
 
@@ -21,7 +22,8 @@ export class AppUpdater {
   }
 
   constructor (
-    private server: ServerEvents
+    private server: ServerEvents,
+    private logger: Logger
   ) {
     // woke: every 6 hours (APT: 16); the feed is this fork's GitHub releases
     // (publish settings in electron-builder.yml).
@@ -59,7 +61,8 @@ export class AppUpdater {
     autoUpdater.on('update-not-available', () => {
       this.info = { state: 'update-not-available', checkedAt: Date.now() }
     })
-    autoUpdater.on('error', () => {
+    autoUpdater.on('error', (err: Error) => {
+      this.logger.write(`error [AppUpdater] ${err?.message ?? err}`)
       this.info = { state: 'error', checkedAt: Date.now() }
     })
     autoUpdater.on('update-downloaded', (info: { version: string }) => {

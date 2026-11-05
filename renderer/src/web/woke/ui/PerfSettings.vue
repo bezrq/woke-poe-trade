@@ -72,6 +72,9 @@
           While playing (game focused): <b>{{ cpuWhilePlaying ?? '–' }}</b>% CPU on average over the last {{ minutesSampled }} min.
           Now: {{ latest!.cpuPercent }}% CPU, {{ latest!.memoryMb }} MB<template v-if="renderer.heapMb != null"> (overlay JS heap {{ renderer.heapMb }} MB)</template>.
         </div>
+        <div v-if="sessionTrend" class="text-sm mb-1">
+          Over this session ({{ sessionTrend.hours }} h): {{ sessionTrend.fromMb }} MB to {{ sessionTrend.toMb }} MB.
+        </div>
         <table :class="$style.table">
           <tr :class="$style.head"><td>Process</td><td :class="$style.num">CPU %</td><td :class="$style.num">MB</td></tr>
           <tr v-for="p in latest!.byType" :key="p.type">
@@ -108,6 +111,7 @@ interface MainPerf {
     memoryMb: number
     byType: Array<{ type: string, cpuPercent: number, memoryMb: number }>
   }>
+  history?: Array<{ at: number, cpuPercent: number, memoryMb: number, overlayMb: number }>
 }
 
 const ADVANCED_KEY = 'woke.perfAdvanced'
@@ -149,6 +153,15 @@ const timingRows = computed(() => [
   ...(main.value?.timings ?? []),
   ...renderer.value.timings
 ].sort((a, b) => a.name.localeCompare(b.name)))
+
+// A slow climb over hours shows here; the tables only reach back 10 minutes.
+const sessionTrend = computed(() => {
+  const history = main.value?.history ?? []
+  if (history.length < 2) return null
+  const first = history[0]
+  const last = history[history.length - 1]
+  return { hours: Math.round((last.at - first.at) / 360_000) / 10, fromMb: first.memoryMb, toMb: last.memoryMb }
+})
 
 const latest = computed(() => main.value?.processes[main.value.processes.length - 1] ?? null)
 const minutesSampled = computed(() => Math.max(1, Math.round((main.value?.processes.length ?? 0) * 15 / 60)))
