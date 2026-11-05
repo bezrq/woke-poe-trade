@@ -35,7 +35,8 @@ test('flips: buy list, odds and rare scarabs from recorded prices', async ({ ove
 
   await expect(panel.getByText(/\d+ scarabs? worth vendoring/)).toBeVisible()
   // Volume comes from the exchange feed, so the supply columns show.
-  await expect(panel.getByText('Traded / day')).toBeVisible()
+  await expect(panel.getByText('Market / day')).toBeVisible()
+  await expect(panel.getByText('Max profit / day')).toHaveAttribute('title', /ceiling/i)
   await expect(panel.getByText('Breach of the Hive', { exact: true })).toBeVisible()
   await overlay.snap('flips-scarabs-buy')
 
@@ -69,6 +70,8 @@ test('flips: a Harvest reroll tab and a known-result tab', async ({ overlay }) =
   await panel.getByRole('tab', { name: 'Delirium', exact: true }).click()
   await expect(panel.getByText(/\d+ orbs? worth rerolling/)).toBeVisible()
   await expect(panel.getByText(/of Primal lifeforce/)).toBeVisible()
+  // The cost lives in settings, not on the panel.
+  await expect(panel.getByText('Primal / item')).toHaveCount(0)
   await expect(panel.getByText("Armoursmith's", { exact: true })).toBeVisible()
   await overlay.snap('flips-delirium-harvest')
 
@@ -78,4 +81,17 @@ test('flips: a Harvest reroll tab and a known-result tab', async ({ overlay }) =
   await expect(panel.getByText('Black to Opalescent Oil', { exact: true })).toBeVisible()
   await expect(panel.getByRole('button', { name: 'Odds', exact: true })).toHaveCount(0)
   await overlay.snap('flips-oils-upgrade')
+})
+
+test('flips: the lifeforce cost is set on the settings page', async ({ overlay }) => {
+  await overlay.page.setViewportSize({ width: 2560, height: 1440 })
+  await overlay.boot({ overlayActive: true, widgets: [{ wmType: 'woke-scarab-flip' }] })
+  await overlay.widget('menu').locator('.fa-cog').click()
+  const settings = overlay.widget('settings')
+  await settings.getByText('Market & investments', { exact: true }).first().click()
+  const row = settings.locator('[data-setting="Lifeforce per item for Harvest rerolls"]')
+  await expect(row).toBeVisible()
+  await row.locator('input').fill('12')
+  await expect(row.locator('input')).toHaveValue('12')
+  await overlay.snap('flips-settings-lifeforce')
 })

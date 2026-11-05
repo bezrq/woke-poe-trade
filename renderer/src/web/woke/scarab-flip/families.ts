@@ -11,6 +11,11 @@ export type FlipMethodId = 'vendor' | 'harvest' | 'upgrade'
 // The wiki lists 30 lifeforce for these crafts, "proportional to stack size".
 export const DEFAULT_LIFEFORCE_PER_ITEM = 30
 
+// A typed lifeforce cost. Blank goes back to the listed cost, not free.
+export function parseLifeforce (value: string | number): number | undefined {
+  return value === '' ? undefined : Math.max(0, Number(value) || 0)
+}
+
 export interface FlipMethod {
   id: FlipMethodId
   label: string
