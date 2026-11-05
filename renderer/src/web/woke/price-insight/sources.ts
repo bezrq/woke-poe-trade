@@ -45,6 +45,7 @@ const LISTING_WEIGHT = { high: 3, medium: 1.5, low: 0.5, none: 0 }
 const NINJA_WEIGHT = 1
 const NINJA_THIN_WEIGHT = 0.25
 const NINJA_THIN_GAPS = 2
+const NINJA_GAP_NOTE = 0.25
 const POEPRICES_WEIGHT = 0.6
 const MINE_WEIGHT = 0.4
 const MINE_HALF_LIFE_DAYS = 7
@@ -159,9 +160,19 @@ export function buildBlend (input: BlendInput): Blend {
  * Whether listing the sources says more than the verdict's own line, which
  * already shows the cheapest listing and poe.ninja's price.
  */
-export function sourcesAddAnything (blend: Blend): boolean {
+export function sourcesAddAnything (blend: Blend, headlineFrom?: 'listings' | 'blend'): boolean {
+  // The list is what explains a blended headline.
+  if (headlineFrom === 'blend') return true
   if (blend.agreement === 'mixed' || blend.agreement === 'disagree') return true
-  return blend.points.some(p => p.weight === 0 || (p.key !== 'listings' && p.key !== 'ninja'))
+  if (blend.points.some(p => p.weight === 0 || (p.key !== 'listings' && p.key !== 'ninja'))) return true
+
+  const ninja = blend.points.find(p => p.key === 'ninja')
+  if (!ninja) return false
+  // poe.ninja counted lightly, with its caveat in the list.
+  if (ninja.weight < NINJA_WEIGHT) return true
+  // The list notes a gap from a quarter apart, inside what counts as agreeing.
+  const listings = blend.points.find(p => p.key === 'listings')
+  return listings != null && Math.abs(listings.mid / ninja.mid - 1) >= NINJA_GAP_NOTE
 }
 
 /**

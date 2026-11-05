@@ -24,6 +24,15 @@ const insight = buildInsight(rows(100, 4), { divine: 180, now: NOW })
 const blend = (extra: Partial<Parameters<typeof buildBlend>[0]>) => buildBlend({ insight, now: NOW, ...extra })
 
 describe('sourcesAddAnything', () => {
+  it('shows it when it explains a blended headline', () => {
+    expect(sourcesAddAnything(blend({ ninja: { chaos: 105, gaps: 0 } }), 'blend')).toBe(true)
+  })
+
+  it('shows poe.ninja counted lightly, or a gap inside what counts as agreeing', () => {
+    expect(sourcesAddAnything(blend({ ninja: { chaos: 105, gaps: 3 } }))).toBe(true)
+    expect(sourcesAddAnything(blend({ ninja: { chaos: 78, gaps: 0 } }))).toBe(true)
+  })
+
   it('hides the list when listings stand alone or poe.ninja agrees', () => {
     expect(sourcesAddAnything(blend({}))).toBe(false)
     expect(sourcesAddAnything(blend({ ninja: { chaos: 105, gaps: 0 } }))).toBe(false)
