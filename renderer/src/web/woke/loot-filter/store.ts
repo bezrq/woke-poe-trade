@@ -293,11 +293,7 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
   // Parses a text with everything applied, the way rebuild() does, to see how
   // many of your changes would fit.
   function fitOf (text: string): { ok: number, total: number } {
-    const d = parseFilter(text)
-    const input = buildInput.value
-    if (input) insertBuildBlocks(d, buildRuleBlocks(input, cfg().buildRules))
-    if (cfg().priceTiers.on) applyPriceMoves(d, cfg().priceTiers.moves)
-    const res = applyEdits(d, cfg().edits)
+    const res = [...compose(text).results.values()]
     return { ok: res.filter(r => r.ok).length, total: res.length }
   }
 
@@ -519,12 +515,25 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
             text = (await hostRequest<{ text: string }>('filter-read', { dir: cfg().folder, name: from })).text
             if (seq !== loadSeq) return
             cfg().sourceName = from
-          } else if (isWokeCopy(source)) {
-            // Original gone: recover it from the copy, and keep it for next time.
-            text = baseFromCopy(text)
-            baseNeedsBackup.value = true
           } else {
-            throw e
+            // A copy of an online filter names it by title, if it's still there.
+            const title = /^# Made from "(.+?) \(online filter/m.exec(text)?.[1]
+            await listFiles()
+            if (seq !== loadSeq) return
+            const online = files.value.find(f => f.online && f.title === title)
+            if (title && online) {
+              text = (await hostRequest<{ text: string }>('filter-read', { dir: cfg().folder, name: online.name, online: true })).text
+              if (seq !== loadSeq) return
+              cfg().sourceName = online.name
+              cfg().sourceOnline = true
+              cfg().sourceTitle = title
+            } else if (isWokeCopy(source)) {
+              // Original gone: recover it from the copy, and keep it for next time.
+              text = baseFromCopy(text)
+              baseNeedsBackup.value = true
+            } else {
+              throw new Error(`${source} is a copy this editor made. Pick the filter it was made from.`, { cause: e })
+            }
           }
         }
         if (seq !== loadSeq) return
@@ -631,7 +640,16 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
 
   // reloadNow: you pressed Save + reload, so it reloads wherever you are. Saves
   // you didn't ask to reload (quick fixes) follow reloadWhenSafe.
-  async function save (opts: { reloadNow?: boolean } = {}): Promise<boolean> {
+  // Saves run one at a time: two quick fixes in a row must not race for the
+  // same temp file, and the last one writes the latest edits.
+  let saveQueue: Promise<unknown> = Promise.resolve()
+  function save (opts: { reloadNow?: boolean } = {}): Promise<boolean> {
+    const run = saveQueue.then(() => saveNow(opts))
+    saveQueue = run.catch(() => {})
+    return run
+  }
+
+  async function saveNow (opts: { reloadNow?: boolean }): Promise<boolean> {
     if (!doc.value || baseText.value == null) return false
     problems.value = validateFilter(doc.value)
     if (problems.value.length) {

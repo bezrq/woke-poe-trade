@@ -28,7 +28,18 @@ export type FilterEdit =
   | EditBase & { kind: 'style', tier: string, patch: StylePatch }
   | EditBase & { kind: 'visibility', tier: string, visibility: Visibility }
   | EditBase & { kind: 'group', hidden: boolean }
-  | EditBase & { kind: 'item', tier: string, base: string, visibility: Visibility, patch: StylePatch }
+  | EditBase & {
+    kind: 'item'
+    tier: string
+    base: string
+    visibility: Visibility
+    patch: StylePatch
+    // Which block of the tier the item hit (a tier can hold several rules), by
+    // its conditions, so the own rule copies the one that matches this item.
+    anchor?: string
+    // Goes above everything, so nothing earlier in the filter can catch it.
+    pin?: boolean
+  }
 
 // A FilterEdit before it gets an id.
 export type NewFilterEdit = FilterEdit extends infer E ? (E extends FilterEdit ? Omit<E, 'id'> : never) : never
@@ -62,7 +73,8 @@ export function readStyle (actions: FilterAction[]): StylePatch {
       case 'PlayAlertSoundPositional':
       case 'CustomAlertSound':
       case 'CustomAlertSoundOptional':
-        style.sound = { id: a.args[0], volume: Number(a.args[1] ?? 300) }
+        // The game's own default volumes when the line gives none.
+        style.sound = { id: a.args[0], volume: Number(a.args[1] ?? (a.key.startsWith('Custom') ? 100 : 50)) }
         break
       case 'PlayEffect': style.effect = { color: a.args[0], temp: a.args[1] === 'Temp' }; break
       case 'MinimapIcon':
@@ -139,12 +151,18 @@ export function blockHasBase (b: FilterBlock, base: string): boolean {
 }
 
 // Tiers of a group that list base types, i.e. where an item can be moved to.
+// That includes a tier commented out for being empty: an item brings it back.
 export function moveTargets (doc: FilterDoc, type: string): string[] {
   const out: string[] = []
   for (const b of blocksOf(doc, type)) {
-    if (b.tier && !b.disabled && baseTypeCondition(b) && !out.includes(b.tier)) out.push(b.tier)
+    if (b.tier && baseTypeCondition(b) && !out.includes(b.tier)) out.push(b.tier)
   }
   return out
+}
+
+// Identifies a block within its tier, leaving out the item list.
+export function conditionSignature (b: FilterBlock): string {
+  return JSON.stringify(b.conditions.filter(c => c.key !== 'BaseType').map(c => [c.key, c.op, c.count, c.values]))
 }
 
 export function slug (text: string): string {
@@ -174,8 +192,15 @@ function applyOne (doc: FilterDoc, edit: FilterEdit): EditStatus {
       return { edit, ok: true, blocks: blocks.length }
     }
     case 'move': {
-      const sources = blocksOf(doc, edit.type).filter(b => b.tier !== edit.to && blockHasBase(b, edit.base))
-      const targets = blocksOf(doc, edit.type, edit.to).filter(b => baseTypeCondition(b))
+      // Out of the tier it was moved from: stack tiers list one base many times,
+      // and the others stay. If that tier no longer has it (a new version, new
+      // prices), out of wherever it is now.
+      const listed = blocksOf(doc, edit.type).filter(b => b.tier !== edit.to && blockHasBase(b, edit.base))
+      const named = listed.filter(b => b.tier === edit.from)
+      const sources = named.length ? named : listed
+      const listing = blocksOf(doc, edit.type, edit.to).filter(b => baseTypeCondition(b))
+      const live = listing.filter(b => !b.disabled)
+      const targets = live.length ? live : listing
       if (!targets.length) return { edit, ok: false, blocks: 0, message: `Tier ${edit.to} not found` }
       if (!sources.length && !targets.some(b => blockHasBase(b, edit.base))) {
         return { edit, ok: false, blocks: 0, message: `${edit.base} is no longer in this group` }
@@ -193,15 +218,27 @@ function applyOne (doc: FilterDoc, edit: FilterEdit): EditStatus {
           c.values = [...c.values, edit.base].sort((a, z) => a.localeCompare(z))
           b.dirty = true
         }
+        // It has an item now, so a tier commented out for being empty is back.
+        if (b.disabled) { b.disabled = false; b.dirty = true }
       }
       return { edit, ok: true, blocks: sources.length + targets.length }
     }
     case 'item': {
       const tierBlocks = blocksOf(doc, edit.type, edit.tier)
-      const source = tierBlocks.find(b => blockHasBase(b, edit.base)) ?? tierBlocks[0]
+      const live = tierBlocks.filter(b => !b.disabled)
+      // Where the item is listed now: a move or new prices may have taken it to
+      // another tier of the group, and the rule has to go above that one.
+      const anchored = live.find(b => conditionSignature(b) === edit.anchor)
+      const listsBase = (b: FilterBlock) => blockHasBase(b, edit.base)
+      const source = (anchored && (!baseTypeCondition(anchored) || listsBase(anchored)) ? anchored : undefined) ??
+        live.find(listsBase) ??
+        blocksOf(doc, edit.type).find(b => !b.disabled && listsBase(b)) ??
+        anchored ?? live[0] ?? tierBlocks[0]
       if (!source) return { edit, ok: false, blocks: 0, message: 'Tier not found in this filter' }
       const conditions = source.conditions
-        .filter(c => c.key !== 'BaseType')
+        // Above everything it has to hold wherever you are, so only what says
+        // which item it is stays.
+        .filter(c => c.key !== 'BaseType' && (!edit.pin || c.key === 'Class' || c.key === 'Rarity'))
         .map(c => ({ ...c, values: [...c.values] }))
       conditions.push({ key: 'BaseType', op: '==', count: null, values: [edit.base] })
       const clone: FilterBlock = {
@@ -218,13 +255,14 @@ function applyOne (doc: FilterDoc, edit: FilterEdit): EditStatus {
         raw: [],
         dirty: true,
         added: true,
-        inherited: true
+        inherited: true,
+        editId: edit.id
       }
       setVisibility(clone, edit.visibility)
       applyStyle(clone, edit.patch)
-      const at = doc.chunks.indexOf(source)
-      doc.chunks.splice(at, 0, clone)
-      doc.blocks.splice(doc.blocks.indexOf(source), 0, clone)
+      const before = edit.pin ? doc.blocks[0] : source
+      doc.chunks.splice(doc.chunks.indexOf(before), 0, clone)
+      doc.blocks.splice(doc.blocks.indexOf(before), 0, clone)
       doc.blocks.forEach((b, i) => { b.index = i })
       return { edit, ok: true, blocks: 1 }
     }
@@ -250,7 +288,8 @@ export function addEdit (list: FilterEdit[], edit: FilterEdit): FilterEdit[] {
     if (e.kind !== edit.kind || e.type !== edit.type) return false
     switch (edit.kind) {
       case 'move': return (e as typeof edit).base === edit.base
-      case 'item': return (e as typeof edit).base === edit.base
+      // One own rule per tier: a rare and a magic of one base can differ.
+      case 'item': return (e as typeof edit).base === edit.base && (e as typeof edit).tier === edit.tier
       case 'style': return (e as typeof edit).tier === edit.tier
       case 'visibility': return (e as typeof edit).tier === edit.tier
       case 'group': return true
@@ -269,7 +308,13 @@ export function addEdit (list: FilterEdit[], edit: FilterEdit): FilterEdit[] {
     // Moving back to where it started undoes the move.
     merged = prev.from === edit.to ? null : { ...edit, id: prev.id, from: prev.from }
   } else if (edit.kind === 'item' && prev.kind === 'item') {
-    merged = { ...edit, id: prev.id, patch: { ...prev.patch, ...edit.patch } }
+    merged = {
+      ...edit,
+      id: prev.id,
+      patch: { ...prev.patch, ...edit.patch },
+      anchor: edit.anchor ?? prev.anchor,
+      pin: edit.pin ?? prev.pin
+    }
   } else if (edit.kind === 'group' && !edit.hidden) {
     merged = null
   }

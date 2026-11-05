@@ -1,5 +1,6 @@
 // Turns the flat block list into the editor's tree:
 // section (NeverSink's [[0000]] chapters) → group ($type) → tier ($tier).
+import { UNTAGGED_PREFIX } from './parse'
 import type { FilterBlock, FilterDoc, Visibility } from './parse'
 import { OWN_RULE_TYPE } from './edits'
 import { BUILD_RULE_TYPE } from './build-rules'
@@ -37,6 +38,7 @@ export interface SectionNode {
 
 export function groupName (type: string | null): string {
   if (!type) return 'Untagged'
+  if (type.startsWith(UNTAGGED_PREFIX)) return type.slice(UNTAGGED_PREFIX.length) || 'Untagged'
   if (OWN_GROUPS[type]) return OWN_GROUPS[type]
   return type.split('->').map(part => part.charAt(0).toUpperCase() + part.slice(1)).join(' › ')
 }
@@ -45,7 +47,7 @@ export function buildTree (doc: FilterDoc): SectionNode[] {
   const sections: SectionNode[] = []
   const groups = new Map<string, GroupNode>()
   for (const b of doc.blocks) {
-    const type = b.type ?? `untagged:${b.section}`
+    const type = b.type ?? `${UNTAGGED_PREFIX}${b.section}`
     let g = groups.get(type)
     if (!g) {
       const own = b.type != null && OWN_GROUPS[b.type] != null

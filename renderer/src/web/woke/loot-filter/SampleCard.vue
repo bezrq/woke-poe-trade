@@ -39,7 +39,7 @@
           <div class="flex items-center gap-2">
             <span>{{ groupName(final.type) }}</span>
             <span class="w-faint">›</span>
-            <span class="w-accent">{{ final.tier ?? 'untagged' }}</span>
+            <span class="w-accent">{{ final.tier?.startsWith('#') ? 'rule' : final.tier }}</span>
             <span class="grow" />
             <span class="w-num w-faint text-xs">{{ final.added ? 'added' : `line ${final.line}` }}</span>
           </div>
@@ -116,7 +116,7 @@ import type { ItemFacts } from './item-facts'
 import type { BlockMatch, MatchResult, Tri } from './match'
 import { formatCondition } from './parse'
 import type { FilterCondition, Visibility } from './parse'
-import { OWN_RULE_TYPE, blocksOf, moveTargets, readStyle } from './edits'
+import { OWN_RULE_TYPE, blocksOf, conditionSignature, moveTargets, readStyle } from './edits'
 import type { StylePatch } from './edits'
 import { findBase, groupName } from './groups'
 
@@ -148,14 +148,18 @@ const isOwn = computed(() => final.value.type === OWN_RULE_TYPE)
 const base = computed(() => props.facts.baseType ?? '')
 
 // The NeverSink rule behind an own rule, so moves and tier edits still work.
-const ownEdit = computed(() => props.config.edits.find(e => e.kind === 'item' && e.base === base.value) as Extract<typeof props.config.edits[number], { kind: 'item' }> | undefined)
+const ownEdit = computed(() => props.config.edits.find(e => e.kind === 'item' && e.id === final.value.editId) as Extract<typeof props.config.edits[number], { kind: 'item' }> | undefined)
+// Says which block of the tier this item hit, for the own rule to copy.
+const anchor = computed(() => isOwn.value ? ownEdit.value?.anchor : conditionSignature(final.value))
 const origin = computed(() => isOwn.value && ownEdit.value
   ? { type: ownEdit.value.type, tier: ownEdit.value.tier }
   : { type: final.value.type ?? '', tier: final.value.tier ?? '' })
 
 function tierInfo (tier: string) {
   const doc = props.store.doc.value!
-  const blocks = blocksOf(doc, origin.value.type, tier).filter(b => !b.disabled)
+  const all = blocksOf(doc, origin.value.type, tier)
+  const live = all.filter(b => !b.disabled)
+  const blocks = live.length ? live : all
   const first = blocks[0]
   const count = blocks.reduce((n, b) => n + (b.conditions.find(c => c.key === 'BaseType' && c.op === '==')?.values.length ?? 0), 0)
   return { tier, actions: first?.actions ?? [], visibility: first?.visibility ?? 'Show', count, look: readStyle(first?.actions ?? []) }
@@ -205,7 +209,7 @@ function onPatch (patch: StylePatch) {
   if (scope.value === 'tier' && !isOwn.value) {
     props.store.edit({ kind: 'style', type: origin.value.type, tier: origin.value.tier, patch })
   } else {
-    props.store.edit({ kind: 'item', type: origin.value.type, tier: origin.value.tier, base: base.value, visibility: editVisibility.value, patch })
+    props.store.edit({ kind: 'item', type: origin.value.type, tier: origin.value.tier, base: base.value, visibility: editVisibility.value, patch, anchor: anchor.value })
   }
 }
 
@@ -213,7 +217,7 @@ function onVisibility (v: Visibility) {
   if (scope.value === 'tier' && !isOwn.value) {
     props.store.edit({ kind: 'visibility', type: origin.value.type, tier: origin.value.tier, visibility: v })
   } else {
-    props.store.edit({ kind: 'item', type: origin.value.type, tier: origin.value.tier, base: base.value, visibility: v, patch: {} })
+    props.store.edit({ kind: 'item', type: origin.value.type, tier: origin.value.tier, base: base.value, visibility: v, patch: {}, anchor: anchor.value })
   }
 }
 
@@ -255,7 +259,7 @@ const quick = computed(() => {
       label: shownNow.value ? 'Hide' : 'Hidden',
       title: `Hide ${name.value} from now on (own rule, just this item)`,
       disabled: !canOwn || !shownNow.value,
-      run: () => afterFix(`Hid ${name.value}`, props.store.editWithUndo({ kind: 'item', type: origin.value.type, tier: origin.value.tier, base: base.value, visibility: 'Hide', patch: {} }))
+      run: () => afterFix(`Hid ${name.value}`, props.store.editWithUndo({ kind: 'item', type: origin.value.type, tier: origin.value.tier, base: base.value, visibility: 'Hide', patch: {}, anchor: anchor.value }))
     },
     {
       key: '2',
@@ -283,7 +287,7 @@ const quick = computed(() => {
       label: 'Always show',
       title: 'Own rule that shows this item at every strictness and after NeverSink updates',
       disabled: !canOwn || (isOwn.value && ownEdit.value?.visibility === 'Show'),
-      run: () => afterFix(`${name.value} always shows`, props.store.editWithUndo({ kind: 'item', type: origin.value.type, tier: origin.value.tier, base: base.value, visibility: 'Show', patch: shownNow.value ? {} : SAFETY_LOOK }))
+      run: () => afterFix(`${name.value} always shows`, props.store.editWithUndo({ kind: 'item', type: origin.value.type, tier: origin.value.tier, base: base.value, visibility: 'Show', patch: shownNow.value ? {} : SAFETY_LOOK, anchor: anchor.value, pin: true }))
     }
   ]
 })

@@ -56,6 +56,8 @@ export interface FilterBlock {
   // Its conditions were copied from a block in the source file, so a keyword
   // the save check doesn't know is the game's business, not a mistake.
   inherited?: boolean
+  // The edit that added this block.
+  editId?: number
 }
 
 export interface FilterRaw {
@@ -169,6 +171,17 @@ function scanGap (lines: string[], from: number): { end: number, rule: boolean }
   return { end: i, rule: i > from && i < lines.length && isBlockLine(lines[i], false) }
 }
 
+// A key for a rule with no $type/$tier tags, so a filter from anywhere can be
+// edited rule by rule. Made from its conditions, so it survives lines moving.
+export function untaggedTier (conditions: FilterCondition[]): string {
+  const text = JSON.stringify(conditions.map(c => [c.key, c.op, c.count, c.values]))
+  let h = 5381
+  for (let i = 0; i < text.length; i++) h = ((h << 5) + h + text.charCodeAt(i)) | 0
+  return `#${(h >>> 0).toString(36)}`
+}
+
+export const UNTAGGED_PREFIX = 'untagged:'
+
 export function parseFilter (source: string): FilterDoc {
   const bom = source.charCodeAt(0) === 0xFEFF
   const text = bom ? source.slice(1) : source
@@ -249,6 +262,8 @@ export function parseFilter (source: string): FilterDoc {
         block.conditions.push(parseCondition(parsed.key, parsed.rest))
       }
     }
+    block.type ??= `${UNTAGGED_PREFIX}${section}`
+    block.tier ??= untaggedTier(block.conditions)
     chunks.push(block)
     blocks.push(block)
   }

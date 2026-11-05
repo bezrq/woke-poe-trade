@@ -120,10 +120,9 @@
         <template v-else-if="tier">
           <div :class="$style.groupTitle">{{ tier.tier.startsWith('#') ? 'Rule' : tier.tier }}</div>
           <div class="text-xs w-faint">{{ tier.blocks.length > 1 ? `${tier.blocks.length} rules` : `line ${tier.blocks[0].line}` }}<span v-if="tier.disabled"> · commented out in the filter</span></div>
-          <StyleEditor v-if="!tier.tier.startsWith('#')" :look="readStyle(firstLive(tier).actions)" :visibility="firstLive(tier).visibility"
+          <StyleEditor :look="readStyle(firstLive(tier).actions)" :visibility="firstLive(tier).visibility"
             :preview-text="tier.bases[0] ?? previewName(tier)" :copy-from="copyFrom"
             @patch="patchTier" @visibility="setTierVisibility" />
-          <div v-else class="text-xs w-dim">This rule has no $tier tag, so it can't be edited by tier.</div>
 
           <template v-if="tier.bases.length && !isOwnGroup">
             <div class="w-group-label" style="padding: 8px 0 2px;">Items in this tier</div>
@@ -268,7 +267,7 @@ import StyleEditor from './StyleEditor.vue'
 import type { LootFilterStore } from './store'
 import { outputName } from './widget'
 import type { LootFilterWidget } from './widget'
-import { OWN_RULE_TYPE, describeEdit, moveTargets, nextEditId, readStyle, rehome, rehomeOptions, slug } from './edits'
+import { OWN_RULE_TYPE, describeEdit, moveTargets, nextEditId, readStyle, rehome, rehomeOptions } from './edits'
 import type { RehomeOption } from './edits'
 import type { FilterEdit, StylePatch } from './edits'
 import type { Visibility } from './parse'
@@ -399,7 +398,7 @@ function homes (edit: FilterEdit): RehomeOption[] {
 }
 
 function shortName (g: GroupNode): string {
-  if (g.type.startsWith('untagged:')) return 'Untagged rules'
+  if (g.type.startsWith('untagged:')) return g.tiers.length > 1 ? 'Rules' : 'Rule'
   return groupName(g.type)
 }
 
@@ -417,7 +416,7 @@ function conditionSummary (t: TierNode): string {
 }
 
 const copyFrom = computed(() => group.value
-  ? group.value.tiers.filter(t => t.tier !== selTier.value && !t.tier.startsWith('#')).map(t => ({ tier: t.tier, look: readStyle(firstLive(t).actions) as StylePatch }))
+  ? group.value.tiers.filter(t => t.tier !== selTier.value).map(t => ({ tier: t.tier, look: readStyle(firstLive(t).actions) as StylePatch }))
   : [])
 
 function selectGroup (type: string) {
@@ -485,7 +484,8 @@ watch(tree, () => {
 })
 
 function ownEditFor (t: TierNode) {
-  return props.config.edits.find(e => e.kind === 'item' && slug(e.base) === t.tier) as Extract<FilterEdit, { kind: 'item' }> | undefined
+  const id = t.blocks[0]?.editId
+  return props.config.edits.find(e => e.kind === 'item' && e.id === id) as Extract<FilterEdit, { kind: 'item' }> | undefined
 }
 
 function patchTier (patch: StylePatch) {
@@ -667,7 +667,7 @@ function groupMenu (ev: MouseEvent, type: string) {
 }
 
 function tierMenu (ev: MouseEvent, t: TierNode) {
-  if (!selType.value || t.tier.startsWith('#')) return
+  if (!selType.value) return
   const type = selType.value
   const shown = firstLive(t).visibility !== 'Hide' && !t.disabled
   openMenu(ev, [

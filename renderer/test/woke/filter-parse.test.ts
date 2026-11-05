@@ -69,7 +69,7 @@ describe.each(FILTERS)('$name', ({ text }) => {
   })
 
   it('tags every block with its group and tier', () => {
-    const untagged = doc.blocks.filter(b => !b.disabled && (!b.type || !b.tier)).map(b => `${b.line}: ${b.raw[0]}`)
+    const untagged = doc.blocks.filter(b => !b.disabled && (b.type!.startsWith('untagged:') || b.tier!.startsWith('#'))).map(b => `${b.line}: ${b.raw[0]}`)
     expect(untagged).toEqual([])
   })
 
@@ -231,7 +231,7 @@ describe('hand-written filters', () => {
 
   it('a gap with a commented-out block or section title ends the block', () => {
     const blockGap = parseFilter('Show # $type->a $tier->1\n\tRarity Rare\n\n#Hide # $type->b $tier->2\n#\tClass "X"\n\n\tSetFontSize 40\nHide\n')
-    expect(blockGap.blocks.map(b => b.type)).toEqual(['a', 'b', null])
+    expect(blockGap.blocks.map(b => b.type)).toEqual(['a', 'b', 'untagged:'])
     const section = parseFilter('#[[1000]] Top\nShow\n\tRarity Rare\n\n#[[2000]] Next\n#[2001] Sub\n\tSetFontSize 40\n\nHide\n\tRarity Magic\n')
     expect(section.blocks[1]).toMatchObject({ section: 'Next', subsection: 'Sub' })
   })
@@ -301,7 +301,10 @@ describe('hand-written filters', () => {
     ].join('\r\n')
     const doc = parseFilter(text)
     expect(serializeFilter(doc)).toBe(text)
-    expect(doc.blocks.map(b => [b.disabled, b.visibility, b.type])).toEqual([[true, 'Show', null], [false, 'Hide', null], [false, 'Hide', null]])
+    expect(doc.blocks.map(b => [b.disabled, b.visibility, b.type])).toEqual([[true, 'Show', 'untagged:'], [false, 'Hide', 'untagged:'], [false, 'Hide', 'untagged:']])
+    // Each rule gets a key of its own, from its conditions.
+    expect(new Set(doc.blocks.map(b => b.tier)).size).toBe(3)
+    expect(doc.blocks[1].tier).toBe(parseFilter(text.replace('# FilterBlade', '\r\n# FilterBlade')).blocks[1].tier)
     expect(doc.blocks[1].conditions.map(c => c.key)).toEqual(['Class', 'BaseType'])
     expect(doc.blocks[1].actions.map(a => a.key)).toEqual(['SetFontSize', 'SetBackgroundColor', 'DisableDropSound'])
     // The empty BaseType of a commented block stays commented when rewritten.
