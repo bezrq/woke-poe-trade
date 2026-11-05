@@ -89,6 +89,9 @@ if (props.config.wmFlags[0] === 'uninitialized') {
   wm.show(props.config.wmId)
 }
 normalizeLootFilterWidget(props.config)
+// Left over if the app closed while the sample card was open.
+if (props.config.wmZorder === 'exclusive') props.config.wmZorder = null
+props.config.wmFlags = props.config.wmFlags.filter(f => f !== 'hide-on-blur')
 // Settings can swap in a whole new config object; fill in any new fields.
 watch(() => props.config, (c) => normalizeLootFilterWidget(c))
 

@@ -96,7 +96,7 @@
           {{ store.error.value ?? (store.dirty.value ? 'Unsaved changes' : (store.pendingReload.value ? 'Saved, reloads in town or hideout' : (store.lastSaved.value ? 'Saved' : ''))) }}
         </span>
         <WButton size="sm" variant="ghost" @click="emit('open-editor')">Open editor</WButton>
-        <WButton v-if="config.reloadViaChat" size="sm" variant="ghost" title="Type /itemfilter in chat now to reload the saved filter" @click="store.reloadInGame(true)">Reload now</WButton>
+        <WButton v-if="config.reloadViaChat && store.outputSaved.value" size="sm" variant="ghost" title="Type /itemfilter in chat now to reload the saved filter" @click="store.reloadInGame(true)">Reload now</WButton>
         <WButton size="sm" variant="primary" :disabled="store.saving.value" @click="store.save({ reloadNow: true })">{{ config.reloadViaChat ? 'Save + reload' : 'Save' }}</WButton>
       </div>
     </template>
