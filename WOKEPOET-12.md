@@ -72,6 +72,11 @@ history:
     to: Done
     user: Agent
     date: '2026-11-05T03:15:55.928Z'
+  - type: activity
+    user: Agent
+    date: '2026-11-05T03:20:28.511Z'
+    comment: Task worktree automatically reclaimed (ready-or-terminal-status)
+    id: a-2026-11-05t03-20-28-511z
 branch: flux/WOKEPOET-12-make-dock-icons-snappy-and-their-cards-clickable
 baselineCommit: 95cbada0b56969b164437487851fe1db57556125
 needsAction: null
