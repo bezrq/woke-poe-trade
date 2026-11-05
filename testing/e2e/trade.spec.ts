@@ -158,6 +158,20 @@ test('with a short bubble time the bubble ends, and the icon stays while offers 
   await expect(icon).toBeVisible()
 })
 
+test('an offer open since before a restart shows the bubble', async ({ overlay, fakeApp }) => {
+  clearHistory(fakeApp.opts.userData)
+  const d = new Date()
+  const p = (n: number) => String(n).padStart(2, '0')
+  const stamp = `${d.getFullYear()}/${p(d.getMonth() + 1)}/${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`
+  const whisper = LINES.find(l => l.includes('Kaltenhalt: Hi, I would like to buy your Headhunter'))!
+  await overlay.boot({ widgets: [TRADE], logBefore: [whisper.replace(/^\d{4}\/\d\d\/\d\d \d\d:\d\d:\d\d/, stamp)] })
+  // A restart, now the app follows this test's log: the first load may have read
+  // the tail of the previous test's.
+  await expect.poll(() => fakeApp.logFollowed).toBe(true)
+  await overlay.page.reload()
+  await expect(overlay.dockIcon('trade').locator('[class*="peekText"]')).toContainText('Kaltenhalt: Headhunter', { timeout: 15_000 })
+})
+
 test('the history keeps old offers across restarts and reopens them', async ({ overlay, fakeApp }) => {
   const dir = path.join(fakeApp.opts.userData, 'woke-offer-history')
   fs.mkdirSync(dir, { recursive: true })
