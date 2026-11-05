@@ -92,7 +92,9 @@ fn main() {
             let status = MenuItem::with_id(app, "status", "Show test numbers", true, None::<&str>)?;
             let log = MenuItem::with_id(app, "log", "Open log folder", true, None::<&str>)?;
             let quit = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
-            let menu = Menu::with_items(app, &[&status, &log, &quit])?;
+            let mode_a = MenuItem::with_id(app, "mode_a", "Click mode A (like Electron)", true, None::<&str>)?;
+            let mode_b = MenuItem::with_id(app, "mode_b", "Click mode B (layered)", true, None::<&str>)?;
+            let menu = Menu::with_items(app, &[&mode_a, &mode_b, &status, &log, &quit])?;
             let mut tray = TrayIconBuilder::new().menu(&menu).tooltip("Woke PoE Trade (Tauri test)");
             if let Some(icon) = app.default_window_icon() {
                 tray = tray.icon(icon.clone());
@@ -100,6 +102,8 @@ fn main() {
             tray.on_menu_event(|app, ev| match ev.id().as_ref() {
                 "status" => open(&format!("http://127.0.0.1:{}/spike/status", server::PORT)),
                 "log" => open(&hub::hub().data_dir.display().to_string()),
+                "mode_a" => overlay::set_click_mode_b(false),
+                "mode_b" => overlay::set_click_mode_b(true),
                 "quit" => app.exit(0),
                 _ => {}
             })

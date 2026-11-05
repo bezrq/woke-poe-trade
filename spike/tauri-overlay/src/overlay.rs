@@ -12,8 +12,8 @@ use serde_json::json;
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::time::Duration;
 use tauri::Manager;
-use windows::Win32::Foundation::{CloseHandle, HWND, LPARAM, LRESULT, POINT, RECT, WPARAM};
-use windows::Win32::Graphics::Gdi::ClientToScreen;
+use windows::Win32::Foundation::{CloseHandle, COLORREF, HWND, LPARAM, LRESULT, POINT, RECT, WPARAM};
+use windows::Win32::Graphics::Gdi::{ClientToScreen, RedrawWindow, RDW_ALLCHILDREN, RDW_FRAME, RDW_INVALIDATE, RDW_UPDATENOW};
 use windows::Win32::System::Diagnostics::ToolHelp::{
     CreateToolhelp32Snapshot, Process32FirstW, Process32NextW, PROCESSENTRY32W, TH32CS_SNAPPROCESS,
 };
@@ -34,7 +34,8 @@ use windows::Win32::UI::WindowsAndMessaging::{
     EVENT_OBJECT_LOCATIONCHANGE, EVENT_SYSTEM_FOREGROUND, EVENT_SYSTEM_MINIMIZEEND, HHOOK, HWND_TOPMOST, MSG,
     MSLLHOOKSTRUCT, OBJID_WINDOW, SWP_NOACTIVATE, SWP_SHOWWINDOW, SW_HIDE, WH_MOUSE_LL, WINEVENT_OUTOFCONTEXT,
     WINEVENT_SKIPOWNPROCESS, WM_APP, WM_MOUSEMOVE, WM_TIMER, GetWindowLongPtrW, SetWindowLongPtrW, GWL_EXSTYLE,
-    WS_EX_LAYERED, WS_EX_TRANSPARENT,
+    WS_EX_LAYERED, WS_EX_TRANSPARENT, SetLayeredWindowAttributes, LWA_ALPHA, SWP_NOMOVE, SWP_NOSIZE,
+    SWP_NOZORDER, SWP_FRAMECHANGED,
 };
 
 const MSG_ACTIVATE_OVERLAY: u32 = WM_APP + 1;
@@ -82,23 +83,51 @@ pub fn find_game_now() {
     post(MSG_FIND_GAME);
 }
 
-// Only WS_EX_TRANSPARENT changes. Tauri's set_ignore_cursor_events also
-// drops WS_EX_LAYERED, and the transparent overlay stops drawing without it
-// (it showed nothing while active, then flashed for a frame when click-through
-// came back).
+// How the overlay becomes clickable (switchable from the tray to compare):
+// A (default, like Electron): click-through = LAYERED + TRANSPARENT; clickable
+//   = neither, then a forced repaint (without it the window went blank).
+// B: always LAYERED with constant alpha 255 (so hit-testing covers the whole
+//   window instead of only drawn pixels); only TRANSPARENT toggles.
+pub static CLICK_MODE_B: AtomicBool = AtomicBool::new(false);
+
+pub fn set_click_mode_b(b: bool) {
+    let h = hub();
+    CLICK_MODE_B.store(b, Ordering::SeqCst);
+    h.log(&format!("click mode {}", if b { "B" } else { "A" }));
+    if b {
+        let ov = hwnd(h.overlay_hwnd.load(Ordering::SeqCst));
+        unsafe {
+            let ex = GetWindowLongPtrW(ov, GWL_EXSTYLE);
+            SetWindowLongPtrW(ov, GWL_EXSTYLE, ex | WS_EX_LAYERED.0 as isize);
+            let _ = SetLayeredWindowAttributes(ov, COLORREF(0), 255, LWA_ALPHA);
+        }
+    }
+    set_click_through(!h.is_interactable());
+}
+
 fn set_click_through(on: bool) {
     let ov = hwnd(hub().overlay_hwnd.load(Ordering::SeqCst));
+    let layered = WS_EX_LAYERED.0 as isize;
+    let transparent = WS_EX_TRANSPARENT.0 as isize;
     unsafe {
         let ex = GetWindowLongPtrW(ov, GWL_EXSTYLE);
-        let mut next = ex | WS_EX_LAYERED.0 as isize;
-        if on {
-            next |= WS_EX_TRANSPARENT.0 as isize;
+        let next = if CLICK_MODE_B.load(Ordering::SeqCst) {
+            let base = ex | layered;
+            if on { base | transparent } else { base & !transparent }
+        } else if on {
+            ex | layered | transparent
         } else {
-            next &= !(WS_EX_TRANSPARENT.0 as isize);
-        }
+            ex & !(layered | transparent)
+        };
         if next != ex {
             SetWindowLongPtrW(ov, GWL_EXSTYLE, next);
+            let _ = SetWindowPos(
+                ov, None, 0, 0, 0, 0,
+                SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED,
+            );
+            let _ = RedrawWindow(Some(ov), None, None, RDW_INVALIDATE | RDW_ALLCHILDREN | RDW_UPDATENOW | RDW_FRAME);
         }
+        hub().log(&format!("click-through {on}: exstyle {ex:#x} -> {next:#x}"));
     }
 }
 
