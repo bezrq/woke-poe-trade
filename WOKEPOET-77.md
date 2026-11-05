@@ -102,6 +102,17 @@ history:
     to: In Progress
     user: Agent
     date: '2026-11-05T10:32:11.795Z'
+  - type: comment
+    user: Agent
+    comment: >-
+      Guy: each tab gets its own regex row and modes never intermingle.
+      Supersedes shared ratings: profile keeps separate ratings for Maps, Heist
+      and Charts, the verdict card uses the list for the item's type, and an
+      Avoid on Charts no longer reaches the map search.
+    date: '2026-11-05T10:44:11.852Z'
+    selfAttested: true
+    pin: true
+    id: c-2026-11-05t10-44-11-852z
 swimlane: null
 needsAction: null
 ---

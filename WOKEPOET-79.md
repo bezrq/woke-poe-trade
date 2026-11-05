@@ -1,7 +1,7 @@
 ---
 id: WOKEPOET-79
 title: 'Lab gems: leave thin-market gems out of EV'
-status: Grooming
+status: In Progress
 priority: None
 effort: None
 assignee: unassigned
@@ -47,8 +47,19 @@ history:
     user: Agent
     date: '2026-11-05T10:37:12.406Z'
     comment: 'Guy picked A: thin gems count as 0 and leave the list.'
+  - type: activity
+    user: Agent
+    date: '2026-11-05T10:44:17.314Z'
+    comment: Updated implementation link.
+    id: a-2026-11-05t10-44-17-314z
+  - type: status_change
+    from: Grooming
+    to: In Progress
+    user: Agent
+    date: '2026-11-05T10:44:17.959Z'
 swimlane: null
 needsAction: null
+implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/152'
 ---
 > **TL;DR:** Gems marked "!" (thin market on poe.ninja) still inflate the Lab gems EVs. Add a saved toggle that leaves them out of the sums and the lists.
 
