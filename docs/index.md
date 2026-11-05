@@ -1,4 +1,5 @@
 ---
+layout: landing
+title: Woke PoE Trade
+titleTemplate: An overlay for Path of Exile 1
 ---
-
-![](https://imgur.com/uH9xs4R.png){:.rounded}

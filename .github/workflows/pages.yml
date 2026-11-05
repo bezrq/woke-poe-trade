@@ -1,13 +1,18 @@
 name: Docs
 
+# The site (landing page + help pages) deploys from master only: GitHub Pages
+# takes deploys from the default branch. It also reads the module list and the
+# app version, so those changes redeploy it too.
 on:
   push:
     branches:
-      - '**'
-    tags-ignore:
-      - '**'
+      - master
     paths:
       - 'docs/**'
+      - 'renderer/src/web/woke/modules.ts'
+      - 'main/package.json'
+      - '.github/workflows/pages.yml'
+  workflow_dispatch:
 
 jobs:
   deploy:

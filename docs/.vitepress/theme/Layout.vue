@@ -1,12 +1,14 @@
 <script setup>
 import { useData, withBase, useRoute } from 'vitepress'
+import Landing from './landing/Landing.vue'
 
-const { site, theme } = useData()
+const { site, theme, frontmatter } = useData()
 const route = useRoute()
 </script>
 
 <template>
-  <div class="max-w-screen-md mx-auto">
+  <Landing v-if="frontmatter.layout === 'landing'" />
+  <div v-else class="max-w-screen-md mx-auto">
     <div id="site-header" class="flex items-center justify-between py-4 border-b mb-4">
       <a :href="withBase('/')" id="site-logo" class="flex items-center">
         <img src="pathname:///favicon.png">

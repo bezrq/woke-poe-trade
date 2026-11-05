@@ -1,27 +1,75 @@
-# ![Awakener's Orb](https://web.poecdn.com/image/Art/2DItems/Currency/TransferOrb.png) Awakened PoE Trade
+<img src="docs/public/shots/readme-banner.webp" alt="Woke PoE Trade: your toolkit, in the game. The overlay open in a map with the market tracker.">
 
-[![](https://user-images.githubusercontent.com/4292308/153364874-dde23599-278c-4350-8d86-dadbc4b978b3.svg)](https://somsubhra.github.io/github-release-stats/?username=SnosMe&repository=awakened-poe-trade)
-[![](https://user-images.githubusercontent.com/4292308/153364769-e4fe1e82-1bbc-46ac-8a3c-f5a98a5667cc.svg)](https://patreon.com/awakened_poe_trade)
-[![](https://user-images.githubusercontent.com/4292308/153364565-7a545d26-e617-4a33-a919-ff90d8feda3d.svg)](https://github.com/SnosMe/awakened-poe-trade/issues/22)
+[![Release](https://img.shields.io/github/v/release/guybnd/woke-poe-trade?include_prereleases&color=d4a64a&label=release)](https://github.com/guybnd/woke-poe-trade/releases)
+[![Platform](https://img.shields.io/badge/platform-Windows%2010%2B-3a6ea5)](https://github.com/guybnd/woke-poe-trade/releases)
+[![License: MIT](https://img.shields.io/badge/license-MIT-2f8a3a)](LICENSE)
+[![Path of Exile 1](https://img.shields.io/badge/Path%20of%20Exile-1-8a4b1c)](https://www.pathofexile.com)
 
+Woke PoE Trade is an overlay for Path of Exile 1. It keeps [Awakened PoE Trade](https://github.com/SnosMe/awakened-poe-trade)'s price check and adds modules for mapping, money, the campaign and trading. Every module is off until you turn it on, so the overlay stays out of the way.
 
-➡ [Download for Windows & Linux](https://snosme.github.io/awakened-poe-trade/download) ⬅
+**[Download for Windows](https://github.com/guybnd/woke-poe-trade/releases/latest)** · [Website](https://guybnd.github.io/woke-poe-trade/) · [Help](https://guybnd.github.io/woke-poe-trade/quick-start) · [FAQ](https://guybnd.github.io/woke-poe-trade/faq)
 
-## Tool showcase
+<p>
+  <img src="docs/public/shots/story-maps.webp" width="49%" alt="Map scan reads a T16 map tooltip and marks it CARE for max res down">
+  <img src="docs/public/shots/story-essence.webp" width="49%" alt="Essence scan reads a monolith and says CORRUPT, with the essence prices">
+  <img src="docs/public/shots/story-price.webp" width="49%" alt="Price check of a rare ring with low and current roll presets">
+  <img src="docs/public/shots/story-loot.webp" width="49%" alt="The loot filter rule for the hovered Divine Orb, with quick fixes">
+</p>
 
-| Gem | Rare | Unique | Currency |
-|-----|------|--------|----------|
-| ![](https://i.imgur.com/LTsH2DZ.png) | ![](https://i.imgur.com/2XL5Wl8.png) | ![](https://i.imgur.com/UTV6prE.png) | ![](https://i.imgur.com/dQ9Sns6.png) |
+## Modules
 
-### Development
+Pick a preset on first run (Mapper, Leveling, Trader, Everything or Price check only), then switch modules one by one in Setup. A module that's off doesn't load, doesn't register hotkeys and doesn't poll anything.
 
-See [DEVELOPING.md](./DEVELOPING.md)
+<!-- modules:start (checked against renderer/src/web/woke/modules.ts by renderer/test/woke/readme.test.ts) -->
+| Area | Module | What it does |
+| --- | --- | --- |
+| Economy | Market tracker | Movers and watchlist from poe.ninja |
+| Economy | Investments | League-start buys ranked from past leagues |
+| Economy | Lab gems | Divine Font gem values by colour |
+| Economy | Scarab flip | Whether the 3-to-1 vendor recipe pays, and rare scarabs that are cheap |
+| Economy | Farming profit | Session profit per hour |
+| Economy | Session analytics | Profit per map, strategy and hour over time |
+| Economy | Boss runs | Profit per boss kill |
+| Mapping | Map mods | Danger strip on price check and map regex |
+| Mapping | Map scan | Reads map tooltips on screen |
+| Mapping | Essence scan | Reads essence monoliths and flags MEDS |
+| Mapping | Loot filter editor | Edit the NeverSink rule for a sampled item |
+| Mapping | Atlas strategies | Tree, scarabs and regex per strategy |
+| Mapping | League mechanics | Picks and Betrayal board for the zone |
+| Campaign & lab | Campaign tracker | Next steps for the act you are in |
+| Campaign & lab | Run timer | Act splits and personal bests |
+| Campaign & lab | Lab layouts | Today's poelab layout and reset countdown |
+| Campaign & lab | Challenge guide | League challenge guide with your progress |
+| Builds & trade | PoB builds | Your Path of Building folder |
+| Builds & trade | Trade searches | Saved trade site searches |
+| Builds & trade | Trade assistant | Trade whispers, quick replies and a sales log |
+| Builds & trade | Regex library | Saved stash search strings |
+| Price check (Awakened PoE Trade) | Price check hotkeys | Check an item under the cursor |
+| Price check (Awakened PoE Trade) | Item info hotkeys | Item info, wiki, poedb, Craft of Exile, similar items |
+| Price check (Awakened PoE Trade) | Heist gem OCR | Reads heist gem names; loads the OCR worker on first use |
+<!-- modules:end -->
 
-### Acknowledgments
+## Quick start
 
-- [libuiohook](https://github.com/kwhat/libuiohook)
-- [RePoE](https://github.com/brather1ng/RePoE)
-- [poeprices.info](https://www.poeprices.info/)
-- [poe.ninja](https://poe.ninja/)
+1. Download `Woke-PoE-Trade-Setup-<version>.exe` from the [latest release](https://github.com/guybnd/woke-poe-trade/releases/latest) and run it. It updates itself after that.
+2. The setup wizard finds your game folder and asks how you play.
+3. In game, `Ctrl + D` prices the item under the cursor and `Shift + Space` opens the overlay. The rail on the left edge holds every tool.
 
-![](https://i.imgur.com/MATqhv7.png)
+Run Path of Exile in Windowed or Windowed Fullscreen. The [help pages](https://guybnd.github.io/woke-poe-trade/issues) cover the common problems.
+
+## Development
+
+See [DEVELOPING.md](DEVELOPING.md) for running the app from source, and [testing/README.md](testing/README.md) for the tests, including the fake game every pull request runs against.
+
+The website lives in [docs/](docs) (VitePress) and deploys to GitHub Pages on push. Its screenshots, and the ones above, are the real overlay drawn over real game screens by `testing/e2e/landing-shots.spec.ts`. To take them again:
+
+```sh
+cd docs && npm install                   # the site's fonts, used by the README banner
+cd ../testing && WOKE_LANDING_SHOTS=1 npx playwright test landing-shots
+```
+
+## Credits
+
+Built on [Awakened PoE Trade](https://github.com/SnosMe/awakened-poe-trade) by SnosMe (MIT), which also uses [libuiohook](https://github.com/kwhat/libuiohook), [RePoE](https://github.com/brather1ng/RePoE), [poeprices.info](https://www.poeprices.info/) and [poe.ninja](https://poe.ninja/). Lab layouts come from [poelab](https://www.poelab.com/).
+
+Not affiliated with or endorsed by Grinding Gear Games.
