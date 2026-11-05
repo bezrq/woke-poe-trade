@@ -102,6 +102,10 @@ export class Overlay {
       this.app.clearReceived()
       await this.page.goto(this.app.url)
       await this.app.waitForReceived('CLIENT->MAIN::update-host-config', undefined, 20_000)
+    // A line written before the watcher is following the file counts as old and
+    // is never seen. The extra moment is for watchFile's first look at the file.
+    await this.app.logWatcherReady
+    await this.page.waitForTimeout(150)
       // The overlay saves its settings when it loses focus.
       await this.page.evaluate(() => window.dispatchEvent(new Event('blur')))
       const saved = await this.app.waitForReceived('CLIENT->MAIN::save-config')
@@ -144,6 +148,10 @@ export class Overlay {
     this.app.focusGame(true)
     await this.page.goto(this.app.url)
     await this.app.waitForReceived('CLIENT->MAIN::update-host-config', undefined, 20_000)
+    // A line written before the watcher is following the file counts as old and
+    // is never seen. The extra moment is for watchFile's first look at the file.
+    await this.app.logWatcherReady
+    await this.page.waitForTimeout(150)
     // Hotkeys register once the game window is attached and focused.
     await expect.poll(() => this.app.registeredHotkeys().length).toBeGreaterThan(0)
     if (opts.overlayActive) await this.pressHotkey(config.overlayKey)
@@ -166,7 +174,7 @@ export class Overlay {
   // Rests the mouse on a dock icon until its card opens (main's hover
   // tracker sees the mouse; the overlay doesn't get mouse events in game).
   async hoverDockIcon (moduleId: string) {
-    const box = await this.dockIcon(moduleId).boundingBox()
+    const box = await this.dockIcon(moduleId).boundingBox({ timeout: 20_000 })
     if (!box) throw new Error(`Dock icon ${moduleId} is not on screen`)
     await this.moveMouse(Math.round(box.x + box.width / 2), Math.round(box.y + box.height / 2))
   }
@@ -247,7 +255,7 @@ export class Overlay {
   // Clicks a dock icon in game, then leaves it straight away, so only the
   // click can have opened its card (the hover delay gets cancelled).
   async clickDockIconAndLeave (moduleId: string) {
-    const box = await this.dockIcon(moduleId).boundingBox()
+    const box = await this.dockIcon(moduleId).boundingBox({ timeout: 20_000 })
     if (!box) throw new Error(`Dock icon ${moduleId} is not on screen`)
     this.app.pressMouse(Math.round(box.x + box.width / 2), Math.round(box.y + box.height / 2))
     this.app.moveMouse(1000, 900)
