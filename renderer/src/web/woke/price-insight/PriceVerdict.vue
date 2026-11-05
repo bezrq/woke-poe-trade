@@ -1,18 +1,10 @@
 <template>
   <div :class="[$style.card, $style[insight.confidence]]">
-    <div v-if="blankSearch" :class="$style.main">
-      <div :class="$style.eyebrow">
-        <span :class="$style.badge">NO MODS</span>
-        <span>This search has no mods ticked, so it can't price this rare</span>
-      </div>
-      <p :class="$style.note">Tick the mods that matter, then search.</p>
-    </div>
-    <template v-else>
     <div :class="$style.hero">
       <div :class="$style.main">
         <template v-if="!insight.range">
           <div :class="$style.eyebrow">
-            <span :class="$style.badge">{{ loading ? '…' : (headline ? 'NO LISTINGS' : 'NO DATA') }}</span>
+            <span :class="$style.badge">{{ loading ? '…' : blankSearch ? 'NO MODS' : (headline ? 'NO LISTINGS' : 'NO DATA') }}</span>
             <span>{{ loading ? 'Reading listings…' : (headline ? 'Other sources say' : '') }}</span>
           </div>
           <div v-if="!loading && headline" :class="$style.value" :title="blendTitle">
@@ -92,7 +84,6 @@
       <span>Ask poeprices.info about rares</span>
       <span v-if="ppStatus" class="w-faint">· {{ ppStatus }}</span>
     </label>
-    </template>
   </div>
 </template>
 
@@ -204,6 +195,7 @@ const rangeUnit = computed(() => {
 })
 
 const emptyText = computed(() => {
+  if (props.blankSearch) return 'No mods are ticked, so these listings can\'t price this rare. Tick the mods that matter, then search.'
   if (props.total === 0) return 'Nobody is selling this with these filters'
   if (props.insight.dropped.size) return 'All listings looked unreliable'
   return 'No listings yet'

@@ -18,7 +18,7 @@
     <teleport v-if="improved && verdictSlot" :to="verdictSlot">
       <price-verdict
         :item="item"
-        :insight="insight"
+        :insight="verdictInsight"
         :divine="divine"
         :loading="!list || !slowdownReady"
         :total="list ? list.total : null"
@@ -31,7 +31,7 @@
         :item="item"
         :filters="filters"
         :stats="stats"
-        :insight="insight"
+        :insight="verdictInsight"
         :options="insightOptions"
         :divine="divine"
         :ready="slowdownReady" />
@@ -151,7 +151,7 @@ import PriceDrivers from '@/web/woke/price-insight/PriceDrivers.vue'
 import PriceViewToggle from '@/web/woke/price-insight/PriceViewToggle.vue'
 import { priceView } from '@/web/woke/price-insight/view'
 import { useInsight } from '@/web/woke/price-insight/useInsight'
-import { FIX_TAG } from '@/web/woke/price-insight/insight'
+import { buildInsight, FIX_TAG } from '@/web/woke/price-insight/insight'
 import { groupListings, rowTitle, ListingRow } from '@/web/woke/price-insight/listing-rows'
 import { nowMinute } from '@/web/woke/ui/format'
 import '@/web/woke/price-insight/price-table.css'
@@ -296,7 +296,11 @@ export default defineComponent({
     // woke: improved view reads the same listings, nothing extra is requested
     const { insight, divine, options: insightOptions } = useInsight(groupedResults)
 
-    const logKey = useCheckLog(props, searchResult, insight, slowdown.isReady)
+    // woke: listings found without a rare's mods say nothing about its price.
+    const blankSearch = computed(() => isBlankRareSearch(props.item, props.filters, props.stats))
+    const verdictInsight = computed(() => blankSearch.value ? buildInsight([], insightOptions.value) : insight.value)
+
+    const logKey = useCheckLog(props, searchResult, verdictInsight, slowdown.isReady)
 
     const showBrowser = inject<(url: string) => void>('builtin-browser')!
     const verdictSlot = inject<ShallowRef<HTMLElement | null>>('price-verdict-slot', shallowRef(null))
@@ -344,7 +348,8 @@ export default defineComponent({
       t,
       list: searchResult,
       improved,
-      blankSearch: computed(() => isBlankRareSearch(props.item, props.filters, props.stats)),
+      blankSearch,
+      verdictInsight,
       skipsTop: computed(() => skipsTopMods(props.item, props.stats)),
       verdictSlot,
       insight,
