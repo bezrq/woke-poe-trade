@@ -424,6 +424,8 @@ function reopenOffer (o: Offer) {
   else history.markReopened(o.id, Date.now()).catch(() => {})
   picked.value = open.id
   now.value = Date.now()
+  // An offer is open again, so the bubble that ended with the last one is back.
+  if ((props.config.bubbleSeconds ?? 0) <= 0 && !bubbleId.value && open.dir === 'sell') showBubble(open)
 }
 
 // Closed offers go into the history as they close, so a restart can't lose them.
