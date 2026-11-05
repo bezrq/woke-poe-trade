@@ -25,18 +25,24 @@
     <div>
       <div class="mb-1">Display</div>
       <div class="flex flex-col gap-1">
-        <w-toggle v-model="cardOpen">Show the guide card (off: one line in the strip)</w-toggle>
         <label class="flex items-center gap-2">
           <span>Steps on the card</span>
           <input v-model.number="cardSteps" type="number" min="1" max="8" class="w-input rounded px-1 leading-6 w-16">
         </label>
-        <w-toggle v-model="hideAfterCampaign">Hide in maps and hideouts once the campaign is done</w-toggle>
         <w-toggle v-model="showBuild">Show the active PoB build's tree and main gems on the card</w-toggle>
       </div>
     </div>
 
+    <div>
+      <div class="mb-1">On screen while levelling</div>
+      <div class="w-dim text-sm mb-1">Off by default. These widen the campaign icon, and never show in maps, hideouts or on a character past the campaign. Times need the Run timer.</div>
+      <div class="flex flex-col gap-1">
+        <w-toggle v-for="o in PIN_OPTIONS" :key="o.id" :model-value="configWidget.pins.includes(o.id)" @update:model-value="togglePin(o.id)">{{ o.label }}</w-toggle>
+      </div>
+    </div>
+
     <div class="grid gap-2 items-center" style="grid-template-columns: auto 1fr;">
-      <span>Hotkey: show/hide guide</span>
+      <span>Hotkey: keep the card open</span>
       <w-hotkey-cell v-model="hotkeyCard" />
       <span>Hotkey: step done</span>
       <w-hotkey-cell v-model="hotkeyNext" />
@@ -90,6 +96,8 @@ import WHotkeyCell from '../ui/WHotkeyCell.vue'
 import { configProp, configModelValue } from '@/web/settings/utils'
 import { nextId } from '../shared/library'
 import { actLabel } from './log-parse'
+import { PIN_OPTIONS } from './pins'
+import type { PinId } from './pins'
 import { migrateCampaign } from './widget'
 import type { CampaignWidget } from './widget'
 import { bundledRoute } from './route-data'
@@ -109,15 +117,18 @@ export default defineComponent({
     }
     return {
       BANDITS,
+      PIN_OPTIONS,
+      togglePin (id: PinId) {
+        const pins = props.configWidget.pins
+        props.configWidget.pins = pins.includes(id) ? pins.filter(p => p !== id) : [...pins, id]
+      },
       acts: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
       actLabel,
       total: computed(() => bundledRoute(props.configWidget.route).steps.length),
       title: configModelValue(() => props.configWidget, 'wmTitle'),
       charName: configModelValue(() => props.configWidget, 'charName'),
       showBuild: configModelValue(() => props.configWidget, 'showBuild'),
-      cardOpen: configModelValue(() => props.configWidget, 'cardOpen'),
       cardSteps: configModelValue(() => props.configWidget, 'cardSteps'),
-      hideAfterCampaign: configModelValue(() => props.configWidget, 'hideAfterCampaign'),
       hotkeyCard: configModelValue(() => props.configWidget, 'hotkeyCard'),
       hotkeyNext: configModelValue(() => props.configWidget, 'hotkeyNext'),
       hotkeyPrev: configModelValue(() => props.configWidget, 'hotkeyPrev'),

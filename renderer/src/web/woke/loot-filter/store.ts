@@ -245,6 +245,21 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
     return () => { cfg().priceTiers.locks = cfg().priceTiers.locks.filter(k => k !== key) }
   }
 
+  // Puts one moved item back and keeps it there, so prices don't just move it again.
+  function unmovePrice (type: string, base: string) {
+    const before = cfg().priceTiers.moves
+    const key = lockKey(type, base)
+    const hadLock = cfg().priceTiers.locks.includes(key)
+    cfg().priceTiers.moves = before.filter(m => !(m.type === type && m.base === base))
+    if (!hadLock) cfg().priceTiers.locks = [...cfg().priceTiers.locks, key]
+    rebuild()
+    return () => {
+      cfg().priceTiers.moves = before
+      if (!hadLock) cfg().priceTiers.locks = cfg().priceTiers.locks.filter(k => k !== key)
+      rebuild()
+    }
+  }
+
   // Back to NeverSink's own tiers for every price group.
   function resetPrices () {
     const before = cfg().priceTiers.moves
@@ -748,6 +763,7 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
     problems,
     applyPrices,
     lockItem,
+    unmovePrice,
     resetPrices,
     editWithUndo,
     editsWithUndo,

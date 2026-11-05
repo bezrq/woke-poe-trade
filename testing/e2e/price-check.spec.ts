@@ -86,20 +86,21 @@ test('rare: roll presets search with the item\'s rolls', async ({ overlay, fakeA
   await overlay.copyItem('items/rare-ring.txt')
   const panel = overlay.widget('price-check')
   await expect(panel).toContainText('Category: Ring')
-  await expect(panel.getByText('Low rolls')).toBeVisible()
+  const rollPresets = panel.locator('[data-roll-presets]')
+  await expect(rollPresets.getByText('Low')).toBeVisible()
   const lastSearch = () => {
     const r = fakeApp.requests.filter(r => r.url.includes('/api/trade/search/')).pop()
     return r ? JSON.parse(r.body).query.stats[0].filters as Array<{ id: string, value: { min?: number, max?: number }, disabled: boolean }> : []
   }
   const filter = (id: string) => lastSearch().find(f => f.id === id)
 
-  await panel.getByText('Current rolls').click()
+  await rollPresets.getByText('Approx').click()
   await expect.poll(() => filter('pseudo.pseudo_total_life')?.value).toEqual({ min: 63, max: 65 })
   expect(filter('pseudo.pseudo_total_life')?.disabled).toBe(false)
   expect(filter('pseudo.pseudo_total_elemental_resistance')?.value).toEqual({ min: 143, max: 147 })
 
   fakeApp.requests.length = 0
-  await panel.getByText('Low rolls').click()
+  await rollPresets.getByText('Low').click()
   // Any roll of the same tier: the bottom of the life roll's range (60-69).
   await expect.poll(() => filter('pseudo.pseudo_total_life')?.value?.min).toBeLessThanOrEqual(60)
   await expect(panel).toContainText('Matched: 42')

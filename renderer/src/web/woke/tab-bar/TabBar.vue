@@ -1,5 +1,7 @@
 <template>
   <div ref="railEl" :class="[$style.rail, { [$style.atEdge]: atEdge, [$style.onRight]: onRight }]" class="w-surface" :style="railStyle" data-widget-drag>
+    <img :src="markUrl" alt="" draggable="false" :class="$style.mark">
+    <span :class="$style.sep" />
     <button :class="[$style.ic, $style.tools, { [$style.toolsOn]: popup?.kind === 'launcher' }]" aria-label="All tools"
       @click="openLauncher" @mouseenter="showTip('All tools', false, $event)" @mouseleave="hideTip">
       <i class="fas fa-th" />
@@ -148,6 +150,7 @@ import type { WidgetManager } from '@/web/overlay/interfaces'
 import type { Widget, Anchor } from '@/web/overlay/widgets'
 import { registry } from '@/web/overlay/widget-registry'
 import { AppConfig } from '@/web/Config'
+import { appIconUrl } from '../ui/app-icon'
 import { isWidgetTypeOn } from '@/web/woke/modules'
 import { useI18n } from 'vue-i18n'
 import { useHotkeyHealth } from '../switchboard/hotkey-health'
@@ -160,6 +163,7 @@ const emit = defineEmits<{ (e: 'paste', text: string, from: DOMRect): void }>()
 
 const wm = inject<WidgetManager>('wm')!
 const { t } = useI18n()
+const markUrl = computed(() => appIconUrl(AppConfig().appIcon))
 
 interface Tab {
   wmId: number
@@ -457,6 +461,8 @@ onBeforeUnmount(() => document.removeEventListener('paste', onOverlayPaste))
 // add list
 const addable = computed(() => registry.widgets
   .filter(({ widget }) => widget.instances === 'multi' && widget.type !== 'stash-search' && isWidgetTypeOn(AppConfig(), widget.type))
+  // Placed but kept out of the launcher (the campaign icon): another copy can't be removed here.
+  .filter(({ widget }) => !wm.widgets.value.some(w => w.wmType === widget.type && w.wmFlags.includes('menu::skip')))
   .map(({ widget }) => ({ type: widget.type, name: typeName(widget.type) })))
 const addGroups = computed(() => {
   const q = query.value.trim().toLowerCase()
@@ -546,6 +552,7 @@ function addFirstMatch () {
 }
 .grip { flex: none; display: grid; place-items: center; width: 34px; height: 14px; color: var(--w-faint); font-size: var(--w-fs-xs); }
 .grip:hover { color: var(--w-dim); }
+.mark { flex: none; width: var(--w-icon-md); height: var(--w-icon-md); margin: 3px 0 1px; pointer-events: none; }
 .sep { flex: none; width: 22px; height: 1px; margin: 4px 0; background: var(--w-line); }
 
 .tip {

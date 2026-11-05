@@ -7,7 +7,8 @@ import { parseLogLine, actFromAreaId, isTown } from '@/web/woke/campaign/log-par
 import { pickStage, socketRegex } from '@/web/woke/pob-builds/build-model'
 import { gemData } from '@/web/woke/pob-builds/gems'
 import { bundledRoute, routeData } from '@/web/woke/campaign/route-data'
-import { advanceOnEnter, resyncTo, DEFAULT_ROUTE_OPTIONS, xpMultiplier } from '@/web/woke/campaign/route-parse'
+import { actProgress, advanceOnEnter, resyncTo, DEFAULT_ROUTE_OPTIONS, xpMultiplier } from '@/web/woke/campaign/route-parse'
+import { routeAsleepAfter } from '@/web/woke/campaign/widget'
 import type { RouteOptions } from '@/web/woke/campaign/route-parse'
 import { countNewMap, isMapArea, isMapSideArea, newSession, onZoneChange, maybeAutoPause, AUTO_PAUSE_MS } from '@/web/woke/farming/farming'
 import { mechanicForSpeaker } from '@/web/woke/mechanics/zone'
@@ -265,5 +266,39 @@ describe('build gems', () => {
     expect(s).toMatchObject({ size: 4, exact: true })
     expect(s!.regex.split('|')).toHaveLength(12)
     expect(s!.regex).toContain('b-g-r-r')
+  })
+})
+
+describe('campaign route sleep', () => {
+  it('sleeps on a map and stays asleep through hideouts and towns', () => {
+    expect(routeAsleepAfter(false, 'MapWorldsAbomination')).toBe(true)
+    expect(routeAsleepAfter(true, 'HideoutArenaSearingExarch')).toBe(true)
+    expect(routeAsleepAfter(true, '1_1_town')).toBe(true)
+    expect(routeAsleepAfter(true, '1_3_town')).toBe(true)
+  })
+
+  it('wakes in a campaign zone, the Twilight Strand included', () => {
+    expect(routeAsleepAfter(true, '1_1_1')).toBe(false)
+    expect(routeAsleepAfter(true, '2_6_4')).toBe(false)
+  })
+
+  it('leaves a levelling character awake in towns and hideouts', () => {
+    expect(routeAsleepAfter(false, '1_3_town')).toBe(false)
+    expect(routeAsleepAfter(false, 'HideoutArenaSearingExarch')).toBe(false)
+  })
+})
+
+describe('campaign act progress', () => {
+  const route = bundledRoute(DEFAULT_ROUTE_OPTIONS)
+
+  it('counts steps done inside the current step\'s act', () => {
+    const first = route.steps.findIndex(s => s.act === 4)
+    const total = route.steps.filter(s => s.act === 4).length
+    expect(actProgress(route, first)).toEqual({ done: 0, total })
+    expect(actProgress(route, first + 17)).toEqual({ done: 17, total })
+  })
+
+  it('is empty once the route is finished', () => {
+    expect(actProgress(route, route.steps.length)).toBeNull()
   })
 })

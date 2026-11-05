@@ -108,6 +108,11 @@ export interface LootFilterWidget extends Widget {
   // Rules from the rule builder, on top of NeverSink's.
   rules: OwnRule[]
   presets: Presets
+  // "Not for me" on a valuable hidden item: its price then, by group|base.
+  healthDismissed: Record<string, number>
+  // Dock icon notices you've turned off, and what each said when you pressed Got it.
+  noticesOff: string[]
+  noticesSeen: Record<string, string | number>
   // One step stricter / looser (NeverSink from GitHub only).
   stricterHotkey: string | null
   looserHotkey: string | null
@@ -141,6 +146,9 @@ export function initLootFilterWidget (w: LootFilterWidget) {
   w.strictAuto = defaultStrictnessAuto()
   w.rules = []
   w.presets = defaultPresets()
+  w.healthDismissed = {}
+  w.noticesOff = []
+  w.noticesSeen = {}
   w.stricterHotkey = 'Alt + BracketRight'
   w.looserHotkey = 'Alt + BracketLeft'
 }
@@ -221,6 +229,9 @@ export function normalizeLootFilterWidget (w: LootFilterWidget) {
   if (!Array.isArray(w.rules)) w.rules = []
   w.rules = w.rules.filter(r => r && typeof r.id === 'number' && Array.isArray(r.conditions) && isPatch(r.patch))
   w.presets = normalizePresets(w.presets)
+  if (!w.healthDismissed || typeof w.healthDismissed !== 'object') w.healthDismissed = {}
+  if (!Array.isArray(w.noticesOff)) w.noticesOff = []
+  if (!w.noticesSeen || typeof w.noticesSeen !== 'object') w.noticesSeen = {}
   if (w.stricterHotkey === undefined) w.stricterHotkey = 'Alt + BracketRight'
   if (w.looserHotkey === undefined) w.looserHotkey = 'Alt + BracketLeft'
 }

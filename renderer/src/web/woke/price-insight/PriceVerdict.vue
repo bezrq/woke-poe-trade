@@ -1,85 +1,84 @@
 <template>
   <div :class="[$style.card, $style[insight.confidence]]">
-    <div v-if="!insight.range" :class="$style.hero">
+    <div :class="$style.hero">
       <div :class="$style.main">
-        <div :class="$style.eyebrow">
-          <span :class="$style.badge">{{ loading ? '…' : 'NO DATA' }}</span>
-          <span>{{ loading ? 'Reading listings…' : emptyText }}</span>
-        </div>
-        <div v-if="!loading && headline" :class="$style.value">
-          <w-price :class="[$style.headline, $style.headlinePrice]" :chaos="headline.chaos" :divine="divine" />
-          <span class="w-dim text-xs" :title="blendTitle">other sources say</span>
-        </div>
-        <div v-else-if="ninjaInfo" :class="$style.value">
-          <ninja-line :chaos="ninjaInfo.chaos" :divine="divine" :url="ninjaInfo.url" />
-        </div>
-      </div>
-      <div :class="$style.side">
-        <button v-if="ranges.length" type="button" :class="[$style.sparkBtn, { [$style.on]: historyOpen }]" title="Price history" @click="historyOpen = !historyOpen">
-          <w-spark :values="sparkValues" :width="46" :height="16" />
-        </button>
-      </div>
-    </div>
-    <template v-else>
-      <div :class="$style.hero">
-        <div :class="$style.main">
+        <template v-if="!insight.range">
+          <div :class="$style.eyebrow">
+            <span :class="$style.badge">{{ loading ? '…' : (headline ? 'NO LISTINGS' : 'NO DATA') }}</span>
+            <span>{{ loading ? 'Reading listings…' : (headline ? 'Other sources say' : '') }}</span>
+          </div>
+          <div v-if="!loading && headline" :class="$style.value" :title="blendTitle">
+            <w-price :class="[$style.headline, $style.headlinePrice]" :chaos="headline.chaos" :divine="divine" />
+          </div>
+          <div v-else-if="ninjaInfo" :class="$style.value">
+            <ninja-line :chaos="ninjaInfo.chaos" :divine="divine" :url="ninjaInfo.url" />
+          </div>
+        </template>
+        <template v-else>
           <div :class="$style.eyebrow">
             <span :class="$style.badge" :title="CONFIDENCE_HINT[insight.confidence]">{{ CONFIDENCE_LABEL[insight.confidence] }}</span>
             <span class="whitespace-nowrap" :title="blendTitle">{{ lowValue ? `Under ${LOW_VALUE}c` : 'Likely sells for' }}</span>
+            <span v-if="insight.risk !== 'none'" :class="[$style.risk, $style['risk-' + insight.risk]]" :title="riskTitle"
+              @click="verdictExpanded = true">⚑ {{ RISK_LABEL[insight.risk] }}</span>
           </div>
           <div :class="$style.value">
             <span v-if="lowValue" :class="$style.headline">Not worth listing</span>
             <w-price v-else :class="[$style.headline, $style.headlinePrice]" :chaos="headline?.chaos ?? insight.range.fair" :divine="divine" />
-            <span v-if="!expanded && !showStrip" :class="$style.range" class="whitespace-nowrap">
-              <w-price :chaos="insight.range.low" :divine="divine" :unit="rangeUnit" /> – <w-price :chaos="insight.range.high" :divine="divine" :unit="rangeUnit" />
+          </div>
+        </template>
+      </div>
+      <div :class="$style.side">
+        <div :class="$style.sideRow">
+          <button v-if="ranges.length" type="button" :class="[$style.sparkBtn, { [$style.on]: historyOpen }]"
+            :title="historyOpen ? 'Hide price history' : 'Show price history'" @click="historyOpen = !historyOpen">
+            <w-spark :values="sparkValues" :width="60" :height="18" />
+            <span class="w-num">
+              <span :class="$style.sparkSource">{{ SPARK_LABEL[ranges[0]] }}</span>
+              <span v-if="sparkChange != null" class="ml-1" :class="sparkChange >= 0 ? 'w-up' : 'w-down'">{{ sparkChange >= 0 ? '+' : '' }}{{ Math.round(sparkChange * 100) }}%</span>
             </span>
-          </div>
+          </button>
+          <button type="button" class="w-icon-btn" :title="expanded ? 'Show less' : 'Show sources, listing notes and what drives the price'"
+            @click="verdictExpanded = !verdictExpanded">
+            <i class="fas text-xs" :class="expanded ? 'fa-chevron-up' : 'fa-chevron-down'" />
+          </button>
         </div>
-        <div :class="$style.side">
-          <div :class="$style.sideRow">
-            <button v-if="ranges.length" type="button" :class="[$style.sparkBtn, { [$style.on]: historyOpen }]"
-              :title="historyOpen ? 'Hide price history' : 'Show price history'" @click="historyOpen = !historyOpen">
-              <w-spark :values="sparkValues" :width="46" :height="16" />
-              <span v-if="sparkChange != null && !historyOpen" class="text-xs w-num" :class="sparkChange >= 0 ? 'w-up' : 'w-down'">{{ sparkChange >= 0 ? '+' : '' }}{{ Math.round(sparkChange * 100) }}%</span>
-            </button>
-            <button type="button" class="w-icon-btn" :title="expanded ? 'Show less' : 'Show sources, listing notes and what drives the price'"
-              @click="verdictExpanded = !verdictExpanded">
-              <i class="fas text-xs" :class="expanded ? 'fa-chevron-up' : 'fa-chevron-down'" />
-            </button>
-          </div>
-          <span v-if="insight.risk !== 'none'" :class="[$style.risk, $style['risk-' + insight.risk]]" :title="riskTitle"
-            @click="verdictExpanded = true">⚑ {{ RISK_LABEL[insight.risk] }}</span>
-          <span v-else-if="!expanded" :class="$style.count" :title="droppedTitle">{{ countText }}</span>
-        </div>
+        <span v-if="insight.range" :class="$style.count" :title="droppedTitle">{{ countText }}</span>
       </div>
-      <price-strip v-if="showStrip" :insight="insight" :blend="blend" :fair="headline?.chaos ?? null" :divine="divine" />
-      <div v-if="showStrip && blend.points.length > 1" :class="$style.row" class="text-xs">
-        <span :class="[$style.agree, $style['agree-' + blend.agreement]]" :title="blendTitle">{{ AGREEMENT_LABEL[blend.agreement] }}</span>
-        <span v-if="headline?.from === 'blend'" class="w-faint">headline blends them, listings count most</span>
-        <span v-if="blend.ninjaSuspect" class="w-warn">poe.ninja looks faked here, not counted</span>
+    </div>
+
+    <p v-if="!insight.range && !loading" :class="$style.note">{{ emptyText }}</p>
+
+    <template v-if="insight.range">
+      <price-rail v-if="!lowValue" :input="railInput" :divine="divine" />
+      <div v-else :class="$style.note" class="w-num">
+        Cheapest <w-price :chaos="insight.range.low" :divine="divine" :unit="rangeUnit" />, top of range <w-price :chaos="insight.range.high" :divine="divine" :unit="rangeUnit" />
       </div>
-      <div v-if="expanded && insight.signals.length" :class="$style.signals">
-        <div v-for="s in insight.signals" :key="s.kind" class="text-xs"><span :class="$style.flag">⚑</span> {{ s.text }}</div>
+      <div v-if="showSignals" :class="$style.signals">
+        <div v-for="s in insight.signals" :key="s.kind" :class="$style.signal"><span :class="$style.flag">⚑</span> {{ s.text }}</div>
       </div>
-      <div v-if="expanded" :class="$style.row" class="text-xs">
-        <span class="w-dim">Range</span>
-        <w-price :chaos="insight.range.low" :divine="divine" :unit="rangeUnit" />
-        <span class="w-faint">–</span>
-        <w-price :chaos="insight.range.high" :divine="divine" :unit="rangeUnit" />
-        <span class="w-dim whitespace-nowrap" :title="droppedTitle">· {{ countText }}</span>
-        <span class="flex-1" />
-        <ninja-line v-if="ninjaInfo" :chaos="ninjaInfo.chaos" :divine="divine" :url="ninjaInfo.url" :fair="insight.range.fair" />
-      </div>
-      <div v-if="expanded && !lowValue && notes.length" :class="$style.row">
-        <button v-for="n in notes" :key="n.key" type="button" :class="$style.note"
+      <div v-if="!lowValue && notes.length" :class="$style.actions">
+        <button v-for="n in notes" :key="n.key" type="button" :class="$style.note2"
           :title="'Copy the listing note: ' + n.text" @click="copy(n)">
           <span class="w-dim">{{ n.label }}</span>
           <span class="w-num">{{ copied === n.key ? 'Copied' : n.text }}</span>
         </button>
       </div>
     </template>
+
     <price-history-chart v-if="historyOpen && ranges.length" :ranges="ranges" :series="series" :divine="divine"
-      :loading="leagueLoading" @range="onRange" />
+      :from-ninja="Boolean(ninjaInfo)" :loading="leagueLoading" @range="onRange" />
+
+    <div v-if="expanded && blend.points.length" :class="$style.sources">
+      <div v-if="blend.points.length > 1" :class="$style.agree">{{ AGREEMENT_SENTENCE[blend.agreement] }}<template v-if="headline?.from === 'blend'">. The headline blends them, listings count most</template></div>
+      <div v-for="p in blend.points" :key="p.key" :class="[$style.source, { [$style.off]: p.weight === 0 }]" :title="p.note">
+        <span :class="{ [$style.ninjaName]: p.key === 'ninja' }">{{ p.label }}</span>
+        <span class="w-num" :class="$style.sourceNote" :title="p.key === 'ninja' && ninjaGapText ? 'Listings disagree with poe.ninja, which averages recent prices. Trust the listings for rolls and corruption, poe.ninja for the going rate.' : undefined">{{ p.weight === 0 ? 'not counted' : (p.key === 'ninja' ? ninjaGapText : '') }}</span>
+        <span class="w-num" :class="$style.sourcePrice">
+          <w-price :chaos="p.low" :divine="divine" /><template v-if="p.high > p.low">–<w-price :chaos="p.high" :divine="divine" /></template>
+        </span>
+      </div>
+      <a v-if="ninjaInfo" :class="$style.ninjaLink" :href="ninjaInfo.url" target="_blank">Open on poe.ninja ↗</a>
+    </div>
     <label v-if="expanded && canAsk" :class="$style.ppToggle">
       <input type="checkbox" v-model="usePoeprices">
       <span>Ask poeprices.info about rares</span>
@@ -94,11 +93,11 @@ import { ParsedItem } from '@/parser'
 import { WPrice, WSpark } from '../ui'
 import { useCopy } from '../ui/copy'
 import NinjaLine from './NinjaLine.vue'
-import PriceStrip from './PriceStrip.vue'
+import PriceRail from './PriceRail.vue'
 import PriceHistoryChart from './PriceHistoryChart.vue'
 import { verdictExpanded, historyOpen } from './view'
 import { DROP_LABEL, DropReason, Insight, Confidence, FixRisk, notePrice, noteText } from './insight'
-import { AGREEMENT_LABEL } from './sources'
+import type { Agreement } from './sources'
 import { seriesChange, HistoryRange } from './history'
 import { useSmartPrice } from './useSmartPrice'
 import { canAskPoeprices, poepricesState, usePoeprices, loadPoeprices } from './check-state'
@@ -133,8 +132,39 @@ const { ninjaInfo, blend, headline, ranges, series, leagueLoading } = smart
 
 const lowValue = computed(() => (headline.value?.chaos ?? props.insight.range?.fair ?? 0) < LOW_VALUE)
 
-// The strip shows when expanded, and on its own when the cheap end looks faked.
-const showStrip = computed(() => expanded.value || props.insight.risk === 'medium' || props.insight.risk === 'high')
+const railInput = computed(() => ({
+  low: props.insight.range?.low ?? 0,
+  likely: headline.value?.chaos ?? props.insight.range?.fair ?? 0,
+  high: props.insight.range?.high ?? 0,
+  ninja: ninjaInfo.value?.chaos,
+  ninjaSuspect: blend.value.ninjaSuspect
+}))
+
+// Warnings stay out of the way unless they change what the price means.
+const showSignals = computed(() => props.insight.signals.length > 0 && (
+  expanded.value || props.insight.risk === 'medium' || props.insight.risk === 'high' ||
+  props.insight.signals.some(s => s.kind === 'old')
+))
+
+const SPARK_LABEL: Record<HistoryRange, string> = { week: 'poe.ninja 7d', league: 'poe.ninja', mine: 'My checks' }
+
+// Only worth mentioning when listings and poe.ninja are a quarter or more apart.
+const ninjaGapText = computed(() => {
+  const fair = props.insight.range?.fair
+  const ninja = ninjaInfo.value?.chaos
+  if (!fair || !ninja) return ''
+  const ratio = fair / ninja - 1
+  if (Math.abs(ratio) < 0.25) return ''
+  const pct = Math.round(ratio * 100)
+  return `listings ${pct > 0 ? '+' : ''}${pct}%`
+})
+
+const AGREEMENT_SENTENCE: Record<Agreement, string> = {
+  single: 'One source',
+  agree: 'Sources agree',
+  mixed: 'Sources differ a bit',
+  disagree: 'Sources disagree'
+}
 
 const sparkSeries = computed(() => ranges.value.length ? series(ranges.value[0]) : [])
 const sparkValues = computed(() => sparkSeries.value.map(p => p.chaos))
@@ -195,7 +225,9 @@ const notes = computed(() => {
   const s = props.insight.suggest
   if (!s) return []
   const fast = noteText(notePrice(s.fast, props.divine))
-  const patient = noteText(notePrice(s.patient, props.divine))
+  // Listings nobody has bought say little: being patient means asking the blended price.
+  const oldOnly = props.insight.signals.some(sig => sig.kind === 'old')
+  const patient = noteText(notePrice(oldOnly ? Math.max(headline.value?.chaos ?? s.patient, s.patient) : s.patient, props.divine))
   if (fast === patient) return [{ key: 'fast', label: 'List', text: fast }]
   return [
     { key: 'fast', label: 'Sell fast', text: fast },
@@ -211,99 +243,106 @@ async function copy (n: { key: string, text: string }) {
 
 <style module>
 .card {
-  position: relative;
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: 7px 8px 7px 11px;
-  margin: 0 0 8px;
-  border-radius: var(--w-r-md);
-  border: 1px solid var(--w-line);
-  background: var(--w-panel);
+  gap: 8px;
+  /* Runs edge to edge: the answer gets its own band across the window. */
+  margin: 0 -1rem 8px;
+  padding: 10px 1rem;
+  border-top: 1px solid var(--w-line-soft);
+  border-bottom: 1px solid var(--w-line);
+  background: var(--w-pc-well, var(--w-panel-solid));
   color: var(--w-fg);
   font-family: var(--w-body);
   font-size: var(--w-text);
-  overflow: hidden;
+  font-variant-numeric: tabular-nums;
 }
-/* The confidence reads from the edge of the card, at a glance. */
-.card::before {
-  content: '';
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: 3px;
-  background: var(--w-panel-3);
-}
-.high::before { background: var(--w-up); }
-.medium::before { background: var(--w-accent); }
-.low::before { background: var(--w-warn); }
-.low { border-color: color-mix(in srgb, var(--w-warn) 45%, transparent); }
-
-.hero { display: flex; align-items: center; gap: 10px; min-width: 0; }
-.main { display: flex; flex-direction: column; gap: 1px; flex: 1 1 auto; min-width: 0; }
-.side { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; flex: none; }
+.hero { display: flex; align-items: flex-start; gap: 12px; min-width: 0; }
+.main { display: flex; flex-direction: column; gap: 2px; flex: 1 1 auto; min-width: 0; }
+.side { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex: none; }
 .sideRow { display: flex; align-items: center; gap: 2px; }
-.eyebrow { display: flex; align-items: center; gap: 6px; min-width: 0; color: var(--w-dim); font-size: var(--w-fs-sm); line-height: 16px; }
-.value { display: flex; align-items: center; gap: 8px; min-width: 0; overflow: hidden; line-height: 24px; }
-.range { display: inline-flex; align-items: center; gap: 3px; color: var(--w-dim); font-size: var(--w-fs-sm); }
-.count { color: var(--w-faint); font-size: var(--w-fs-xs); white-space: nowrap; padding-right: 4px; }
-.row { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.eyebrow { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; min-width: 0; color: var(--w-dim); font-size: 12px; line-height: 16px; }
+.value { display: flex; align-items: center; gap: 8px; min-width: 0; overflow: hidden; }
+.count { color: var(--w-dim); font-size: var(--w-fs-xs); white-space: nowrap; padding-right: 2px; }
+.note { margin: 0; color: var(--w-dim); font-size: 12px; line-height: 17px; }
 .badge {
   flex: none;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
+  font-size: var(--w-fs-xs);
+  font-weight: 600;
+  letter-spacing: .05em;
   line-height: 14px;
   padding: 0 5px;
   border-radius: 3px;
-  background: var(--w-panel-3);
+  border: 1px solid var(--w-line);
   color: var(--w-dim);
 }
-.high .badge { background: color-mix(in srgb, var(--w-up) 18%, transparent); color: var(--w-up); }
-.medium .badge { background: var(--w-accent-soft); color: var(--w-accent); }
-.low .badge { background: color-mix(in srgb, var(--w-warn) 18%, transparent); color: var(--w-warn); }
+.high .badge { color: var(--w-up); border-color: currentColor; }
+.medium .badge { color: var(--w-accent); border-color: currentColor; }
+.low .badge { color: var(--w-warn); border-color: currentColor; }
 .headline {
   font-family: var(--w-head);
-  font-size: 20px;
-  font-weight: 400;
-  letter-spacing: var(--w-head-track);
+  font-size: 22px;
+  line-height: 32px;
   color: var(--w-accent);
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 /* Fontin's old-style digits dip and rise: a price wants even figures. */
-.headlinePrice { font-family: var(--w-num); font-size: var(--w-fs-xl); font-weight: 600; letter-spacing: 0; }
+.headlinePrice { font-family: var(--w-num); font-size: 28px; font-weight: 600; letter-spacing: 0; }
+.headlinePrice img { width: 24px; height: 24px; }
 .risk {
   flex: none;
   font-size: var(--w-fs-xs);
   padding: 0 6px;
-  border-radius: var(--w-r-pill);
-  border: 1px solid var(--w-line);
-  white-space: nowrap;
-  cursor: default;
-}
-.risk-low { color: var(--w-dim); }
-.risk-medium { color: var(--w-warn); border-color: color-mix(in srgb, var(--w-warn) 55%, transparent); }
-.risk-high { color: var(--w-down); border-color: color-mix(in srgb, var(--w-down) 55%, transparent); }
-.sparkBtn {
-  display: inline-flex; align-items: center; gap: 4px; flex: none;
-  padding: 1px 4px; border-radius: var(--w-r-sm); border: 1px solid transparent;
-}
-.sparkBtn:hover, .sparkBtn.on { border-color: var(--w-line-strong); background: var(--w-panel-2); }
-.agree { padding: 0 6px; border-radius: var(--w-r-pill); border: 1px solid var(--w-line); color: var(--w-dim); white-space: nowrap; }
-.agree-agree { color: var(--w-up); border-color: color-mix(in srgb, var(--w-up) 55%, transparent); }
-.agree-mixed { color: var(--w-accent); }
-.agree-disagree { color: var(--w-warn); border-color: color-mix(in srgb, var(--w-warn) 55%, transparent); }
-.signals { display: flex; flex-direction: column; gap: 1px; color: var(--w-dim); }
-.flag { color: var(--w-warn); }
-.note {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 2px 8px;
   border-radius: var(--w-r-sm);
   border: 1px solid var(--w-line);
-  background: var(--w-panel-2);
-  font-size: var(--w-fs-md);
+  white-space: nowrap;
+  cursor: pointer;
 }
-.note:hover { border-color: var(--w-line-strong); background: var(--w-accent-soft); }
-.ppToggle { display: flex; align-items: center; gap: 6px; font-size: var(--w-fs-sm); color: var(--w-dim); }
+.risk-low { color: var(--w-dim); }
+.risk-medium { color: var(--w-warn); border-color: currentColor; }
+.risk-high { color: var(--w-down); border-color: currentColor; }
+.sparkBtn {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+  flex: none;
+  padding: 3px 6px;
+  border-radius: var(--w-r-sm);
+  border: 1px solid var(--w-line-soft);
+  font-size: var(--w-fs-xs);
+  line-height: 14px;
+}
+.sparkBtn:hover, .sparkBtn.on { border-color: var(--w-line-strong); background: var(--w-panel-3); }
+.sparkSource { color: var(--w-dim); }
+.signals { display: flex; flex-direction: column; gap: 2px; color: var(--w-dim); }
+.signal { font-size: 12px; line-height: 17px; }
+.flag { color: var(--w-down); }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.note2 {
+  flex: 1 1 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 3px 8px;
+  border-radius: var(--w-r-sm);
+  border: 1px solid var(--w-line);
+  background: var(--w-panel-3);
+  font-size: 12px;
+  white-space: nowrap;
+}
+.note2:hover { border-color: var(--w-accent); }
+.sources { display: flex; flex-direction: column; gap: 2px; padding-top: 6px; border-top: 1px solid var(--w-line-soft); font-size: 12px; color: var(--w-dim); }
+.agree { color: var(--w-dim); margin-bottom: 2px; }
+.source { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 12px; align-items: center; }
+.source.off { opacity: .6; }
+.sourceNote { color: var(--w-faint); }
+.sourcePrice { display: inline-flex; align-items: center; gap: 2px; color: var(--w-fg); font-weight: 600; }
+.ninjaName { color: var(--w-ninja); }
+.ninjaLink { color: var(--w-ninja); justify-self: start; }
+.ninjaLink:hover { text-decoration: underline; }
+.ppToggle { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--w-dim); }
 </style>

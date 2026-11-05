@@ -145,8 +145,8 @@ describe('rowTitle', () => {
   })
 
   it('explains a group, a stale row and an ignored row', () => {
-    const a = listing({ hoursAgo: 24 * 9, accountName: 'x' })
-    const b = listing({ hoursAgo: 24 * 8, accountName: 'x' })
+    const a = listing({ hoursAgo: 24 * 9, accountName: 'x', hasFee: false })
+    const b = listing({ hoursAgo: 24 * 8, accountName: 'x', hasFee: false })
     const [row] = groupListings([a, b], { now: NOW, merge: true, dropped: new Map<string, DropReason>([[a.id, 'stale'], [b.id, 'stale']]) })
     const title = rowTitle(row)!
     expect(title).toContain('Ignored by the verdict')

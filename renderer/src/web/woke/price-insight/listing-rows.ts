@@ -112,6 +112,10 @@ export function rowTitle<T extends RowListing> (row: ListingRow<T>): string | un
   if (row.count > 1) {
     lines.push(`${row.count} listings from ${row.sellers} ${row.sellers === 1 ? 'seller' : 'sellers'}`)
   }
-  if (row.band === 'stale') lines.push('Every listing here is over a week old, so it may be gone')
+  if (row.band === 'stale') {
+    lines.push(row.lead.hasFee
+      ? 'Instant buyout, unsold for over a week'
+      : 'Every listing here is over a week old, so it may be gone')
+  }
   return lines.length ? lines.join('\n') : undefined
 }

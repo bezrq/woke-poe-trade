@@ -5,7 +5,7 @@ import { ITEMS_ITERATOR } from '@/assets/data'
 import type { BaseType } from '@/assets/data'
 import { usePoeninja } from '@/web/background/Prices'
 import { usePriceIndex } from '../market/price-index'
-import { priceLookup } from './economy'
+import { priceBreakdown, priceLookup } from './economy'
 import type { PriceLookup, UniqueRule } from './economy'
 
 let uniqueBases: Map<string, string[]> | null = null
@@ -31,11 +31,12 @@ export function useFilterPrices (rule: () => UniqueRule) {
     if (!snap?.items.length) return null
     return priceLookup(snap.items, uniquesOnBase, rule())
   })
+  const breakdown = computed(() => priceBreakdown(index.snapshot.value?.items ?? [], uniquesOnBase))
   const updatedAt = computed(() => index.snapshot.value?.ts ?? null)
   const league = computed(() => index.snapshot.value?.league ?? null)
   // poe.ninja is only downloaded while something wants prices.
   function wantPrices () {
     try { ninja.queuePricesFetch() } catch {}
   }
-  return { lookup, updatedAt, league, wantPrices }
+  return { lookup, breakdown, updatedAt, league, wantPrices }
 }

@@ -50,13 +50,6 @@ const MINE_HALF_LIFE_DAYS = 7
 const MINE_MAX_DAYS = 14
 const DAY_MS = 24 * 60 * 60 * 1000
 
-export const AGREEMENT_LABEL: Record<Agreement, string> = {
-  single: 'one source',
-  agree: 'sources agree',
-  mixed: 'sources differ a bit',
-  disagree: 'sources disagree'
-}
-
 function ageText (ms: number): string {
   const h = ms / 3600_000
   if (h < 1) return 'just now'
@@ -154,21 +147,6 @@ export function buildBlend (input: BlendInput): Blend {
 }
 
 /**
- * Positions for the price strip: a log scale across every listing and source,
- * padded a little so end dots are not cut off. Returns 0..1 for a chaos value.
- */
-export function stripScale (values: number[]): ((chaos: number) => number) | null {
-  const v = values.filter(n => n > 0 && Number.isFinite(n))
-  if (!v.length) return null
-  let lo = Math.log(Math.min(...v))
-  let hi = Math.log(Math.max(...v))
-  if (hi - lo < 0.2) { lo -= 0.1; hi += 0.1 }
-  const pad = (hi - lo) * 0.04
-  lo -= pad; hi += pad
-  return (chaos: number) => Math.min(Math.max((Math.log(Math.max(chaos, 1e-6)) - lo) / (hi - lo), 0), 1)
-}
-
-/**
  * The price to headline. Plenty of agreeing listings already say what this
  * exact search sells for, and other sources can't see its rolls, so they only
  * move the headline when listings are thin or missing.
@@ -176,6 +154,8 @@ export function stripScale (values: number[]): ((chaos: number) => number) | nul
 export function headlinePrice (blend: Blend, insight: Insight): { chaos: number, from: 'listings' | 'blend' } | null {
   if (insight.range && insight.confidence === 'high') return { chaos: insight.range.fair, from: 'listings' }
   if (blend.fair != null) {
+    // Nobody pays more than an instant buyout that's sitting there, whatever other sources say.
+    if (insight.ceiling != null && blend.fair > insight.ceiling) return { chaos: insight.ceiling, from: 'listings' }
     const onlyListings = blend.points.filter(p => p.weight > 0).every(p => p.key === 'listings')
     return { chaos: blend.fair, from: onlyListings ? 'listings' : 'blend' }
   }

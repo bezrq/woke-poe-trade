@@ -149,7 +149,7 @@
     <!-- Rendered below, kept alive so Back returns to the same pile. -->
     <template v-else-if="tab === 'preview'" />
     <PresetsTab v-else-if="tab === 'presets'" :store="store" :config="config" />
-    <PricesTab v-else-if="tab === 'prices'" :store="store" :config="config" :anchor="panel?.el" />
+    <PricesTab v-else-if="tab === 'prices'" :store="store" :config="config" :anchor="panel?.el" @open-rule="r => jumpTo(r.type, r.tier, r.base)" />
     <NeverSinkTab v-else-if="tab === 'neversink'" :store="store" :config="config" :anchor="panel?.el" />
 
     <!-- build rules -->
@@ -184,7 +184,12 @@
           <WButton v-if="p.block.type && p.block.tier" size="sm" variant="ghost" @click="jumpTo(p.block.type!, p.block.tier!)">Open rule</WButton>
         </div>
       </div>
-      <WEmpty v-if="!config.edits.length" icon="fas fa-pen">No changes yet. Sample an item with <WKbd v-if="config.sampleHotkey" :keys="config.sampleHotkey" /> or edit a tier here.</WEmpty>
+      <div v-if="activePriceMoves" :class="$style.changeRow">
+        <i class="fas fa-chart-line w-dim" />
+        <span class="grow min-w-0">{{ activePriceMoves }} item{{ activePriceMoves === 1 ? '' : 's' }} moved by prices</span>
+        <WButton size="sm" variant="ghost" @click="tab = 'prices'">See them</WButton>
+      </div>
+      <WEmpty v-if="!config.edits.length && !activePriceMoves" icon="fas fa-pen">No changes yet. Sample an item with <WKbd v-if="config.sampleHotkey" :keys="config.sampleHotkey" /> or edit a tier here.</WEmpty>
       <div v-for="s in store.statuses.value" :key="s.edit.id" :class="[$style.changeRow, { [$style.failed]: !s.ok }]">
         <i :class="iconFor(s.edit.kind)" class="w-dim" />
         <span class="grow min-w-0">
@@ -284,9 +289,11 @@ const props = defineProps<{
   config: LootFilterWidget
   // Group/tier to show first (from the sample card).
   focus?: { type: string, tier: string } | null
+  // A tab to show (from the dock card). A new object each time.
+  openTab?: { tab: 'prices' | 'neversink' | 'changes' } | null
 }>()
 
-const emit = defineEmits<{ (e: 'close'): void }>()
+const emit = defineEmits<{ (e: 'close' | 'tab-opened'): void }>()
 
 const tab = ref<'rules' | 'preview' | 'presets' | 'prices' | 'neversink' | 'build' | 'changes'>('rules')
 const search = ref('')
@@ -308,6 +315,9 @@ const results = computed(() => props.store.doc.value ? findBase(props.store.doc.
 const targets = computed(() => props.store.doc.value && selType.value ? moveTargets(props.store.doc.value, selType.value) : [])
 const outName = computed(() => props.config.sourceName ? outputName(props.config) : '—')
 
+// Stored moves only count while re-tiering is on: otherwise they aren't applied.
+const activePriceMoves = computed(() => props.config.priceTiers.on ? props.config.priceTiers.moves.length : 0)
+
 const tabOptions = computed(() => [
   { value: 'rules', label: 'Rules' },
   { value: 'preview', label: 'Preview' },
@@ -315,7 +325,8 @@ const tabOptions = computed(() => [
   { value: 'prices', label: 'Prices', count: props.store.plan.value?.moves.length || undefined },
   { value: 'neversink', label: props.config.neversink.on ? `NeverSink · ${LEVEL_NAMES[props.config.neversink.level]}` : 'NeverSink', count: props.store.updateReady.value ? 1 : undefined },
   { value: 'build', label: 'Build', count: props.store.buildBlockCount.value || undefined },
-  { value: 'changes', label: 'Changes', count: props.config.edits.length }
+  // Price moves are changes to your filter too.
+  { value: 'changes', label: 'Changes', count: props.config.edits.length + activePriceMoves.value }
 ])
 
 // ---- build rules ----
@@ -474,6 +485,13 @@ function goTo (type: string, t: string, base?: string) {
 
 watch(() => props.focus, (f) => {
   if (f) goTo(f.type, f.tier)
+}, { immediate: true })
+
+watch(() => props.openTab, (t) => {
+  if (!t) return
+  tab.value = t.tab
+  // Once: the editor is rebuilt each time it opens, and must not come back here.
+  emit('tab-opened')
 }, { immediate: true })
 
 // Default selection once the filter loads.
