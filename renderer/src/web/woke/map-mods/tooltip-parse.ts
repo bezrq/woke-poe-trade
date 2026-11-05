@@ -100,6 +100,13 @@ function keyWords (norm: string): string[] {
   return norm.split(' ').map(w => w.replace(/[#%']/g, '')).filter(w => w.length >= 4 && !COMMON.has(w))
 }
 
+// A line with fixed numbers ("at 50% value") is a different mod from one with
+// others ("at 25% value"), though the two normalise alike.
+function sameFixedNumbers (matcherLine: string, line: string): boolean {
+  const fixed = matcherLine.match(/\d+/g)
+  return !fixed || fixed.join(' ') === (line.match(/\d+/g) ?? []).join(' ')
+}
+
 export class TooltipMatcher {
   // Known mods by the less common words in them, so a line is compared with
   // the few dozen mods sharing a word with it instead of all ~500.
@@ -108,7 +115,7 @@ export class TooltipMatcher {
   private readonly plain: Known[] = []
   // Mods that show on several tooltip lines, each line normalised. OCR reads
   // them one line at a time, so they're matched against runs of lines.
-  private readonly multi: Array<{ matcher: string, lines: string[] }> = []
+  private readonly multi: Array<{ matcher: string, raw: string[], lines: string[] }> = []
   // Mods the user rated: always compared, whatever words OCR got wrong.
   private always: Known[] = []
   private alwaysKey = ''
@@ -118,7 +125,7 @@ export class TooltipMatcher {
   constructor (matchers: string[]) {
     for (const m of matchers) {
       const k = { matcher: m, norm: normalize(m) }
-      if (m.includes('\n')) this.multi.push({ matcher: m, lines: m.split('\n').map(normalize) })
+      if (m.includes('\n')) this.multi.push({ matcher: m, raw: m.split('\n'), lines: m.split('\n').map(normalize) })
       const words = keyWords(k.norm)
       if (!words.length) this.plain.push(k)
       for (const w of new Set(words)) {
@@ -187,8 +194,10 @@ export class TooltipMatcher {
     const norms = lines.map(normalize)
     for (const m of this.multi) {
       for (let i = 0; i + m.lines.length <= norms.length; i++) {
-        if (!m.lines.every((l, j) => similarity(norms[i + j], l) >= SURE_SIMILARITY)) continue
-        const num = /(-?\d+)/.exec(lines.slice(i, i + m.lines.length).join(' '))
+        if (!m.lines.every((l, j) => similarity(norms[i + j], l) >= SURE_SIMILARITY && sameFixedNumbers(m.raw[j], lines[i + j]))) continue
+        // The roll is the number standing in for a '#', not a fixed one.
+        const rolled = m.raw.findIndex(r => r.includes('#'))
+        const num = rolled >= 0 ? /(-?\d+)/.exec(lines[i + rolled]) : null
         mods.push({ matcher: m.matcher, roll: num ? Number(num[1]) : undefined })
         for (let j = 0; j < m.lines.length; j++) used.add(i + j)
         break

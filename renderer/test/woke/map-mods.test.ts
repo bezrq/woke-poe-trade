@@ -226,6 +226,17 @@ describe('map scan: mods on several tooltip lines', () => {
     expect(scanned.mods.map(m => m.matcher)).toContain(TWO_LINE.split('\n')[0])
   })
 
+  it('tells apart mods that differ only in a fixed number', () => {
+    const read = (value: number) => new TooltipMatcher(allAreaMods()).parse([
+      'Area is infested with Fungal Growths',
+      `Map's Item Quantity Modifiers also affect Blight Chest count at ${value}% value`,
+      'Can be Anointed up to 3 times'
+    ])!.mods.filter(m => m.matcher.includes('\n'))
+    expect(read(50).map(m => m.matcher)).toEqual([expect.stringContaining('at 50% value')])
+    expect(read(50)[0].roll).toBe(3)
+    expect(read(25).map(m => m.matcher)).toEqual([expect.stringContaining('at 25% value')])
+  })
+
   it('needs every line of the mod', () => {
     const scanned = new TooltipMatcher(allAreaMods()).parse(['Map Tier: 16', TWO_LINE.split('\n')[0]])!
     expect(scanned.mods.map(m => m.matcher)).not.toContain(TWO_LINE)
