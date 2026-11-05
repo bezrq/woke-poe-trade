@@ -93,7 +93,7 @@
     <template #footer>
       <div class="flex items-center gap-2 w-full">
         <span class="text-xs grow" :class="store.error.value ? '' : 'w-dim'" :style="store.error.value ? 'color: var(--w-down)' : ''">
-          {{ store.error.value ?? (store.dirty.value ? 'Unsaved changes' : (store.pendingReload.value ? 'Saved, reloads in town or hideout' : (store.lastSaved.value ? 'Saved' : ''))) }}
+          {{ store.error.value ?? (store.dirty.value ? 'Unsaved changes' : (store.pendingReload.value ? 'Saved, press Reload now to use it' : (store.lastSaved.value ? 'Saved' : ''))) }}
         </span>
         <WButton size="sm" variant="ghost" @click="emit('open-editor')">Open editor</WButton>
         <WButton v-if="config.reloadViaChat && store.outputSaved.value" size="sm" variant="ghost" title="Type /itemfilter in chat now to reload the saved filter" @click="store.reloadInGame(true)">Reload now</WButton>
@@ -232,7 +232,7 @@ function removeOwnRule () {
 
 function afterFix (text: string, undo: () => void) {
   toast(text, { undo: () => { undo(); props.store.save() } })
-  // Saved now; the game reloads it when you're next in town or hideout.
+  // Saved now; outside town or hideout it waits for you to press Reload now.
   props.store.save()
 }
 

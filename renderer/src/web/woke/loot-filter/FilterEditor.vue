@@ -283,7 +283,7 @@
             Saves to <span class="w-num">{{ outName }}</span>
             <span v-if="config.sourceOnline" style="color: var(--w-warn);" title="Edits can't be written into an online filter, so they go into a local copy. Pick that copy in game. When the online filter updates, reopen the editor and save again."> (local copy: won't auto-update)</span>
             <template v-if="store.dirty.value"> · unsaved changes</template><template v-else-if="store.lastSaved.value"> · saved</template>
-            <template v-if="store.pendingReload.value"> · reloads when you're next in town or hideout</template>
+            <template v-if="store.pendingReload.value"> · press Reload now to use it</template>
           </template>
         </span>
         <WButton size="sm" variant="ghost" icon="fas fa-folder-open" @click="openFolder">Folder</WButton>
