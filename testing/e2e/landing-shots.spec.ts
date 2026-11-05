@@ -332,20 +332,6 @@ for (const [tab, name, ready] of [
   })
 }
 
-// Needs poelab.com (the layout pages), so run it with a network.
-test('tour: the labyrinth layout for today', async ({ overlay }) => {
-  await bootWithRail(overlay, [], true)
-  await closeRail(overlay, 'Labyrinth')
-  await showGame(overlay, 'screens/essence-real-17.png', 'screenshot-0017.jpg')
-  const icon = overlay.widget('menu').getByRole('button', { name: 'Labyrinth', exact: true })
-  if (!/open/.test(await icon.getAttribute('class') ?? '')) await icon.click()
-  const panel = overlay.widget('woke-lab')
-  await panel.getByText('Uber', { exact: true }).first().click()
-  await expect(panel.locator('img').first()).toBeVisible({ timeout: 30_000 })
-  await overlay.page.mouse.move(1800, 1000)
-  await save(overlay, 'tour-lab', { x: 0, y: 0 })
-})
-
 test('tour: boss runs, every boss priced by its drops', async ({ overlay }) => {
   await withDemoPrices(overlay)
   await bootWithRail(overlay, [{ wmType: 'woke-boss-runs', wmWants: 'show', anchor: { pos: 'tl', x: 4, y: 12 } }], true)
