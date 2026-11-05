@@ -1,7 +1,7 @@
 ---
 id: WOKEPOET-22
 title: Let the price check window be moved and resized
-status: Ready
+status: Done
 priority: Medium
 effort: M
 assignee: Agent
@@ -54,6 +54,19 @@ history:
     date: '2026-11-05T04:11:23.944Z'
     comment: Task worktree automatically reclaimed (ready-or-terminal-status)
     id: a-2026-11-05t04-11-23-944z
+  - type: comment
+    user: Agent
+    comment: >-
+      PR squash-merged for branch
+      `flux/WOKEPOET-22-let-the-price-check-window-be-moved-and-resized` —
+      advanced to Done.
+    date: '2026-11-05T04:24:52.594Z'
+    id: c-2026-11-05t04-24-52-594z
+  - type: status_change
+    from: Ready
+    to: Done
+    user: Agent
+    date: '2026-11-05T04:24:52.594Z'
 branch: flux/WOKEPOET-22-let-the-price-check-window-be-moved-and-resized
 baselineCommit: a4c85a758a73046c8f54268117154f06f5082670
 needsAction: null
