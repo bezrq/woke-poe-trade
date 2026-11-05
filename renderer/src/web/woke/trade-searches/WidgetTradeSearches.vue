@@ -8,7 +8,7 @@
         <div style="padding: 4px var(--w-pad) 6px;">
           <div class="w-dim text-xs">{{ unseen ? `${unseen} new since you last looked` : 'No new results since you last looked' }}<template v-if="total >= 0"> · {{ total }} on the page</template></div>
           <div v-for="(r, i) in latest" :key="i" class="flex justify-between gap-2">
-            <span class="w-trunc">{{ r.name || 'Item' }}</span><span class="w-num w-accent whitespace-nowrap">{{ r.price }}</span>
+            <span v-item-tip="itemRefFromText(r.name)" class="w-trunc">{{ r.name || 'Item' }}</span><span class="w-num w-accent whitespace-nowrap">{{ r.price }}</span>
           </div>
           <div class="w-faint text-xs mt-1">Ping {{ config.liveAlert ? 'on' : 'off' }} · open the overlay and click the icon to whisper</div>
         </div>
@@ -95,7 +95,7 @@ import { Host, MainProcess } from '@/web/background/IPC'
 import { AppConfig, pushHostConfig } from '@/web/Config'
 import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
-import { WPanel, WField, WChip, WKbd, WEmpty, WListItem, WButton, openMenu, toast } from '../ui'
+import { WPanel, WField, WChip, WKbd, WEmpty, WListItem, WButton, itemRefFromText, openMenu, toast, vItemTip } from '../ui'
 import { copyText } from '../ui/copy'
 import DockItem from '../dock/DockItem.vue'
 import type { DockMenuAction } from '../dock/dock'

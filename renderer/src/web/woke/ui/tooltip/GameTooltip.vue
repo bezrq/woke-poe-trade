@@ -65,7 +65,11 @@
           </div>
           <div v-if="moreUniques" class="w-faint">and {{ moreUniques }} more</div>
         </footer>
-        <footer v-if="lookup.market" :class="$style.strip">
+        <footer v-if="lookup.market?.range" :class="$style.strip">
+          <template v-if="lookup.market.range.low !== lookup.market.range.high"><WPrice :chaos="lookup.market.range.low" :divine="xchgRate ?? null" /> to </template><WPrice :chaos="lookup.market.range.high" :divine="xchgRate ?? null" />
+          <span class="w-dim" :class="$style.span">{{ lookup.market.range.count }} prices</span>
+        </footer>
+        <footer v-else-if="lookup.market" :class="$style.strip">
           <WPrice :chaos="lookup.market.chaos" :divine="xchgRate ?? null" />
           <span v-if="lookup.market.variant" class="w-dim">{{ lookup.market.variant }}</span>
           <WDelta :value="lookup.market.change" title="Change over 7 days" />

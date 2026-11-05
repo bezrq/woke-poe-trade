@@ -27,6 +27,8 @@ export interface TipMarket {
   // Over the 7 days of the graph, as a ratio: 0.12 is +12%.
   change: number | null
   graph: number[]
+  // A name with several prices: shown instead of the one price and its graph.
+  range?: { low: number, high: number, count: number }
 }
 
 // One unique a base can drop as, for a base in a filter's unique tiers.

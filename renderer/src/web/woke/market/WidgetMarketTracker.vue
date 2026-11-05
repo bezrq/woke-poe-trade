@@ -6,7 +6,7 @@
       <template #card>
         <div style="padding: 4px var(--w-pad) 6px;" class="flex flex-col gap-0.5">
           <div v-for="w in alerted" :key="key(w)" class="flex justify-between gap-2">
-            <span class="w-trunc">{{ w.name }}<span v-if="w.variant" class="w-dim"> {{ w.variant }}</span></span>
+            <span v-item-tip="w" class="w-trunc">{{ w.name }}<span v-if="w.variant" class="w-dim"> {{ w.variant }}</span></span>
             <span class="w-num whitespace-nowrap" :class="w.alertState === 'above' ? 'w-up' : 'w-down'">
               <WPrice :chaos="priceNow(w)" :divine="latest?.divine" /> {{ w.alertState === 'above' ? '≥' : '≤' }} {{ w.alertState === 'above' ? w.above : w.below }}c
             </span>
@@ -70,9 +70,9 @@
         <template v-else>
           <div class="w-row w-row--head" :class="$style.grid"><span /><span>Item</span><span>Then</span><span class="text-right">Now</span><span class="text-right">%</span></div>
           <template v-for="g in searchGroups" :key="groupKey(g)">
-            <div v-if="g.variants.length > 1" class="w-row" :class="$style.grid">
+            <div v-if="g.variants.length > 1" v-item-tip="groupTip(g)" class="w-row" :class="$style.grid">
               <span />
-              <span class="w-trunc inline-flex items-center gap-1.5" :class="rarityClass(g.type)" :title="g.type">
+              <span class="w-trunc inline-flex items-center gap-1.5" :class="rarityClass(g.type)">
                 <WIcon :src="ninjaIcon(g.type, g.name) ?? undefined" />{{ g.name }}</span>
             </div>
             <div v-for="v in g.variants" :key="key(v)" v-item-tip="v" class="w-row" :class="$style.grid" tabindex="0"
@@ -169,7 +169,7 @@ import { useLeagues } from '@/web/background/Leagues'
 import { useMarketCollector } from './collector'
 import { dailyHistory, dailyRowsForDate, latestSnapshots, snapshotAtOrBefore } from './db'
 import { computeMovers, trendBaseline } from './analysis'
-import { PRICE_GROUP_LIMIT, groupKey, rarityClass, searchPrices } from '../search/search'
+import { PRICE_GROUP_LIMIT, groupKey, groupTip, rarityClass, searchPrices } from '../search/search'
 import WCorruptedFilter from '../ui/WCorruptedFilter.vue'
 import { WPanel, WTabs, WSegmented, WSelect, WField, WPrice, WDelta, WSpark, WEmpty, WChip, WIcon, WKbd, WSkeleton, WBanner, ninjaIcon, openMenu, toast, vItemTip } from '../ui'
 import { copyText } from '../ui/copy'

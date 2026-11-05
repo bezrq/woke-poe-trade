@@ -19,6 +19,10 @@ export interface ItemTipRef {
   variant?: string
   // For a base in a filter's unique tiers: what it can drop as. Read on hover.
   uniques?: () => TipBaseUnique[]
+  // A name with several prices: the strip gives the range, not one of them.
+  prices?: { low: number, high: number, count: number }
+  // Just the item's text, where a price isn't the point.
+  noPrice?: boolean
 }
 
 const SHOW_DELAY_MS = 60
@@ -52,6 +56,8 @@ export function kindOfName (name: string): TipKind {
 const NINJA_NS: Record<TipKind, string> = { unique: 'UNIQUE', gem: 'GEM', card: 'DIVINATION_CARD', item: 'ITEM' }
 
 function marketFor (ref: ItemTipRef, kind: TipKind): TipMarket | null {
+  if (ref.noPrice) return null
+  if (ref.prices) return { chaos: ref.prices.low, change: null, graph: [], range: ref.prices }
   const ninja = usePoeninja()
   ninja.queuePricesFetch()
   const ns = ref.type === 'Beast' ? 'CAPTURED_BEAST' : NINJA_NS[kind]
