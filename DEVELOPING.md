@@ -26,6 +26,35 @@ npm ci
 npm run dev
 ```
 
+# Dev preview (woke)
+
+For quick iteration on Windows: a dedicated clone runs the app in dev mode, with
+hot reload for the renderer and an automatic Electron restart for `main/`.
+
+Setup, once: clone the repo to `<folder>\woke-poe-trade-dev` and copy
+`scripts\woke-dev.cmd` and `scripts\woke-dev.ps1` to `<folder>`, outside the
+clone, so switching branches never touches the running script.
+
+```shell
+woke-dev              # restart on the current branch
+woke-dev <branch>     # switch to the branch (fetched from origin) and restart
+woke-dev status       # show what is running
+woke-dev stop         # stop the dev copy
+woke-dev packaged     # stop the dev copy and start the packaged build
+```
+
+- It stops the packaged build first: all builds share one data folder and
+  single-instance lock, so a second copy quits silently.
+- It refuses to switch branches while the clone has uncommitted changes, and
+  leaves the running app alone when it does.
+- It reinstalls dependencies only when a lockfile or patch changed.
+- Vite and Electron run detached, so they outlive the shell that started them.
+  Logs go to `<folder>\.woke-dev`.
+- The tray icon's tooltip reads `Woke PoE Trade DEV (<branch>)` in the dev copy.
+- Settings changes aren't saved in dev mode (`ConfigStore`), and a DevTools
+  window opens alongside the overlay.
+- The overlay can be inspected on the debug port `127.0.0.1:9333`.
+
 # Testing (woke)
 
 Every pull request runs `.github/workflows/test.yml`: unit tests

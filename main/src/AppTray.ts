@@ -25,7 +25,10 @@ export class AppTray {
     }
 
     this.tray = new Tray(trayImage)
-    this.tray.setToolTip(`Woke PoE Trade v${app.getVersion()}`)
+    // woke: makes a dev copy easy to tell apart from the packaged build.
+    this.tray.setToolTip(process.env.VITE_DEV_SERVER_URL
+      ? `Woke PoE Trade DEV (${process.env.WOKE_DEV_BRANCH ?? 'no launcher'})`.slice(0, 127)
+      : `Woke PoE Trade v${app.getVersion()}`)
     this.rebuildMenu()
 
     server.onEventAnyClient('CLIENT->MAIN::user-action', ({ action }) => {
