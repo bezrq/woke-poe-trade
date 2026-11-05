@@ -28,7 +28,7 @@
         </div>
       </template>
     </DockItem>
-    <WPanel ref="panel" :title="config.wmTitle || 'Boss runs'" icon="maven" :updated="prices.snapshot.value?.ts ?? null" :fresh-min="40" :stale-min="180" width="62rem" max-height="80vh" :scroll="false">
+    <WPanel ref="panel" :title="config.wmTitle || 'Boss runs'" icon="maven" :updated="prices.snapshot.value?.ts ?? null" :fresh-min="40" :stale-min="180" width="68rem" max-height="80vh" :scroll="false">
       <template #toolbar>
         <WSegmented v-model="config.tier" :options="tierOptions" />
         <WSegmented v-model="config.sort" :options="sortOptions" />
@@ -106,7 +106,8 @@
                 <WEmpty v-if="!sel.drops.length" :art="{ mechanic: 'maven' }">No drop list for this boss yet. Log a kill or add drops under Rates &amp; sources.</WEmpty>
                 <template v-else>
                   <div class="w-row w-row--head" :class="$style.dropGrid"><span title="Count this drop in the loot">On</span><span>Drop</span><span class="text-right">Chance</span><span class="text-right">Price</span><span class="text-right">Per run</span><span>Share</span></div>
-                  <div v-for="d in sel.drops" :key="d.name" class="w-row" :class="[$style.dropGrid, { [$style.off]: !d.included }]">
+                  <template v-for="d in sel.drops" :key="d.name">
+                  <div class="w-row" :class="[$style.dropGrid, { [$style.off]: !d.included }]">
                     <input type="checkbox" :checked="d.included" :aria-label="`Count ${d.name}`" @change="toggleDrop(sel.boss.id, d.name, ($event.target as HTMLInputElement).checked, d.tooRare)">
                     <span v-item-tip="{ name: d.name, type: typeByName.get(d.name) }" class="w-trunc flex items-center gap-1">
                       <WIcon :src="art(d.name)" fallback="fas fa-gem" /><span class="w-trunc">{{ d.name }}</span><span v-if="d.qty > 1" class="w-dim">×{{ d.qty }}</span>
@@ -121,7 +122,7 @@
                     <span class="text-right"><WPrice :chaos="d.chance == null || d.price == null ? null : d.value" :divine="divine" /></span>
                     <span :class="$style.share"><i :style="{ width: (sel.loot > 0 ? d.value / sel.loot * 100 : 0) + '%' }" /></span>
                   </div>
-                  <div v-if="editingRow" class="flex flex-wrap items-center gap-2 text-sm" :class="$style.editor">
+                  <div v-if="editing === d.name && editingRow" class="flex flex-wrap items-center gap-2 text-sm" :class="$style.editor">
                     <span class="w-accent">{{ editingRow.name }}</span>
                     <span v-if="editingRow.listings != null" class="w-dim">{{ editingRow.listings.toLocaleString() }} unidentified instant buyouts.</span>
                     <span class="flex items-center gap-1 w-dim">poe.ninja <WPrice :chaos="editingRow.spread?.median" :divine="divine" /></span>
@@ -132,6 +133,7 @@
                     </label>
                     <WButton size="sm" icon="fas fa-external-link-alt" @click="openUnidSearch(editingRow.name)">Unidentified on trade</WButton>
                   </div>
+                  </template>
                   <div v-if="sel.excluded" class="text-xs w-dim" style="padding: 6px var(--w-pad) 0;">{{ sel.excluded }} drop(s) left out of the loot<template v-if="config.plannedRuns"> (rarer than 1 in {{ config.plannedRuns }} runs, or switched off)</template>.</div>
                   <div v-if="sel.entryMissing.length" class="text-xs" style="padding: 6px var(--w-pad) 0; color: var(--w-warn);">No price for {{ sel.entryMissing.join(', ') }}, so profit is hidden. Tick "I own the entry items" to count it as free.</div>
                   <div class="text-xs w-faint" style="padding: 6px var(--w-pad) 0;">
@@ -442,7 +444,7 @@ const editingRow = computed(() => sel.value?.drops.find(d => d.name === editing.
 const modeOptions = [{ value: 'unid', label: 'Unidentified' }, { value: 'median', label: 'poe.ninja' }, { value: 'custom', label: 'My price' }]
 
 function modeLabel (d: DropRow) {
-  if (d.priceMode === 'unid' && d.priceSource !== 'trade') return tradePrices.pending(d.name) ? 'loading' : 'ninja'
+  if (d.priceMode === 'unid' && d.priceSource !== 'trade') return tradePrices.pending(d.name) ? '…' : 'ninja'
   return { unid: 'unid', min: 'cheapest', median: 'ninja', custom: 'my price' }[d.priceMode!]
 }
 function spreadTitle (d: DropRow) {
@@ -584,7 +586,7 @@ const dockMenu = computed<DockMenuAction[]>(() => [{
   gap: 6px;
 }
 .kv { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 3px 10px; font-size: var(--w-fs-md); align-items: center; }
-.dropGrid { grid-template-columns: 16px minmax(0, 1fr) 62px 124px 72px 48px; }
+.dropGrid { grid-template-columns: 16px minmax(0, 1fr) 62px 104px 72px 48px; }
 .off { opacity: 0.45; }
 .cardStats { margin-top: 4px; }
 .cardDrop { display: grid; grid-template-columns: minmax(0, 1fr) 46px 58px; gap: 6px; align-items: center; }
