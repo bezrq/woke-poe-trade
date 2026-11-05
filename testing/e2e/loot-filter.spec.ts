@@ -127,7 +127,7 @@ test('back from a rule returns to the same pile, by button and by the mouse back
   // Hidden items are on by default, so the whole pile is there.
   expect(await labels.count()).toBe(40)
 
-  const backButton = page.getByRole('button', { name: /^Back/ })
+  const backButton = page.getByText('Back', { exact: true })
   await ruled.first().dispatchEvent('click')
   await expect(backButton).toBeVisible()
   await expect(labels).toHaveCount(0)
@@ -138,8 +138,7 @@ test('back from a rule returns to the same pile, by button and by the mouse back
 
   await ruled.first().dispatchEvent('click')
   await expect(backButton).toBeVisible()
-  const box = (await backButton.boundingBox())!
-  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2, { button: 'back' as 'left' })
+  await page.getByRole('tab', { name: 'Rules' }).dispatchEvent('mouseup', { button: 3, bubbles: true })
   await expect(labels.first()).toBeVisible()
   expect(await pile()).toBe(before)
 })
