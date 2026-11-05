@@ -1,7 +1,7 @@
 ---
 id: WOKEPOET-94
 title: 'Lab: layout window collapses to a hover bubble when interact mode ends'
-status: Grooming
+status: In Progress
 priority: Medium
 effort: None
 assignee: unassigned
@@ -48,6 +48,11 @@ history:
     user: Agent
     date: '2026-11-05T11:12:16.269Z'
     comment: 'Guy picked A, the letter icon in the dock row.'
+  - type: status_change
+    from: Grooming
+    to: In Progress
+    user: Agent
+    date: '2026-11-05T11:13:13.160Z'
 swimlane: null
 needsAction: null
 ---
