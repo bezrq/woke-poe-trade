@@ -6,7 +6,7 @@
     <WSegmented :model-value="visibility" :options="visibilityOptions" @update:model-value="emit('visibility', $event as Visibility)" />
 
     <div :class="$style.grid">
-      <span class="w-dim">Size</span>
+      <span class="w-dim">Size<button v-if="changed('fontSize')" type="button" :class="$style.mark" :title="`Back to ${source?.fontSize ?? DEFAULT_FONT}`" aria-label="Reset size" @click="reset('fontSize')" /></span>
       <span class="flex items-center gap-2">
         <input type="range" min="18" max="45" :value="look.fontSize ?? DEFAULT_FONT" class="grow"
           @change="emit('patch', { fontSize: Number(($event.target as HTMLInputElement).value) })">
@@ -19,6 +19,7 @@
           <input type="color" :value="hex(c.value)" :class="$style.swatch" :aria-label="c.label"
             @change="setColour(c.key, ($event.target as HTMLInputElement).value)">
           <span class="w-dim text-xs">{{ c.short }}</span>
+          <button v-if="changed(c.key)" type="button" :class="$style.mark" :title="`Back to ${colourText(c.key)}`" :aria-label="`Reset ${c.label}`" @click="reset(c.key)" />
           <button v-if="c.key === 'border' && c.value" class="w-icon-btn" title="No border" @click="emit('patch', { border: null })"><i class="fas fa-times" /></button>
         </span>
       </span>
@@ -28,6 +29,7 @@
     <button type="button" class="w-focusable" :class="$style.fold" :aria-expanded="open === 'sound'" @click="toggle('sound')">
       <i aria-hidden="true" :class="open === 'sound' ? 'fas fa-chevron-down' : 'fas fa-chevron-right'" />Sound
       <span class="grow" /><span class="w-dim text-xs w-trunc">{{ look.sound ? `${soundLabel(look.sound.id)}, ${look.sound.volume}` : 'None' }}</span>
+      <span v-if="changed('sound')" role="button" tabindex="0" :class="$style.mark" title="Back to the filter's own sound" aria-label="Reset sound" @click.stop="reset('sound')" @keydown.enter.stop="reset('sound')" @keydown.space.prevent.stop="reset('sound')" />
     </button>
     <div v-if="open === 'sound'" :class="$style.foldBody">
       <span class="flex flex-col gap-1" style="min-width: 0;">
@@ -61,6 +63,7 @@
     <button type="button" class="w-focusable" :class="$style.fold" :aria-expanded="open === 'beam'" @click="toggle('beam')">
       <i aria-hidden="true" :class="open === 'beam' ? 'fas fa-chevron-down' : 'fas fa-chevron-right'" />Beam
       <span class="grow" /><span v-if="look.effect" :class="$style.beam" :style="{ background: poeColour(look.effect.color) }" /><span class="w-dim text-xs">{{ look.effect ? `${look.effect.color}${look.effect.temp ? ', on drop' : ''}` : 'None' }}</span>
+      <span v-if="changed('effect')" role="button" tabindex="0" :class="$style.mark" title="Back to the filter's own beam" aria-label="Reset beam" @click.stop="reset('effect')" @keydown.enter.stop="reset('effect')" @keydown.space.prevent.stop="reset('effect')" />
     </button>
     <div v-if="open === 'beam'" :class="$style.foldBody">
       <span class="flex items-center gap-1 flex-wrap">
@@ -80,6 +83,7 @@
     <button type="button" class="w-focusable" :class="$style.fold" :aria-expanded="open === 'icon'" @click="toggle('icon')">
       <i aria-hidden="true" :class="open === 'icon' ? 'fas fa-chevron-down' : 'fas fa-chevron-right'" />Map icon
       <span class="grow" /><span v-if="look.icon" :style="{ color: poeColour(look.icon.color) }">{{ shapeGlyph(look.icon.shape) }}</span><span class="w-dim text-xs">{{ look.icon ? `${['Large', 'Medium', 'Small'][look.icon.size] ?? ''} ${look.icon.color.toLowerCase()}` : 'None' }}</span>
+      <span v-if="changed('icon')" role="button" tabindex="0" :class="$style.mark" title="Back to the filter's own map icon" aria-label="Reset map icon" @click.stop="reset('icon')" @keydown.enter.stop="reset('icon')" @keydown.space.prevent.stop="reset('icon')" />
     </button>
     <div v-if="open === 'icon'" :class="$style.foldBody">
       <span class="flex flex-col gap-1">
@@ -132,7 +136,9 @@ const props = withDefaults(defineProps<{
   previewText: string
   // Other tiers whose look can be copied.
   copyFrom?: Array<{ tier: string, look: StylePatch }>
-}>(), { copyFrom: () => [] })
+  // The look in the filter as it came: settings that differ get a reset dot.
+  source?: StylePatch | null
+}>(), { copyFrom: () => [], source: null })
 
 const emit = defineEmits<{
   (e: 'patch', patch: StylePatch): void
@@ -151,6 +157,33 @@ const colourRows = computed(() => [
   { key: 'border' as const, label: 'Border', short: 'border', value: props.look.border ?? null },
   { key: 'background' as const, label: 'Background', short: 'back', value: props.look.background ?? DEFAULT_BG }
 ])
+
+// A setting differs from the filter as it came, whichever way it's written.
+function changed (key: keyof StylePatch): boolean {
+  const s = props.source
+  if (!s) return false
+  return JSON.stringify(resetValue(key)) !== JSON.stringify(props.look[key] ?? resetValue(key, true))
+}
+
+// What the setting is in the source, with the game's default where it sets none.
+function resetValue (key: keyof StylePatch, forLook = false): StylePatch[keyof StylePatch] {
+  const s = forLook ? props.look : (props.source ?? {})
+  switch (key) {
+    case 'fontSize': return s.fontSize ?? DEFAULT_FONT
+    case 'text': return s.text ?? DEFAULT_TEXT
+    case 'background': return s.background ?? DEFAULT_BG
+    default: return s[key] ?? null
+  }
+}
+
+function reset (key: keyof StylePatch) {
+  emit('patch', { [key]: resetValue(key) } as StylePatch)
+}
+
+function colourText (key: 'text' | 'border' | 'background'): string {
+  const v = resetValue(key) as Colour | null
+  return v ? v.slice(0, 3).join(' ') : 'none'
+}
 
 const open = ref<'sound' | 'beam' | 'icon' | null>(null)
 function toggle (which: 'sound' | 'beam' | 'icon') {
@@ -248,6 +281,20 @@ function copy (tier: string) {
   font-size: var(--w-text-sm);
 }
 .colours { gap: 4px 10px; }
+.mark {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-left: 4px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--w-warn);
+  vertical-align: 1px;
+  cursor: pointer;
+  flex: none;
+}
+.mark:hover { outline: 2px solid var(--w-warn); outline-offset: 1px; }
 .foldBody {
   padding: 2px 6px 6px;
   font-size: var(--w-text-sm);
