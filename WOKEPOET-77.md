@@ -1,7 +1,7 @@
 ---
 id: WOKEPOET-77
-title: Remove the redundant old map stat list from Item info settings
-status: In Progress
+title: Merge the old map stat list into Map mods tabs
+status: Done
 priority: Low
 effort: None
 assignee: unassigned
@@ -136,8 +136,31 @@ history:
       (already true of the map list), strip not showing unrecognised lines.
       Local checks pass. Merge requested.
     id: a-2026-11-05t11-07-58-290z
+  - type: comment
+    user: Agent
+    comment: >-
+      PR #151 merged as ef92c21 and live on the dev copy. Map mods has Maps,
+      Heist and Charts tabs with separate ratings and searches, an Include T17
+      switch, and picked mods sorted first. Heist items and charts use the
+      verdict card; APT's old card and settings list are gone. Guy's 11 Maps
+      ratings kept; Heist and Charts empty. Not tried on real items in game: a
+      contract, a charted chart, or a pasted Heist or Charts search.
+    date: '2026-11-05T11:25:44.829Z'
+    completionComment: true
+    id: c-2026-11-05t11-25-44-829z
+  - type: status_change
+    from: In Progress
+    to: Done
+    user: Agent
+    date: '2026-11-05T11:25:44.829Z'
+  - type: activity
+    user: Agent
+    date: '2026-11-05T11:25:45.665Z'
+    comment: Updated title. Updated implementation link.
+    id: a-2026-11-05t11-25-45-665z
 swimlane: null
 needsAction: null
+implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/151'
 ---
 Settings > Item info & map check still shows APT's map stat list (343 stats with warning, danger and ok marks).
 
