@@ -14,6 +14,28 @@ history:
     user: Agent
     date: '2026-11-05T10:02:21.931Z'
     comment: Created ticket.
+    id: a-2026-11-05t10-02-21-931z
+  - type: comment
+    user: Agent
+    comment: >-
+      Pick a card: https://claude.ai/artifact/JoM2avsZfLzBQLcM6Brxxi. A prices
+      only, B highlights the vendor in this encounter plus week change
+      (recommended), C no hover card. Also: remove scarab chips and arrows from
+      every mechanic's card (recommended). Data fixes ship with any pick.
+    date: '2026-11-05T10:03:47.935Z'
+    id: c-2026-11-05t10-03-47-935z
+  - type: swimlane_change
+    swimlane: require-input
+    action: set
+    user: Agent
+    date: '2026-11-05T10:03:47.935Z'
+    comment: >-
+      Pick a card: https://claude.ai/artifact/JoM2avsZfLzBQLcM6Brxxi. A prices
+      only, B highlights the vendor in this encounter plus week change
+      (recommended), C no hover card. Also: remove scarab chips and arrows from
+      every mechanic's card (recommended). Data fixes ship with any pick.
+swimlane: require-input
+needsAction: null
 ---
 Dock hover card for Expedition shows "poe.ninja has no prices for these" plus two scarab chips.
 
