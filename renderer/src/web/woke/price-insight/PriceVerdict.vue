@@ -137,8 +137,8 @@ const smart = useSmartPrice(toRef(props, 'item'), toRef(props, 'insight'), toRef
 onUnmounted(smart.stop)
 const { ninjaInfo, blend, headline, ranges, series, leagueLoading } = smart
 
-const { updatedAt } = usePoeninja()
-const age = computed(() => dataAge(props.divine, updatedAt.value, nowMinute.value))
+const { updatedAt, isLoading: ninjaLoading } = usePoeninja()
+const age = computed(() => dataAge(props.divine, updatedAt.value, nowMinute.value, ninjaLoading.value))
 
 // With divine listings left out, what's left may not be the real price: no advice on it.
 const missingDivines = computed(() => props.insight.signals.some(s => s.kind === 'norate'))
