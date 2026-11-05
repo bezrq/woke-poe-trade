@@ -158,7 +158,7 @@ describe('stash regex', () => {
 })
 
 describe('rules', () => {
-  // Presets keep old wordings on purpose (maps from past leagues), but each
+  // Each preset
   // must still match something in the current data.
   it('every preset matches at least one current map mod', () => {
     const known = new Set(MODS)
@@ -170,7 +170,8 @@ describe('rules', () => {
     const p = defaultProfile()
     expect(rateMods([{ matcher: 'Area contains two Unique Bosses' }], p).verdict).toBe('run')
     expect(rateMods([{ matcher: 'Area contains two Unique Bosses' }, { matcher: 'Players cannot Regenerate Life, Mana or Energy Shield' }], p).verdict).toBe('careful')
-    expect(rateMods([{ matcher: 'Monsters reflect #% of Physical Damage', roll: 18 }], p).verdict).toBe('skip')
+    const thorns = 'Rare Monsters have Physical Thorns reflecting # Physical Damage'
+    expect(rateMods([{ matcher: thorns, roll: 18 }], { ...p, ratings: { [thorns]: 'deadly' } }).verdict).toBe('skip')
     expect(rateMods([], p).verdict).toBe('run')
   })
 
@@ -197,15 +198,15 @@ describe('APT map check ratings brought into Map mods', () => {
       showNewStats: false,
       selectedStats: [
         { matcher: 'Monsters cannot be Leeched from', decision: 'd-w' },
-        // Already rated in our default profile: stays deadly.
-        { matcher: 'Monsters reflect #% of Physical Damage', decision: 'g--' },
+        // Already rated in our default profile: stays careful.
+        { matcher: 'Players have #% to all maximum Resistances', decision: 'g--' },
         { matcher: 'Area has patches of Burning Ground', decision: 's--' }
       ]
     })
     expect(added).toBe(2)
     expect(profiles.map(p => p.id)).toEqual([1, 3])
     expect(profiles[0].ratings['Monsters cannot be Leeched from']).toBe('deadly')
-    expect(profiles[0].ratings['Monsters reflect #% of Physical Damage']).toBe('deadly')
+    expect(profiles[0].ratings['Players have #% to all maximum Resistances']).toBe('warn')
     expect(profiles[0].ratings['Area has patches of Burning Ground']).toBeUndefined()
     expect(profiles[1].ratings).toEqual({ 'Monsters cannot be Leeched from': 'warn' })
   })

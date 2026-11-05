@@ -23,6 +23,10 @@
         <WButton v-if="w.profiles.length > 1" size="sm" variant="danger" icon="fas fa-trash" @click="removeProfile">Delete</WButton>
       </div>
       <div class="w-dim text-sm">One profile per build. Pick mods to avoid or want, and minimum quantity etc., in the Map mods overlay widget. Maps, heist and charts each keep their own picks.</div>
+      <div v-if="dead.length" class="text-sm flex items-center gap-2 flex-wrap" style="color: var(--w-warn);">
+        <span :title="dead.join('\n')">{{ dead.length }} rated {{ dead.length === 1 ? "mod isn't" : "mods aren't" }} in the game any more, so {{ dead.length === 1 ? 'it' : 'they' }} can't match a map.</span>
+        <WButton size="sm" @click="removeDead">Remove</WButton>
+      </div>
     </section>
 
     <section class="flex flex-col gap-2">
@@ -46,7 +50,8 @@ import { defineComponent, computed } from 'vue'
 import WHotkeyCell from '../ui/WHotkeyCell.vue'
 import { configProp, configModelValue } from '@/web/settings/utils'
 import { WButton, WField, WSelect } from '../ui'
-import { copyOfProfile } from './rules'
+import { allAreaMods } from './data'
+import { copyOfProfile, deadRatings } from './rules'
 import type { JuiceWeights } from './rules'
 import { activeProfile, normalizeMapModsWidget } from './widget'
 import type { MapModsWidget } from './widget'
@@ -72,6 +77,7 @@ export default defineComponent({
       return props.configWidget
     })
     const profile = computed(() => activeProfile(w.value))
+    const dead = computed(() => deadRatings(profile.value.ratings, allAreaMods()))
     const profileOptions = computed(() => w.value.profiles.map(p => ({ value: String(p.id), label: p.name || 'Unnamed' })))
 
     function nextId () { return Math.max(0, ...w.value.profiles.map(p => p.id)) + 1 }
@@ -79,6 +85,11 @@ export default defineComponent({
     return {
       w,
       profile,
+      dead,
+      removeDead () {
+        const gone = new Set(dead.value)
+        profile.value.ratings = Object.fromEntries(Object.entries(profile.value.ratings).filter(([m]) => !gone.has(m)))
+      },
       profileOptions,
       WEIGHT_KEYS,
       WEIGHT_LABELS,
