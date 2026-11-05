@@ -47,7 +47,7 @@
         <template #footer><WButton size="sm" variant="primary" @click="mode = 'editor'">Open editor</WButton></template>
       </WPanel>
     </template>
-    <FilterEditor v-else :store="store" :config="config" :focus="focus" :open-tab="openTab" @close="close" />
+    <FilterEditor v-else :store="store" :config="config" :focus="focus" :open-tab="openTab" @close="close" @tab-opened="openTab = null" />
   </Widget>
 </template>
 
@@ -258,7 +258,7 @@ function seeNotice () {
 
 const dockShow = computed(() => Boolean(store.doc.value) && (props.config.neversink.on || dockNotes.value.length > 0))
 const dockBadge = computed(() => props.config.neversink.on ? LEVEL_SHORT[props.config.neversink.level] : (dockNotes.value.length || null))
-const dockTone = computed(() => dockNotes.value.some(n => n.warn) ? 'warn' : (store.updateReady.value ? 'accent' : undefined))
+const dockTone = computed(() => dockNotes.value.some(n => n.warn) ? 'warn' : (dockNotes.value.some(n => n.id === 'update') ? 'accent' : undefined))
 
 // Say it briefly when the strictness changes.
 watch(() => props.config.neversink.level, (l, old) => {

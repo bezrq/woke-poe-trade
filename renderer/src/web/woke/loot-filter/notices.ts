@@ -27,8 +27,12 @@ export function visibleNotices (list: Notice[], state: NoticeState): Notice[] {
   })
 }
 
+// What "Don't tell me about this" can silence, and the Prices tab can bring back.
+// An update stays: Got it holds it until the next version.
+export const TURN_OFF_IDS = ['safety', 'prices']
+
 export function canTurnOff (n: Notice): boolean {
-  return !n.warn && !n.passing
+  return TURN_OFF_IDS.includes(n.id)
 }
 
 // Returns the new state after "Got it" on the listed notices. Warnings go into

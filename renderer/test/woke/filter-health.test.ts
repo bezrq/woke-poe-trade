@@ -105,9 +105,14 @@ describe('what Show it says, against what it does', () => {
   it('a card has no others to mention, and no rarity', () => {
     const block = parseFilter('Hide # $type->divination $tier->t4c\n\tClass == "Divination Cards"\n\tBaseType == "The Fishmonger"\n').blocks[0]
     const text = showEffect(verdict({ group: cards, base: 'The Fishmonger', block }), gradeItems([{ name: 'The Fishmonger', chaos: 10, thin: false }], 20)).join(' ')
-    expect(text).toContain('every The Fishmonger shows')
+    expect(text).toContain('The Fishmonger shows')
     expect(text).not.toContain('other')
     expect(text).not.toContain('Normal, magic')
+  })
+
+  it('says a rarity range as written, since the rule keeps it', () => {
+    const block = parseFilter('Hide # $type->x $tier->y\n\tRarity <= Rare\n\tBaseType == "A"\n').blocks[0]
+    expect(showEffect(verdict({ base: 'A', block }), [])[0]).toContain('every A of rarity <= Rare shows')
   })
 
   it('says bigger, not shown, for a small label', () => {
@@ -145,6 +150,8 @@ describe('dock notices', () => {
   it('a warning about the filter not working can\'t be turned off', () => {
     expect(canTurnOff(wrong)).toBe(false)
     expect(canTurnOff(safety)).toBe(true)
+    // A new NeverSink version can be put off, not silenced for good.
+    expect(canTurnOff({ id: 'update', value: '8.21', text: '' })).toBe(false)
     expect(visibleNotices([wrong], { off: ['wrong'], seen: {} })).toEqual([wrong])
   })
 

@@ -41,14 +41,21 @@ export function priceBar (chaos: number | null, most: number): number {
 // In words, what Show it does to the file (see showIt in PricesTab.vue: an own
 // rule pinned above everything, keeping only the source rule's Class and Rarity).
 export function showEffect (v: BaseVerdict, items: HealthItem[]): string[] {
-  const rarity = v.block?.conditions.find(c => c.key === 'Rarity')?.values.join(' or ')
-  const who = `every${rarity ? ` ${rarity.toLowerCase()}` : ''} ${v.base}`
+  const cond = v.block?.conditions.find(c => c.key === 'Rarity')
+  const exact = cond && ['', '=', '=='].includes(cond.op)
+  const rarity = exact ? cond.values.join(' or ') : undefined
+  // A rarity range like `<= Rare` is kept as it is, so say it as written.
+  const who = rarity
+    ? `every ${rarity.toLowerCase()} ${v.base}`
+    : cond ? `every ${v.base} of rarity ${cond.op} ${cond.values.join(' ')}` : v.base
   const out = [v.state === 'hidden'
     ? `Adds one rule of yours above everything: ${who} shows, white on red with a short red beam.`
     : `Adds one rule of yours above everything: ${who} shows at font size 40 (${DEFAULT_FONT} is the game's default).`]
-  if (rarity === 'Unique') out.push(`Normal, magic and rare ${v.base} stay as they are.`)
-  const others = items.filter(i => i.name !== items[0]?.name)
-  if (others.length) out.push(`${others.length === 1 ? 'The other unique' : `The other ${others.length} uniques`} on this base show${others.length === 1 ? 's' : ''} too: the filter only knows the base.`)
+  if (rarity === 'Unique') {
+    out.push(`Normal, magic and rare ${v.base} stay as they are.`)
+    const others = items.length - 1
+    if (others > 0) out.push(`${others === 1 ? 'The other unique' : `The other ${others} uniques`} on this base show${others === 1 ? 's' : ''} too: the filter only knows the base.`)
+  }
   out.push('You can undo it under Changes.')
   return out
 }

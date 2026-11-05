@@ -19,12 +19,22 @@
       <!-- Stays in view however long the lists get. -->
       <div :class="$style.applyBar">
         <span><b>{{ moves.length ? `${moves.length} item${moves.length > 1 ? 's' : ''}` : 'Nothing' }}</b> {{ moves.length ? 'would move' : 'to move: tiers match today\'s prices' }}</span>
-        <span v-if="config.priceTiers.moves.length" class="w-dim text-xs">{{ config.priceTiers.moves.length }} moved so far</span>
+        <button v-if="config.priceTiers.moves.length" type="button" :class="$style.link" class="w-focusable text-xs" :aria-expanded="showMoved" @click="showMoved = !showMoved">{{ config.priceTiers.moves.length }} moved so far <i :class="showMoved ? 'fas fa-chevron-down' : 'fas fa-chevron-right'" /></button>
         <span class="grow" />
         <WButton v-if="moves.length" size="sm" variant="ghost" @click="keepAll">Keep all where they are</WButton>
         <WButton v-if="config.priceTiers.moves.length" size="sm" variant="ghost" icon="fas fa-undo" title="Put every price group back on NeverSink's own tiers" @click="reset">Back to NeverSink's tiers</WButton>
         <WButton v-if="moves.length" size="sm" variant="primary" :disabled="!pickedMoves.length" @click="apply">Apply {{ pickedMoves.length }} and save</WButton>
       </div>
+      <template v-if="showMoved">
+        <div class="w-group-label" :class="$style.label">Moved by prices</div>
+        <div v-for="m in config.priceTiers.moves" :key="'d' + m.type + m.base" :class="$style.row">
+          <LabelPreview :text="m.base" :actions="lookOf(m.type, m.to)" :extras="false" />
+          <button type="button" :class="$style.link" class="w-focusable text-xs w-trunc" :title="`Open ${groupLabel(m.type)} ${m.to} in Rules`" @click="emit('open-rule', { type: m.type, tier: m.to, base: m.base })">{{ groupLabel(m.type) }} <i class="fas fa-external-link-alt" /></button>
+          <span class="w-num text-xs w-dim">{{ m.from }} → {{ m.to }}</span>
+          <span class="grow" />
+          <WButton size="sm" variant="ghost" title="Back to NeverSink's tier, and prices leave it there" @click="putBack(m)">Put back</WButton>
+        </div>
+      </template>
       <div v-if="moves.length" class="w-group-label" :class="$style.label">Would move</div>
       <div v-for="m in moves" :key="m.type + m.base" :class="$style.row" @contextmenu="moveMenu($event, m)">
         <input :id="`pm-${m.type}-${m.base}`" v-model="picked[m.type + '|' + m.base]" type="checkbox" :class="$style.check" :aria-label="`Move ${m.base}`">
@@ -76,7 +86,7 @@
         <span class="w-trunc text-xs" :class="$style.who">
           <b v-if="r.top && r.top !== r.v.base">{{ r.top }}</b>
           <span v-else>{{ groupLabel(r.v.group.type) }}</span>
-          <span v-if="r.items.length > 1" class="w-dim"> highest priced of {{ r.items.length }}</span>
+          <span v-if="r.items.length > 1" class="w-dim"> {{ config.priceTiers.uniqueRule === 'min' ? 'cheapest' : 'highest priced' }} of {{ r.items.length }}</span>
         </span>
         <span v-if="r.trash" :class="$style.trash" class="text-xs">{{ r.trash }} trash</span>
         <span class="grow" />
@@ -114,6 +124,7 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
 import { WButton, WChip, WEmpty, WField, WPrice, WSegmented, WToggle, agoPhrase, gameIcon, ninjaIcon, openMenu, toast } from '../ui'
+import { TURN_OFF_IDS } from './notices'
 import { gradeItems, healthKey, isDismissed, priceBar, showEffect, trashCount } from './health'
 import type { PriceGrade } from './health'
 import { usePoeninja } from '@/web/background/Prices'
@@ -147,6 +158,7 @@ const emit = defineEmits<{ (e: 'open-rule', rule: { type: string, tier: string, 
 
 const GRADE_LABEL: Record<PriceGrade, string> = { high: 'worth it', mid: 'some value', trash: 'trash', unknown: '' }
 const openRow = ref<string | null>(null)
+const showMoved = ref(false)
 
 const health = computed(() => props.store.health.value.filter(v => !isDismissed(props.config.healthDismissed, v)))
 const rows = computed(() => {
@@ -158,7 +170,8 @@ const rows = computed(() => {
       key: healthKey(v),
       v,
       items,
-      top: items[0]?.name,
+      // The one that set the row's price: the best or the cheapest, as you chose.
+      top: (items.find(i => i.chaos === v.chaos) ?? items[0])?.name,
       trash: trashCount(items),
       most: items[0]?.chaos ?? 0,
       effect: showEffect(v, items),
@@ -180,12 +193,11 @@ function dismiss (v: BaseVerdict) {
   toast(`${v.base} is off this list until its price doubles`, { anchor: props.anchor, undo: () => { props.config.healthDismissed = before } })
 }
 
-const NOTICE_IDS = ['safety', 'prices']
-const dockNotice = computed(() => !NOTICE_IDS.every(id => props.config.noticesOff.includes(id)))
+const dockNotice = computed(() => !TURN_OFF_IDS.every(id => props.config.noticesOff.includes(id)))
 function setDockNotice (on: boolean) {
   props.config.noticesOff = on
-    ? props.config.noticesOff.filter(id => !NOTICE_IDS.includes(id))
-    : [...new Set([...props.config.noticesOff, ...NOTICE_IDS])]
+    ? props.config.noticesOff.filter(id => !TURN_OFF_IDS.includes(id))
+    : [...new Set([...props.config.noticesOff, ...TURN_OFF_IDS])]
 }
 
 const uniqueOptions = [
@@ -228,29 +240,36 @@ function caught (v: BaseVerdict): boolean {
   return props.config.safetyNet.on && v.chaos >= props.config.safetyNet.minChaos
 }
 
-// Applying saves too: moved tiers that only exist in the editor do nothing.
+// Moves save right away: tiers that only changed in the editor do nothing. The
+// reload follows your setting (town or hideout, if you chose that), and a save
+// the game would refuse shows its reason in the window's footer.
+function moved (text: string, undo: () => void) {
+  props.store.save().catch(() => {})
+  toast(text, { anchor: props.anchor, undo: () => { undo(); props.store.save().catch(() => {}) } })
+}
+
 function apply () {
   const list = pickedMoves.value
-  const undo = props.store.applyPrices(list)
-  props.store.save({ reloadNow: true }).catch(() => {})
-  toast(`Moved ${list.length} item${list.length > 1 ? 's' : ''} to match today's prices`, {
-    anchor: props.anchor,
-    undo: () => { undo(); props.store.save({ reloadNow: true }).catch(() => {}) }
-  })
+  moved(`Moved ${list.length} item${list.length > 1 ? 's' : ''} to match today's prices`, props.store.applyPrices(list))
 }
 
 function moveAnyway (s: PriceSkip) {
-  const undo = props.store.applyPrices([{ type: s.type, base: s.base, from: s.tier, to: s.wanted, chaos: s.chaos }])
-  toast(`Moved ${s.base} to ${s.wanted}. Save to apply it.`, { anchor: props.anchor, undo })
+  moved(`Moved ${s.base} to ${s.wanted}`, props.store.applyPrices([{ type: s.type, base: s.base, from: s.tier, to: s.wanted, chaos: s.chaos }]))
+}
+
+function putBack (m: PriceMove) {
+  moved(`${m.base} is back in ${m.from}`, props.store.unmovePrice(m.type, m.base))
 }
 
 function unlock (s: PriceSkip) {
   const key = lockKey(s.type, s.base)
+  // Your own move is what locks it, if you made one, so that goes too. Say so.
+  const ownMove = props.config.edits.some(e => e.kind === 'move' && e.type === s.type && e.base === s.base)
   const undo = props.store.changeWithUndo(c => {
     c.priceTiers.locks = c.priceTiers.locks.filter(k => k !== key)
     c.edits = c.edits.filter(e => !(e.kind === 'move' && e.type === s.type && e.base === s.base))
   })
-  toast(`Prices can move ${s.base} again`, { anchor: props.anchor, undo })
+  toast(ownMove ? `Dropped your move of ${s.base}, so prices can move it again` : `Prices can move ${s.base} again`, { anchor: props.anchor, undo })
 }
 
 function keepAll () {
@@ -265,7 +284,7 @@ function reset () {
 
 function moveMenu (e: MouseEvent, m: PriceMove) {
   openMenu(e, [
-    { label: `Move ${m.base} to ${m.to}`, icon: 'fas fa-exchange-alt', action: () => { const undo = props.store.applyPrices([m]); toast(`Moved ${m.base} to ${m.to}`, { anchor: props.anchor, undo }) } },
+    { label: `Move ${m.base} to ${m.to}`, icon: 'fas fa-exchange-alt', action: () => { moved(`Moved ${m.base} to ${m.to}`, props.store.applyPrices([m])) } },
     { label: 'Keep it where it is', icon: 'fas fa-lock', action: () => { const undo = props.store.lockItem(m.type, m.base); toast(`${m.base} stays in ${m.from}`, { anchor: props.anchor, undo }) } }
   ])
 }
