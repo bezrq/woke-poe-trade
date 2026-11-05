@@ -39,7 +39,7 @@
 
     <div v-else-if="tab === 'rules'" :class="$style.layout">
       <!-- groups -->
-      <div :class="$style.tree" class="w-scroll">
+      <div :class="$style.tree">
         <div class="flex items-center gap-2" :class="$style.rulesHead">
           <span class="w-group-label">Your rules</span>
           <span class="grow" />
@@ -51,17 +51,8 @@
             <span class="w-faint text-xs w-num">{{ config.rules.length }}</span>
           </span>
         </WListItem>
-        <template v-for="sec in tree.filter(x => x.groups.some(g => g.type !== RULE_TYPE))" :key="sec.title">
-          <div class="w-group-label w-trunc" :title="sec.title">{{ sec.title }}</div>
-          <WListItem v-for="g in sec.groups.filter(x => x.type !== RULE_TYPE)" :key="g.type" :active="g.type === selType" @select="selectGroup(g.type)"
-            @contextmenu="groupMenu($event, g.type)">
-            <span class="flex justify-between gap-2 w-full min-w-0" :class="{ [$style.off]: g.hidden }">
-              <span class="w-trunc" :title="g.type">{{ shortName(g) }}</span>
-              <span v-if="changedIn(g.type)" :class="$style.changed" class="text-xs" :title="`You changed ${changedIn(g.type)} thing(s) here`">{{ changedIn(g.type) }} changed</span>
-              <span class="w-faint text-xs w-num">{{ g.tiers.length }}</span>
-            </span>
-          </WListItem>
-        </template>
+        <RuleNav :class="$style.ruleNav" :tree="navTree" :sel-type="selType" :config="config" :changed-in="changedIn" :name-of="shortName"
+          @select="selectGroup" @group-menu="groupMenu" />
       </div>
 
       <!-- tiers or search results -->
@@ -325,6 +316,7 @@ import { ruleLabel, tierName } from './parse'
 import type { Visibility } from './parse'
 import { tierLabel } from './names'
 import AddItemField from './AddItemField.vue'
+import RuleNav from './RuleNav.vue'
 import { baseIcon, labelCss } from './label-style'
 import type { AddResult } from './groups'
 import { buildTree, byPrice, findBase, groupName, pickBases } from './groups'
@@ -384,6 +376,8 @@ const priceText = (chaos: number) => chaos >= 10 ? `${Math.round(chaos)}c` : (ch
 const tierItems = computed(() => byPrice(tier.value?.bases ?? [], priceOf))
 
 const tree = computed(() => props.store.doc.value ? buildTree(props.store.doc.value) : [])
+// Your made rules have their own row above the list.
+const navTree = computed(() => tree.value.map(x => ({ ...x, groups: x.groups.filter(g => g.type !== RULE_TYPE) })).filter(x => x.groups.length))
 const allGroups = computed(() => tree.value.flatMap(s => s.groups))
 const group = computed<GroupNode | null>(() => allGroups.value.find(g => g.type === selType.value) ?? null)
 const tier = computed<TierNode | null>(() => group.value?.tiers.find(t => t.tier === selTier.value) ?? null)
@@ -491,7 +485,7 @@ function homes (edit: FilterEdit): RehomeOption[] {
 }
 
 function shortName (g: GroupNode): string {
-  if (g.type.startsWith('untagged:')) return g.tiers.length > 1 ? 'Rules' : 'Rule'
+  if (g.type.startsWith('untagged:')) return g.tiers.length > 1 ? `${g.tiers.length} rules` : 'Rule'
   return groupName(g.type)
 }
 
@@ -987,7 +981,14 @@ function openFolder () {
 }
 .tree {
   border-right: 1px solid var(--w-line);
-  padding-bottom: 8px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+.ruleNav {
+  flex: 1;
+  min-height: 0;
 }
 .rulesHead {
   padding: 4px 6px 0 0;
