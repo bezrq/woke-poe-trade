@@ -31,8 +31,9 @@
           <template v-else>Level unknown: the campaign tracker reads it from Client.txt.</template>
         </div>
         <div v-if="skillSets.length > 1" class="flex flex-wrap gap-1 pt-1">
-          <WChip v-for="(set, i) in skillSets" :key="i" clickable :active="set === shownSet" @click="viewSet = i">
-            {{ set.title }}<span v-if="set === pickedSet?.item" class="w-accent"> ·  now</span>
+          <WChip v-if="pick" clickable :title="AUTO_HINT" @click="clearPick">Auto</WChip>
+          <WChip v-for="(set, i) in skillSets" :key="i" clickable :active="set === shownSet" :title="pickHint(set === shownSet)" @click="chooseSkillSet(set.title)">
+            <i v-if="pick && set === shownSet" class="fas fa-thumbtack text-xs" /> {{ set.title }}<span v-if="set === shownSet" class="w-accent"> · now</span>
           </WChip>
         </div>
         <div :class="$style.heading">Links<template v-if="shownSet && skillSets.length > 1"> · {{ shownSet.title }}</template></div>
@@ -82,8 +83,9 @@
         </template>
 
         <div v-if="itemSets.length > 1" class="flex flex-wrap gap-1 pt-2">
-          <WChip v-for="(set, i) in itemSets" :key="i" clickable :active="set === shownItemSet" @click="viewItemSet = i">
-            {{ set.title }}<span v-if="set === pickedItemSet" class="w-accent"> · now</span>
+          <WChip v-if="pick" clickable :title="AUTO_HINT" @click="clearPick">Auto</WChip>
+          <WChip v-for="(set, i) in itemSets" :key="i" clickable :active="set === shownItemSet" :title="pickHint(set === shownItemSet)" @click="chooseItemSet(set.title)">
+            <i v-if="pick && set === shownItemSet" class="fas fa-thumbtack text-xs" /> {{ set.title }}<span v-if="set === shownItemSet" class="w-accent"> · now</span>
           </WChip>
         </div>
         <div :class="$style.heading">Gear<template v-if="shownItemSet && itemSets.length > 1"> · {{ shownItemSet.title }}</template></div>
@@ -114,12 +116,12 @@
         <div v-if="details.trees.length" class="pb-2">
           <div :class="$style.heading">Passive trees</div>
           <a v-for="t in details.trees" :key="t.title + t.url" :href="safeUrl(t.url)" target="_blank"
-            class="block w-trunc py-0.5 hover:underline" :class="t.isActive ? '' : 'w-dim'">
-            <i class="fas fa-external-link-alt text-xs w-faint" /> {{ t.title }}<span v-if="t.isActive" class="w-accent"> · active</span>
+            class="block w-trunc py-0.5 hover:underline" :class="t === loadout?.tree ? '' : 'w-dim'">
+            <i class="fas fa-external-link-alt text-xs w-faint" /> {{ t.title }}<span v-if="t === loadout?.tree" class="w-accent"> · now</span>
           </a>
         </div>
         <div v-for="(set, k) in skillSets" :key="k" class="pb-2">
-          <div :class="$style.heading">Gem setups<template v-if="skillSets.length > 1"> · {{ set.title }}</template></div>
+          <div :class="$style.heading">Gem setups<template v-if="skillSets.length > 1"> · {{ set.title }}<span v-if="set === shownSet" class="w-accent normal-case tracking-normal"> · now</span></template></div>
           <div v-for="(s, i) in set.groups" :key="i" :class="[$style.setup, { 'opacity-50': !s.enabled }]">
             <div class="w-dim text-xs">
               {{ s.label || s.slot || `Group ${i + 1}` }}<span v-if="s.isMain" class="w-accent"> · main</span>
@@ -142,6 +144,7 @@
             Save in the loot filter editor<template v-if="filterWidget.editorHotkey"> (<WKbd :keys="filterWidget.editorHotkey" />)</template> to write them.
           </div>
           <div v-if="!isActive" class="pb-1" style="color: var(--w-warn);">This isn't the active build; press Make active to use it for the filter.</div>
+          <div v-else-if="skillSets.length > 1" class="w-dim pb-1">Uses {{ shownSet?.title }}<template v-if="shownItemSet && shownItemSet.title !== shownSet?.title"> and {{ shownItemSet.title }}</template>.</div>
           <div v-for="r in FILTER_ROWS" :key="r.key" class="flex items-center gap-2 py-1">
             <WChip clickable :active="filterWidget.buildRules[r.key]" @click="filterWidget.buildRules[r.key] = !filterWidget.buildRules[r.key]">
               {{ filterWidget.buildRules[r.key] ? 'On' : 'Off' }}
@@ -179,13 +182,13 @@ import SocketDots from './SocketDots.vue'
 import { nextGems } from './gems'
 import type { GemColour, NextGem } from './gems'
 import {
-  gearOrder, isGearSlot, itemSetsOf, linkColours, linkGroups, mainGroupOf, noteRuns, orderedGems, pickStage,
+  gearOrder, isGearSlot, itemSetsOf, linkColours, linkGroups, loadoutOf, mainGroupOf, noteRuns, orderedGems,
   relevantGems, skillSetsOf, slotLabel, socketGroups, socketRegex
 } from './build-model'
 import { itemArt } from './item-art'
 import { hideTip, showTip } from './tooltip'
 import { pobApi } from './widget'
-import type { PobBuildEntry, PobBuildsWidget, PobDetails, PobItem } from './widget'
+import type { LoadoutPick, PobBuildEntry, PobBuildsWidget, PobDetails, PobItem } from './widget'
 import { useActiveBuild } from './active'
 
 const $style = useCssModule()
@@ -236,17 +239,48 @@ function toggleFollow () {
   saveConfig()
 }
 
+// ---- loadout: saved per build, so the campaign card, the price check and
+// the filter rules see the same sets as this panel ----
+
+const AUTO_HINT = 'Go back to following your level'
+const pick = computed<LoadoutPick | undefined>(() => props.config.loadouts[props.entry.relPath])
+const loadout = computed(() => props.details ? loadoutOf(props.details, level.value, act.value, pick.value) : null)
+
+function setPick (next: LoadoutPick | null) {
+  const rest = Object.fromEntries(Object.entries(props.config.loadouts).filter(([rel]) => rel !== props.entry.relPath))
+  props.config.loadouts = next ? { ...rest, [props.entry.relPath]: next } : rest
+  saveConfig()
+}
+
+function clearPick () {
+  setPick(null)
+}
+
+function pickHint (inUse: boolean) {
+  if (!inUse) return 'Use this loadout in every window'
+  return pick.value ? 'Picked by hand. Click to go back to following your level' : 'Picked from your level. Click to keep this one'
+}
+
+// Clicking the set in use: a pick goes back to auto, an auto choice is kept.
+// A skill set takes its same-named item set and tree along.
+function chooseSkillSet (title: string) {
+  setPick(pick.value && title === shownSet.value?.title ? null : { skillSet: title })
+}
+
+// Item sets can differ from the skill set, so that stays as it was.
+function chooseItemSet (title: string) {
+  setPick(pick.value && title === shownItemSet.value?.title ? null : { ...pick.value, itemSet: title })
+}
+
 // ---- leveling ----
 
 const skillSets = computed(() => props.details ? skillSetsOf(props.details) : [])
-const pickedSet = computed(() => pickStage(skillSets.value, level.value, act.value))
-const viewSet = shallowRef<number | null>(null)
-const shownSet = computed(() => (viewSet.value != null ? skillSets.value[viewSet.value] : null) ?? pickedSet.value?.item ?? null)
+const shownSet = computed(() => loadout.value?.skillSet?.item ?? null)
 const shownLinks = computed(() => shownSet.value ? linkGroups(shownSet.value.groups, 4) : [])
 
 const className = computed(() => build.className.value || props.details?.ascendClassName || props.details?.className || '')
 const gems = computed(() => props.details
-  ? nextGems(props.details, level.value, className.value, relevantGems(props.details, level.value, act.value))
+  ? nextGems(props.details, level.value, className.value, relevantGems(props.details, level.value, act.value, pick.value))
   : [])
 
 const campaign = computed(() => AppConfig<CampaignWidget>(CAMPAIGN_TYPE))
@@ -270,17 +304,13 @@ function toggleGot (name: string) {
 // ---- gear ----
 
 const itemSets = computed(() => props.details ? itemSetsOf(props.details) : [])
-const pickedItemSet = computed(() => pickStage(itemSets.value, level.value, act.value)?.item ?? null)
-const viewItemSet = shallowRef<number | null>(null)
-const shownItemSet = computed(() => (viewItemSet.value != null ? itemSets.value[viewItemSet.value] : null) ?? pickedItemSet.value)
+const shownItemSet = computed(() => loadout.value?.itemSet?.item ?? null)
 const gear = computed(() => (shownItemSet.value?.slots ?? []).filter(s => isGearSlot(s.slot))
   .sort((a, b) => gearOrder(a.slot) - gearOrder(b.slot)))
 
-const mainLink = computed(() => pickedSet.value ? mainGroupOf(pickedSet.value.item.groups) : null)
+const mainLink = computed(() => shownSet.value ? mainGroupOf(shownSet.value.groups) : null)
 const mainColours = computed<GemColour[]>(() => mainLink.value ? linkColours(mainLink.value) : [])
 const regex = computed(() => socketRegex(mainColours.value))
-
-watch(() => props.entry.relPath, () => { viewSet.value = null; viewItemSet.value = null })
 
 const { copied, copy } = useCopy(1500)
 async function copyRegex () {
