@@ -40,7 +40,7 @@ export const FIXING_REASONS = new Set<DropReason>(['fixer', 'wall', 'dump'])
 export type FixRisk = 'none' | 'low' | 'medium' | 'high'
 
 export interface FixSignal {
-  kind: 'bait' | 'wall' | 'dump' | 'thin' | 'old' | 'norate' | 'snipe'
+  kind: 'bait' | 'wall' | 'dump' | 'thin' | 'old' | 'norate' | 'snipe' | 'oneseller'
   text: string
 }
 
@@ -56,6 +56,8 @@ export interface Insight {
   ceiling?: number | null
   /** Cheapest trusted listing, median of the cheapest few, and the top of that window. */
   range: { low: number, fair: number, high: number } | null
+  /** Cheapest listing that isn't far under the rest: what the market really starts at. */
+  floor?: number
   /** Price to list at to sell fast (just under the floor) and when patient (the fair price). */
   suggest: { fast: number, patient: number } | null
   confidence: Confidence
@@ -79,7 +81,7 @@ const WINDOW = 6
 const FIXER_RATIO = 0.5
 const THIN_FIXER_RATIO = 0.25
 const MAX_ROWS_PER_SELLER = 2
-const MAX_SNIPES = 2
+const MAX_BELOW_FLOOR = 2
 // A seller's pile of copies counts as a wall when it asks less than this share
 // of what other sellers ask.
 const WALL_RATIO = 0.7
@@ -166,12 +168,16 @@ export function buildInsight (listings: InsightListing[], opts: InsightOptions):
   kept = dropDumps(kept, dropped)
 
   // Peel off bait listings from the bottom: a listing that costs less than half
-  // of what the next few ask is almost never real. With only a few to compare
-  // against, it takes a much bigger gap.
-  while (kept.length >= 3) {
+  // of what the next few ask is almost never real.
+  const thinMarket = kept.length === 3
+  while (kept.length >= 4) {
     const next = median(kept.slice(1, 1 + WINDOW).map(k => k.chaos))
-    const ratio = kept.length >= 4 ? FIXER_RATIO : THIN_FIXER_RATIO
-    if (kept[0].instant || kept[0].chaos >= next * ratio) break
+    if (kept[0].instant || kept[0].chaos >= next * FIXER_RATIO) break
+    dropped.set(kept[0].id, 'fixer')
+    kept = kept.slice(1)
+  }
+  // With only three to go on, it takes a much bigger gap to the very next one.
+  if (thinMarket && !kept[0].instant && kept[0].chaos < kept[1].chaos * THIN_FIXER_RATIO) {
     dropped.set(kept[0].id, 'fixer')
     kept = kept.slice(1)
   }
@@ -188,17 +194,34 @@ export function buildInsight (listings: InsightListing[], opts: InsightOptions):
     return { kept: [], dropped, prices, range: null, suggest: null, confidence: 'none', risk, signals }
   }
 
-  // One seller's flood is one opinion, however many rows it fills.
-  const capped = capPerSeller(kept)
-  const sellers = new Set(kept.map(k => k.account)).size
-  const windowRows = capped.slice(0, WINDOW)
+  // A real buyout far under the rest is a bargain for someone, not a price to
+  // match, and a stash listing left there says even less.
+  let floorIdx = 0
+  let bargain = false
+  // They have to be a small minority: two of four is a split market, not outliers.
+  const maxBelow = Math.min(MAX_BELOW_FLOOR, Math.floor(kept.length / 3))
+  while (floorIdx < maxBelow) {
+    const rest = kept.slice(floorIdx + 1, floorIdx + 1 + WINDOW).map(k => k.chaos)
+    const next = rest.length >= 3 ? median(rest) : rest[0]
+    if (kept[floorIdx].chaos >= next * (kept.length >= 4 ? FIXER_RATIO : THIN_FIXER_RATIO)) break
+    const row = kept[floorIdx]
+    if (row.instant && row.age != null && row.age <= OLD_MS) bargain = true
+    floorIdx++
+  }
+  const floor = kept[floorIdx].chaos
+
+  // A seller's stash pile is one opinion, however many rows it fills. Buyouts
+  // are real offers, so they all count towards the price.
+  const windowRows = capPerSeller(kept, true).slice(0, WINDOW)
   const window = windowRows.map(k => k.chaos)
   const range = { low: window[0], fair: weightedMedian(windowRows), high: window[window.length - 1] }
-  const spread = range.high / range.low
+  const spread = range.high / floor
 
+  // Agreement needs sellers, though: 8 rows at 2 each is at least 4 of them.
+  const opinions = capPerSeller(kept, false).length
   let confidence: Confidence
-  if (capped.length >= 8 && spread <= 2 && sellers >= 3) confidence = 'high'
-  else if (capped.length >= 4 && spread <= 4 && sellers >= 2) confidence = 'medium'
+  if (opinions >= 8 && spread <= 2) confidence = 'high'
+  else if (opinions >= 4 && spread <= 4) confidence = 'medium'
   else confidence = 'low'
   if (noRate) confidence = 'low'
 
@@ -215,23 +238,17 @@ export function buildInsight (listings: InsightListing[], opts: InsightOptions):
   const instant = kept.filter(k => k.instant).map(k => k.chaos)
   const ceiling = instant.length ? Math.max(Math.min(...instant), range.fair) : null
 
-  // A real buyout far under the rest is a bargain for someone, not a price to match.
-  let floorIdx = 0
-  while (floorIdx < MAX_SNIPES && kept.length - floorIdx >= 4 && kept[floorIdx].instant) {
-    const next = median(kept.slice(floorIdx + 1, floorIdx + 1 + WINDOW).map(k => k.chaos))
-    if (kept[floorIdx].chaos >= next * FIXER_RATIO) break
-    floorIdx++
+  if (bargain) {
+    const cheapest = kept.find(k => k.instant)!
+    signals.push({ kind: 'snipe', text: `An instant buyout at ${Math.round(cheapest.chaos)}c sits far under the rest, so it may be worth buying` })
   }
-  if (floorIdx > 0) {
-    signals.push({ kind: 'snipe', text: `An instant buyout at ${Math.round(kept[0].chaos)}c sits far under the rest, so it may be worth buying` })
-  }
-  const floor = kept[floorIdx].chaos
 
   return {
     kept: kept.map(k => ({ id: k.id, chaos: k.chaos, weight: k.weight })),
     dropped,
     prices,
     range,
+    floor,
     ceiling,
     suggest: {
       // Just under the floor. Under 10c a whole chaos is too big a cut, so match it.
@@ -244,9 +261,10 @@ export function buildInsight (listings: InsightListing[], opts: InsightOptions):
   }
 }
 
-function capPerSeller (rows: KeptRow[]): KeptRow[] {
+function capPerSeller (rows: KeptRow[], keepBuyouts: boolean): KeptRow[] {
   const seen = new Map<string, number>()
   return rows.filter(row => {
+    if (keepBuyouts && row.instant) return true
     const n = seen.get(row.account) ?? 0
     seen.set(row.account, n + 1)
     return n < MAX_ROWS_PER_SELLER
@@ -312,7 +330,7 @@ function fixRisk (kept: KeptRow[], dropped: Map<string, DropReason>, listings: I
   if (kept.length > 0 && kept.length < 4 && sellers <= 2 && kept.some(k => !k.instant)) {
     signals.push({ kind: 'thin', text: 'Few listings from one or two sellers: easy to fake, check by hand' })
   } else if (kept.length >= 4 && sellers === 1) {
-    signals.push({ kind: 'thin', text: `All ${kept.length} listings are from one seller: check by hand` })
+    signals.push({ kind: 'oneseller', text: `All ${kept.length} listings are from one seller: check by hand` })
   }
 
   const LEVELS: FixRisk[] = ['none', 'low', 'medium', 'high']

@@ -154,7 +154,7 @@ const railInput = computed(() => ({
 // Warnings stay out of the way unless they change what the price means.
 const showSignals = computed(() => props.insight.signals.length > 0 && (
   expanded.value || props.insight.risk === 'medium' || props.insight.risk === 'high' ||
-  props.insight.signals.some(s => s.kind === 'old' || s.kind === 'norate' || s.kind === 'snipe')
+  props.insight.signals.some(s => s.kind === 'old' || s.kind === 'norate' || s.kind === 'snipe' || s.kind === 'oneseller')
 ))
 
 const accountMissing = computed(() => !AppConfig().accountName?.trim())

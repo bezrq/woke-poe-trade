@@ -167,7 +167,8 @@ export function headlinePrice (blend: Blend, insight: Insight): { chaos: number,
     if (insight.ceiling != null && blend.fair > insight.ceiling) return { chaos: insight.ceiling, from: 'listings' }
     // Nor for less than the cheapest listing, when enough current listings back it up.
     const backed = insight.kept.length >= MIN_LISTINGS_FOR_FLOOR && !insight.signals.some(s => s.kind === 'old')
-    if (insight.range && backed && blend.fair < insight.range.low) return { chaos: insight.range.low, from: 'listings' }
+    const floor = insight.floor ?? insight.range?.low
+    if (floor != null && backed && blend.fair < floor) return { chaos: floor, from: 'listings' }
     const onlyListings = blend.points.filter(p => p.weight > 0).every(p => p.key === 'listings')
     return { chaos: blend.fair, from: onlyListings ? 'listings' : 'blend' }
   }
