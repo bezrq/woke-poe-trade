@@ -72,6 +72,16 @@ history:
     to: In Progress
     user: Agent
     date: '2026-11-05T11:24:26.235Z'
+  - type: activity
+    user: Agent
+    date: '2026-11-05T11:54:44.451Z'
+    comment: >-
+      PR #167 reviewed adversarially. Fixed: main skill granted with no slot,
+      group labels on item rows, double-dimmed gems in disabled groups, chip
+      keys, missing-art fallback. Left as is: in the shared chip row a pick
+      moves both sets; picking an item set alone needs differing sets. Local
+      checks pass on c98ae82d. Asked the coordinator to merge.
+    id: a-2026-11-05t11-54-44-451z
 swimlane: null
 needsAction: null
 ---
