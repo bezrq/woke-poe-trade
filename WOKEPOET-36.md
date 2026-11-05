@@ -117,6 +117,7 @@ subtasks:
   - WOKEPOET-61
   - WOKEPOET-62
   - WOKEPOET-98
+  - WOKEPOET-105
 ---
 Harsh critique of the overlay core, read-only on master be3d56a5.
 

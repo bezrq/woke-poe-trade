@@ -1,7 +1,7 @@
 ---
 id: WOKEPOET-51
 title: 'Item and stat data the app updates by itself, without a release or restart'
-status: In Progress
+status: Done
 priority: High
 effort: M
 assignee: unassigned
@@ -44,6 +44,21 @@ history:
     date: '2026-11-05T13:10:07.650Z'
     comment: Updated implementation link.
     id: a-2026-11-05t13-10-07-650z
+  - type: comment
+    user: Agent
+    comment: >-
+      Merged in #182. The real download from GitHub ran against master into a
+      temp folder: as an app on version 1 it downloads nothing, and as an app on
+      version 0 it fetched and verified both files. Not yet seen: a live swap in
+      the running app, which first happens when data-version.json reaches 2.
+    date: '2026-11-05T13:19:47.053Z'
+    completionComment: true
+    id: c-2026-11-05t13-19-47-053z
+  - type: status_change
+    from: In Progress
+    to: Done
+    user: Agent
+    date: '2026-11-05T13:19:47.053Z'
 needsAction: null
 implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/182'
 ---
