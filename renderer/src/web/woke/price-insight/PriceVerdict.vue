@@ -96,7 +96,7 @@ import { nowMinute } from '../ui/format'
 import { usePoeninja } from '@/web/background/Prices'
 import { dataAge } from './data-age'
 import PriceHistoryChart from './PriceHistoryChart.vue'
-import { verdictExpanded, historyOpen } from './view'
+import { verdictExpanded, historyOpen, collapseForNewItem } from './view'
 import { DROP_LABEL, DropReason, Insight, Confidence, FixRisk, notePrice, noteText } from './insight'
 import { sourcesAddAnything } from './sources'
 import type { Agreement } from './sources'
@@ -122,6 +122,7 @@ const props = defineProps<{
 }>()
 
 const LOW_VALUE = 3
+watch(() => props.item, collapseForNewItem, { immediate: true })
 const expanded = computed(() => verdictExpanded.value)
 
 // 'OK', not 'Fair': this rates the data, and 'fair' already means the price.

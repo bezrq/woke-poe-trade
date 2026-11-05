@@ -20,30 +20,23 @@ watch(priceView, (v) => {
   try { localStorage.setItem(STORAGE_KEY, v) } catch {}
 })
 
-// Verdict card: one line by default; expanded shows notes, poe.ninja and
-// the price drivers.
-const EXPANDED_KEY = 'woke.priceVerdictExpanded'
-function readExpanded (): boolean {
-  try { return localStorage.getItem(EXPANDED_KEY) === '1' } catch { return false }
-}
-export const verdictExpanded = shallowRef(readExpanded())
-watch(verdictExpanded, (v) => {
-  try { localStorage.setItem(EXPANDED_KEY, v ? '1' : '0') } catch {}
-})
-
 window.addEventListener('storage', (e) => {
-  if (e.key === EXPANDED_KEY) verdictExpanded.value = e.newValue === '1'
   if (e.key === STORAGE_KEY && (e.newValue === 'classic' || e.newValue === 'improved')) {
     priceView.value = e.newValue
   }
 })
 
-// Price history chart under the verdict: opened from the sparkline, remembered.
-const HISTORY_KEY = 'woke.priceHistoryOpen'
-function readHistory (): boolean {
-  try { return localStorage.getItem(HISTORY_KEY) === '1' } catch { return false }
+// Verdict card: one line by default; expanded shows notes, poe.ninja and
+// the price drivers. The chart opens from the sparkline.
+export const verdictExpanded = shallowRef(false)
+export const historyOpen = shallowRef(false)
+
+// Every new item starts collapsed. Changing a filter on the same item doesn't
+// count, even if that rebuilds the verdict.
+let lastItem: unknown = null
+export function collapseForNewItem (item: unknown): void {
+  if (item === lastItem) return
+  lastItem = item
+  verdictExpanded.value = false
+  historyOpen.value = false
 }
-export const historyOpen = shallowRef(readHistory())
-watch(historyOpen, (v) => {
-  try { localStorage.setItem(HISTORY_KEY, v ? '1' : '0') } catch {}
-})
