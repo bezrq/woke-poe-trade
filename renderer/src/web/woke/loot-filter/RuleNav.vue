@@ -23,7 +23,7 @@
     <div ref="listEl" :class="$style.list" class="w-scroll">
       <!-- Filter results, the Changed list: flat, each saying where it lives. -->
       <template v-if="flatList">
-        <WEmpty v-if="!flatList.length" icon="fas fa-search">{{ changedOnly && !query.trim() ? 'No changes yet.' : `No group matches "${query}".` }}</WEmpty>
+        <WEmpty v-if="!flatList.length" icon="fas fa-search">{{ emptyText }}</WEmpty>
         <WListItem v-for="s in flatList" :key="s.group.type" :active="s.group.type === selType" @select="pick(s)" @contextmenu="emit('group-menu', $event, s.group.type)">
           <span class="flex items-center gap-2 w-full min-w-0" :class="{ [$style.off]: s.group.hidden }">
             <span class="w-trunc">{{ nameOf(s.group) }}</span>
@@ -32,10 +32,18 @@
           </span>
           <template #sub>{{ s.category.label }}<template v-if="s.category.chapters.length > 1"> › {{ s.chapter.title }}</template></template>
         </WListItem>
+        <div v-if="hiddenCount" :class="$style.hint">
+          <span>{{ hiddenCount }} more outside {{ modeLabel }}</span>
+          <button type="button" :class="$style.crumb" @click="setMode('all')">Show both</button>
+        </div>
       </template>
 
       <!-- Top level: pinned groups, then categories. -->
       <template v-else-if="!here.category">
+        <WEmpty v-if="!nav.length" icon="fas fa-filter">
+          Nothing for {{ modeLabel }} in this filter.
+          <template #actions><WButton size="sm" @click="setMode('all')">Show both</WButton></template>
+        </WEmpty>
         <template v-if="pinned.length">
           <div class="w-group-label">Pinned</div>
           <WListItem v-for="s in pinned" :key="s.group.type" :active="s.group.type === selType" @select="pick(s)" @contextmenu="emit('group-menu', $event, s.group.type)">
@@ -43,10 +51,11 @@
               <i class="fas fa-star" :class="$style.star" aria-hidden="true" />
               <span class="w-trunc">{{ nameOf(s.group) }}</span>
             </span>
+            <template v-if="s.category.id === 'other'" #sub>{{ s.chapter.title }}</template>
           </WListItem>
           <div class="w-group-label">Categories</div>
         </template>
-        <WListItem v-for="c in nav" :key="c.id" :active="c.id === selectedSpot?.category.id" @select="openCat(c)">
+        <WListItem v-for="c in nav" :key="c.id" :active="c.id === selectedSpot?.category.id" :data-here="c.id === selectedSpot?.category.id || undefined" @select="openCat(c)">
           <span class="flex items-center gap-2 w-full min-w-0">
             <img v-if="iconOf(c)" :src="iconOf(c)!" :class="$style.art" alt="">
             <i v-else :class="[c.fa, $style.fa]" aria-hidden="true" />
@@ -60,7 +69,7 @@
 
       <!-- A category's chapters. -->
       <template v-else-if="!here.chapter">
-        <WListItem v-for="ch in here.category.chapters" :key="ch.id" :active="ch.id === selectedSpot?.chapter.id" @select="at = { cat: here.category!.id, chapter: ch.id }">
+        <WListItem v-for="ch in here.category.chapters" :key="ch.id" :active="ch.id === selectedSpot?.chapter.id" :data-here="ch.id === selectedSpot?.chapter.id || undefined" @select="at = { cat: here.category!.id, chapter: ch.id }">
           <span class="flex items-center gap-2 w-full min-w-0">
             <span class="w-trunc grow" :title="ch.id">{{ ch.title }}</span>
             <span v-if="changedInChapter(ch)" :class="$style.changed" class="text-xs">{{ changedInChapter(ch) }}</span>
@@ -72,7 +81,7 @@
 
       <!-- A chapter's groups. -->
       <template v-else>
-        <WListItem v-for="g in here.chapter.groups" :key="g.type" :active="g.type === selType" @select="emit('select', g.type)" @contextmenu="emit('group-menu', $event, g.type)">
+        <WListItem v-for="g in here.chapter.groups" :key="g.type" :active="g.type === selType" :data-here="g.type === selType || undefined" @select="emit('select', g.type)" @contextmenu="emit('group-menu', $event, g.type)">
           <span class="flex items-center gap-2 w-full min-w-0" :class="{ [$style.off]: g.hidden }">
             <span class="w-trunc grow" :title="nameOf(g)">{{ shortGroupName(nameOf(g)) }}</span>
             <span v-if="changedIn(g.type)" :class="$style.changed" class="text-xs" :title="`You changed ${changedIn(g.type)} thing(s) here`">{{ changedIn(g.type) }}</span>
@@ -88,8 +97,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
-import { WChip, WEmpty, WField, WListItem, WSegmented, gameIcon } from '../ui'
+import { computed, nextTick, ref, watch } from 'vue'
+import { WButton, WChip, WEmpty, WField, WListItem, WSegmented, gameIcon } from '../ui'
 import type { GroupNode, SectionNode } from './groups'
 import { allSpots, buildNav, filterNav, findSpot, levelUp, openCategory, shortGroupName } from './nav'
 import type { NavCategory, NavChapter, NavMode, NavSpot } from './nav'
@@ -127,13 +136,28 @@ const here = computed(() => {
 })
 const selectedSpot = computed(() => findSpot(nav.value, props.selType))
 
-const changedTotal = computed(() => allSpots(nav.value).filter(s => props.changedIn(s.group.type) > 0).length)
+// Counts every list, not just the one the switch shows: the badges count changes too.
+const everything = computed(() => buildNav(props.tree, 'all'))
+const changedTotal = computed(() => allSpots(everything.value).reduce((n, s) => n + props.changedIn(s.group.type), 0))
 const flatList = computed<NavSpot[] | null>(() => {
   if (query.value.trim()) {
     const found = filterNav(nav.value, query.value, props.nameOf)
     return changedOnly.value ? found.filter(s => props.changedIn(s.group.type) > 0) : found
   }
   return changedOnly.value ? allSpots(nav.value).filter(s => props.changedIn(s.group.type) > 0) : null
+})
+
+// What the switch is hiding from the flat list, so nothing just seems to be missing.
+const modeLabel = computed(() => MODE_OPTIONS.find(o => o.value === props.config.ruleNav.mode)!.label)
+const hiddenCount = computed(() => {
+  if (!flatList.value) return 0
+  const inAll = query.value.trim() ? filterNav(everything.value, query.value, props.nameOf) : allSpots(everything.value)
+  const found = changedOnly.value ? inAll.filter(s => props.changedIn(s.group.type) > 0) : inAll
+  return found.length - flatList.value.length
+})
+const emptyText = computed(() => {
+  if (hiddenCount.value) return `Nothing in ${modeLabel.value}.`
+  return changedOnly.value && !query.value.trim() ? 'No changes yet.' : `No group matches "${query.value}".`
 })
 
 const isPinned = (type: string) => props.config.ruleNav.pins.includes(type)
@@ -165,7 +189,6 @@ function openCat (c: NavCategory) {
 
 function pick (s: NavSpot) {
   query.value = ''
-  changedOnly.value = false
   at.value = { cat: s.category.id, chapter: s.chapter.id }
   emit('select', s.group.type)
 }
@@ -174,10 +197,10 @@ function pick (s: NavSpot) {
 let revealed = false
 
 // Coming from elsewhere (an item's rule, a link), show where that group lives.
-// One the switch is hiding brings everything back, or you'd lose your place.
+// One the switch hides stays where it is: the switch is your choice, and the
+// first group of a filter is often not in Campaign.
 watch(() => props.selType, (type) => {
   if (!type || type.startsWith('woke->rule')) return
-  if (!findSpot(nav.value, type) && findSpot(buildNav(props.tree, 'all'), type)) props.config.ruleNav.mode = 'all'
   const spot = findSpot(nav.value, type)
   if (spot) {
     at.value = { cat: spot.category.id, chapter: spot.chapter.id }
@@ -197,6 +220,15 @@ watch(nav, (list) => {
   }
 })
 
+// A new level replaces the row that had focus, and the keys would stop working.
+watch([at, () => flatList.value === null], () => {
+  if (!listEl.value?.contains(document.activeElement)) return
+  nextTick(() => {
+    const row = listEl.value?.querySelector<HTMLElement>('[data-here] .w-focusable') ?? listEl.value?.querySelector<HTMLElement>('.w-focusable')
+    row?.focus()
+  })
+})
+
 function goUp () {
   at.value = levelUp(nav.value, at.value)
 }
@@ -206,19 +238,22 @@ function onKey (e: KeyboardEvent) {
   const t = e.target as HTMLElement | null
   const typing = t?.tagName === 'INPUT'
   if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-    const rows = [...(listEl.value?.querySelectorAll<HTMLElement>('button:not(.w-icon-btn)') ?? [])]
+    // The panel around this walks every row in the window: this list keeps its own.
+    e.stopPropagation()
+    const rows = [...(listEl.value?.querySelectorAll<HTMLElement>('.w-focusable') ?? [])]
     if (!rows.length) return
     e.preventDefault()
     const i = rows.indexOf(document.activeElement as HTMLElement)
     const next = i < 0 ? 0 : (i + (e.key === 'ArrowDown' ? 1 : -1) + rows.length) % rows.length
     rows[next].focus()
+    rows[next].scrollIntoView({ block: 'nearest' })
     return
   }
   if (typing) return
-  if (e.key === 'Backspace' || e.key === 'ArrowLeft') {
+  if ((e.key === 'Backspace' || e.key === 'ArrowLeft') && !flatList.value) {
     e.preventDefault()
     goUp()
-  } else if (e.key === 'ArrowRight' && t?.tagName === 'BUTTON') {
+  } else if (e.key === 'ArrowRight' && t?.classList.contains('w-focusable') && listEl.value?.contains(t)) {
     e.preventDefault()
     t.click()
   }
@@ -263,6 +298,14 @@ function onKey (e: KeyboardEvent) {
 .art { width: 22px; height: 22px; object-fit: contain; flex: none; }
 .fa { width: 22px; text-align: center; flex: none; color: var(--w-dim); }
 .star { color: var(--w-accent); }
+.hint {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px var(--w-pad);
+  font-size: var(--w-text-sm);
+  color: var(--w-dim);
+}
 .changed { color: var(--w-warn); white-space: nowrap; }
 .off { opacity: 0.5; }
 </style>

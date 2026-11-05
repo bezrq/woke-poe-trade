@@ -266,6 +266,53 @@ test('rule list: drill down, back up, filter, switch, pin', async ({ overlay, fa
   await page.getByRole('button', { name: /^Pin / }).first().click()
   await crumbs.getByRole('button', { name: 'All' }).click()
   await expect(page.getByText('Pinned')).toBeVisible()
+
+  // Campaign is your choice: nothing flips it back, and search says what it hides.
+  const mode = (name: string) => page.getByRole('button', { name, exact: true })
+  await mode('Campaign').click()
+  await page.getByRole('tab', { name: 'Preview' }).click()
+  await page.getByRole('tab', { name: 'Rules' }).click()
+  await expect(mode('Campaign')).toHaveAttribute('aria-pressed', 'true')
+  await page.getByPlaceholder('Filter groups').fill('fossil')
+  await expect(page.getByText(/more outside Campaign/)).toBeVisible()
+  await page.getByRole('button', { name: 'Show both' }).click()
+  await expect(mode('Both')).toHaveAttribute('aria-pressed', 'true')
+  await page.getByPlaceholder('Filter groups').fill('')
+})
+
+test('rule list: the keys move one row and keep working after each level', async ({ overlay, fakeApp }) => {
+  const folder = fs.mkdtempSync(path.join(os.tmpdir(), 'woke-filters-'))
+  fs.writeFileSync(path.join(folder, 'NeverSink.filter'), zlib.gunzipSync(fs.readFileSync(path.join(FIXTURES, 'filters', 'neversink', '1-REGULAR.filter.gz'))))
+  await overlay.boot({ widgets: [lootFilter(folder)] })
+  await openEditor(overlay, fakeApp)
+  const page = overlay.page
+  await page.getByRole('tab', { name: 'Rules' }).click()
+  const crumbs = page.getByRole('navigation', { name: /Where you are/ })
+  const focused = () => page.evaluate(() => document.activeElement?.textContent?.trim() ?? '')
+  await crumbs.getByRole('button', { name: 'All' }).click()
+
+  const first = page.getByRole('button', { name: /^Currency/ }).first()
+  await first.focus()
+  await page.keyboard.press('ArrowDown')
+  expect(await focused()).toMatch(/^Scarabs and fragments/)
+  await page.keyboard.press('ArrowUp')
+  expect(await focused()).toMatch(/^Currency/)
+
+  // In, and the keys still work without touching the mouse.
+  await page.keyboard.press('ArrowRight')
+  await expect(crumbs).toContainText('Currency')
+  await page.keyboard.press('ArrowDown')
+  expect(await focused()).not.toBe('')
+  expect(await page.evaluate(() => document.activeElement?.tagName)).toBe('BUTTON')
+  await page.keyboard.press('Backspace')
+  await expect(crumbs).not.toContainText('Currency')
+  expect(await page.evaluate(() => document.activeElement?.tagName)).toBe('BUTTON')
+  expect(await focused()).toMatch(/^Currency/)
+
+  // Down from the filter box lands in this list, not elsewhere in the window.
+  await page.getByPlaceholder('Filter groups').focus()
+  await page.keyboard.press('ArrowDown')
+  expect(await focused()).toMatch(/^Currency/)
 })
 
 test('pasting a copied item into the search box opens its rule card', async ({ overlay, fakeApp }) => {
