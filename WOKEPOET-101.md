@@ -38,6 +38,7 @@ history:
     date: '2026-11-05T12:41:53.609Z'
 implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/181'
 needsAction: null
+baselineCommit: ae9d149f9c555d42e467c95e82514624d060baa7
 ---
 The settings About page still shows the inherited Awakened PoE Trade contact block: the original author's Discord ID and links to The Forbidden Trove and r/pathofexile.
 
