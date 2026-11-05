@@ -26,6 +26,30 @@ function listings (chaos: number, daysAgo: number[], over: Partial<InsightListin
 const OLD = Array.from({ length: 20 }, (_, i) => 19 + i * 4)
 const STASH = { hasFee: false }
 
+describe('a seller\'s pile of copies', () => {
+  const others = listings(100, [1, 2, 3, 4, 5, 6])
+
+  it('is a wall on one row', () => {
+    const rows = [...listings(10, [1], { ...STASH, accountName: 'wall', listedTimes: 6 }), ...others]
+    expect(Array.from(buildInsight(rows, OPTS).dropped.values())).toContain('wall')
+  })
+
+  it('is still a wall when different stats keep the copies on separate rows', () => {
+    const rows = [...listings(10, [1, 1, 1, 1, 1, 1], { ...STASH, accountName: 'wall' }), ...others]
+    const dropped = Array.from(buildInsight(rows, OPTS).dropped.values())
+    expect(dropped.filter(reason => reason === 'wall')).toHaveLength(6)
+  })
+
+  it('needs one price: two prices from one seller aren\'t a pile', () => {
+    const rows = [
+      ...listings(10, [1, 1], { ...STASH, accountName: 'seller' }),
+      ...listings(11, [1], { ...STASH, accountName: 'seller' }),
+      ...others
+    ]
+    expect(Array.from(buildInsight(rows, OPTS).dropped.values())).not.toContain('wall')
+  })
+})
+
 describe('listings nobody has bought', () => {
   it('rates old stash listings as thin, and says why', () => {
     const insight = buildInsight(listings(20, OLD, STASH), OPTS)

@@ -28,9 +28,6 @@
           @click="config.reroll = !config.reroll"><i class="fas fa-recycle" /> Reroll cheap results</WChip>
         <WChip v-if="view === 'buy'" clickable :active="config.hideUntraded" :title="`Hide items with under ${UNTRADED_CHAOS}c traded a day: their price means little`"
           @click="config.hideUntraded = !config.hideUntraded">Hide untraded</WChip>
-        <WField v-if="method.lifeforce" :model-value="lifeforcePerItem" type="number" :suffix="`${method.lifeforce} / item`" style="width: 8rem;"
-          title="Lifeforce per item for this craft. The wiki lists 30; change it if the bench shows otherwise."
-          @update:model-value="setLifeforce($event)" />
       </template>
       <template #meta>
         <template v-if="flip">
@@ -57,7 +54,7 @@
           <div class="w-row w-row--head" :class="$style.buyGrid">
             <span>{{ capitalize(family.noun) }}</span><span class="text-right">Price</span>
             <span class="text-right" :title="profitTitle">{{ method.id === 'harvest' ? 'Profit / reroll' : 'Profit / recipe' }}</span>
-            <template v-if="hasVolume"><span class="text-right" title="Items traded in the last 24 hours">Traded / day</span><span class="text-right" title="Most profit a day, if you bought every item traded">c / day</span></template>
+            <template v-if="hasVolume"><span class="text-right" :title="MARKET_TITLE">Market / day</span><span class="text-right" :title="MAX_PROFIT_TITLE">Max profit / day</span></template>
           </div>
           <div v-for="r in buy" :key="r.name" class="w-row" :class="$style.buyGrid" @contextmenu="rowMenu($event, itemName(r))">
             <FlipName :name="r.name" :item="itemName(r)" :rare-cheap="'rareCheap' in r && r.rareCheap" />
@@ -108,7 +105,7 @@
         <template v-else>
           <div class="w-row w-row--head" :class="$style.rareGrid">
             <span>{{ capitalize(family.noun) }}</span><span class="text-right">Price</span><span class="text-right" title="Chance per flip or drop, from the weights">Drops</span>
-            <span v-if="hasVolume" class="text-right" title="Items traded in the last 24 hours">Traded / day</span>
+            <span v-if="hasVolume" class="text-right" :title="MARKET_TITLE">Market / day</span>
           </div>
           <div v-for="r in rareCheap" :key="r.name" class="w-row" :class="$style.rareGrid" @contextmenu="rowMenu($event, r.name)">
             <FlipName :name="r.name" :item="r.name" :rare-cheap="r.rareCheap" />
@@ -120,7 +117,7 @@
       </template>
 
       <template #footer>
-        <span :title="footerTitle">{{ family.source }}<template v-if="pool?.unrated.length"> {{ pool.unrated.length }} with no weight left out.</template></span>
+        <span :title="footerTitle">{{ footerText }}</span>
       </template>
     </WPanel>
   </Widget>
@@ -146,7 +143,7 @@ import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
 import { Host } from '@/web/background/IPC'
 import { useLeagues } from '@/web/background/Leagues'
-import { WPanel, WTabs, WSegmented, WSelect, WChip, WField, WPrice, WEmpty, WSkeleton, openMenu, toast, vItemTip } from '../ui'
+import { WPanel, WTabs, WSegmented, WSelect, WChip, WPrice, WEmpty, WSkeleton, openMenu, toast, vItemTip } from '../ui'
 import { copyText } from '../ui/copy'
 import { formatAmount, formatChaos } from '../ui/format'
 import { gameIcon, moduleIcon } from '../ui/game-icons'
@@ -159,7 +156,7 @@ import type { DockMenuAction } from '../dock/dock'
 import { useZone } from '../shared/zone'
 import { UNTRADED_CHAOS, JACKPOT_CHAOS, buyList, flipOdds, parseExchange, rareCheapList } from './calc'
 import type { FlipRow, UpgradeRow } from './calc'
-import { DEFAULT_LIFEFORCE_PER_ITEM, FAMILIES, bestFlip, familyById, priceFlip, shortName, unpricedShare } from './families'
+import { DEFAULT_LIFEFORCE_PER_ITEM, FAMILIES, bestFlip, familyById, parseLifeforce, priceFlip, shortName, unpricedShare } from './families'
 import type { Exchanges, FlipMethodId } from './families'
 import type { ScarabFlipWidget } from './widget'
 
@@ -259,11 +256,7 @@ function pickMethod (id: string) {
 function pickView (id: string) {
   props.config.tab = id as ScarabFlipWidget['tab']
 }
-function setLifeforce (value: string | number) {
-  // Cleared: back to the listed cost, not free.
-  props.config.lifeforcePerItem = value === '' ? undefined : Math.max(0, Number(value) || 0)
-}
-const lifeforcePerItem = computed(() => props.config.lifeforcePerItem ?? DEFAULT_LIFEFORCE_PER_ITEM)
+const lifeforcePerItem = computed(() => parseLifeforce(props.config.lifeforcePerItem ?? '') ?? DEFAULT_LIFEFORCE_PER_ITEM)
 const options = computed(() => ({ sellDiscount: props.config.sellDiscount / 100, reroll: props.config.reroll }))
 
 const flip = computed(() => snapshot.value
@@ -288,6 +281,8 @@ const views = computed(() => {
 })
 const view = computed(() => views.value.some(v => v.value === props.config.tab) ? props.config.tab : 'buy')
 
+const MAX_PROFIT_TITLE = 'The most you could make in a day: the profit if you bought every item the whole market traded and flipped them all. A ceiling, used to rank the list. Real profit will be far lower.'
+const MARKET_TITLE = 'How many of this item changed hands across the whole market in the last 24 hours, from poe.ninja. Not how many you could buy.'
 const panelIcon = moduleIcon('scarab-flip').art ?? undefined
 const hasVolume = computed(() => rows.value.some(r => r.tradedChaos != null))
 const buy = computed(() => buyList(rows.value, props.config.hideUntraded))
@@ -313,7 +308,7 @@ const verdictSub = computed(() => {
 })
 const profitTitle = computed(() => method.value.id === 'upgrade'
   ? 'Price of the next tier, minus 3 of this one'
-  : `Return of a ${flipWord.value}, minus what goes in${method.value.lifeforce ? ' and the lifeforce' : ''}`)
+  : `Return of a ${flipWord.value}, minus what goes in${method.value.lifeforce ? ' and the lifeforce. Lifeforce per item is in Settings, under Market & investments.' : ''}`)
 
 const unpriced = computed(() => flip.value?.kind === 'pool' ? unpricedShare(family.value, flip.value.quotes) : 0)
 const warning = computed(() => {
@@ -328,6 +323,11 @@ const feedNote = computed(() => {
   const feed = exchanges.value.get(family.value.ninjaType)
   if (feed) return 'Prices and volume: poe.ninja exchange.'
   return feed === undefined ? 'Prices: poe.ninja. Volume is still loading.' : "Prices: poe.ninja. Volume is missing because the exchange feed didn't load."
+})
+
+const footerText = computed(() => {
+  const left = pool.value?.unrated.length
+  return left ? `${family.value.source} ${left} with no weight left out.` : family.value.source
 })
 
 const footerTitle = computed(() => {
@@ -399,7 +399,7 @@ const dockMenu = computed<DockMenuAction[]>(() => [{
 <style module>
 .verdict { display: flex; flex-direction: column; gap: 2px; padding: 8px var(--w-pad); background: var(--w-accent-soft); border-bottom: 1px solid var(--w-line); }
 .verdict b { font-size: var(--w-fs-lg); font-weight: 600; }
-.buyGrid { grid-template-columns: minmax(0, 1fr) 62px 76px 64px 56px; }
+.buyGrid { grid-template-columns: minmax(0, 1fr) 62px 70px 56px 80px; }
 .rareGrid { grid-template-columns: minmax(0, 1fr) 62px 76px 64px; }
 .sourceGrid { grid-template-columns: minmax(0, 1fr) 76px 44px; }
 .note { padding: 8px var(--w-pad); color: var(--w-dim); font-size: var(--w-fs-sm); white-space: normal; overflow-wrap: anywhere; }

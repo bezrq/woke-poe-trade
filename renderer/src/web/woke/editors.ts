@@ -15,6 +15,7 @@ import MapScanEditor from './map-mods/map-scan-editor.vue'
 import EssenceScanEditor from './essence-scan/essence-scan-editor.vue'
 import LootFilterEditor from './loot-filter/loot-filter-editor.vue'
 import TradeEditor from './trade/trade-editor.vue'
+import FlipsEditor from './scarab-flip/flips-editor.vue'
 import { REGEX_LIBRARY_TYPE } from './regex-library/widget'
 import { TRADE_SEARCHES_TYPE } from './trade-searches/widget'
 import { POB_BUILDS_TYPE } from './pob-builds/widget'
@@ -30,6 +31,7 @@ import { MAP_SCAN_TYPE } from './map-mods/scan'
 import { ESSENCE_SCAN_TYPE } from './essence-scan/widget'
 import { LOOT_FILTER_TYPE } from './loot-filter/widget'
 import { TRADE_TYPE } from './trade/widget'
+import { SCARAB_FLIP_TYPE } from './scarab-flip/widget'
 
 const editors: Record<string, Component> = {
   [REGEX_LIBRARY_TYPE]: RegexLibraryEditor,
@@ -46,7 +48,8 @@ const editors: Record<string, Component> = {
   [MECHANICS_TYPE]: MechanicsEditor,
   [LOOT_FILTER_TYPE]: LootFilterEditor,
   [FARMING_TYPE]: FarmingEditor,
-  [TRADE_TYPE]: TradeEditor
+  [TRADE_TYPE]: TradeEditor,
+  [SCARAB_FLIP_TYPE]: FlipsEditor
 }
 
 export function wokeSettingsFor (wmType: string | undefined): Component | undefined {

@@ -48,7 +48,7 @@
           <option v-if="look.sound && !known(look.sound.id)" :value="look.sound.id">{{ soundLabel(look.sound.id) }}</option>
         </select>
         <span v-if="look.sound" class="flex items-center gap-2">
-          <button type="button" class="w-icon-btn" :disabled="!isCustomSound(look.sound.id)"
+          <button type="button" class="w-icon-btn" :class="{ [$style.cantPlay]: !isCustomSound(look.sound.id) }"
             :title="isCustomSound(look.sound.id) ? 'Play' : 'The game\'s own sounds play only in game'" :aria-label="`Play ${soundLabel(look.sound.id)}`"
             @click="play(look.sound!.id, look.sound!.volume)"><i class="fas fa-play" /></button>
           <input type="range" min="0" max="300" step="10" :value="look.sound.volume" class="grow" style="min-width: 0;" aria-label="Volume"
@@ -213,6 +213,10 @@ function known (id: string): boolean {
 }
 
 async function play (id: string, volume: number) {
+  if (!isCustomSound(id)) {
+    toast('The game\'s own sounds only play in game. Pick one from NeverSink\'s pack above to hear it here.')
+    return
+  }
   if (!await playSound(id, volume, dir.value)) toast(`Couldn't play ${soundLabel(id)}`)
 }
 
@@ -281,6 +285,7 @@ function copy (tier: string) {
   font-size: var(--w-text-sm);
 }
 .colours { gap: 4px 10px; }
+.cantPlay { opacity: 0.45; }
 .mark {
   display: inline-block;
   width: 7px;

@@ -3,6 +3,7 @@
 import fs from 'fs'
 import os from 'os'
 import path from 'path'
+import zlib from 'zlib'
 import { test, expect, FIXTURES } from './harness'
 import type { FakeApp, Overlay } from './harness'
 
@@ -219,6 +220,99 @@ test('rules: pick several chips, move them together, hide them together, and see
   const out = path.join(folder, 'NeverSink (woke).filter')
   await expect.poll(() => fs.existsSync(out) ? fs.readFileSync(out, 'utf8') : '').toMatch(/\$tier->t2divine[^\n]*\n(\t[^\n]*\n)*\tBaseType == [^\n]*"Orb of Alchemy"/)
   expect(fs.readFileSync(out, 'utf8')).toMatch(/Hide # \$type->woke->own [^\n]*\n(\t[^\n]*\n)*\tBaseType == "Chaos Orb"/)
+})
+
+test('rule list: drill down, back up, filter, switch, pin', async ({ overlay, fakeApp }) => {
+  const folder = fs.mkdtempSync(path.join(os.tmpdir(), 'woke-filters-'))
+  fs.writeFileSync(path.join(folder, 'NeverSink.filter'), zlib.gunzipSync(fs.readFileSync(path.join(FIXTURES, 'filters', 'neversink', '1-REGULAR.filter.gz'))))
+  await overlay.boot({ widgets: [lootFilter(folder)] })
+  await openEditor(overlay, fakeApp)
+  const page = overlay.page
+  await page.getByRole('tab', { name: 'Rules' }).click()
+  const crumbs = page.getByRole('navigation', { name: /Where you are/ })
+
+  // It opens where the first group lives, and the top lists categories.
+  await expect(crumbs).toContainText('Currency')
+  await crumbs.getByRole('button', { name: 'All' }).click()
+  await expect(page.getByRole('button', { name: /^Uniques/ }).first()).toBeVisible()
+  await overlay.snap('rule list categories')
+
+  await page.getByRole('button', { name: /^Currency/ }).first().click()
+  await page.getByRole('button', { name: /^League/ }).click()
+  await overlay.snap('rule list chapter')
+  await page.getByRole('button', { name: /Essence/ }).first().click()
+  await expect(page.getByText(/tiers ·/).first()).toContainText('tiers')
+  await expect(crumbs).toContainText('League')
+
+  // Backspace goes up a level from the list.
+  await page.getByRole('button', { name: /Essence/ }).first().focus()
+  await page.keyboard.press('Backspace')
+  await expect(crumbs).not.toContainText('League')
+
+  // The filter looks at every level and says where a match lives.
+  await page.getByPlaceholder('Filter groups').fill('fossil')
+  await expect(page.getByRole('button', { name: /Fossil/ }).first()).toBeVisible()
+  await overlay.snap('rule list filter')
+  await page.getByPlaceholder('Filter groups').fill('')
+
+  // Endgame hides levelling; Both brings it back.
+  await crumbs.getByRole('button', { name: 'All' }).click()
+  await expect(page.getByRole('button', { name: /^Levelling/ })).toHaveCount(0)
+  await page.getByRole('button', { name: 'Both', exact: true }).click()
+  await expect(page.getByRole('button', { name: /^Levelling/ })).toBeVisible()
+
+  // A pin shows at the top.
+  await page.getByRole('button', { name: /^Divination cards/ }).first().click()
+  await page.getByRole('button', { name: /^Pin / }).first().click()
+  await crumbs.getByRole('button', { name: 'All' }).click()
+  await expect(page.getByText('Pinned')).toBeVisible()
+
+  // Campaign is your choice: nothing flips it back, and search says what it hides.
+  const mode = (name: string) => page.getByRole('button', { name, exact: true })
+  await mode('Campaign').click()
+  await page.getByRole('tab', { name: 'Preview' }).click()
+  await page.getByRole('tab', { name: 'Rules' }).click()
+  await expect(mode('Campaign')).toHaveAttribute('aria-pressed', 'true')
+  await page.getByPlaceholder('Filter groups').fill('fossil')
+  await expect(page.getByText(/more outside Campaign/)).toBeVisible()
+  await page.getByRole('button', { name: 'Show both' }).click()
+  await expect(mode('Both')).toHaveAttribute('aria-pressed', 'true')
+  await page.getByPlaceholder('Filter groups').fill('')
+})
+
+test('rule list: the keys move one row and keep working after each level', async ({ overlay, fakeApp }) => {
+  const folder = fs.mkdtempSync(path.join(os.tmpdir(), 'woke-filters-'))
+  fs.writeFileSync(path.join(folder, 'NeverSink.filter'), zlib.gunzipSync(fs.readFileSync(path.join(FIXTURES, 'filters', 'neversink', '1-REGULAR.filter.gz'))))
+  await overlay.boot({ widgets: [lootFilter(folder)] })
+  await openEditor(overlay, fakeApp)
+  const page = overlay.page
+  await page.getByRole('tab', { name: 'Rules' }).click()
+  const crumbs = page.getByRole('navigation', { name: /Where you are/ })
+  const focused = () => page.evaluate(() => document.activeElement?.textContent?.trim() ?? '')
+  await crumbs.getByRole('button', { name: 'All' }).click()
+
+  const first = page.getByRole('button', { name: /^Currency/ }).first()
+  await first.focus()
+  await page.keyboard.press('ArrowDown')
+  expect(await focused()).toMatch(/^Scarabs and fragments/)
+  await page.keyboard.press('ArrowUp')
+  expect(await focused()).toMatch(/^Currency/)
+
+  // In, and the keys still work without touching the mouse.
+  await page.keyboard.press('ArrowRight')
+  await expect(crumbs).toContainText('Currency')
+  await page.keyboard.press('ArrowDown')
+  expect(await focused()).not.toBe('')
+  expect(await page.evaluate(() => document.activeElement?.tagName)).toBe('BUTTON')
+  await page.keyboard.press('Backspace')
+  await expect(crumbs).not.toContainText('Currency')
+  expect(await page.evaluate(() => document.activeElement?.tagName)).toBe('BUTTON')
+  expect(await focused()).toMatch(/^Currency/)
+
+  // Down from the filter box lands in this list, not elsewhere in the window.
+  await page.getByPlaceholder('Filter groups').focus()
+  await page.keyboard.press('ArrowDown')
+  expect(await focused()).toMatch(/^Currency/)
 })
 
 test('pasting a copied item into the search box opens its rule card', async ({ overlay, fakeApp }) => {

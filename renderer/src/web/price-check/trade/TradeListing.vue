@@ -39,7 +39,7 @@
         :divine="divine"
         :ready="slowdownReady" />
     </teleport>
-    <div class="w-pc-scroll layout-column overflow-y-auto overflow-x-hidden">
+    <div ref="scrollEl" class="w-pc-scroll layout-column overflow-y-auto overflow-x-hidden">
       <table class="w-pc-table table-stripped w-full">
         <thead>
           <tr class="text-left">
@@ -52,7 +52,7 @@
             <th v-if="item.stackSize" :class="$style.tableHeading">
               <div class="px-2">{{ t(':stock') }}</div>
             </th>
-            <th v-if="filters.itemLevel" :class="$style.tableHeading">
+            <th v-if="showItemLevel" :class="$style.tableHeading">
               <div class="px-2">{{ t(':item_level') }}</div>
             </th>
             <th v-if="item.category === 'Gem'" :class="$style.tableHeading">
@@ -60,6 +60,12 @@
             </th>
             <th v-if="filters.quality || item.category === 'Gem'" :class="$style.tableHeading">
               <div class="px-2">{{ t(':quality') }}</div>
+            </th>
+            <th v-for="col in shownColumns" :key="col.key" :class="[$style.tableHeading, 'w-pc-stat-head']" :title="col.title">
+              <div>{{ col.label }}</div>
+            </th>
+            <th v-if="hiddenColumns.length" :class="[$style.tableHeading, 'w-pc-stat-head']" :title="hiddenColumns.map(col => col.title).join('\n')">
+              <div class="w-pc-stat-more">+{{ hiddenColumns.length }}</div>
             </th>
             <th v-if="showSeller" class="w-full" :class="$style.tableHeading">
               <div class="px-2">{{ t(':seller') }}</div>
@@ -76,6 +82,18 @@
             </tr>
           </template>
           <template v-else>
+            <tr v-if="shownColumns.length" class="w-pc-yours" title="Red: theirs is better. Green: yours is better.">
+              <td class="px-2 w-pc-yours-tag">Yours</td>
+              <td />
+              <td v-if="item.stackSize" />
+              <td v-if="showItemLevel" class="px-2 text-right">{{ item.itemLevel }}</td>
+              <td v-if="item.category === 'Gem'" />
+              <td v-if="filters.quality || item.category === 'Gem'" />
+              <td v-for="col in shownColumns" :key="col.key" class="w-pc-stat">{{ col.yours }}</td>
+              <td v-if="hiddenColumns.length" />
+              <td v-if="showSeller" />
+              <td />
+            </tr>
             <tr v-for="row in rows" :key="row.key"
               :class="{
                 'w-pc-ignored': improved && row.dropped,
@@ -106,9 +124,11 @@
                 </span>
               </td>
               <td v-if="item.stackSize" class="px-2 text-right">{{ row.lead.stackSize }}</td>
-              <td v-if="filters.itemLevel" class="px-2 whitespace-nowrap text-right">{{ row.lead.itemLevel }}</td>
+              <td v-if="showItemLevel" class="px-2 whitespace-nowrap text-right">{{ row.lead.itemLevel }}</td>
               <td v-if="item.category === 'Gem'" class="pl-2 whitespace-nowrap">{{ row.lead.level }}</td>
               <td v-if="filters.quality || item.category === 'Gem'" class="px-2 whitespace-nowrap text-blue-400 text-right">{{ row.lead.quality }}</td>
+              <td v-for="col in shownColumns" :key="col.key" class="w-pc-stat" :class="toneClass(row.lead, col)">{{ formatStatValue(statValue(row.lead, col), col) }}</td>
+              <td v-if="hiddenColumns.length" />
               <td v-if="showSeller" class="px-2 whitespace-nowrap">
                 <span v-if="row.lead.isMine" class="w-pc-you">{{ t('You') }}</span>
                 <span v-else class="w-pc-age" style="text-align: left;">{{ showSeller === 'ign' ? row.lead.ign : row.lead.accountName }}</span>
@@ -142,6 +162,7 @@
 
 <script lang="ts">
 import { defineComponent, computed, watch, onUnmounted, PropType, inject, shallowReactive, shallowRef, ShallowRef } from 'vue'
+import { useElementSize } from '@vueuse/core'
 import { hideTip, showTip } from '@/web/woke/ui/tooltip/tooltip'
 import { useI18nNs } from '@/web/i18n'
 import UiErrorBox from '@/web/ui/UiErrorBox.vue'
@@ -164,7 +185,9 @@ import { priceView } from '@/web/woke/price-insight/view'
 import { useInsight } from '@/web/woke/price-insight/useInsight'
 import { buildInsight, FIX_TAG } from '@/web/woke/price-insight/insight'
 import { groupListings, rowTitle, ListingRow } from '@/web/woke/price-insight/listing-rows'
+import { pickStatColumns, listingStatValue, formatStatValue, statTone, statColumnsThatFit, StatColumn } from '@/web/woke/price-insight/stat-columns'
 import { nowMinute } from '@/web/woke/ui/format'
+import { textScale } from '@/web/woke/ui/text-scale'
 import '@/web/woke/price-insight/price-table.css'
 import { useCheckLog } from '@/web/woke/price-insight/useCheckLog'
 import { isBlankRareSearch, ninjaFitsSearch, skipsTopMods } from '@/web/woke/price-insight/search-scope'
@@ -177,7 +200,15 @@ const API_FETCH_LIMIT = 100
 const MIN_NOT_GROUPED = 7
 const MIN_GROUPED = 10
 
-function useTradeApi () {
+// Room the table's other columns take, in px at normal text size.
+const WIDTH_BASE = 200 // price, count, listed
+const WIDTH_NUMBER_COLUMN = 44
+const WIDTH_SELLER = 90
+const WIDTH_TAG = 60
+const WIDTH_STASH_ICON = 24
+
+// sameStats: a seller's listings only count as one when their stat columns match.
+function useTradeApi (sameStats: (a: PricingResult, b: PricingResult) => boolean) {
   let searchId = 0
   let collapseMerchant = false
   const error = shallowRef<string | null>(null)
@@ -194,7 +225,7 @@ function useTradeApi () {
         continue
       }
       // woke: a seller's corrupted and clean copies stay apart.
-      const existingRes = out.find((added, idx) => Boolean(added.corrupted) === Boolean(result.corrupted) && (
+      const existingRes = out.find((added, idx) => Boolean(added.corrupted) === Boolean(result.corrupted) && sameStats(added, result) && (
         (
           added.accountName === result.accountName &&
           added.priceCurrency === result.priceCurrency &&
@@ -310,7 +341,12 @@ export default defineComponent({
       slowdown.reset(item)
     }, { immediate: true })
 
-    const { error, searchResult, groupedResults, fetchResults, fetching, search } = useTradeApi()
+    const allColumns = computed(() => pickStatColumns(props.stats))
+    const statValue = (listing: PricingResult, col: StatColumn) =>
+      listingStatValue(listing.listedItem, col, props.item.category)
+
+    const { error, searchResult, groupedResults, fetchResults, fetching, search } = useTradeApi((a, b) =>
+      allColumns.value.every(col => formatStatValue(statValue(a, col), col) === formatStatValue(statValue(b, col), col)))
     const { retryIn, rateLimited } = useRetryCountdown(error)
     const refreshNote = shallowRef('')
     // A tooltip must not outlive the listings it came from.
@@ -339,6 +375,28 @@ export default defineComponent({
 
     const improved = computed(() => priceView.value === 'improved')
 
+    const showItemLevel = computed(() => Boolean(props.filters.itemLevel && !props.filters.itemLevel.disabled))
+    const scrollEl = shallowRef<HTMLElement | null>(null)
+    const { width: tableWidth } = useElementSize(scrollEl)
+
+    // A tag or stash icon in the count column leaves less room, so check every listing.
+    const otherColumnsWidth = computed(() => {
+      const listings = groupedResults.value
+      let width = WIDTH_BASE
+      if (props.item.stackSize) width += WIDTH_NUMBER_COLUMN
+      if (showItemLevel.value) width += WIDTH_NUMBER_COLUMN
+      if (props.item.category === 'Gem') width += WIDTH_NUMBER_COLUMN
+      if (props.filters.quality || props.item.category === 'Gem') width += WIDTH_NUMBER_COLUMN
+      if (widget.value.showSeller) width += WIDTH_SELLER
+      if (listings.some(r => r.corrupted || insight.value.dropped.has(r.id))) width += WIDTH_TAG
+      if (listings.some(r => !r.hasFee)) width += WIDTH_STASH_ICON
+      return width
+    })
+    const columnCap = computed(() =>
+      statColumnsThatFit(tableWidth.value, otherColumnsWidth.value, textScale.value / 100, allColumns.value.length))
+    const shownColumns = computed(() => allColumns.value.slice(0, columnCap.value))
+    const hiddenColumns = computed(() => allColumns.value.slice(columnCap.value))
+
     // woke: improved merges a price into one row; classic stays one row per listing.
     const rows = computed(() => groupListings(groupedResults.value, {
       now: nowMinute.value,
@@ -348,10 +406,12 @@ export default defineComponent({
         // Corrupted and clean copies sell differently, so they keep their own rows.
         const parts: unknown[] = [Boolean(r.corrupted)]
         if (props.item.stackSize) parts.push(r.stackSize)
-        if (props.filters.itemLevel) parts.push(r.itemLevel)
+        if (showItemLevel.value) parts.push(r.itemLevel)
         if (props.item.category === 'Gem') parts.push(r.level)
         if (props.filters.quality || props.item.category === 'Gem') parts.push(r.quality)
         if (widget.value.showSeller) parts.push(widget.value.showSeller === 'ign' ? r.ign : r.accountName)
+        // Different numbers can't share a row: the row only shows one of them.
+        for (const col of shownColumns.value) parts.push(formatStatValue(statValue(r, col), col))
         return parts.join('|')
       }
     }))
@@ -395,7 +455,18 @@ export default defineComponent({
       maxCount,
       allStale,
       allInstant: computed(() => rows.value.every(r => r.lead.hasFee)),
-      showCountBar: computed(() => improved.value && maxCount.value > 1),
+      // The stat columns need the bar's room.
+      showCountBar: computed(() => improved.value && maxCount.value > 1 && !shownColumns.value.length),
+      showItemLevel,
+      scrollEl,
+      shownColumns,
+      hiddenColumns,
+      statValue,
+      formatStatValue,
+      toneClass (listing: PricingResult, col: StatColumn) {
+        const tone = statTone(statValue(listing, col), col)
+        return tone ? `w-pc-stat-${tone}` : undefined
+      },
       shownCount: computed(() => fetchResults.value.filter(r => r != null).length),
       tableLoading,
       listSettled: computed(() => !tableLoading.value && !fetching.value),
