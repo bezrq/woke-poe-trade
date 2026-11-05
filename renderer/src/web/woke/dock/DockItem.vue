@@ -90,8 +90,9 @@ watch(() => props.show && !isDismissed(props.id), (show) => { if (!show) entry.p
 watch(() => wm?.active.value, (active) => { if (!active && entry.pinned === 'click') entry.pinned = null })
 
 const clickPinned = computed(() => entry.pinned === 'click')
+const pinned = computed(() => entry.pinned != null)
 
-defineExpose({ peek, togglePin, clickPinned })
+defineExpose({ peek, togglePin, clickPinned, pinned })
 </script>
 
 <template>
