@@ -236,6 +236,9 @@ fn on_foreground(fg: HWND) {
     let ov = h.overlay_hwnd.load(Ordering::SeqCst);
     let is_game = game != 0 && fg.0 as isize == game;
     let is_overlay = fg.0 as isize == ov;
+    if !is_game && !is_overlay {
+        h.log(&format!("foreground: other window \"{}\"", window_title(fg)));
+    }
     if is_game || is_overlay {
         cover_game();
     } else {
@@ -279,8 +282,17 @@ fn do_activate_overlay() {
     }
     h.interactable.store(true, Ordering::SeqCst);
     h.game_active.store(false, Ordering::SeqCst);
-    set_click_through(false);
-    force_foreground(hwnd(h.overlay_hwnd.load(Ordering::SeqCst)));
+    // Through Tauri on its UI thread: the window must stop being
+    // click-through before it is focused, and Tauri's focus call falls back
+    // to the trick Windows needs when it refuses a plain SetForegroundWindow.
+    if let Some(app) = h.app.get() {
+        if let Some(w) = app.get_webview_window("overlay") {
+            let _ = w.set_ignore_cursor_events(false);
+            if let Err(e) = w.set_focus() {
+                h.log(&format!("overlay focus failed: {e}"));
+            }
+        }
+    }
     h.send_focus_change();
 }
 
