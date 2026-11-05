@@ -1,7 +1,7 @@
 ---
 id: WOKEPOET-77
 title: Remove the redundant old map stat list from Item info settings
-status: Grooming
+status: In Progress
 priority: Low
 effort: None
 assignee: unassigned
@@ -97,6 +97,11 @@ history:
     comment: >-
       Guy picked A: tabs on top, T17 switch beside them, picked mods sorted to
       the top, chips block removed.
+  - type: status_change
+    from: Grooming
+    to: In Progress
+    user: Agent
+    date: '2026-11-05T10:32:11.795Z'
 swimlane: null
 needsAction: null
 ---
