@@ -1,7 +1,7 @@
 ---
 id: WOKEPOET-31
 title: Give Woke its own icon and overlay mark
-status: Grooming
+status: In Progress
 priority: Medium
 effort: S
 assignee: unassigned
@@ -48,8 +48,34 @@ history:
     date: '2026-11-05T06:09:45.297Z'
     selfAttested: true
     id: c-2026-11-05t06-09-45-297z
-swimlane: require-input
+  - type: comment
+    user: Agent
+    comment: 'Guy: make it a setting in the settings menu, Eternal Orb as default.'
+    date: '2026-11-05T06:15:24.830Z'
+    id: c-2026-11-05t06-15-24-830z
+  - type: swimlane_change
+    swimlane: require-input
+    action: cleared
+    user: Agent
+    date: '2026-11-05T06:15:24.830Z'
+    comment: 'Guy: make it a setting in the settings menu, Eternal Orb as default.'
+  - type: activity
+    user: Agent
+    date: '2026-11-05T06:15:28.041Z'
+    comment: >-
+      Created worktree for branch
+      flux/WOKEPOET-31-give-woke-its-own-icon-and-overlay-mark
+    event: worktree-created
+    id: a-2026-11-05t06-15-28-041z
+  - type: status_change
+    from: Grooming
+    to: In Progress
+    user: Agent
+    date: '2026-11-05T06:15:50.437Z'
+swimlane: null
 needsAction: null
+branch: flux/WOKEPOET-31-give-woke-its-own-icon-and-overlay-mark
+baselineCommit: 37f4e851970b046d13916551eeab175b77a7486d
 ---
 > **TL;DR:** The app still shows Awakened PoE Trade's mark (tray, exe, overlay). Replace it with original art. Guy picks from mocks before anything is built.
 
