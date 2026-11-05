@@ -3,6 +3,7 @@
 import { describe, it, expect } from 'vitest'
 import { baseUniqueName, changeSince, matchRank, passesCorrupted, searchNamed, searchPrices, tradeUrl } from '@/web/woke/search/search'
 import { computeMovers } from '@/web/woke/market/analysis'
+import { SEARCH_DEFAULT_KEY, initSearchWidget, moveSearchKey } from '@/web/woke/search/widget'
 import { isCorrupted } from '@/web/woke/market/types'
 import type { PriceItem } from '@/web/woke/market/types'
 
@@ -112,6 +113,38 @@ describe('searchNamed', () => {
   })
   it('needs two characters', () => {
     expect(searchNamed(list, 'f', s => s)).toEqual([])
+  })
+})
+
+describe('search hotkey', () => {
+  const old = (hotkey: string | null) => ({ ...initSearchWidget(1), hotkey, keyMoved: undefined })
+
+  it('defaults to Ctrl + Space, unless that key is in use', () => {
+    expect(initSearchWidget(1).hotkey).toBe('Ctrl + Space')
+    expect(SEARCH_DEFAULT_KEY).toBe('Ctrl + Space')
+    expect(initSearchWidget(1, ['Ctrl + Space']).hotkey).toBeNull()
+  })
+  it('moves the old default once', () => {
+    const w = old('Alt + P')
+    moveSearchKey(w, [])
+    expect(w.hotkey).toBe('Ctrl + Space')
+    w.hotkey = 'Alt + P' // chosen again later
+    moveSearchKey(w, [])
+    expect(w.hotkey).toBe('Alt + P')
+  })
+  it('leaves a key you chose, and a new key that is taken', () => {
+    const chosen = old('Ctrl + K')
+    moveSearchKey(chosen, [])
+    expect(chosen.hotkey).toBe('Ctrl + K')
+    const clash = old('Alt + P')
+    moveSearchKey(clash, ['Ctrl + Space'])
+    expect(clash.hotkey).toBe('Alt + P')
+  })
+  it('never moves a key on a new window', () => {
+    const w = initSearchWidget(1)
+    w.hotkey = 'Alt + P'
+    moveSearchKey(w, [])
+    expect(w.hotkey).toBe('Alt + P')
   })
 })
 

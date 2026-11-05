@@ -479,7 +479,8 @@ function onHotkey (e: KeyboardEvent) {
   const key = props.config.hotkey
   if (key && pressedKeys(e) === sortKeys(key)) {
     e.preventDefault()
-    close()
+    // Still held from opening it.
+    if (!e.repeat) close()
   }
 }
 function start (text: string) {
