@@ -33,7 +33,22 @@ history:
       Pick A (quiet icon), B (live icon: act ring, badge coloured against best
       run) or C (whole-act checklist card). Recommendation: B. Mocks:
       https://claude.ai/artifact/6tMUj9A4ss2A1RZLxsAhdr
-swimlane: require-input
+  - type: comment
+    user: Agent
+    comment: >-
+      Guy picked B and asked for a card shortcut to settings for optional pinned
+      readouts; mocking that next.
+    date: '2026-11-05T06:09:12.756Z'
+    id: c-2026-11-05t06-09-12-756z
+  - type: swimlane_change
+    swimlane: require-input
+    action: cleared
+    user: Agent
+    date: '2026-11-05T06:09:12.756Z'
+    comment: >-
+      Guy picked B and asked for a card shortcut to settings for optional pinned
+      readouts; mocking that next.
+swimlane: null
 needsAction: null
 ---
 Tracker panel showed in Guy's hideout on an endgame character with the overlay open, and its header disagreed with its steps (A1 vs Act 4).
