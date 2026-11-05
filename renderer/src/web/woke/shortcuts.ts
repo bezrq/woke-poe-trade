@@ -53,8 +53,10 @@ export function wokeShortcutsFor (widget: Widget, config: { woke?: { setupDone: 
   // Modules that are switched off register no hotkeys.
   if (!isWidgetTypeOn(config, widget.wmType)) return []
   if (widget.wmType === SEARCH_TYPE) {
+    // Every key is released first: with Ctrl still down, the first letter typed
+    // would be Ctrl + R (reload) or Ctrl + W (close).
     const key = (widget as SearchWidget).hotkey
-    return key ? [{ shortcut: key, keepModKeys: true, action: { type: 'trigger-event', target: SEARCH_TARGET, focusOverlay: true } }] : []
+    return key ? [{ shortcut: key, action: { type: 'trigger-event', target: SEARCH_TARGET, focusOverlay: true } }] : []
   }
   if (widget.wmType === REGEX_LIBRARY_TYPE) {
     const lib = widget as RegexLibraryWidget
