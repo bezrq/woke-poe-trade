@@ -30,8 +30,29 @@ history:
     comment: >-
       Hints: 1 (none), 2 (show once) or 3 (behind a ?)? Recommended: 1. Mocks:
       https://claude.ai/artifact/8ijRB7sNGAW8r6NuRThEiX
-swimlane: require-input
+  - type: comment
+    user: Agent
+    comment: >-
+      Guy asked for a Settings link on the hint and a way to dismiss both hints.
+      PR #185.
+    date: '2026-11-05T13:03:17.925Z'
+    id: c-2026-11-05t13-03-17-925z
+  - type: swimlane_change
+    swimlane: require-input
+    action: cleared
+    user: Agent
+    date: '2026-11-05T13:03:17.925Z'
+    comment: >-
+      Guy asked for a Settings link on the hint and a way to dismiss both hints.
+      PR #185.
+  - type: activity
+    user: Agent
+    date: '2026-11-05T13:03:18.012Z'
+    comment: Updated implementation link.
+    id: a-2026-11-05t13-03-18-012z
+swimlane: null
 needsAction: null
+implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/185'
 ---
 Guy: "what the hell is this for and why show it all the time". The Trades card always shows the "next step" key hint, and every dock card with a window shows "Shift + Space then click the icon for the full window".
 
