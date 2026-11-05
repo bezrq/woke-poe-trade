@@ -51,6 +51,12 @@ describe('useLiveData', () => {
     expect(STAT_BY_REF_V2(needed)).toBeDefined()
   })
 
+  it('refuses data missing an item the price check relies on', () => {
+    const without = items.split('\n').filter(l => !l.includes('"refName":"Map"')).join('\n')
+    expect(() => { useLiveData('en', without, stats) }).toThrow('Cannot find item')
+    expect(ITEM_BY_REF('ITEM', 'Map')).toBeDefined()
+  })
+
   it('refuses broken data, and keeps what it had', () => {
     expect(() => { useLiveData('en', '{"name":\n', stats) }).toThrow()
     expect(() => { useLiveData('en', items, 'no new line') }).toThrow()

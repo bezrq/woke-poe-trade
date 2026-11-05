@@ -9,6 +9,9 @@ const CHECK_EVERY_MS = 6 * 60 * 60 * 1000
 const FIRST_CHECK_AFTER_MS = 60 * 1000
 
 let inUse: { language: string, version: number } | null = null
+// A newer request, or a language change, makes one still fetching stand down.
+let latestRequest = 0
+let currentLanguage: (() => string) | null = null
 
 async function bundledVersion (): Promise<number> {
   const res = await fetch(`${import.meta.env.BASE_URL}data/data-version.json`)
@@ -16,12 +19,14 @@ async function bundledVersion (): Promise<number> {
 }
 
 async function apply (language: string, version: number) {
+  const mine = ++latestRequest
   const get = async (name: string) => {
     const res = await fetch(`/live-data/${language}/${name}.ndjson`)
     if (!res.ok) throw new Error(`Couldn't read ${name}: ${res.status}`)
     return await res.text()
   }
   const [items, stats] = await Promise.all([get('items'), get('stats')])
+  if (mine !== latestRequest) return
   useLiveData(language, items, stats)
   inUse = { language, version }
 }
@@ -31,8 +36,10 @@ async function apply (language: string, version: number) {
 export async function useDownloadedData (language: string) {
   if (!MainProcess.isElectron) return
   inUse = null
+  latestRequest++
   try {
-    const version = await hostRequest<number | null>('live-data-cached', { language, bundled: await bundledVersion() })
+    // Short: the overlay waits for this at startup.
+    const version = await hostRequest<number | null>('live-data-cached', { language, bundled: await bundledVersion() }, 3000)
     if (version != null) await apply(language, version)
   } catch (e) {
     console.warn('[live data] Staying on the bundled data', e)
@@ -52,8 +59,14 @@ async function check (getLanguage: () => string) {
   }
 }
 
+// After a language change: it may have no download yet.
+export function checkLiveDataNow () {
+  if (currentLanguage) check(currentLanguage).catch(() => {})
+}
+
 export function startLiveDataChecks (getLanguage: () => string) {
   if (!MainProcess.isElectron) return
+  currentLanguage = getLanguage
   setTimeout(() => {
     check(getLanguage).catch(() => {})
     setInterval(() => { check(getLanguage).catch(() => {}) }, CHECK_EVERY_MS)

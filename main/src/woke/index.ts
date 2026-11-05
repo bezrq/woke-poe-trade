@@ -48,7 +48,7 @@ const handlers: Record<string, Handler> = {
   'lab-layout-image': labLayoutImage,
   'path-stat': pathStat,
   'live-data-cached': cachedLiveData,
-  'live-data-check': async (args) => await checkLiveData(args, async (url) => await net.fetch(url)),
+  'live-data-check': async (args) => await checkLiveData(args, async (url, signal) => await net.fetch(url, { signal })),
   'browse-path': browsePath,
   ...marketHandlers,
   ...sessionHandlers,

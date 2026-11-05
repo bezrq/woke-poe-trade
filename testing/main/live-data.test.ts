@@ -71,6 +71,32 @@ describe('checkLiveData', () => {
     expect(asked).toHaveLength(1)
   })
 
+  it('refuses a version file it can\'t use', async () => {
+    const asked: string[] = []
+    const bad = (body: string) => async (url: string) => {
+      asked.push(url)
+      return { ok: true, status: 200, text: async () => body }
+    }
+    await expect(checkLiveData({ language: 'en', bundled: 3 }, bad('{"format":1,"version":"9","files":{"en":{"items":"a","stats":"b"}}}'))).rejects.toThrow('not usable')
+    await expect(checkLiveData({ language: 'en', bundled: 3 }, bad('null'))).rejects.toThrow('not usable')
+    await expect(checkLiveData({ language: 'ko', bundled: 3 }, bad('{"format":1,"version":9,"files":{"en":{"items":"a","stats":"b"}}}'))).rejects.toThrow('not usable')
+    expect(asked).toHaveLength(3)
+  })
+
+  it('a check for one language doesn\'t answer for another', async () => {
+    const hold = new Promise<void>(() => {})
+    const stuck = async () => { await hold; throw new Error('never') }
+    void checkLiveData({ language: 'ru', bundled: 3 }, stuck)
+    expect(await checkLiveData({ language: 'en', bundled: 3 }, site().fetcher)).toBe(5)
+  })
+
+  it('a new version replaces the old set whole, leaving nothing behind', async () => {
+    await checkLiveData({ language: 'en', bundled: 3 }, site().fetcher)
+    expect(await checkLiveData({ language: 'en', bundled: 3 }, site({ version: 6 }).fetcher)).toBe(6)
+    expect(fs.readdirSync(liveDataRoot())).toEqual(['en'])
+    expect(await cachedLiveData({ language: 'en', bundled: 3 })).toBe(6)
+  })
+
   it('reports a failed download without touching anything', async () => {
     await expect(checkLiveData({ language: 'en', bundled: 3 }, site({ status: 500 }).fetcher)).rejects.toThrow('500')
     expect(hasData()).toBe(false)

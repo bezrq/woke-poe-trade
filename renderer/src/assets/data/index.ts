@@ -261,6 +261,8 @@ export function useLiveData (lang: string, items: string, stats: string) {
   useStats(stats, statIndexes.refs, statIndexes.matchers)
   try {
     validateStats([...CHECKED_STATS, ...DELAYED_STAT_VALIDATION], lang)
+    // The price check relies on this one being there.
+    if (!ITEM_BY_REF('ITEM', 'Map')?.length) throw new Error('Cannot find item: Map')
   } catch (e) {
     ;({
       ITEM_BY_TRANSLATED, ITEM_BY_REF, ITEMS_ITERATOR, ALTQ_GEM_NAMES, REPLICA_UNIQUE_NAMES,
