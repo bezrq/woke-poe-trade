@@ -39,7 +39,13 @@ history:
     to: In Progress
     user: Agent
     date: '2026-11-05T12:44:23.698Z'
+  - type: activity
+    user: Agent
+    date: '2026-11-05T13:10:07.650Z'
+    comment: Updated implementation link.
+    id: a-2026-11-05t13-10-07-650z
 needsAction: null
+implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/182'
 ---
 > **TL;DR** Guy wants this soon. Item and stat data stays in our repo. Once new data is merged, the app picks it up by itself, with no release, installer or restart.
 
