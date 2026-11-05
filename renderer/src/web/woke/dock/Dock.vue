@@ -10,11 +10,12 @@
 </template>
 
 <script setup lang="ts">
-import { computed, inject, onUnmounted } from 'vue'
+import { computed, inject, onUnmounted, watch } from 'vue'
 import type { WidgetManager } from '@/web/overlay/interfaces'
 import DockIcon from './DockIcon.vue'
 import { dismissedIcons, dockConfig, dockGroups, ensureDockConfig, openSettingsPage, restoreIcon, runDismissals, saveDock } from './dock'
 import { useZone } from '../shared/zone'
+import { hoverZonesMoved } from '../shared/hover'
 import { openMenu } from '../ui'
 import type { MenuEntry } from '../ui/layer'
 
@@ -40,6 +41,7 @@ const cfg = computed(() => dockConfig())
 // Nothing over the settings window or another exclusive window.
 const blocked = computed(() => wm.widgets.value.some(w => w.wmZorder === 'exclusive' && w.wmWants === 'show'))
 const groups = computed(() => blocked.value ? [] : dockGroups.value)
+watch(groups, hoverZonesMoved)
 
 let drag: { dx: number, dy: number } | null = null
 function startDrag (e: PointerEvent) {

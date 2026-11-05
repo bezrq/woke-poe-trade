@@ -1,11 +1,16 @@
 // Hover that also works while the game has focus. The overlay window is
 // click-through then, so the DOM sees no mouse; main/src/woke/hover.ts watches
 // the global mouse against the rects we register here.
-import { shallowRef, watch, onMounted, onUnmounted } from 'vue'
+import { nextTick, shallowRef, watch, onMounted, onUnmounted } from 'vue'
 import type { Ref } from 'vue'
 import { Host } from '@/web/background/IPC'
 
 let nextOwner = 1
+
+// Bumped when zones may have moved with no size change (dock icons shifting as
+// one comes or goes): otherwise main has the old place for up to 2 s.
+const zonesMoved = shallowRef(0)
+export function hoverZonesMoved () { zonesMoved.value++ }
 
 export function useHoverZone (
   el: Ref<HTMLElement | null | undefined>,
@@ -109,6 +114,7 @@ export function useHoverZone (
   })
   watch(el, (node) => { bind(node); send() })
   watch(() => [opts.enabled(), opts.activate?.()], () => send())
+  watch(zonesMoved, () => { nextTick(send).catch(() => {}) })
 
   onUnmounted(() => {
     listener.abort()

@@ -120,9 +120,9 @@ function turnOff () {
 }
 .item:hover:not(:disabled) { background: var(--w-accent-soft); }
 .item:disabled { opacity: 0.45; }
-.ic { width: var(--w-icon-sm); flex: none; font-size: 12px; text-align: center; color: var(--w-dim); }
+.ic { width: var(--w-icon-sm); flex: none; font-size: var(--w-fs-sm); text-align: center; color: var(--w-dim); }
 .label { flex: 1; }
-.tick { font-size: 11px; flex: none; }
+.tick { font-size: var(--w-fs-xs); flex: none; }
 .danger, .danger .ic { color: var(--w-down); }
 .sep { height: 1px; margin: var(--w-s1) 2px; background: var(--w-line); }
 .head { padding: 2px var(--w-s2) 4px; font-size: var(--w-fs-sm); color: var(--w-dim); }
