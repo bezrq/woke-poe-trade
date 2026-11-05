@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { groupByModule, looksLikeItem, migrateToRail, parseWidgetTitle } from '@/web/woke/tab-bar/tools'
+import { groupByModule, launcherEntries, looksLikeItem, migrateToRail, parseWidgetTitle } from '@/web/woke/tab-bar/tools'
 import type { TabBarConfig } from '@/web/woke/tab-bar/tools'
 
 function menu (extra: Partial<TabBarConfig> = {}): TabBarConfig {
@@ -95,5 +95,46 @@ describe('launcher groups', () => {
     expect(groups[0].items).toEqual([{ wmType: 'woke-boss-runs' }])
     expect(groups[1].items).toEqual([])
     expect(groups[4].items).toEqual([{ wmType: 'image-strip' }])
+  })
+})
+
+describe('every tool in the launcher', () => {
+  const tab = (wmId: number, wmType: string, name: string) => ({ wmId, wmType, name, icon: 'fa-x', art: null })
+  const specs = [
+    { type: 'image-strip', name: 'Cheat sheets' },
+    { type: 'woke-essence-scan', name: 'Essence scan' },
+    { type: 'woke-scarab-flip', name: 'Scarab flip' },
+    { type: 'woke-campaign', name: 'Campaign tracker' },
+    { type: 'woke-boss-runs', name: 'Boss runs' }
+  ]
+
+  const build = (tabs: Array<ReturnType<typeof tab>>) => launcherEntries(specs, tabs,
+    type => type === 'woke-scarab-flip',
+    type => type === 'woke-campaign')
+
+  it('lists placed windows, tools not placed yet, switched-off and icon-row tools', () => {
+    const state = Object.fromEntries(build([tab(1, 'woke-boss-runs', 'My boss runs')]).map(e => [e.name, e.state]))
+    expect(state).toEqual({
+      'My boss runs': 'placed',
+      'Essence scan': 'available',
+      'Scarab flip': 'off',
+      'Campaign tracker': 'dock',
+      'Cheat sheets': 'available'
+    })
+  })
+
+  it('gives each copy of a tool its own row, with no extra row for the type', () => {
+    const rows = build([tab(1, 'image-strip', 'A'), tab(2, 'image-strip', 'B')]).filter(e => e.wmType === 'image-strip')
+    expect(rows.map(e => e.tab?.wmId)).toEqual([1, 2])
+  })
+
+  it('keeps module order, with tools from no module last', () => {
+    const names = build([]).map(e => e.wmType)
+    expect(names.indexOf('woke-scarab-flip')).toBeLessThan(names.indexOf('woke-boss-runs'))
+    expect(names[names.length - 1]).toBe('image-strip')
+  })
+
+  it('still lists a placed tool outside the specs, like settings taken off the rail', () => {
+    expect(build([tab(5, 'settings', 'Settings')]).some(e => e.tab?.wmId === 5)).toBe(true)
   })
 })

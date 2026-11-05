@@ -83,19 +83,50 @@ export function allowsCopies (wmType: string): boolean {
   return !wmType.startsWith('woke-')
 }
 
-export interface ToolGroup {
-  label: string
-  types: Array<{ type: string, name: string }>
+export type LauncherState = 'placed' | 'available' | 'off' | 'dock'
+
+export interface LauncherEntry<T> {
+  key: string
+  wmType: string
+  name: string
+  icon: string
+  art: string | null
+  state: LauncherState
+  tab: T | null
 }
 
-export function groupTypes (specs: Array<{ type: string, name: string }>): ToolGroup[] {
-  const groupOf = new Map<string, ModuleGroup>()
-  for (const m of MODULES) for (const t of m.widgetTypes) groupOf.set(t, m.group)
-  const groups: ToolGroup[] = MODULE_GROUPS
-    .filter(g => g.id !== 'apt')
-    .map(g => ({ label: g.label, types: specs.filter(s => groupOf.get(s.type) === g.id) }))
-  groups.push({ label: 'Overlay', types: specs.filter(s => !groupOf.has(s.type)) })
-  return groups.filter(g => g.types.length)
+// Every tool for the launcher, in module order: each placed window, or one
+// entry for a tool with none on the overlay.
+export function launcherEntries<T extends { wmId: number, wmType: string, name: string, icon: string, art: string | null }> (
+  specs: Array<{ type: string, name: string }>,
+  tabs: T[],
+  isOff: (wmType: string) => boolean,
+  isDockOnly: (wmType: string) => boolean
+): Array<LauncherEntry<T>> {
+  const order = MODULES.flatMap(m => m.widgetTypes)
+  const rank = (type: string) => {
+    const i = order.indexOf(type)
+    return i < 0 ? order.length : i
+  }
+  const sorted = [...specs].sort((a, b) => rank(a.type) - rank(b.type))
+  const known = new Set(sorted.map(s => s.type))
+  const placed = (tab: T): LauncherEntry<T> => ({
+    key: `w${tab.wmId}`, wmType: tab.wmType, name: tab.name, icon: tab.icon, art: tab.art, state: 'placed', tab
+  })
+  const entries = sorted.flatMap((spec): Array<LauncherEntry<T>> => {
+    const mine = tabs.filter(tab => tab.wmType === spec.type)
+    if (mine.length) return mine.map(placed)
+    return [{
+      key: `t${spec.type}`,
+      wmType: spec.type,
+      name: spec.name,
+      icon: iconFor(spec.type),
+      art: artFor(spec.type),
+      state: isOff(spec.type) ? 'off' : isDockOnly(spec.type) ? 'dock' : 'available',
+      tab: null
+    }]
+  })
+  return [...entries, ...tabs.filter(tab => !known.has(tab.wmType)).map(placed)]
 }
 
 export interface ModuleGroupOf<T> {
