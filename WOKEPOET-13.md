@@ -1,7 +1,7 @@
 ---
 id: WOKEPOET-13
 title: Make the PoB builds panel look like Path of Exile
-status: Ready
+status: Done
 priority: Medium
 effort: M
 assignee: unassigned
@@ -65,6 +65,19 @@ history:
     to: Ready
     user: Agent
     date: '2026-11-05T03:28:59.884Z'
+  - type: comment
+    user: Agent
+    comment: >-
+      PR squash-merged for branch
+      `flux/WOKEPOET-13-make-the-pob-builds-panel-look-like-path-of-exile` —
+      advanced to Done.
+    date: '2026-11-05T03:33:52.449Z'
+    id: c-2026-11-05t03-33-52-449z
+  - type: status_change
+    from: Ready
+    to: Done
+    user: Agent
+    date: '2026-11-05T03:33:52.449Z'
 branch: flux/WOKEPOET-13-make-the-pob-builds-panel-look-like-path-of-exile
 baselineCommit: a58632b0379617cbbaaebd67ac298914035552dd
 needsAction: null

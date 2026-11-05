@@ -34,7 +34,24 @@ history:
       Odds. Mockups: https://claude.ai/artifact/4UMB9W9shFz8GsM9j5wd5u. My pick
       is A with C as its second tab. Also confirm "flipping" means the 3-to-1
       vendor recipe, not buying in bulk to resell.
-swimlane: require-input
+  - type: comment
+    user: Agent
+    comment: >-
+      Guy approved the mockups ("looks good"), so A Buy list with C Odds as a
+      second tab. Added: mark exceptionally rare scarabs that are cheap, since
+      they may balloon in price.
+    date: '2026-11-05T03:34:19.938Z'
+    id: c-2026-11-05t03-34-19-938z
+  - type: swimlane_change
+    swimlane: require-input
+    action: cleared
+    user: Agent
+    date: '2026-11-05T03:34:19.938Z'
+    comment: >-
+      Guy approved the mockups ("looks good"), so A Buy list with C Odds as a
+      second tab. Added: mark exceptionally rare scarabs that are cheap, since
+      they may balloon in price.
+swimlane: null
 needsAction: null
 ---
 > **TL;DR:** A new economy panel that says whether vendoring cheap scarabs pays right now, using poe.ninja prices and community drop weights.
