@@ -49,6 +49,7 @@ const POEPRICES_WEIGHT = 0.6
 const MINE_WEIGHT = 0.4
 const MINE_HALF_LIFE_DAYS = 7
 const MINE_MAX_DAYS = 14
+const MIN_LISTINGS_FOR_FLOOR = 3
 const DAY_MS = 24 * 60 * 60 * 1000
 
 function ageText (ms: number): string {
@@ -83,22 +84,25 @@ export function buildBlend (input: BlendInput): Blend {
       const ratio = fair / input.ninja.chaos
       ninjaSuspect = ratio >= 2 || ratio <= 0.5
     }
-    // With no listings it's still the best guess available.
-    const offTarget = input.ninja.fits === false && fair != null
+    const unfit = input.ninja.fits === false
+    // With few or no listings it's still a useful check against a lone bad one.
+    const offTarget = unfit && fair != null && insight.confidence !== 'low'
     points.push({
       key: 'ninja',
       label: 'poe.ninja',
       low: input.ninja.chaos,
       high: input.ninja.chaos,
       mid: input.ninja.chaos,
-      weight: (ninjaSuspect || offTarget) ? 0 : thin ? NINJA_THIN_WEIGHT : NINJA_WEIGHT,
+      weight: (ninjaSuspect || offTarget) ? 0 : (thin || (unfit && fair != null)) ? NINJA_THIN_WEIGHT : NINJA_WEIGHT,
       note: offTarget
         ? 'Its price is for any roll, uncorrupted and without a Foulborn mod, so it can\'t speak for this search: not counted'
         : ninjaSuspect
           ? `No price on ${input.ninja.gaps} of the last 7 days and far from the listings: may be faked, not counted`
           : thin
             ? `No price on ${input.ninja.gaps} of the last 7 days: counted lightly`
-            : 'Average of recent listings across the league'
+            : (unfit && fair != null)
+                ? 'Its price is for any roll, uncorrupted and without a Foulborn mod: counted lightly because listings are few'
+                : 'Average of recent listings across the league'
     })
   }
 
@@ -161,8 +165,9 @@ export function headlinePrice (blend: Blend, insight: Insight): { chaos: number,
   if (blend.fair != null) {
     // Nobody pays more than an instant buyout that's sitting there, whatever other sources say.
     if (insight.ceiling != null && blend.fair > insight.ceiling) return { chaos: insight.ceiling, from: 'listings' }
-    // Nor does it sell for less than the cheapest listing anyone trusts.
-    if (insight.range && blend.fair < insight.range.low) return { chaos: insight.range.low, from: 'listings' }
+    // Nor for less than the cheapest listing, when enough current listings back it up.
+    const backed = insight.kept.length >= MIN_LISTINGS_FOR_FLOOR && !insight.signals.some(s => s.kind === 'old')
+    if (insight.range && backed && blend.fair < insight.range.low) return { chaos: insight.range.low, from: 'listings' }
     const onlyListings = blend.points.filter(p => p.weight > 0).every(p => p.key === 'listings')
     return { chaos: blend.fair, from: onlyListings ? 'listings' : 'blend' }
   }

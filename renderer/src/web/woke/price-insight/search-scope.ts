@@ -2,9 +2,11 @@
 // so listings found without them say nothing about it. Pure functions.
 
 import { ItemRarity, ParsedItem } from '@/parser'
-import { FilterTag } from '@/web/price-check/filters/interfaces'
 import type { FilterOrGroup, ItemFilters } from '@/web/price-check/filters/interfaces'
 import { isTopTierFilter } from '@/web/price-check/filters/create-stat-filters'
+
+const GOOD_ROLL = 0.5
+const BASE_PERCENTILE = 'Base Percentile: #%'
 
 /** A rare with mods to tick, searched with only its name or category: any rare would match. */
 export function isBlankRareSearch (item: ParsedItem, filters: ItemFilters, stats: FilterOrGroup[]): boolean {
@@ -33,11 +35,14 @@ export function ninjaFitsSearch (item: ParsedItem, stats: FilterOrGroup[]): bool
   if (item.rarity !== ItemRarity.Unique) return true
   if (item.isCorrupted || item.isFoulborn) return false
   return !stats.some(s => {
-    if (s.group || s.disabled || s.hidden || s.tag === FilterTag.Property) return false
+    if (s.group || s.disabled || s.hidden || s.statRef === BASE_PERCENTILE) return false
     const { roll } = s
     if (!roll?.bounds) return false
-    return (typeof roll.min === 'number' && roll.min > roll.bounds.min) ||
-      (typeof roll.max === 'number' && roll.max < roll.bounds.max)
+    const span = roll.bounds.max - roll.bounds.min
+    if (!(span > 0)) return false
+    // The top half of the range: below that, the going rate still applies.
+    return (typeof roll.min === 'number' && (roll.min - roll.bounds.min) / span > GOOD_ROLL) ||
+      (typeof roll.max === 'number' && (roll.bounds.max - roll.max) / span > GOOD_ROLL)
   })
 }
 

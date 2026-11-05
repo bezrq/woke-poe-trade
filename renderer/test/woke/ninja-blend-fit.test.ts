@@ -55,6 +55,21 @@ describe('headline', () => {
     expect(headlinePrice(blend, insight)?.from).toBe('listings')
   })
 
+  it('does not let a lone bait listing set the price of a corrupted unique', () => {
+    const h = headline(rows(1, 1, { hasFee: false }), { chaos: 500, gaps: 0, fits: false })!
+    expect(h.chaos).toBeGreaterThan(3)
+  })
+
+  it('does not floor on one lone ask', () => {
+    const h = headline(rows(5000, 1, { hasFee: false }), { chaos: 100, gaps: 0 })!
+    expect(h.chaos).toBeLessThan(5000)
+  })
+
+  it('does not floor on listings nobody has bought', () => {
+    const old = { hasFee: false, indexedAt: new Date(NOW - 20 * 24 * 3600e3).toISOString(), accountStatus: 'online' as const }
+    expect(headline(rows(1000, 4, old), { chaos: 100, gaps: 0 })!.chaos).toBeLessThan(1000)
+  })
+
   it('still uses poe.ninja when it fits', () => {
     const stash = { hasFee: false }
     const insight = buildInsight([...rows(100, 2, stash), ...rows(300, 2, stash)], OPTS)
@@ -85,6 +100,19 @@ describe('ninjaFitsSearch', () => {
   it('is false for a unique searched on a good roll', () => {
     const kaom = parseItem(fixture('items/unique-kaoms-heart.txt'))
     expect(ninjaFitsSearch(kaom, stats(kaom))).toBe(false)
+  })
+
+  it('is true for a unique on an ordinary roll', () => {
+    const text = fixture('items/unique-kaoms-heart.txt').replace('40(20-40)%', '23(20-40)%')
+    const kaom = parseItem(text)
+    expect(ninjaFitsSearch(kaom, stats(kaom))).toBe(true)
+  })
+
+  it('counts a good property roll', () => {
+    const roll = { value: 1062, min: 1062, max: undefined, default: { min: 1062, max: 1091 }, bounds: { min: 916, max: 1091 }, dp: false, isNegated: false, tradeInvert: false }
+    const pdps = { statRef: 'Physical DPS: #', tag: 'property', disabled: false, roll, sources: [], tradeId: [], text: '' } as never
+    const kaom = parseItem(fixture('items/unique-kaoms-heart.txt'))
+    expect(ninjaFitsSearch(kaom, [pdps])).toBe(false)
   })
 
   it('is true once that roll is unticked', () => {
