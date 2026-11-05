@@ -73,7 +73,24 @@ history:
       or C (rail badge)? Recommended: A, with no new hotkey. Also, build the
       tray status and hotkey rescue as drawn (WOKEPOET-46, 49)? Default: yes.
       Mocks: https://claude.ai/artifact/18ihCQ5vBMjx9mZUXTJQwU
-swimlane: require-input
+  - type: comment
+    user: Agent
+    comment: >-
+      Guy picked A plus a key hint; merged in #168. Still open: 51 (item data
+      updates), 53 (rollback, signing, prompt when the game is closed), 57
+      (config swap), 62 (repeat test in game).
+    date: '2026-11-05T12:40:16.699Z'
+    id: c-2026-11-05t12-40-16-699z
+  - type: swimlane_change
+    swimlane: require-input
+    action: cleared
+    user: Agent
+    date: '2026-11-05T12:40:16.699Z'
+    comment: >-
+      Guy picked A plus a key hint; merged in #168. Still open: 51 (item data
+      updates), 53 (rollback, signing, prompt when the game is closed), 57
+      (config swap), 62 (repeat test in game).
+swimlane: null
 needsAction: null
 subtasks:
   - WOKEPOET-40
