@@ -1,7 +1,7 @@
 ---
 id: WOKEPOET-78
 title: Item tooltip wherever an item name appears
-status: In Progress
+status: Ready
 priority: Medium
 effort: None
 assignee: unassigned
@@ -55,8 +55,28 @@ history:
     to: In Progress
     user: Agent
     date: '2026-11-05T10:41:30.652Z'
+  - type: activity
+    user: Agent
+    date: '2026-11-05T11:04:22.811Z'
+    comment: Updated implementation link.
+    id: a-2026-11-05t11-04-22-811z
+  - type: comment
+    user: Agent
+    comment: >-
+      PR #154: tooltips on all picked modules, long mod pools folded, review
+      findings fixed, local checks pass. Waiting on merge. Known limit: the data
+      can't mark fixed mods, so one can land past the first 6.
+    date: '2026-11-05T11:04:24.055Z'
+    completionComment: true
+    id: c-2026-11-05t11-04-24-055z
+  - type: status_change
+    from: In Progress
+    to: Ready
+    user: Agent
+    date: '2026-11-05T11:04:24.055Z'
 swimlane: null
 needsAction: null
+implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/154'
 ---
 Guy's report: hovering results in universal search (Alt+P), such as Dying Sun, shows no item tooltip. He wants the shared v-item-tip on item names across modules.
 

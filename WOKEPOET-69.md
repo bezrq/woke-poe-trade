@@ -1,7 +1,7 @@
 ---
 id: WOKEPOET-69
 title: 'Price check: show more, mocks first'
-status: Grooming
+status: In Progress
 priority: Medium
 effort: L
 assignee: unassigned
@@ -42,7 +42,25 @@ history:
       (A) or open row (B), bulk verdict, price data age, weighted search, real
       sales from the trade log. Proposed default: hover card, data age and bulk
       verdict first.
-swimlane: require-input
+  - type: comment
+    user: Agent
+    comment: >-
+      Guy said keep going, so building the suggested picks first: hover card
+      with corrupted tags, price data age, bulk verdict. Weighted search and
+      real sales wait.
+    date: '2026-11-05T11:03:17.267Z'
+    id: c-2026-11-05t11-03-17-267z
+  - type: swimlane_change
+    swimlane: require-input
+    action: cleared
+    user: Agent
+    date: '2026-11-05T11:03:17.267Z'
+  - type: status_change
+    from: Grooming
+    to: In Progress
+    user: Agent
+    date: '2026-11-05T11:03:17.267Z'
+swimlane: null
 needsAction: null
 ---
 > TL;DR: Listing mods on hover, a corrupted column, a verdict for bulk items, price data age, weighted searches and real sales from the trade log. New UI, so mocks and Guy's pick come first.

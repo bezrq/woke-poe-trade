@@ -1,7 +1,7 @@
 ---
 id: WOKEPOET-72
 title: 'League mechanics settings: explain per mechanic what the overlay does'
-status: Grooming
+status: In Progress
 priority: None
 effort: None
 assignee: unassigned
@@ -34,7 +34,23 @@ history:
       (pick a mechanic, read about it; recommended), B (every mechanic as a
       sentence) or C (coverage table). Build also fixes the empty Expedition
       prices and makes the launcher open the panel.
-swimlane: require-input
+  - type: comment
+    user: Agent
+    comment: 'Guy: "looks ok". Building A, the recommended layout.'
+    date: '2026-11-05T11:03:15.594Z'
+    id: c-2026-11-05t11-03-15-594z
+  - type: swimlane_change
+    swimlane: require-input
+    action: cleared
+    user: Agent
+    date: '2026-11-05T11:03:15.594Z'
+    comment: 'Guy: "looks ok". Building A, the recommended layout.'
+  - type: status_change
+    from: Grooming
+    to: In Progress
+    user: Agent
+    date: '2026-11-05T11:03:15.665Z'
+swimlane: null
 needsAction: null
 ---
 > **TL;DR** The League mechanics settings page reads like a Syndicate-only page. Rework it so each mechanic says what the overlay shows, when, and how to configure it. Mocks with options first; Guy picks; then build.
