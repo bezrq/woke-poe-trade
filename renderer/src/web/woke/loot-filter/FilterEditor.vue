@@ -293,7 +293,7 @@ const props = defineProps<{
   openTab?: { tab: 'prices' | 'neversink' | 'changes' } | null
 }>()
 
-const emit = defineEmits<{ (e: 'close'): void, (e: 'tab-opened'): void }>()
+const emit = defineEmits<{ (e: 'close' | 'tab-opened'): void }>()
 
 const tab = ref<'rules' | 'preview' | 'presets' | 'prices' | 'neversink' | 'build' | 'changes'>('rules')
 const search = ref('')
