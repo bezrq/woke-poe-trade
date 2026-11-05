@@ -356,6 +356,7 @@ function clearOffers () {
   for (const o of open) dismiss(o, at)
   toast(open.length > 1 ? `Cleared ${open.length} offers` : 'Cleared the offer', {
     anchor: dockIconEl('trade'),
+    dock: true,
     undo: () => { for (const o of open) { o.closed = null; o.closedAt = null } }
   })
 }

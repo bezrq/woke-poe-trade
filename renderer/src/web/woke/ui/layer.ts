@@ -34,6 +34,8 @@ export interface Toast {
   undo?: () => void
   x: number
   y: number
+  // Takes the mouse while it's over it, so Undo can be clicked in game.
+  clickable: boolean
 }
 
 export const toasts = shallowRef<Toast[]>([])
@@ -41,15 +43,20 @@ let nextId = 1
 
 // Short note after an action, with Undo when given (P9: no "are you sure").
 // Shown at the bottom of `anchor` (usually the panel), else the screen; 5 s.
-export function toast (text: string, opts: { undo?: () => void, anchor?: Element | null, ms?: number } = {}) {
-  const r = opts.anchor?.getBoundingClientRect()
+// `dock`: from a dock icon's menu, while you may be playing. Sits clear of the
+// row, so nothing moves under it, and Undo can be clicked.
+export function toast (text: string, opts: { undo?: () => void, anchor?: Element | null, ms?: number, dock?: boolean } = {}) {
+  const box = opts.anchor?.getBoundingClientRect()
+  // A hidden panel has no size: its corner would put the note off screen.
+  const r = box && box.width > 0 && box.height > 0 ? box : undefined
   const t: Toast = {
     id: nextId++,
     text,
     undo: opts.undo,
     // A note is at most 360 px wide and centred here: keep it on screen.
     x: Math.max(180, Math.min(window.innerWidth - 180, r ? r.left + r.width / 2 : window.innerWidth / 2)),
-    y: r ? r.bottom - 10 : window.innerHeight - 80
+    y: !r ? window.innerHeight - 80 : !opts.dock ? r.bottom - 10 : r.top > 60 ? r.top - 6 : r.bottom + 44,
+    clickable: opts.dock === true && opts.undo != null
   }
   toasts.value = [...toasts.value.filter(o => Math.abs(o.y - t.y) > 4 || Math.abs(o.x - t.x) > 4), t]
   setTimeout(() => dismissToast(t.id), opts.ms ?? 5000)

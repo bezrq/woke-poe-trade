@@ -101,6 +101,7 @@ const CLOSE_AFTER_MS = 250
 let timer: ReturnType<typeof setTimeout> | null = null
 watch(hovering, (on) => {
   if (timer) { clearTimeout(timer); timer = null }
+  if (menuOpen.value) return
   if (on === showCard.value) return
   timer = setTimeout(() => { showCard.value = on }, on ? OPEN_AFTER_MS : CLOSE_AFTER_MS)
 })

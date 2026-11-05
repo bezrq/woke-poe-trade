@@ -299,7 +299,7 @@ const dockMenu = computed<DockMenuAction[]>(() => [{
   action: () => {
     const name = buy.value[0]?.name
     const el = dockIconEl('scarab-flip')
-    if (name) copyText(name).then(ok => { if (ok) toast(`Copied ${name}`, { anchor: el, ms: 1800 }) }).catch(() => {})
+    if (name) copyText(name).then(ok => { if (ok) toast(`Copied ${name}`, { anchor: el, dock: true, ms: 1800 }) }).catch(() => {})
   }
 }])
 </script>

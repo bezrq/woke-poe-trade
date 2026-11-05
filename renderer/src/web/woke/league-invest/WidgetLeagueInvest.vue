@@ -417,6 +417,7 @@ const dockMenu = computed<DockMenuAction[]>(() => [{
     saveDock()
     toast('League start buys won\'t show again this league', {
       anchor: el,
+      dock: true,
       undo: () => { props.config.doneLeague = before; saveDock() }
     })
   }

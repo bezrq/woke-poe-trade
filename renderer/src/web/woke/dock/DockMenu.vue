@@ -81,7 +81,7 @@ function dismiss (what: DismissFor) {
   const ids = [id.value, ...props.extras.map(e => e.props.id)]
   const title = props.host.props.title
   const done = dismissIcons(ids, what)
-  toast(`${title} dismissed ${done.phrase}`, { anchor: el, undo: done.restore })
+  toast(`${title} dismissed ${done.phrase}`, { anchor: el, dock: true, undo: done.restore })
 }
 
 const canPeek = computed(() => DOCK_PEEKS.has(id.value) && dockConfig().peeks)
@@ -108,7 +108,7 @@ function turnOff () {
     pushHostConfig()
   }
   set(false)
-  toast(`${m.name} turned off`, { anchor: el, undo: () => { set(true) } })
+  toast(`${m.name} turned off`, { anchor: el, dock: true, undo: () => { set(true) } })
 }
 </script>
 

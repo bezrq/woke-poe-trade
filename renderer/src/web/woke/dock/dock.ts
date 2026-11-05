@@ -236,7 +236,8 @@ function without<T> (map: Record<string, T>, ids: string[]): Record<string, T> {
 // `ids`: an icon and any others folded into its card.
 export function dismissIcons (ids: string[], what: DismissFor, now = Date.now()): DismissUndo {
   const d = ensureDockConfig()
-  const before = { here: dismissedHere.value, timed: d.dismissed ?? {}, hidden: d.hidden }
+  const had = <T>(map: Record<string, T>) => Object.fromEntries(Object.entries(map).filter(([id]) => ids.includes(id)))
+  const before = { here: had(dismissedHere.value), timed: had(d.dismissed ?? {}), hidden: d.hidden.filter(id => ids.includes(id)) }
   let phrase = 'for good'
   dismissClock.value = now
   if (what === 'here') {
@@ -257,9 +258,9 @@ export function dismissIcons (ids: string[], what: DismissFor, now = Date.now())
     phrase,
     restore: () => {
       const cur = ensureDockConfig()
-      dismissedHere.value = before.here
-      cur.dismissed = before.timed
-      cur.hidden = before.hidden
+      dismissedHere.value = { ...without(dismissedHere.value, ids), ...before.here }
+      cur.dismissed = { ...without(cur.dismissed ?? {}, ids), ...before.timed }
+      cur.hidden = [...cur.hidden.filter(id => !ids.includes(id)), ...before.hidden]
       saveDock()
     }
   }

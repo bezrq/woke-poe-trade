@@ -331,6 +331,7 @@ const dockMenu = computed<DockMenuAction[]>(() => [
           saveDock()
           toast(`${mechanicById(id)?.label ?? 'Mechanic'} won't show`, {
             anchor: el,
+            dock: true,
             undo: () => { props.config.hidden = props.config.hidden.filter(x => x !== id); saveDock() }
           })
         }

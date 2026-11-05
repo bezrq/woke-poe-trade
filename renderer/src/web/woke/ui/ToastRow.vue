@@ -7,8 +7,9 @@
 </template>
 
 <script setup lang="ts">
-// One done/undo note. A note with Undo takes the mouse while it's over it, so
-// Undo can be clicked while the game has focus.
+// One done/undo note. One from a dock menu takes the mouse while it's over it, so
+// Undo can be clicked while the game has focus. Others don't: a note can come up
+// on its own, and mustn't catch clicks meant for the game.
 import { shallowRef } from 'vue'
 import WKbd from './WKbd.vue'
 import { undoToast, type Toast } from './layer'
@@ -17,7 +18,7 @@ import { useHoverZone } from '../shared/hover'
 const props = defineProps<{ toast: Toast }>()
 
 const el = shallowRef<HTMLElement | null>(null)
-useHoverZone(el, { enabled: () => props.toast.undo != null, activate: () => true })
+useHoverZone(el, { enabled: () => props.toast.clickable, activate: () => true })
 </script>
 
 <style module>
