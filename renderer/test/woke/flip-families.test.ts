@@ -46,6 +46,25 @@ describe('Harvest rerolls', () => {
     expect(priceFlip(delirium, delirium.methods[0], items, new Map(), PLAIN, 30)).toEqual({ kind: 'no-cost' })
   })
 
+  it('solves rerolling exactly, even when almost everything gets rerolled', () => {
+    // Weight 1 at 1000c, weight 999 at 1c, 1c a reroll: reroll until the 1000c.
+    const recipe = { inputs: 1, cost: 1, excludeInput: false, rareShare: null, weightOf: (n: string) => ({ A: { weight: 1, source: 'sample' as const }, B: { weight: 999, source: 'sample' as const } })[n] ?? null }
+    const m = flipModel(quotes({ A: 1000, B: 1 }), { sellDiscount: 0, reroll: true }, recipe)
+    // worth = 1000 - 1000 = 0 is below B's 1c, so B sells instead: no reroll pays.
+    expect(m.recipeValue).toBeCloseTo((1000 + 999) / 1000, 8)
+    const dear = flipModel(quotes({ A: 100000, B: 1 }), { sellDiscount: 0, reroll: true }, recipe)
+    // Worth rerolling now: worth = 100000 - 1000 = 99000 as an input, plus the 1c.
+    expect(dear.buyUnder).toBeCloseTo(99000, 6)
+    expect(dear.recipeValue).toBeCloseTo(99001, 6)
+  })
+
+  it('never treats a free or negative craft as profit from nothing', () => {
+    const items = [item('Currency', 'Primal Crystallised Lifeforce', 0.03), item('Currency', 'Vivid Crystallised Lifeforce', 0)]
+    expect(harvestCost(delirium.methods[0], -30, items, null)).toBe(0)
+    // A zero price means poe.ninja has none, not that lifeforce is free.
+    expect(harvestCost(harvestCatalyst, 30, items, null)).toBeNull()
+  })
+
   it('rerolling cheap results settles even at one input per flip', () => {
     const family = familyById('delirium')
     const recipe = flipRecipe(family, family.methods[0], 1)
@@ -80,8 +99,19 @@ describe('upgrades', () => {
       ['Black to Opalescent Oil', 44 - 39]
     ])
     expect(rows[1].tradedPerDay).toBeCloseTo(1000 / 13, 8)
-    expect(rows[1].profitPerDay).toBeCloseTo(5 * 1000 / 13 / 3, 8)
+    // 25.6 recipes' worth of Black a day, but only 22.7 Opalescent sell.
+    expect(rows[1].profitPerDay).toBeCloseTo(5 * 1000 / 44, 8)
     expect(buyList(rows, true).map(r => r.name)).toEqual(['Black to Opalescent Oil'])
+  })
+
+  it('hides a recipe whose result nobody trades', () => {
+    const q = quotes({ 'Silver Oil': 100, 'Golden Oil': 500 })
+    q.get('Golden Oil')!.tradedChaos = 0
+    const rows = upgradeRows(q, [['Silver Oil', 'Golden Oil']], 0)
+    expect(rows[0].profit).toBe(200)
+    expect(rows[0].profitPerDay).toBe(0)
+    expect(buyList(rows, true)).toEqual([])
+    expect(buyList(rows, false).length).toBe(1)
   })
 
   it('skips tiers with no price', () => {
@@ -124,6 +154,11 @@ describe('priceFlip', () => {
     expect(flip?.kind === 'upgrade' && flip.rows.map(r => r.name)).toEqual(['Shrieking to Deafening Essence of Anger'])
   })
 
+  it('tells prices nobody can use apart from no prices at all', () => {
+    const lower = [item('Essence', 'Shrieking Essence of Anger', 1), item('Currency', 'Primal Crystallised Lifeforce', 0.03)]
+    expect(priceFlip(essences, essences.methods[0], lower, new Map(), PLAIN, 30)).toEqual({ kind: 'no-pool' })
+  })
+
   it('returns nothing when the family has no prices', () => {
     expect(priceFlip(delirium, delirium.methods[0], items, new Map(), PLAIN, 30)).toBeNull()
   })
@@ -161,7 +196,12 @@ describe('bestFlip', () => {
   })
 
   it('names the item to buy when the best flip is a recipe', () => {
-    const exchanges: Exchanges = new Map([['Oil', feed('Black Oil', 10, 100)]])
+    const oils = parseExchange({
+      core: { primary: 'chaos' },
+      items: [{ id: 'b', name: 'Black Oil' }, { id: 'o', name: 'Opalescent Oil' }],
+      lines: [{ id: 'b', primaryValue: 10, volumePrimaryValue: 100 }, { id: 'o', primaryValue: 100, volumePrimaryValue: 100 }]
+    })
+    const exchanges: Exchanges = new Map([['Oil', oils]])
     const best = bestFlip([item('Oil', 'Black Oil', 10), item('Oil', 'Opalescent Oil', 100)], exchanges, PLAIN, 30)
     expect(best?.name).toBe('Black to Opalescent Oil')
     expect(best?.item).toBe('Black Oil')
@@ -178,8 +218,12 @@ describe('bestFlip', () => {
     expect(bestFlip(rich, exchanges, PLAIN, 30)).toBeNull()
   })
 
-  it('picks nothing without volume to rank by', () => {
-    expect(bestFlip(items, new Map(), PLAIN, 30)).toBeNull()
+  it('ranks by profit without volume, below any flip with volume', () => {
+    const noVolume = bestFlip(items, new Map(), PLAIN, 30)
+    expect(noVolume?.name).toBe('Black to Opalescent Oil')
+    expect(noVolume?.profitPerDay).toBeNull()
+    const oneFeed = bestFlip(items, new Map([['DeliriumOrb', feed("Armoursmith's Delirium Orb", 5, 500)]]), PLAIN, 30)
+    expect(oneFeed?.family.id).toBe('delirium')
   })
 })
 

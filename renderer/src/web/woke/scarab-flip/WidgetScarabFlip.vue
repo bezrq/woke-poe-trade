@@ -5,7 +5,7 @@
       <template #card>
         <div v-if="best" class="flex flex-col gap-0.5" style="padding: 2px var(--w-pad) 6px;">
           <span class="w-num">Best supply: {{ shortName(best.name) }}</span>
-          <span class="w-dim w-num">{{ best.family.label }}, {{ best.method.label.toLowerCase() }}, +{{ fmt(best.profit) }}, up to {{ fmt(best.profitPerDay) }} a day</span>
+          <span class="w-dim w-num">{{ best.family.label }}, {{ best.method.label.toLowerCase() }}, +{{ fmt(best.profit) }}<template v-if="best.profitPerDay != null">, up to {{ fmt(best.profitPerDay) }} a day</template></span>
         </div>
         <div v-else class="w-dim" style="padding: 2px var(--w-pad) 6px;">Nothing worth flipping right now</div>
       </template>
@@ -30,7 +30,7 @@
           @click="config.hideUntraded = !config.hideUntraded">Hide untraded</WChip>
         <WField v-if="method.lifeforce" :model-value="lifeforcePerItem" type="number" :suffix="`${method.lifeforce} / item`" style="width: 8rem;"
           title="Lifeforce per item for this craft. The wiki lists 30; change it if the bench shows otherwise."
-          @update:model-value="config.lifeforcePerItem = Number($event) || 0" />
+          @update:model-value="setLifeforce($event)" />
       </template>
       <template #meta>
         <template v-if="flip">
@@ -40,7 +40,7 @@
         <span v-else-if="!snapshot">Waiting for poe.ninja prices…</span>
       </template>
 
-      <div v-if="flip && flip.kind !== 'no-cost'" :class="$style.verdict" class="w-num">
+      <div v-if="flip?.kind === 'pool' || flip?.kind === 'upgrade'" :class="$style.verdict" class="w-num">
         <b>{{ verdict }}</b>
         <span class="w-dim">{{ verdictSub }}</span>
       </div>
@@ -48,6 +48,7 @@
 
       <WSkeleton v-if="!snapshot" :rows="8" />
       <WEmpty v-else-if="!flip" icon="fas fa-recycle">poe.ninja has no {{ family.noun }} prices yet.</WEmpty>
+      <WEmpty v-else-if="flip.kind === 'no-pool'" icon="fas fa-recycle">poe.ninja has {{ family.noun }} prices, but none this method can use yet.</WEmpty>
       <WEmpty v-else-if="flip.kind === 'no-cost'" icon="fas fa-recycle">No {{ method.lifeforce }} Crystallised Lifeforce price yet, so the cost of a reroll is unknown.</WEmpty>
 
       <template v-else-if="view === 'buy'">
@@ -119,7 +120,7 @@
       </template>
 
       <template #footer>
-        <span :title="footerTitle">{{ family.source }}</span>
+        <span :title="footerTitle">{{ family.source }}<template v-if="pool?.unrated.length"> {{ pool.unrated.length }} with no weight left out.</template></span>
       </template>
     </WPanel>
   </Widget>
@@ -191,53 +192,62 @@ const league = computed(() => leagues.selectedId.value)
 const snapshot = shallowRef<Snapshot | null>(null)
 const exchanges = shallowRef<Exchanges>(new Map())
 
-// The dense prices have no volume, so each family's exchange feed is fetched
-// alongside them. If one fails that family still works, without volume.
-const EXCHANGE_MAX_AGE_MS = 20 * 60 * 1000
-const EXCHANGE_TYPES = [...new Set(FAMILIES.map(f => f.ninjaType))]
-let exchangeAt = 0
-let exchangeLeague: string | undefined
-
 // A slow read for the previous league must not land after a newer one.
 let loadSeq = 0
 async function load () {
   const seq = ++loadSeq
   const id = league.value
-  if (!id) { snapshot.value = null; exchanges.value = new Map(); return }
+  if (!id) { snapshot.value = null; return }
   try {
     const [snap] = await latestSnapshots(id, 1)
     if (seq === loadSeq) snapshot.value = snap ?? null
   } catch {
     if (seq === loadSeq) snapshot.value = null
   }
-  // A newer load has started (league switch or revision): leave the
-  // exchange feeds to it, or this one could wipe what it just stored.
-  if (seq !== loadSeq) return
-  if (exchangeLeague === id && Date.now() - exchangeAt < EXCHANGE_MAX_AGE_MS) return
-  if (exchangeLeague !== id) exchanges.value = new Map()
-  const next: Exchanges = new Map(exchanges.value)
-  let allGood = true
+  loadExchanges(id)
+}
+
+// The dense prices have no volume, so each family's exchange feed is fetched
+// alongside them, and tracked by itself: a failed feed only costs that family
+// its volume, and only it is asked for again, after a longer wait than a good
+// one gets if it might be rate limited.
+const EXCHANGE_MAX_AGE_MS = 20 * 60 * 1000
+const EXCHANGE_RETRY_MS = 5 * 60 * 1000
+const EXCHANGE_TYPES = [...new Set(FAMILIES.map(f => f.ninjaType))]
+let feedLeague: string | undefined
+const nextFetch = new Map<string, number>()
+const fetching = new Set<string>()
+
+function loadExchanges (id: string) {
+  if (feedLeague !== id) {
+    feedLeague = id
+    nextFetch.clear()
+    fetching.clear()
+    exchanges.value = new Map()
+  }
+  const now = Date.now()
   for (const type of EXCHANGE_TYPES) {
-    try {
-      const response = await Host.proxy(`poe.ninja/poe1/api/economy/exchange/current/overview?league=${encodeURIComponent(id)}&type=${type}`)
-      if (seq !== loadSeq) return
-      next.set(type, response.ok ? parseExchange(await response.json()) : null)
-      if (!response.ok) allGood = false
-    } catch {
-      if (seq !== loadSeq) return
-      next.set(type, null)
-      allGood = false
-    }
+    if (fetching.has(type) || now < (nextFetch.get(type) ?? 0)) continue
+    fetching.add(type)
+    fetchExchange(id, type).catch(() => null).then(parsed => {
+      // The league changed while this was in flight: it isn't this league's data.
+      if (feedLeague !== id) return
+      fetching.delete(type)
+      nextFetch.set(type, Date.now() + (parsed ? EXCHANGE_MAX_AGE_MS : EXCHANGE_RETRY_MS))
+      // A failure keeps the last good feed; a stale price beats no volume.
+      const previous = exchanges.value.get(type) ?? null
+      exchanges.value = new Map(exchanges.value).set(type, parsed ?? previous)
+    })
   }
-  exchanges.value = next
-  // Only good answers are cached; after a 429 or 5xx the next load retries.
-  if (allGood) {
-    exchangeLeague = id
-    exchangeAt = Date.now()
-  }
+}
+
+async function fetchExchange (id: string, type: string) {
+  const response = await Host.proxy(`poe.ninja/poe1/api/economy/exchange/current/overview?league=${encodeURIComponent(id)}&type=${type}`)
+  return response.ok ? parseExchange(await response.json()) : null
 }
 watch([league, collector.revision], load, { immediate: true })
 
+const dockShow = computed(() => Boolean(snapshot.value) && (zone.kind === 'town' || zone.kind === 'hideout'))
 const family = computed(() => familyById(props.config.family))
 const method = computed(() => {
   const picked = props.config.methods?.[family.value.id]
@@ -248,6 +258,10 @@ function pickMethod (id: string) {
 }
 function pickView (id: string) {
   props.config.tab = id as ScarabFlipWidget['tab']
+}
+function setLifeforce (value: string | number) {
+  // Cleared: back to the listed cost, not free.
+  props.config.lifeforcePerItem = value === '' ? undefined : Math.max(0, Number(value) || 0)
 }
 const lifeforcePerItem = computed(() => props.config.lifeforcePerItem ?? DEFAULT_LIFEFORCE_PER_ITEM)
 const options = computed(() => ({ sellDiscount: props.config.sellDiscount / 100, reroll: props.config.reroll }))
@@ -260,7 +274,8 @@ const rows = computed<Array<FlipRow | UpgradeRow>>(() => {
   if (flip.value?.kind === 'pool') return flip.value.model.rows
   return flip.value?.kind === 'upgrade' ? flip.value.rows : []
 })
-const best = computed(() => snapshot.value
+// Only for the icon, which is off in maps, so maps don't pay for the ranking.
+const best = computed(() => snapshot.value && dockShow.value
   ? bestFlip(snapshot.value.items, exchanges.value, options.value, lifeforcePerItem.value)
   : null)
 
@@ -274,7 +289,6 @@ const views = computed(() => {
 const view = computed(() => views.value.some(v => v.value === props.config.tab) ? props.config.tab : 'buy')
 
 const panelIcon = moduleIcon('scarab-flip').art ?? undefined
-const dockShow = computed(() => Boolean(snapshot.value) && (zone.kind === 'town' || zone.kind === 'hideout'))
 const hasVolume = computed(() => rows.value.some(r => r.tradedChaos != null))
 const buy = computed(() => buyList(rows.value, props.config.hideUntraded))
 const rareCheap = computed(() => pool.value ? rareCheapList(pool.value) : [])
@@ -310,6 +324,12 @@ const warning = computed(() => {
     : ''
 })
 
+const feedNote = computed(() => {
+  const feed = exchanges.value.get(family.value.ninjaType)
+  if (feed) return 'Prices and volume: poe.ninja exchange.'
+  return feed === undefined ? 'Prices: poe.ninja. Volume is still loading.' : "Prices: poe.ninja. Volume is missing because the exchange feed didn't load."
+})
+
 const footerTitle = computed(() => {
   const tiers = pool.value?.rows.filter(r => r.weightSource === 'tier').length ?? 0
   const left = pool.value?.unrated.join(', ')
@@ -317,7 +337,7 @@ const footerTitle = computed(() => {
     family.value.source,
     tiers ? `${tiers} scarabs use the average weight of their wiki rarity tier.` : '',
     left ? `No weight, left out: ${left}.` : '',
-    hasVolume.value ? 'Prices and volume: poe.ninja exchange.' : 'Prices: poe.ninja. Volume is missing because the exchange feed did not load.'
+    feedNote.value
   ].filter(Boolean).join('\n')
 })
 

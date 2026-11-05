@@ -51,16 +51,6 @@ export function scarabWeight (name: string): ItemWeight | null {
   return tier ? { weight: TIER_ROLLS[tier], source: 'tier' } : null
 }
 
-// The scarab vendor recipe: any 3 give a random scarab of a different type
-// from those used, respecting drop weights (poewiki.net/wiki/Scarab).
-export const SCARAB_RECIPE: FlipRecipe = {
-  inputs: 3,
-  cost: 0,
-  excludeInput: true,
-  rareShare: RARE_SHARE,
-  weightOf: scarabWeight
-}
-
 export interface FlipRow {
   name: string
   chaos: number
@@ -135,11 +125,7 @@ export function familyQuotes (
   return quotes
 }
 
-export function scarabQuotes (items: PriceItem[], exchange: ExchangeQuotes | null): Map<string, Quote> {
-  return familyQuotes(items, 'Scarab', name => name.includes('Scarab'), exchange)
-}
-
-export function flipModel (quotes: Map<string, Quote>, options: FlipOptions, recipe: FlipRecipe = SCARAB_RECIPE): FlipModel {
+export function flipModel (quotes: Map<string, Quote>, options: FlipOptions, recipe: FlipRecipe): FlipModel {
   const pool: Array<{ name: string, quote: Quote, weight: number, source: 'sample' | 'tier' }> = []
   const unrated: string[] = []
   for (const [name, quote] of quotes) {
@@ -151,17 +137,11 @@ export function flipModel (quotes: Map<string, Quote>, options: FlipOptions, rec
   const keep = 1 - options.sellDiscount
   const { inputs, cost } = recipe
 
-  // With rerolling, a result is worth at least its share of another flip,
-  // which depends on the flip's own value, so it settles over several passes.
-  let recipeValue = 0
-  const worth = (chaos: number) => Math.max(chaos * keep, options.reroll ? (recipeValue - cost) / inputs : 0)
-  const passes = total > 0 ? (options.reroll ? 2000 : 1) : 0
-  for (let i = 0; i < passes; i++) {
-    const next = pool.reduce((n, s) => n + s.weight * worth(s.quote.chaos), 0) / total
-    const settled = Math.abs(next - recipeValue) < 1e-9
-    recipeValue = next
-    if (settled) break
-  }
+  const prices = pool.map(s => ({ weight: s.weight, chaos: s.quote.chaos * keep }))
+  const plainValue = total > 0 ? prices.reduce((n, s) => n + s.weight * s.chaos, 0) / total : 0
+  const rerollFloor = options.reroll && total > 0 ? rerollWorth(prices, total, inputs, cost) : null
+  const recipeValue = rerollFloor == null ? plainValue : rerollFloor * inputs + cost
+  const worth = (chaos: number) => Math.max(chaos * keep, rerollFloor ?? 0)
 
   const isRare = (weight: number) => recipe.rareShare != null && weight / total <= recipe.rareShare
   const typicalRare = median(pool.filter(s => isRare(s.weight)).map(s => s.quote.chaos))
@@ -191,6 +171,23 @@ export function flipModel (quotes: Map<string, Quote>, options: FlipOptions, rec
   return { rows, unrated, recipeValue, buyUnder: (recipeValue - cost) / inputs, typicalRare, options, recipe }
 }
 
+// What an item is worth as an input when results are flipped again whenever
+// that pays: solves worth = (average result - cost) / inputs, where each result
+// is worth the more of its price and `worth`. Results are kept from the dearest
+// down, so the answer is the first cut-off that agrees with itself.
+function rerollWorth (prices: Array<{ weight: number, chaos: number }>, total: number, inputs: number, cost: number): number {
+  const sorted = [...prices].sort((a, b) => b.chaos - a.chaos)
+  let kept = 0
+  let keptWeight = 0
+  for (let i = 0; i < sorted.length; i++) {
+    kept += sorted[i].weight * sorted[i].chaos
+    keptWeight += sorted[i].weight
+    const worth = (kept - cost * total) / (inputs * total - (total - keptWeight))
+    if (i + 1 === sorted.length || sorted[i + 1].chaos <= worth) return worth
+  }
+  return 0
+}
+
 export function isTraded (row: { tradedChaos: number | null }): boolean {
   return row.tradedChaos == null || row.tradedChaos >= UNTRADED_CHAOS
 }
@@ -214,6 +211,7 @@ export interface UpgradeRow {
   chaos: number
   // Price of 1 of the next tier, minus 3 of this one.
   profit: number
+  // Chaos traded a day on the thinner side, input or result.
   tradedChaos: number | null
   tradedPerDay: number | null
   profitPerDay: number | null
@@ -230,6 +228,10 @@ export function upgradeRows (quotes: Map<string, Quote>, chains: string[][], sel
       if (!from || !into) continue
       const profit = into.chaos * (1 - sellDiscount) - 3 * from.chaos
       const tradedPerDay = from.tradedChaos == null ? null : from.tradedChaos / from.chaos
+      // A recipe needs buyers for the result as well as sellers of the input,
+      // so the thinner side of the market is what counts.
+      const intoPerDay = into.tradedChaos == null ? null : into.tradedChaos / into.chaos
+      const recipesPerDay = tradedPerDay == null ? null : Math.min(tradedPerDay / 3, intoPerDay ?? Infinity)
       rows.push({
         // "Black Oil", "Opalescent Oil" -> "Black to Opalescent Oil"
         name: `${chain[i].split(' ')[0]} to ${chain[i + 1]}`,
@@ -237,9 +239,9 @@ export function upgradeRows (quotes: Map<string, Quote>, chains: string[][], sel
         into: chain[i + 1],
         chaos: from.chaos,
         profit,
-        tradedChaos: from.tradedChaos,
+        tradedChaos: from.tradedChaos == null || into.tradedChaos == null ? from.tradedChaos ?? into.tradedChaos : Math.min(from.tradedChaos, into.tradedChaos),
         tradedPerDay,
-        profitPerDay: tradedPerDay == null ? null : Math.max(0, profit) * tradedPerDay / 3
+        profitPerDay: recipesPerDay == null ? null : Math.max(0, profit) * recipesPerDay
       })
     }
   }
