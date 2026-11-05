@@ -9,9 +9,51 @@ export interface TabBarConfig extends WidgetMenu {
   labels?: Record<number, string>
   // Moved to the rail layout (migrateToRail). Unset on older and new configs.
   rail?: boolean
+  // Laid flat, in a row. Unset: standing up.
+  railFlat?: boolean
+  // Unset: M.
+  railSize?: RailSize
   // Left by older versions, which had a "remove from bar" button. Every tool
   // is in the launcher now, so migrateToRail drops it.
   dismissed?: number[]
+}
+
+export type RailSize = 's' | 'm' | 'l' | 'xl'
+export const RAIL_SIZES: RailSize[] = ['s', 'm', 'l', 'xl']
+export const RAIL_ZOOM: Record<RailSize, number> = { s: 0.82, m: 1, l: 1.25, xl: 1.55 }
+
+// One size up or down, staying at the ends.
+export function stepRailSize (size: RailSize | undefined, dir: 1 | -1): RailSize {
+  const i = RAIL_SIZES.indexOf(size ?? 'm')
+  return RAIL_SIZES[Math.max(0, Math.min(RAIL_SIZES.length - 1, i + dir))]
+}
+
+// A dragged pin dropped at `index` among the pins on show (before the one there,
+// or last). Pins not on show, of switched-off modules, keep their places around it.
+export function movePin (pinned: number[], shown: number[], id: number, index: number): number[] {
+  const rest = shown.filter(x => x !== id)
+  const from = shown.indexOf(id)
+  // The index counts the dragged icon, still in the row.
+  const at = from >= 0 && index > from ? index - 1 : index
+  if (from < 0 || at === from) return pinned
+  const out = pinned.filter(x => x !== id)
+  const before = rest[at]
+  const pos = before != null ? out.indexOf(before) : out.indexOf(rest[rest.length - 1]) + 1
+  out.splice(pos, 0, id)
+  return out
+}
+
+// Which way the rail should stand when dropped with the mouse here: near the top
+// or bottom edge it lies flat, near a side it stands up. Near a corner, or away
+// from the edges, it stays as it is (null).
+export const RAIL_EDGE_PX = 48
+export function railDropEdge (x: number, y: number, w: number, h: number): 'top' | 'bottom' | 'left' | 'right' | null {
+  const near = (v: number, size: number) => v <= RAIL_EDGE_PX ? -1 : v >= size - RAIL_EDGE_PX ? 1 : 0
+  const nx = near(x, w)
+  const ny = near(y, h)
+  if ((nx !== 0) === (ny !== 0)) return null
+  if (ny !== 0) return ny < 0 ? 'top' : 'bottom'
+  return nx < 0 ? 'left' : 'right'
 }
 
 // Pinned on the rail until the user picks their own in the launcher.

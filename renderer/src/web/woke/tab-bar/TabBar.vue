@@ -1,6 +1,14 @@
 <template>
-  <div ref="railEl" :class="[$style.rail, { [$style.atEdge]: atEdge, [$style.onRight]: onRight }]" class="w-surface" :style="railStyle" data-widget-drag>
-    <img :src="markUrl" alt="" draggable="false" :class="$style.mark">
+  <div ref="railEl" :class="[$style.rail, { [$style.atEdge]: atEdge && !flat, [$style.onRight]: onRight && !flat, [$style.flat]: flat }]" class="w-surface" :style="railStyle" data-widget-drag
+    @mousedown="watchRailDrop" @wheel="onRailWheel">
+    <!-- The mark gives way to the rail's settings while the mouse is on the rail. -->
+    <span :class="$style.top">
+      <img :src="markUrl" alt="" draggable="false" :class="$style.mark">
+      <button :class="[$style.ic, $style.cfg]" aria-label="Rail layout and size"
+        @click="openLayout" @mouseenter="showTip('Layout and size', false, $event)" @mouseleave="hideTip">
+        <i class="fas fa-sliders-h" />
+      </button>
+    </span>
     <span :class="$style.sep" />
     <button :class="[$style.ic, $style.tools, { [$style.toolsOn]: popup?.kind === 'launcher' }]" aria-label="All tools"
       @click="openLauncher" @mouseenter="showTip('All tools', false, $event)" @mouseleave="hideTip">
@@ -18,7 +26,9 @@
 
     <template v-if="pinTabs.length">
       <span :class="$style.sep" />
-      <button v-for="tab in pinTabs" :key="tab.wmId" :class="[$style.ic, { [$style.open]: tab.open }]" :aria-label="tab.name"
+      <button v-for="(tab, i) in pinTabs" :key="tab.wmId" :data-pin="tab.wmId"
+        :class="[$style.ic, { [$style.open]: tab.open, [$style.dragged]: iconDrag?.active && iconDrag.id === tab.wmId, [$style.dropBefore]: iconDrag?.active && iconDrag.at === i, [$style.dropAfter]: iconDrag?.active && iconDrag.at === pinTabs.length && i === pinTabs.length - 1 }]"
+        :aria-label="tab.name" @mousedown="startIconDrag(tab, $event)"
         @click="toggle(tab)" @contextmenu.prevent="openMenu(tab, $event)"
         @mouseenter="showTip(tab.name, tab.open, $event)" @mouseleave="hideTip">
         <tool-icon :art="tab.art" :icon="tab.icon" />
@@ -43,10 +53,15 @@
       </button>
     </template>
 
-    <span :class="$style.grip" title="Drag to move the rail"><i class="fas fa-grip-lines" /></span>
+    <span :class="$style.grip" title="Drag to move the rail. To the top or bottom edge lays it flat, to a side stands it up. Right-click for layout and size."
+      @contextmenu.prevent="openLayout"><i class="fas fa-grip-lines" /></span>
 
     <Teleport to="body">
-      <div v-if="tip && !popup" :class="[$style.tip, { [$style.tipLeft]: tip.left }]" :style="{ left: `${tip.x}px`, top: `${tip.y}px` }">
+      <div v-if="iconDrag?.active && draggedTab" :class="[$style.ic, $style.ghost]" :style="{ left: `${iconDrag.x}px`, top: `${iconDrag.y}px` }">
+        <tool-icon :art="draggedTab.art" :icon="draggedTab.icon" />
+      </div>
+
+      <div v-if="tip && !popup && !iconDrag?.active" :class="[$style.tip, { [$style.tipLeft]: tip.left, [$style.tipFlat]: flat }]" :style="{ left: `${tip.x}px`, top: `${tip.y}px` }">
         {{ tip.text }}<span v-if="tip.open" :class="$style.tipOpen">open</span>
       </div>
 
@@ -98,6 +113,22 @@
         </div>
       </div>
 
+      <!-- the rail's own layout and size -->
+      <div v-if="popup?.kind === 'layout'" ref="popupEl" :class="[$style.menu, $style.layoutMenu]" :style="popupStyle" data-rail-layout @contextmenu.prevent>
+        <div :class="$style.chipHead">Layout</div>
+        <div :class="$style.chips">
+          <button :class="[$style.chip, { [$style.chipOn]: !flat }]" @click="setFlat(false)">Vertical</button>
+          <button :class="[$style.chip, { [$style.chipOn]: flat }]" @click="setFlat(true)">Horizontal</button>
+        </div>
+        <div :class="$style.chipHead">Size</div>
+        <div :class="$style.chips">
+          <button v-for="s in RAIL_SIZES" :key="s" :class="[$style.chip, { [$style.chipOn]: (config.railSize ?? 'm') === s }]" @click="setSize(s)">{{ s.toUpperCase() }}</button>
+        </div>
+        <hr :class="$style.rule">
+        <button :class="$style.item" @click="resetRail(); closePopup()"><i class="fas fa-undo" />Reset position and size</button>
+        <div :class="$style.hint">Ctrl + scroll on the rail changes size. Drag icons to reorder.</div>
+      </div>
+
       <!-- right-click menu -->
       <div v-if="popup?.kind === 'menu' && menuTab" ref="popupEl" :class="$style.menu" :style="popupStyle" @contextmenu.prevent>
         <div :class="$style.head">{{ menuTab.name }}</div>
@@ -108,8 +139,8 @@
           <i class="fas fa-thumbtack" />{{ menuTab.pinned ? 'Unpin from the rail' : 'Pin to the rail' }}
         </button>
         <template v-if="menuTab.pinned && !menuTab.iconOnly">
-          <button :class="$style.item" :disabled="!canShift(menuTab, -1)" @click="shift(menuTab, -1)"><i class="fas fa-chevron-up" />Move up</button>
-          <button :class="$style.item" :disabled="!canShift(menuTab, 1)" @click="shift(menuTab, 1)"><i class="fas fa-chevron-down" />Move down</button>
+          <button :class="$style.item" :disabled="!canShift(menuTab, -1)" @click="shift(menuTab, -1)"><i class="fas" :class="flat ? 'fa-chevron-left' : 'fa-chevron-up'" />{{ flat ? 'Move left' : 'Move up' }}</button>
+          <button :class="$style.item" :disabled="!canShift(menuTab, 1)" @click="shift(menuTab, 1)"><i class="fas" :class="flat ? 'fa-chevron-right' : 'fa-chevron-down'" />{{ flat ? 'Move right' : 'Move down' }}</button>
         </template>
         <hr :class="$style.rule">
         <button v-if="menuTab.hasAnchor" :class="$style.item" @click="resetPosition(menuTab); closePopup()">
@@ -151,8 +182,8 @@ import { MODULES, ensureWokeConfig, isWidgetTypeOn, setModuleOn } from '@/web/wo
 import { useI18n } from 'vue-i18n'
 import { useHotkeyHealth } from '../switchboard/hotkey-health'
 import ToolIcon from './ToolIcon.vue'
-import { ICON_TOOL_NAMES, artFor, iconFor, allowsCopies, groupByModule, launcherEntries, looksLikeItem, migrateToRail, parseWidgetTitle } from './tools'
-import type { LauncherEntry, LauncherState, TabBarConfig } from './tools'
+import { ICON_TOOL_NAMES, RAIL_SIZES, RAIL_ZOOM, movePin, railAnchor, railDropEdge, stepRailSize, artFor, iconFor, allowsCopies, groupByModule, launcherEntries, looksLikeItem, migrateToRail, parseWidgetTitle } from './tools'
+import type { LauncherEntry, LauncherState, RailSize, TabBarConfig } from './tools'
 import { WIcon, WPrice, ninjaIcon } from '../ui'
 import { holdPricesForSearch, useSearchSnapshot } from '../market/price-index'
 import { groupKey, rarityClass, searchPrices } from '../search/search'
@@ -220,12 +251,20 @@ const onRight = computed(() => {
   return pos.endsWith('r') ? x > 50 : x >= 50
 })
 const atEdge = computed(() => props.config.anchor.pos.endsWith('l') && props.config.anchor.x <= 0)
+const flat = computed(() => props.config.railFlat === true)
+const railZoom = computed(() => RAIL_ZOOM[props.config.railSize ?? 'm'])
 
 // Keep every icon reachable: it scrolls instead of running off the screen.
 const railStyle = computed(() => {
-  const { pos, y } = props.config.anchor
+  const { pos, x, y } = props.config.anchor
+  // CSS zoom multiplies vh and vw too.
+  const zoom = railZoom.value
+  if (flat.value) {
+    const room = pos.endsWith('l') ? 100 - x : pos.endsWith('r') ? x : 2 * Math.min(x, 100 - x)
+    return { zoom, maxWidth: `max(calc(${room / zoom}vw - ${8 / zoom}px), 240px)` }
+  }
   const room = pos.startsWith('t') ? 100 - y : pos.startsWith('b') ? y : 2 * Math.min(y, 100 - y)
-  return { maxHeight: `max(calc(${room}vh - 8px), 240px)` }
+  return { zoom, maxHeight: `max(calc(${room / zoom}vh - ${8 / zoom}px), 240px)` }
 })
 
 const pinnedTabs = computed(() => {
@@ -332,9 +371,17 @@ function setLabel (wmId: number, label: string) {
 // Names on hover. Drawn on body so a window can't cover them.
 const railEl = ref<HTMLElement | null>(null)
 const tip = ref<{ text: string, open: boolean, x: number, y: number, left: boolean } | null>(null)
+const TIP_ROOM = 100
 function showTip (text: string, open: boolean, e: MouseEvent) {
   const r = (e.currentTarget as HTMLElement).getBoundingClientRect()
   const rail = railEl.value?.getBoundingClientRect() ?? r
+  if (flat.value) {
+    const below = rail.top < window.innerHeight / 2
+    // It's centred on the icon: keep it off the screen's edges.
+    const x = Math.max(TIP_ROOM, Math.min(window.innerWidth - TIP_ROOM, r.left + r.width / 2))
+    tip.value = { text, open, left: !below, x, y: below ? rail.bottom + 18 : rail.top - 18 }
+    return
+  }
   tip.value = {
     text,
     open,
@@ -348,8 +395,8 @@ function hideTip () { tip.value = null }
 // popups
 // y: where the popup's top goes when it opens downward; above: where its
 // bottom goes when there is no room below and it opens upward instead.
-type PopupKind = 'menu' | 'launcher'
-const POPUP_WIDTH: Record<PopupKind, number> = { menu: 240, launcher: 900 }
+type PopupKind = 'menu' | 'launcher' | 'layout'
+const POPUP_WIDTH: Record<PopupKind, number> = { menu: 240, launcher: 900, layout: 240 }
 const popup = ref<{ kind: PopupKind, x: number, y: number, above: number, up?: boolean, wmId?: number } | null>(null)
 const popupEl = ref<HTMLElement | null>(null)
 const menuTab = computed(() => tabs.value.find(tab => tab.wmId === popup.value?.wmId))
@@ -381,19 +428,157 @@ function openMenu (tab: Tab, e: MouseEvent) {
   placePopup()
 }
 // Beside the rail, on whichever side of it faces the screen.
-function openBesideRail (kind: 'launcher') {
+function openBesideRail (kind: 'launcher' | 'layout') {
   hideTip()
   const r = railEl.value!.getBoundingClientRect()
-  popup.value = {
-    kind,
-    x: onRight.value ? r.left - 4 - POPUP_WIDTH[kind] : r.right + 4,
-    y: r.top,
-    above: r.bottom
-  }
+  popup.value = flat.value
+    ? { kind, x: r.left, y: r.bottom + 4, above: r.top - 4 }
+    : {
+        kind,
+        x: onRight.value ? r.left - 4 - POPUP_WIDTH[kind] : r.right + 4,
+        y: r.top,
+        above: r.bottom
+      }
   placePopup()
+  if (kind !== 'launcher') return
   query.value = ''
   nextTick(() => searchInput.value?.focus())
 }
+function openLayout () { openBesideRail('layout') }
+
+// ---- arranging the rail ----
+// Where the buff row ends: lying along the top, the rail sits just under it.
+const BELOW_BUFFS = railAnchor().y
+
+// Lays out the rail's new shape and puts it where asked, kept on screen. How long
+// the rail can be depends on where it's anchored, so it's measured from the start
+// of the screen before it's placed. Before the next paint, so nothing flickers.
+function reshape (change: () => void, place: { x: number, y: number, right: boolean, bottom: boolean }) {
+  const c = props.config
+  change()
+  const w = window.innerWidth
+  const h = window.innerHeight
+  c.anchor = { pos: 'tl', x: flat.value ? 0 : place.x, y: flat.value ? place.y : 0 }
+  nextTick(() => {
+    const n = railEl.value?.getBoundingClientRect()
+    if (!n) return
+    const x = Math.min(place.x / 100 * w, w - n.width)
+    const y = Math.min(place.y / 100 * h, h - n.height)
+    c.anchor = {
+      pos: 'tl',
+      x: Math.max(0, place.right ? w - n.width : x) / w * 100,
+      y: Math.max(0, place.bottom ? h - n.height : y) / h * 100
+    }
+    // Open popups sit beside the old shape.
+    if (popup.value?.kind === 'layout') nextTick(openLayout)
+  })
+}
+
+// Keeps its top-left corner unless told otherwise.
+function setFlat (on: boolean, place: { x?: number, y?: number, right?: boolean, bottom?: boolean } = {}) {
+  const r = railEl.value?.getBoundingClientRect()
+  if (!r) return
+  reshape(() => { props.config.railFlat = on }, {
+    x: place.x ?? r.left / window.innerWidth * 100,
+    y: place.y ?? r.top / window.innerHeight * 100,
+    right: place.right === true,
+    bottom: place.bottom === true
+  })
+}
+
+// A rail against the right or bottom edge stays against it.
+function setSize (size: RailSize) {
+  const r = railEl.value?.getBoundingClientRect()
+  if (!r || size === (props.config.railSize ?? 'm')) return
+  reshape(() => { props.config.railSize = size }, {
+    x: r.left / window.innerWidth * 100,
+    y: r.top / window.innerHeight * 100,
+    right: r.left > window.innerWidth / 2 && r.right >= window.innerWidth - 2,
+    bottom: r.top > window.innerHeight / 2 && r.bottom >= window.innerHeight - 2
+  })
+}
+
+function resetRail () {
+  const c = props.config
+  c.railFlat = undefined
+  c.railSize = undefined
+  c.anchor = railAnchor()
+}
+
+function onRailWheel (e: WheelEvent) {
+  if (e.ctrlKey) {
+    e.preventDefault()
+    setSize(stepRailSize(props.config.railSize, e.deltaY < 0 ? 1 : -1))
+  } else if (flat.value && railEl.value) {
+    // Scrolling reads as along the row.
+    railEl.value.scrollLeft += e.deltaY
+  }
+}
+
+// The rail itself is dragged by its widget. Dropped against an edge, it turns to
+// lie along that edge. This runs before the widget's own mouseup.
+function watchRailDrop (start: MouseEvent) {
+  if (start.button !== 0 || (start.target as Element).closest('button')) return
+  // Choosing an anchor corner in the widget's Move mode isn't a drag of the rail.
+  if (railEl.value?.closest('.opacity-75')) return
+  const onUp = (e: MouseEvent) => {
+    document.removeEventListener('mouseup', onUp)
+    if (Math.hypot(e.clientX - start.clientX, e.clientY - start.clientY) < DRAG_PX) return
+    const edge = railDropEdge(e.clientX, e.clientY, window.innerWidth, window.innerHeight)
+    if (!edge) return
+    const wantFlat = edge === 'top' || edge === 'bottom'
+    if (wantFlat === flat.value) return
+    if (edge === 'top') setFlat(true, { y: BELOW_BUFFS })
+    else if (edge === 'bottom') setFlat(true, { bottom: true })
+    else if (edge === 'left') setFlat(false, { x: 0, y: BELOW_BUFFS })
+    else setFlat(false, { y: BELOW_BUFFS, right: true })
+  }
+  document.addEventListener('mouseup', onUp)
+}
+
+// Dragging a pinned icon along the rail. A plain click still opens the tool.
+const DRAG_PX = 5
+const iconDrag = ref<{ id: number, active: boolean, x: number, y: number, at: number } | null>(null)
+const draggedTab = computed(() => pinTabs.value.find(tab => tab.wmId === iconDrag.value?.id))
+let endIconDrag: (() => void) | null = null
+function startIconDrag (tab: Tab, start: MouseEvent) {
+  if (start.button !== 0) return
+  const onMove = (e: MouseEvent) => {
+    const d = iconDrag.value
+    if (!d) return
+    if (!d.active && Math.hypot(e.clientX - start.clientX, e.clientY - start.clientY) < DRAG_PX) return
+    d.active = true
+    d.x = e.clientX
+    d.y = e.clientY
+    const cells = [...(railEl.value?.querySelectorAll<HTMLElement>('[data-pin]') ?? [])]
+    d.at = cells.filter((el) => {
+      const r = el.getBoundingClientRect()
+      return flat.value ? r.left + r.width / 2 < e.clientX : r.top + r.height / 2 < e.clientY
+    }).length
+  }
+  const stop = () => {
+    document.removeEventListener('mousemove', onMove)
+    document.removeEventListener('mouseup', onUp)
+    endIconDrag = null
+    iconDrag.value = null
+  }
+  const onUp = () => {
+    const d = iconDrag.value
+    stop()
+    if (!d?.active) return
+    props.config.pinned = movePin(props.config.pinned ?? [], pinTabs.value.map(x => x.wmId), d.id, d.at)
+    // The click that ends a drag doesn't open the tool. If none follows, the
+    // next real one still counts.
+    const swallow = (e: Event) => { e.stopPropagation(); e.preventDefault() }
+    window.addEventListener('click', swallow, { capture: true, once: true })
+    setTimeout(() => { window.removeEventListener('click', swallow, { capture: true }) }, 50)
+  }
+  iconDrag.value = { id: tab.wmId, active: false, x: start.clientX, y: start.clientY, at: 0 }
+  endIconDrag = stop
+  document.addEventListener('mousemove', onMove)
+  document.addEventListener('mouseup', onUp)
+}
+onBeforeUnmount(() => { endIconDrag?.() })
 function openLauncher () {
   holdPricesForSearch()
   openBesideRail('launcher')
@@ -575,6 +760,7 @@ onBeforeUnmount(() => document.removeEventListener('paste', onOverlayPaste))
   font-size: var(--w-text);
 }
 .rail.atEdge { border-left: 0; border-radius: 0 var(--w-r-md) var(--w-r-md) 0; }
+.flat { flex-direction: row; overflow-x: auto; overflow-y: hidden; }
 .ic {
   position: relative;
   flex: none;
@@ -599,6 +785,16 @@ onBeforeUnmount(() => document.removeEventListener('paste', onOverlayPaste))
   background: var(--w-accent);
 }
 .onRight .ic.open::after { right: auto; left: 1px; }
+.flat .ic.open::after { left: 6px; right: 6px; top: auto; bottom: 1px; width: auto; height: 2px; }
+.dragged { opacity: 0.35; }
+.dropBefore { box-shadow: 0 -2px 0 var(--w-accent); }
+.dropAfter { box-shadow: 0 2px 0 var(--w-accent); }
+.flat .dropBefore { box-shadow: -2px 0 0 var(--w-accent); }
+.flat .dropAfter { box-shadow: 2px 0 0 var(--w-accent); }
+.ghost {
+  position: fixed; z-index: 9999; transform: translate(-50%, -50%); pointer-events: none;
+  color: var(--w-fg); background: var(--w-panel); border: 1px solid var(--w-accent); box-shadow: var(--w-shadow);
+}
 .tools { background: var(--w-panel-3); color: var(--w-fg); }
 .tools:hover, .toolsOn { background: color-mix(in srgb, var(--w-accent) 22%, transparent); }
 .warn { color: var(--w-warn); background: color-mix(in srgb, var(--w-warn) 14%, transparent); }
@@ -616,10 +812,17 @@ onBeforeUnmount(() => document.removeEventListener('paste', onOverlayPaste))
   color: var(--w-accent-fg);
   background: var(--w-warn);
 }
+.flat .grip { width: 14px; height: 32px; }
+.flat .grip i { transform: rotate(90deg); }
 .grip { flex: none; display: grid; place-items: center; width: 34px; height: 14px; color: var(--w-faint); font-size: var(--w-fs-xs); }
 .grip:hover { color: var(--w-dim); }
-.mark { flex: none; width: var(--w-icon-md); height: var(--w-icon-md); margin: 3px 0 1px; pointer-events: none; }
+.top { position: relative; flex: none; display: grid; place-items: center; width: 34px; }
+.mark { width: var(--w-icon-md); height: var(--w-icon-md); margin: 3px 0 1px; pointer-events: none; }
+.cfg { position: absolute; left: 0; top: 50%; transform: translateY(-50%); opacity: 0; pointer-events: none; }
+.rail:hover .cfg, .cfg:focus-visible { opacity: 1; pointer-events: auto; }
+.rail:hover .mark { visibility: hidden; }
 .sep { flex: none; width: 22px; height: 1px; margin: 4px 0; background: var(--w-line); }
+.flat .sep { width: 1px; height: 22px; margin: 0 4px; }
 
 .tip {
   position: fixed;
@@ -775,6 +978,18 @@ onBeforeUnmount(() => document.removeEventListener('paste', onOverlayPaste))
 .item:disabled { color: var(--w-faint); }
 .danger, .danger > i { color: var(--w-down); }
 .rule { border: 0; border-top: 1px solid var(--w-line); margin: 4px 2px; }
+.chipHead { padding: 5px 8px 3px; font-size: var(--w-fs-sm); color: var(--w-dim); }
+.chips { display: flex; gap: 4px; padding: 0 6px 5px; }
+.chip {
+  flex: 1 1 0; min-width: 0; height: 26px; padding: 0 2px;
+  border: 1px solid var(--w-line-strong); border-radius: var(--w-r-sm);
+  font-size: var(--w-fs-sm); color: var(--w-fg);
+}
+.chip:hover { background: var(--w-accent-soft); }
+.chipOn { background: var(--w-accent-soft); border-color: var(--w-accent); }
+.layoutMenu { box-sizing: border-box; width: 240px; }
+.hint { padding: 3px 8px 5px; font-size: var(--w-fs-xs); color: var(--w-faint); }
+.tipFlat { transform: translate(-50%, -50%); }
 .renameRow { display: flex; gap: 4px; padding: 2px; }
 .input {
   flex: 1;
