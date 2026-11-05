@@ -15,6 +15,8 @@ import type { ScanOptions, ScanResult, LineImage } from './map-scan-vision'
 import { perfRecord } from './perf'
 import { ocrDir, USER_OCR_DIR } from './ocr-dir'
 
+// About one quad-tab cell, as a fraction of the game window height.
+const LOCK_LEAVE = 0.024
 // Stop after this long without the game focused, so it can't run forever.
 const IDLE_STOP_MS = 30 * 60 * 1000
 // Files the OCR worker loads (the same ones APT's heist gem reader uses).
@@ -386,12 +388,19 @@ export class ScreenScanner {
     const moved = now.x !== this.mouse.x || now.y !== this.mouse.y
     this.mouse = now
     const cursor = { x: this.mouse.x - bounds.x, y: this.mouse.y - bounds.y }
-    // Rolling: a lock only holds while the cursor stays put. Once it moves it may
-    // be on another item, so the tooltip is found again when it rests.
-    if (this.lock && moved) {
-      this.lock = null
-      this.lockAt = null
-      this.emitState()
+    // Rolling: a lock holds while the cursor stays on that item. Once it moves
+    // about a quad-tab cell away it may be on another one, so the tooltip is
+    // found again when it rests. Small drift between clicks keeps the lock.
+    if (this.lock && this.lockAt && moved) {
+      const dx = cursor.x - this.lockAt.x * bounds.width
+      const dy = cursor.y - this.lockAt.y * bounds.height
+      if (Math.hypot(dx, dy) > bounds.height * LOCK_LEAVE) {
+        this.lock = null
+        this.lockAt = null
+        this.prevSig = null
+        this.lastReadSig = null
+        this.emitState()
+      }
     }
     const lock = this.lock
     if (!lock && (cursor.x < 0 || cursor.y < 0 || cursor.x >= bounds.width || cursor.y >= bounds.height)) return

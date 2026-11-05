@@ -240,7 +240,10 @@ function onReading (reading: Reading) {
     rolls.value = [...rolls.value, { n: rollN, verdict: verdict.verdict, juice: juice.score }]
   }
   // The first read of a map is where it starts, not a reroll that passed.
-  const passes = verdict.verdict === 'run' && (rollN != null ? rollN > 1 : Boolean(prev && prev.verdict !== 'run'))
+  // While rolling, a reading with no mods (a scoured map) isn't a roll, so it can't pass either.
+  const passes = verdict.verdict === 'run' && (rollN != null
+    ? rollN > 1
+    : !reading.rolling && Boolean(prev && prev.verdict !== 'run'))
   const entry: Entry = {
     id: nextId++,
     at: prev?.at ?? reading.at,
