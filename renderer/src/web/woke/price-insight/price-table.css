@@ -37,6 +37,7 @@
   font-family: var(--w-body);
   font-size: calc(12px * var(--w-text-scale, 1));
 }
+:root:not([data-woke-theme="classic"]) .w-pc-online-btn i { display: none; }
 :root:not([data-woke-theme="classic"]) .w-pc-online-btn:hover { background: var(--w-panel-3); color: var(--w-fg); }
 
 :root:not([data-woke-theme="classic"]) #overlay-window .w-pc-btn {
@@ -121,10 +122,10 @@
   flex: 0 1 auto;
   min-height: 0;
   max-height: 50vh;
-  margin: 0 -1rem;
-  padding: 0 1rem;
   overflow: hidden auto;
 }
+/* Meets the title bar and the window's edges once it holds a verdict. */
+.w-pc-verdict-slot:has(> *) { margin: -1rem -1rem 8px; }
 .w-pc-verdict-slot::-webkit-scrollbar { width: 8px; }
 .w-pc-verdict-slot::-webkit-scrollbar-thumb { background: var(--w-panel-3); border-radius: 4px; }
 .w-pc-scroll { min-height: 7rem; }

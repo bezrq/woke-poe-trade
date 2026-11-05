@@ -1,70 +1,64 @@
 <template>
   <div :class="[$style.card, $style[insight.confidence]]">
-    <div :class="$style.hero">
-      <div :class="$style.main">
+    <div :class="$style.band">
+      <div :class="$style.answer">
         <template v-if="!insight.range">
-          <div :class="$style.eyebrow">
-            <span :class="$style.badge">{{ loading ? '…' : blankSearch ? 'NO MODS' : (headline ? 'NO LISTINGS' : 'NO DATA') }}</span>
-            <span>{{ loading ? 'Reading listings…' : (headline ? 'Other sources say' : '') }}</span>
-          </div>
           <div v-if="!loading && headline" :class="$style.value" :title="blendTitle">
             <w-price :class="[$style.headline, $style.headlinePrice]" :chaos="headline.chaos" :divine="divine" />
           </div>
-          <div v-else-if="ninjaInfo" :class="$style.value">
-            <ninja-line :chaos="ninjaInfo.chaos" :divine="divine" :url="ninjaInfo.url" />
+          <div :class="$style.trust">
+            <span :class="$style.badge">{{ loading ? '…' : blankSearch ? 'NO MODS' : (headline ? 'NO LISTINGS' : 'NO DATA') }}</span>
+            <span>{{ loading ? 'Reading listings…' : (headline ? 'Other sources say' : '') }}</span>
           </div>
         </template>
         <template v-else>
-          <div :class="$style.eyebrow">
+          <div :class="$style.value">
+            <span v-if="lowValue" :class="$style.headline">Not worth listing</span>
+            <w-price v-else :class="[$style.headline, $style.headlinePrice]" :chaos="headline?.chaos ?? insight.range.fair" :divine="divine" />
+          </div>
+          <div :class="$style.trust">
             <span :class="$style.badge" :title="CONFIDENCE_HINT[insight.confidence]">{{ CONFIDENCE_LABEL[insight.confidence] }}</span>
             <span class="whitespace-nowrap" :title="blendTitle">{{ lowValue ? `Under ${LOW_VALUE}c` : 'Asking around' }}</span>
             <span v-if="insight.risk !== 'none'" :class="[$style.risk, $style['risk-' + insight.risk]]" :title="riskTitle"
               @click="verdictExpanded = true">⚑ {{ RISK_LABEL[insight.risk] }}</span>
           </div>
-          <div :class="$style.value">
-            <span v-if="lowValue" :class="$style.headline">Not worth listing</span>
-            <w-price v-else :class="[$style.headline, $style.headlinePrice]" :chaos="headline?.chaos ?? insight.range.fair" :divine="divine" />
-          </div>
         </template>
       </div>
-      <div :class="$style.side">
-        <div :class="$style.sideRow">
-          <button v-if="ranges.length" type="button" :class="[$style.sparkBtn, { [$style.on]: historyOpen }]"
-            :title="historyOpen ? 'Hide price history' : 'Show price history'" @click="historyOpen = !historyOpen">
-            <w-spark :values="sparkValues" :width="60" :height="18" />
-            <span class="w-num">
-              <span :class="$style.sparkSource">{{ SPARK_LABEL[ranges[0]] }}</span>
-              <span v-if="sparkChange != null" class="ml-1" :class="sparkChange >= 0 ? 'w-up' : 'w-down'">{{ sparkChange >= 0 ? '+' : '' }}{{ Math.round(sparkChange * 100) }}%</span>
-            </span>
-          </button>
-          <button type="button" class="w-icon-btn" :title="expanded ? 'Show less' : 'Show sources, listing notes and what drives the price'"
-            @click="verdictExpanded = !verdictExpanded">
-            <i class="fas text-xs" :class="expanded ? 'fa-chevron-up' : 'fa-chevron-down'" />
-          </button>
-        </div>
-        <span v-if="insight.range" :class="$style.count" :title="droppedTitle">{{ countText }}</span>
-      </div>
-    </div>
-
-    <p v-if="!insight.range && !loading" :class="$style.note">{{ emptyText }}</p>
-
-    <template v-if="insight.range">
-      <price-rail v-if="!lowValue" :input="railInput" :divine="divine" />
-      <div v-else :class="$style.note" class="w-num">
-        Cheapest <w-price :chaos="insight.range.low" :divine="divine" :unit="rangeUnit" />, top of range <w-price :chaos="insight.range.high" :divine="divine" :unit="rangeUnit" />
-      </div>
-      <div v-if="showSignals" :class="$style.signals">
-        <div v-for="s in insight.signals" :key="s.kind" :class="$style.signal"><span :class="$style.flag">⚑</span> {{ s.text }}</div>
-      </div>
-      <p v-if="accountMissing" :class="$style.note">Your own listings may be counted here. Add your account name in settings to leave them out.</p>
-      <div v-if="!lowValue && notes.length" :class="$style.actions">
+      <div v-if="insight.range && !lowValue && notes.length" :class="$style.actions">
         <button v-for="n in notes" :key="n.key" type="button" :class="$style.note2"
           :title="'Copy the listing note: ' + n.text" @click="copy(n)">
           <span class="w-dim">{{ n.label }}</span>
           <span class="w-num">{{ copied === n.key ? 'Copied' : n.text }}</span>
         </button>
       </div>
-    </template>
+    </div>
+
+    <p v-if="!insight.range && !loading" :class="$style.note">{{ emptyText }}</p>
+    <div v-if="insight.range && showSignals" :class="$style.signals">
+      <div v-for="s in insight.signals" :key="s.kind" :class="$style.signal"><span :class="$style.flag">⚑</span> {{ s.text }}</div>
+    </div>
+
+    <div :class="$style.line">
+      <template v-if="insight.range">
+        <span class="w-num" :class="$style.fact">Cheapest <w-price :class="$style.factPrice" :chaos="insight.range.low" :divine="divine" :unit="rangeUnit" /></span>
+        <span v-if="!ninjaInfo && insight.range.high > insight.range.low" class="w-num" :class="$style.fact">up to <w-price :class="$style.factPrice" :chaos="insight.range.high" :divine="divine" :unit="rangeUnit" /></span>
+      </template>
+      <button v-if="ranges.length" type="button" :class="[$style.sparkBtn, { [$style.on]: historyOpen }]"
+        :title="(historyOpen ? 'Hide price history' : 'Show price history') + (blend.ninjaSuspect ? '. poe.ninja looks faked here, so it isn\'t counted' : '')" @click="historyOpen = !historyOpen">
+        <w-spark :values="sparkValues" :width="40" :height="14" />
+        <span class="w-num" :class="$style.fact">
+          <span :class="{ [$style.ninjaName]: ninjaInfo }">{{ ninjaInfo ? 'poe.ninja' : SPARK_LABEL[ranges[0]] }}</span>
+          <w-price v-if="ninjaInfo" :class="$style.ninjaPrice" :chaos="ninjaInfo.chaos" :divine="divine" />
+          <span v-if="sparkChange != null" :class="sparkChange >= 0 ? 'w-up' : 'w-down'">{{ sparkChange >= 0 ? '+' : '' }}{{ Math.round(sparkChange * 100) }}%</span>
+        </span>
+      </button>
+      <span class="flex-1" />
+      <span v-if="insight.range" :class="$style.count" :title="droppedTitle">{{ countText }}</span>
+      <button type="button" class="w-icon-btn" :title="expanded ? 'Show less' : 'Show sources, listing notes and what drives the price'"
+        @click="verdictExpanded = !verdictExpanded">
+        <i class="fas text-xs" :class="expanded ? 'fa-chevron-up' : 'fa-chevron-down'" />
+      </button>
+    </div>
 
     <price-history-chart v-if="historyOpen && ranges.length" :ranges="ranges" :series="series" :divine="divine"
       :from-ninja="Boolean(ninjaInfo)" :loading="leagueLoading" @range="onRange" />
@@ -80,6 +74,7 @@
       </div>
       <a v-if="ninjaInfo" :class="$style.ninjaLink" :href="ninjaInfo.url" target="_blank">Open on poe.ninja ↗</a>
     </div>
+    <p v-if="expanded && accountMissing" :class="$style.note">Your own listings may be counted here. Add your account name in settings to leave them out.</p>
     <label v-if="expanded && canAsk" :class="$style.ppToggle">
       <input type="checkbox" v-model="usePoeprices">
       <span>Ask poeprices.info about rares</span>
@@ -94,8 +89,6 @@ import { ParsedItem } from '@/parser'
 import { AppConfig } from '@/web/Config'
 import { WPrice, WSpark } from '../ui'
 import { useCopy } from '../ui/copy'
-import NinjaLine from './NinjaLine.vue'
-import PriceRail from './PriceRail.vue'
 import PriceHistoryChart from './PriceHistoryChart.vue'
 import { verdictExpanded, historyOpen } from './view'
 import { DROP_LABEL, DropReason, Insight, Confidence, FixRisk, notePrice, noteText } from './insight'
@@ -142,14 +135,6 @@ const { ninjaInfo, blend, headline, ranges, series, leagueLoading } = smart
 const missingDivines = computed(() => props.insight.signals.some(s => s.kind === 'norate'))
 
 const lowValue = computed(() => !props.skipsTopMods && !missingDivines.value && (headline.value?.chaos ?? props.insight.range?.fair ?? 0) < LOW_VALUE)
-
-const railInput = computed(() => ({
-  low: props.insight.range?.low ?? 0,
-  likely: headline.value?.chaos ?? props.insight.range?.fair ?? 0,
-  high: props.insight.range?.high ?? 0,
-  ninja: ninjaInfo.value?.chaos,
-  ninjaSuspect: blend.value.points.some(p => p.key === 'ninja' && p.weight === 0)
-}))
 
 // Warnings stay out of the way unless they change what the price means.
 const showSignals = computed(() => props.insight.signals.length > 0 && (
@@ -262,26 +247,25 @@ async function copy (n: { key: string, text: string }) {
 .card {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  /* Runs edge to edge: the answer gets its own band across the window. */
-  margin: 0 -1rem 8px;
-  padding: 10px 1rem;
-  border-top: 1px solid var(--w-line-soft);
-  border-bottom: 1px solid var(--w-line);
-  background: var(--w-pc-well, var(--w-panel-solid));
   color: var(--w-fg);
+  background: var(--w-pc-well, var(--w-panel-solid));
+  border-bottom: 1px solid var(--w-line);
   font-family: var(--w-body);
   font-size: var(--w-text);
   font-variant-numeric: tabular-nums;
 }
-.hero { display: flex; align-items: flex-start; gap: 12px; min-width: 0; }
-.main { display: flex; flex-direction: column; gap: 2px; flex: 1 1 auto; min-width: 0; }
-.side { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex: none; }
-.sideRow { display: flex; align-items: center; gap: 2px; }
-.eyebrow { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; min-width: 0; color: var(--w-dim); font-size: calc(12px * var(--w-text-scale, 1)); line-height: calc(16px * var(--w-text-scale, 1)); }
+/* The answer and what to do with it: the first thing in the window. */
+.band { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 10px 1rem; }
+.answer { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.trust { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; min-width: 0; color: var(--w-dim); font-size: calc(12px * var(--w-text-scale, 1)); line-height: calc(16px * var(--w-text-scale, 1)); }
 .value { display: flex; align-items: center; gap: 8px; min-width: 0; overflow: hidden; }
-.count { color: var(--w-dim); font-size: var(--w-fs-xs); white-space: nowrap; padding-right: 2px; }
-.note { margin: 0; color: var(--w-dim); font-size: calc(12px * var(--w-text-scale, 1)); line-height: calc(17px * var(--w-text-scale, 1)); }
+.count { color: var(--w-dim); font-size: var(--w-fs-xs); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.note { margin: 0; padding: 0 1rem 8px; color: var(--w-dim); font-size: calc(12px * var(--w-text-scale, 1)); line-height: calc(17px * var(--w-text-scale, 1)); }
+/* One line of facts, for whoever wants them. */
+.line { display: flex; align-items: center; gap: 10px; min-height: 28px; padding: 2px calc(1rem - 4px) 2px 1rem; border-top: 1px solid var(--w-line-soft); font-size: calc(12px * var(--w-text-scale, 1)); color: var(--w-dim); white-space: nowrap; }
+.fact { display: inline-flex; align-items: center; gap: 4px; }
+.factPrice { color: var(--w-fg); font-weight: 600; }
+.ninjaPrice { color: var(--w-ninja); font-weight: 600; }
 .badge {
   flex: none;
   font-size: var(--w-fs-xs);
@@ -320,27 +304,15 @@ async function copy (n: { key: string, text: string }) {
 .risk-low { color: var(--w-dim); }
 .risk-medium { color: var(--w-warn); border-color: currentColor; }
 .risk-high { color: var(--w-down); border-color: currentColor; }
-.sparkBtn {
-  display: inline-flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 1px;
-  flex: none;
-  padding: 3px 6px;
-  border-radius: var(--w-r-sm);
-  border: 1px solid var(--w-line-soft);
-  font-size: var(--w-fs-xs);
-  line-height: calc(14px * var(--w-text-scale, 1));
-}
+.sparkBtn { display: inline-flex; align-items: center; gap: 6px; flex: none; padding: 1px 4px; margin: 0 -4px; border-radius: var(--w-r-sm); border: 1px solid transparent; }
 .sparkBtn:hover, .sparkBtn.on { border-color: var(--w-line-strong); background: var(--w-panel-3); }
-.sparkSource { color: var(--w-dim); }
-.signals { display: flex; flex-direction: column; gap: 2px; color: var(--w-dim); }
+/* Only when something changes what the price means, right under it. */
+.signals { display: flex; flex-direction: column; gap: 2px; padding: 6px 1rem; color: var(--w-fg); background: color-mix(in srgb, var(--w-down) 10%, transparent); border-top: 1px solid color-mix(in srgb, var(--w-down) 35%, transparent); }
 .signal { font-size: calc(12px * var(--w-text-scale, 1)); line-height: calc(17px * var(--w-text-scale, 1)); }
 .flag { color: var(--w-down); }
-.actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.actions { display: grid; gap: 4px; width: 212px; min-width: 0; }
 .note2 {
-  flex: 1 1 0;
-  display: inline-flex;
+  display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
@@ -352,7 +324,7 @@ async function copy (n: { key: string, text: string }) {
   white-space: nowrap;
 }
 .note2:hover { border-color: var(--w-accent); }
-.sources { display: flex; flex-direction: column; gap: 2px; padding-top: 6px; border-top: 1px solid var(--w-line-soft); font-size: calc(12px * var(--w-text-scale, 1)); color: var(--w-dim); }
+.sources { display: flex; flex-direction: column; gap: 2px; padding: 6px 1rem; border-top: 1px solid var(--w-line-soft); font-size: calc(12px * var(--w-text-scale, 1)); color: var(--w-dim); }
 .agree { color: var(--w-dim); margin-bottom: 2px; }
 .source { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 12px; align-items: center; }
 .source.off { opacity: .6; }
@@ -361,5 +333,5 @@ async function copy (n: { key: string, text: string }) {
 .ninjaName { color: var(--w-ninja); }
 .ninjaLink { color: var(--w-ninja); justify-self: start; }
 .ninjaLink:hover { text-decoration: underline; }
-.ppToggle { display: flex; align-items: center; gap: 6px; font-size: calc(12px * var(--w-text-scale, 1)); color: var(--w-dim); }
+.ppToggle { display: flex; align-items: center; gap: 6px; padding: 0 1rem 8px; font-size: calc(12px * var(--w-text-scale, 1)); color: var(--w-dim); }
 </style>
