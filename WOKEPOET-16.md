@@ -1,7 +1,7 @@
 ---
 id: WOKEPOET-16
 title: Fix map Current rolls max error and make the roll bar set min and max by click
-status: In Progress
+status: Ready
 priority: High
 effort: S
 assignee: unassigned
@@ -29,9 +29,41 @@ history:
       flux/WOKEPOET-16-fix-map-current-rolls-max-error-and-make-the-roll-bar-set-mi
     event: worktree-created
     id: a-2026-11-05t03-31-14-945z
+  - type: comment
+    user: Agent
+    comment: >-
+      **Current rolls on maps now searches from each roll up with no max, and
+      the roll bar sets min on left-click and max on right-click.** PR:
+      https://github.com/guybnd/woke-poe-trade/pull/87
+
+
+      Validated: `renderer/test/woke/roll-controls.test.ts` (map test fails
+      without the fix), full suite 167/167, vue-tsc and eslint clean, bar
+      clicked in Chromium with the real FilterModifier. No live trade search was
+      sent. No docs needed: the bar has a tooltip and no doc covers it.
+
+
+      Leftover: untracked `renderer/__harness.html` and `renderer/__harness.ts`
+      remain in this worktree (not committed) because the delete was held by a
+      safety hook. They go when the worktree is removed.
+    date: '2026-11-05T03:38:19.943Z'
+    completionComment: true
+    id: c-2026-11-05t03-38-19-943z
+  - type: activity
+    user: Agent
+    comment: 'PR created: https://github.com/guybnd/woke-poe-trade/pull/87'
+    date: '2026-11-05T03:38:24.642Z'
+    id: a-2026-11-05t03-38-24-642z
+  - type: status_change
+    from: In Progress
+    to: Ready
+    user: Agent
+    date: '2026-11-05T03:38:24.642Z'
 needsAction: null
 branch: flux/WOKEPOET-16-fix-map-current-rolls-max-error-and-make-the-roll-bar-set-mi
 baselineCommit: a58632b0379617cbbaaebd67ac298914035552dd
+implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/87'
+swimlane: open-pr
 ---
 > **TL;DR:** The Current rolls preset on a map sends a max of ~9e15 and the trade site rejects the search. Fix the preset for stats with no upper limit, and make the roll bar set min on left-click and max on right-click.
 

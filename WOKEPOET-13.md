@@ -78,6 +78,11 @@ history:
     to: Done
     user: Agent
     date: '2026-11-05T03:33:52.449Z'
+  - type: activity
+    user: Agent
+    date: '2026-11-05T03:38:26.101Z'
+    comment: Task worktree automatically reclaimed (ready-or-terminal-status)
+    id: a-2026-11-05t03-38-26-101z
 branch: flux/WOKEPOET-13-make-the-pob-builds-panel-look-like-path-of-exile
 baselineCommit: a58632b0379617cbbaaebd67ac298914035552dd
 needsAction: null
