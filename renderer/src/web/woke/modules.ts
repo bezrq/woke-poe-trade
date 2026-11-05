@@ -14,7 +14,8 @@ export type ModuleGroup = 'economy' | 'mapping' | 'campaign' | 'builds' | 'apt'
 // prices: reads the latest saved prices, no extra network.
 // log: needs Client.txt lines.
 // ocr: reads the screen with the OCR worker.
-export type ModuleNeed = 'poll' | 'prices' | 'log' | 'ocr' | 'hotkeys' | 'network'
+// account: the account name in Settings, shown as a prompt while it's blank.
+export type ModuleNeed = 'poll' | 'prices' | 'log' | 'ocr' | 'hotkeys' | 'network' | 'account'
 
 export interface ModuleDef {
   id: string
@@ -48,6 +49,7 @@ export const MODULES: ModuleDef[] = [
   { id: 'market', name: 'Market tracker', description: 'Movers and watchlist from poe.ninja', group: 'economy', widgetTypes: ['woke-market-tracker'], icon: { fa: 'fas fa-chart-line', currency: 'divine' }, needs: ['poll'] },
   { id: 'league-invest', name: 'Investments', description: 'League-start buys ranked from past leagues', group: 'economy', widgetTypes: ['woke-league-invest'], icon: { fa: 'fas fa-seedling' }, needs: ['poll', 'network'] },
   { id: 'lab-gems', name: 'Lab gems', description: 'Divine Font gem values by colour', group: 'economy', widgetTypes: ['woke-lab-gems'], icon: { fa: 'fas fa-gem' }, needs: ['poll'] },
+  { id: 'scarab-flip', name: 'Scarab flip', description: 'Whether the 3-to-1 vendor recipe pays, and rare scarabs that are cheap', group: 'economy', widgetTypes: ['woke-scarab-flip'], icon: { fa: 'fas fa-recycle', item: 'Harvest Scarab' }, needs: ['poll', 'network'] },
   { id: 'farming', name: 'Farming profit', description: 'Session profit per hour', group: 'economy', widgetTypes: ['woke-farming'], icon: { fa: 'fas fa-coins', currency: 'chaos' }, needs: ['log', 'prices', 'hotkeys'] },
   { id: 'session-analytics', name: 'Session analytics', description: 'Profit per map, strategy and hour over time', group: 'economy', widgetTypes: ['woke-session-analytics'], icon: { fa: 'fas fa-chart-bar' }, needs: ['prices'] },
   { id: 'boss-runs', name: 'Boss runs', description: 'Profit per boss kill', group: 'economy', widgetTypes: ['woke-boss-runs'], icon: { fa: 'fas fa-skull', mechanic: 'maven' }, needs: ['prices'] },
@@ -62,6 +64,7 @@ export const MODULES: ModuleDef[] = [
   { id: 'campaign', name: 'Campaign tracker', description: 'Next steps for the act you are in', group: 'campaign', widgetTypes: ['woke-campaign'], icon: { fa: 'fas fa-route', currency: 'wisdom' }, needs: ['log'] },
   { id: 'run-timer', name: 'Run timer', description: 'Act splits and personal bests', group: 'campaign', widgetTypes: ['woke-run-timer'], icon: { fa: 'fas fa-stopwatch' }, needs: ['log'] },
   { id: 'lab', name: 'Lab layouts', description: "Today's poelab layout and reset countdown", group: 'campaign', widgetTypes: ['woke-lab'], icon: { fa: 'fas fa-dungeon', mechanic: 'lab' }, needs: ['hotkeys'] },
+  { id: 'challenges', name: 'Challenge guide', description: 'League challenge guide with your progress', group: 'campaign', widgetTypes: ['woke-challenges'], icon: { fa: 'fas fa-trophy' }, needs: ['hotkeys', 'network', 'account'] },
 
   { id: 'pob-builds', name: 'PoB builds', description: 'Your Path of Building folder', group: 'builds', widgetTypes: ['woke-pob-builds'], icon: { fa: 'fas fa-diagram-project', item: 'Enlighten Support' }, needs: [] },
   { id: 'trade-searches', name: 'Trade searches', description: 'Saved trade site searches', group: 'builds', widgetTypes: ['woke-trade-searches'], icon: { fa: 'fas fa-search-dollar', currency: 'exalted' }, needs: ['hotkeys'] },
@@ -84,8 +87,8 @@ export interface Preset {
 export const PRESETS: Preset[] = [
   { id: 'everything', label: 'Everything', on: 'all' },
   { id: 'mapper', label: 'Mapper', on: ['market', 'farming', 'session-analytics', 'boss-runs', 'map-mods', 'map-scan', 'essence-scan', 'loot-filter', 'atlas', 'mechanics', 'trade-searches', 'trade', 'regex-library'] },
-  { id: 'leveling', label: 'Leveling', on: ['campaign', 'run-timer', 'lab', 'pob-builds', 'regex-library'] },
-  { id: 'trader', label: 'Trader', on: ['market', 'league-invest', 'lab-gems', 'trade-searches', 'trade', 'regex-library'] },
+  { id: 'leveling', label: 'Leveling', on: ['campaign', 'run-timer', 'lab', 'challenges', 'pob-builds', 'regex-library'] },
+  { id: 'trader', label: 'Trader', on: ['market', 'league-invest', 'lab-gems', 'scarab-flip', 'trade-searches', 'trade', 'regex-library'] },
   { id: 'price-check-only', label: 'Price check only', on: [] }
 ]
 

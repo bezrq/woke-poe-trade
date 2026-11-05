@@ -13,7 +13,8 @@ const electronRunner = (() => {
       console.info('Restarting Electron process.')
 
       if (handle) handle.kill()
-      const args = ['.']
+      // woke: extra Electron flags from scripts/woke-dev.ps1 (the debug port).
+      const args = [...(process.env.WOKE_ELECTRON_ARGS ?? '').split(' ').filter(Boolean), '.']
       if (process.platform === 'linux') {
         args.unshift('--ozone-platform', 'x11')
       }

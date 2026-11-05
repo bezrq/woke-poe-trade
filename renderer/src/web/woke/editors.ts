@@ -7,6 +7,7 @@ import CampaignEditor from './campaign/campaign-editor.vue'
 import RunTimerEditor from './campaign/run-timer-editor.vue'
 import AtlasEditor from './atlas/atlas-editor.vue'
 import LabEditor from './lab/lab-editor.vue'
+import ChallengesEditor from './challenges/challenges-editor.vue'
 import FarmingEditor from './farming/farming-editor.vue'
 import MechanicsEditor from './mechanics/mechanics-editor.vue'
 import MapModsEditor from './map-mods/map-mods-editor.vue'
@@ -21,6 +22,7 @@ import { CAMPAIGN_TYPE } from './campaign/widget'
 import { RUN_TIMER_TYPE } from './campaign/run-timer'
 import { ATLAS_TYPE } from './atlas/widget'
 import { LAB_TYPE } from './lab/lab'
+import { CHALLENGES_TYPE } from './challenges/widget'
 import { FARMING_TYPE } from './farming/farming'
 import { MECHANICS_TYPE } from './mechanics/widget'
 import { MAP_MODS_TYPE } from './map-mods/widget'
@@ -37,6 +39,7 @@ const editors: Record<string, Component> = {
   [RUN_TIMER_TYPE]: RunTimerEditor,
   [ATLAS_TYPE]: AtlasEditor,
   [LAB_TYPE]: LabEditor,
+  [CHALLENGES_TYPE]: ChallengesEditor,
   [MAP_MODS_TYPE]: MapModsEditor,
   [MAP_SCAN_TYPE]: MapScanEditor,
   [ESSENCE_SCAN_TYPE]: EssenceScanEditor,
