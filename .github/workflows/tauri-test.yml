@@ -1,0 +1,85 @@
+name: Tauri overlay test
+
+# Builds the throwaway Tauri test (spike/tauri-overlay) for Windows, and
+# measures its memory next to the Electron app on the same machine.
+# Download: the "woke-tauri-test" artifact on the run's page.
+on:
+  push:
+    paths:
+      - 'spike/tauri-overlay/**'
+      - '.github/workflows/tauri-test.yml'
+  pull_request:
+    paths:
+      - 'spike/tauri-overlay/**'
+      - '.github/workflows/tauri-test.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: tauri-test-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build and measure (Windows)
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+    - uses: actions/checkout@v6
+    - uses: actions/setup-node@v6
+      with:
+        node-version: 22
+        cache: npm
+        cache-dependency-path: |
+          renderer/package-lock.json
+          main/package-lock.json
+    - uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          spike/tauri-overlay/target
+        key: tauri-test-${{ hashFiles('spike/tauri-overlay/Cargo.lock') }}
+    - run: npm ci
+      working-directory: ./renderer
+    - name: Build the overlay
+      run: npx vite build
+      working-directory: ./renderer
+    - name: Build the Tauri test
+      run: cargo build --release --locked
+      working-directory: ./spike/tauri-overlay
+    - name: Package
+      shell: pwsh
+      run: |
+        $out = "spike/tauri-overlay/out"
+        New-Item -ItemType Directory -Force $out | Out-Null
+        Copy-Item spike/tauri-overlay/target/release/woke-tauri-spike.exe "$out/Woke-Tauri-Test.exe"
+        Copy-Item -Recurse renderer/dist "$out/web"
+        Copy-Item spike/tauri-overlay/README.txt "$out/README.txt"
+        $size = [math]::Round((Get-Item "$out/Woke-Tauri-Test.exe").Length / 1MB, 1)
+        Add-Content $env:GITHUB_STEP_SUMMARY "Tauri test exe: $size MB (plus the same web/ folder the Electron app ships)"
+    - uses: actions/upload-artifact@v7
+      with:
+        name: woke-tauri-test
+        path: spike/tauri-overlay/out
+        retention-days: 30
+
+    # Same machine, same overlay page, no game running: Electron vs Tauri.
+    - run: npm ci
+      working-directory: ./main
+    - name: Build the Electron app
+      shell: pwsh
+      working-directory: ./main
+      run: |
+        node build/script.mjs --prod
+        Copy-Item -Recurse -Force ../renderer/dist/* dist/
+        $prefs = Join-Path $env:APPDATA 'woke-poe-trade/apt-data'
+        New-Item -ItemType Directory -Force $prefs | Out-Null
+        Set-Content (Join-Path $prefs 'woke-app.json') '{"wizardShown":true}'
+    - name: Measure memory
+      shell: pwsh
+      run: |
+        Add-Content $env:GITHUB_STEP_SUMMARY "`n| App | Processes | Working set | Private | Processes by name |`n| --- | --- | --- | --- | --- |"
+        ./spike/tauri-overlay/measure.ps1 -Label 'Electron (current app)' -Exe "$PWD/main/node_modules/electron/dist/electron.exe" -Arguments '.' -WorkDir "$PWD/main"
+        ./spike/tauri-overlay/measure.ps1 -Label 'Tauri test' -Exe "$PWD/spike/tauri-overlay/out/Woke-Tauri-Test.exe" -WorkDir "$PWD/spike/tauri-overlay/out"
+        $log = Join-Path $env:APPDATA 'woke-tauri-test/test-log.txt'
+        if (Test-Path $log) { Add-Content $env:GITHUB_STEP_SUMMARY "`n``````text"; Get-Content $log | Add-Content $env:GITHUB_STEP_SUMMARY; Add-Content $env:GITHUB_STEP_SUMMARY "``````" }

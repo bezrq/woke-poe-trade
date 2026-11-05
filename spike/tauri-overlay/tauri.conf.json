@@ -1,0 +1,12 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Woke Tauri Spike",
+  "version": "0.0.1",
+  "identifier": "io.github.guybnd.woke-tauri-spike",
+  "build": {},
+  "app": {
+    "windows": [],
+    "security": { "csp": null }
+  },
+  "bundle": { "active": false, "icon": ["icons/icon.ico", "icons/icon.png"] }
+}
