@@ -15,7 +15,7 @@
     <template v-for="block in blocks" :key="block.key">
       <w-setting-section :title="block.title">
         <div v-if="block.widget && block.editor" :class="$style.editor">
-          <component :is="block.editor" :config="config" :config-widget="block.widget" />
+          <component :is="block.editor" :config="config" :config-widget="block.widget" @open="emit('open', $event)" />
         </div>
         <div v-else-if="block.widget" class="w-dim" :class="$style.note">No settings of its own. Everything it needs is set above or in General.</div>
         <w-empty v-else icon="fas fa-plus-circle">
