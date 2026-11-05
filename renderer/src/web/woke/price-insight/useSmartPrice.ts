@@ -17,7 +17,8 @@ export function useSmartPrice (
   insight: Ref<Insight>,
   divine: Ref<number | undefined>,
   logKey: Ref<string | null>,
-  league: Ref<string>
+  league: Ref<string>,
+  ninjaFits: Ref<boolean>
 ) {
   const ninja = usePoeninja()
 
@@ -55,7 +56,7 @@ export function useSmartPrice (
 
   const blend = computed(() => buildBlend({
     insight: insight.value,
-    ninja: ninjaInfo.value ? { chaos: ninjaInfo.value.chaos, gaps: ninjaInfo.value.gaps } : null,
+    ninja: ninjaInfo.value ? { chaos: ninjaInfo.value.chaos, gaps: ninjaInfo.value.gaps, fits: ninjaFits.value } : null,
     poeprices: poeprices.value,
     mine: mine.value,
     now: now.value
