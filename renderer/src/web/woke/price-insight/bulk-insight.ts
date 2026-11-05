@@ -41,7 +41,7 @@ export function buildBulkInsight (listings: readonly BulkListing[], need: number
   // An offer whose stock can't fill one trade isn't really for sale.
   const real = listings.filter(l => !l.isMine && l.itemAmount > 0 && l.exchangeAmount > 0 && l.stock >= l.itemAmount)
   const withStock = real.filter(l => l.stock >= need)
-  const fewWithStock = withStock.length < MIN_WITH_STOCK
+  const fewWithStock = new Set(withStock.map(l => l.accountName)).size < MIN_WITH_STOCK
   const used = fewWithStock ? real : withStock
   if (!used.length) return null
 

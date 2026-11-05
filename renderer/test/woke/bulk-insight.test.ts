@@ -17,6 +17,18 @@ describe('buildBulkInsight', () => {
     expect(insight.fewWithStock).toBe(false)
   })
 
+  it('counts sellers, not rows, when asking whether enough hold that amount', () => {
+    const rows = [
+      offer(10, 100, { accountName: 'a' }),
+      offer(11, 100, { accountName: 'a' }),
+      offer(12, 100, { accountName: 'a' }),
+      offer(5, 3, { accountName: 'b' })
+    ]
+    const insight = buildBulkInsight(rows, 40)!
+    expect(insight.fewWithStock).toBe(true)
+    expect(insight.sellers).toBe(2)
+  })
+
   it('counts smaller offers when too few sellers hold that amount', () => {
     const insight = buildBulkInsight([offer(15, 3), offer(17, 6), offer(18, 5), offer(19, 500)], 400)!
     expect(insight.fewWithStock).toBe(true)
