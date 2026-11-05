@@ -114,6 +114,8 @@ export interface LootFilterWidget extends Widget {
   presets: Presets
   // "Not for me" on a valuable hidden item: its price then, by group|base.
   healthDismissed: Record<string, number>
+  // The same on a hidden item: the net leaves it hidden too.
+  netDismissed: Record<string, number>
   // Dock icon notices you've turned off, and what each said when you pressed Got it.
   noticesOff: string[]
   noticesSeen: Record<string, string | number>
@@ -151,6 +153,7 @@ export function initLootFilterWidget (w: LootFilterWidget) {
   w.rules = []
   w.presets = defaultPresets()
   w.healthDismissed = {}
+  w.netDismissed = {}
   w.noticesOff = []
   w.noticesSeen = {}
   w.stricterHotkey = 'Alt + BracketRight'
@@ -237,6 +240,7 @@ export function normalizeLootFilterWidget (w: LootFilterWidget) {
   w.rules = w.rules.filter(r => r && typeof r.id === 'number' && Array.isArray(r.conditions) && isPatch(r.patch))
   w.presets = normalizePresets(w.presets)
   if (!w.healthDismissed || typeof w.healthDismissed !== 'object') w.healthDismissed = {}
+  if (!w.netDismissed || typeof w.netDismissed !== 'object') w.netDismissed = {}
   if (!Array.isArray(w.noticesOff)) w.noticesOff = []
   if (!w.noticesSeen || typeof w.noticesSeen !== 'object') w.noticesSeen = {}
   if (w.stricterHotkey === undefined) w.stricterHotkey = 'Alt + BracketRight'

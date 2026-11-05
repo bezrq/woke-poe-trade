@@ -51,6 +51,22 @@ export const ECONOMY_GROUPS: EconomyGroup[] = [
   { type: 'currency->ducats', label: 'Ducats', ninja: ['Ducat'] }
 ]
 
+// What the net and the health list look at: the same, plus items that have an
+// exact price but no price tiers to move between. NeverSink keeps astrolabes,
+// invitations, embers and more inside other groups' rules. Gems, cluster jewels,
+// maps and rares have no one price for a base, so no net can judge them.
+export const NET_GROUPS: EconomyGroup[] = [
+  ...ECONOMY_GROUPS.map(g => {
+    if (g.type === 'currency') return { ...g, ninja: ['Currency', 'Astrolabe', 'EnshroudingCrystal', 'Artifact', 'Fragment'] }
+    if (g.type === 'fragments') return { ...g, ninja: ['Fragment', 'Invitation', 'AllflameEmber'] }
+    return g
+  }),
+  { type: 'vials', label: 'Vials', ninja: ['Vial'] },
+  { type: 'corpses', label: 'Corpses', ninja: ['Corpse'] },
+  { type: 'runesgrafts', label: 'Runegrafts', ninja: ['Runegraft'] },
+  { type: 'miscmapitemsextra', label: 'Reliquary keys', ninja: ['Fragment'] }
+]
+
 export interface PricePoint {
   chaos: number
   thin: boolean

@@ -216,6 +216,11 @@ function openEditorFromCard (at?: { type: string, tier: string }) {
 
 // ---- dock icon ----
 
+// Saved prices load a moment after the start: no warning about none until then.
+const pricesSettled = ref(false)
+const settleTimer = setTimeout(() => { pricesSettled.value = true }, 30000)
+onUnmounted(() => { clearTimeout(settleTimer) })
+
 const dockRef = shallowRef<InstanceType<typeof DockItem> | null>(null)
 const dockArt = computed(() => gameIcon('Orb of Scouring', 'ITEM'))
 const sortedLadder = computed(() => [...props.config.strictAuto.ladder].sort((a, b) => a.from - b.from))
@@ -226,11 +231,10 @@ const allNotes = computed<Notice[]>(() => {
   const moves = store.plan.value?.moves.length ?? 0
   if (moves) out.push({ id: 'prices', value: moves, tab: 'prices', text: `${moves} item${moves > 1 ? 's' : ''} would move to match today's prices.` })
   if (store.safetyCount.value) out.push({ id: 'safety', value: store.safetyCount.value, tab: 'prices', text: `Safety net shows ${store.safetyCount.value} valuable item${store.safetyCount.value > 1 ? 's' : ''} the filter hides.` })
-  if (store.netWithoutPrices.value) {
+  if (store.netWithoutPrices.value && pricesSettled.value) {
     out.push({
       id: 'net-prices',
       value: store.safetyCount.value,
-      warn: true,
       tab: 'prices',
       text: store.safetyCount.value
         ? `No poe.ninja prices for this league yet. The safety net is using its last list of ${store.safetyCount.value}.`

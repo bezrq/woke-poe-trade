@@ -127,7 +127,7 @@ describe('the net follows prices into the file', () => {
     await store.save()
     P.safety.value = VALUABLE
     await settled()
-    expect(config.safetyNet.last?.plain).toEqual(['Low One'])
+    expect(config.safetyNet.last?.plain).toContain('Low One')
     P.safety.value = null
     await settled()
     expect(store.netWithoutPrices.value).toBe(true)
@@ -135,12 +135,38 @@ describe('the net follows prices into the file', () => {
     expect(netBases()).toEqual(['Low One'])
   })
 
-  it('holds a dismissed item back from the file', async () => {
+  it('your own move down holds, and an old "off this list" doesn\'t touch the net', async () => {
     const { store, config } = await opened()
     await store.save()
     P.safety.value = VALUABLE
     await settled()
     config.healthDismissed = { 'divination|Low One': 300 }
+    await settled()
+    expect(netBases()).toEqual(['Low One'])
+    store.edit({ kind: 'move', type: 'divination', base: 'Mid One', from: 't2', to: 't3' })
+    await store.save()
+    expect(netBases()).toEqual(['Low One'])
+  })
+
+  it('remembers what was valuable, so a stricter level is judged without prices', async () => {
+    const { store, config } = await opened()
+    await store.save()
+    P.safety.value = VALUABLE
+    await settled()
+    P.safety.value = null
+    await settled()
+    store.edit({ kind: 'visibility', type: 'divination', tier: 't2', visibility: 'Hide' })
+    expect(config.safetyNet.last?.plain).toContain('Mid One')
+    await store.save()
+    expect(netBases()).toEqual(['Low One', 'Mid One', 'Mid Two'])
+  })
+
+  it('holds a dismissed item back from the file', async () => {
+    const { store, config } = await opened()
+    await store.save()
+    P.safety.value = VALUABLE
+    await settled()
+    config.netDismissed = { 'divination|Low One': 300 }
     await settled()
     expect(netBases()).toEqual([])
     expect(store.dirty.value).toBe(false)

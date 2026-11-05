@@ -70,7 +70,7 @@
         <WField v-model.number="minChaos" type="number" suffix="c" style="width: 5.5rem;" aria-label="Safety net value in chaos" />
         <span class="w-dim text-xs">{{ config.safetyNet.on ? `${store.safetyCount.value} hidden item${store.safetyCount.value === 1 ? '' : 's'} caught right now` : 'off' }}</span>
       </div>
-      <div class="w-faint text-xs">One rule at the top of your filter, white on red with a short red beam and an alert sound, for valuable items the rest of the filter would hide. Thin markets count, since a junk price only costs you a click.</div>
+      <div class="w-faint text-xs">One rule at the top of your filter, white on red with a short red beam and an alert sound, for valuable items the rest of the filter would hide. Thin markets count, since a junk price only costs you a click. It can't judge rares, gems, cluster jewels or maps, which have no one price for a base.</div>
       <WToggle :model-value="dockNotice" @update:model-value="setDockNotice">Tell me on the dock icon</WToggle>
     </div>
 
@@ -112,7 +112,7 @@
           <div v-for="(line, n) in r.effect" :key="n" class="w-dim text-xs">{{ line }}</div>
           <div class="flex flex-wrap items-center gap-1" style="margin-top: 6px;">
             <WButton size="sm" variant="primary" @click="showIt(r.v)">Show it</WButton>
-            <WButton size="sm" variant="ghost" title="Off this list until its price doubles" @click="dismiss(r.v)">Not for me</WButton>
+            <WButton size="sm" variant="ghost" :title="r.v.state === 'hidden' ? 'Stays hidden, and off this list, until its price doubles' : 'Off this list until its price doubles'" @click="dismiss(r.v)">Not for me</WButton>
             <WButton v-if="r.v.block?.type && r.v.block.tier" size="sm" variant="ghost" icon="fas fa-external-link-alt" @click="emit('open-rule', { type: r.v.block!.type!, tier: r.v.block!.tier!, base: r.v.base })">Open the rule</WButton>
           </div>
         </div>
@@ -131,7 +131,7 @@ import { usePoeninja } from '@/web/background/Prices'
 import LabelPreview from './LabelPreview.vue'
 import type { LootFilterStore } from './store'
 import type { LootFilterWidget } from './widget'
-import { ECONOMY_GROUPS, lockKey, tierRank } from './economy'
+import { ECONOMY_GROUPS, NET_GROUPS, lockKey, tierRank } from './economy'
 import type { PriceMove, PriceSkip } from './economy'
 import { conditionSignature } from './edits'
 import { SAFETY_LOOK } from './safety'
@@ -196,8 +196,19 @@ function itemIcon (v: { group: { unique?: boolean, ninja: string[] } }, name: st
 function dismiss (v: BaseVerdict) {
   const key = healthKey(v)
   const before = props.config.healthDismissed
+  const netBefore = props.config.netDismissed
   props.config.healthDismissed = { ...before, [key]: v.chaos }
-  toast(`${v.base} is off this list until its price doubles`, { anchor: props.anchor, undo: () => { props.config.healthDismissed = before } })
+  const undo = () => {
+    props.config.healthDismissed = before
+    props.config.netDismissed = netBefore
+  }
+  // Only a hidden item has a net rule to take back, and that's in the file.
+  if (v.state === 'hidden') {
+    props.config.netDismissed = { ...netBefore, [key]: v.chaos }
+    moved(`${v.base} stays hidden until its price doubles`, undo)
+  } else {
+    toast(`${v.base} is off this list until its price doubles`, { anchor: props.anchor, undo })
+  }
 }
 
 const dockNotice = computed(() => !TURN_OFF_IDS.every(id => props.config.noticesOff.includes(id)))
@@ -226,7 +237,7 @@ const minChaos = computed({
 })
 
 function groupLabel (type: string): string {
-  return ECONOMY_GROUPS.find(g => g.type === type)?.label ?? groupName(type)
+  return NET_GROUPS.find(g => g.type === type)?.label ?? groupName(type)
 }
 
 function rank (tier: string): number {
@@ -277,7 +288,9 @@ function unlock (s: PriceSkip) {
     c.priceTiers.locks = c.priceTiers.locks.filter(k => k !== key)
     c.edits = c.edits.filter(e => !(e.kind === 'move' && e.type === s.type && e.base === s.base))
   })
-  moved(ownMove ? `Dropped your move of ${s.base}, so prices can move it again` : `Prices can move ${s.base} again`, undo)
+  // Only your own move changes the file.
+  if (ownMove) moved(`Dropped your move of ${s.base}, so prices can move it again`, undo)
+  else toast(`Prices can move ${s.base} again`, { anchor: props.anchor, undo })
 }
 
 function keepAll () {

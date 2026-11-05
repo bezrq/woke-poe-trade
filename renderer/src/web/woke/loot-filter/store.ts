@@ -17,7 +17,7 @@ import { buildRuleBlocks, insertBuildBlocks } from './build-rules'
 import { useBuildRuleInput } from './build-input'
 import { applyPriceMoves, lockKey, lockedByEdits, mergeMoves, planRetier } from './economy'
 import type { PriceMove, RetierPlan } from './economy'
-import { SAFETY_RULE_TYPE, auditBases, lastNetList, safetyBases, safetyBlocks } from './safety'
+import { SAFETY_RULE_TYPE, auditBases, lastLookup, netFromAudit, safetyBlocks, valuableFromAudit } from './safety'
 import { isDismissed } from './health'
 import type { BaseVerdict, NetList } from './safety'
 import { describeProblem, validateFilter } from './validate'
@@ -162,6 +162,14 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
   const updatedSinceSave = computed(() =>
     baseVersion.value != null && cfg().lastVersion != null && baseVersion.value !== cfg().lastVersion)
 
+  // What the net leaves hidden because you said so: "Not for me" on a hidden
+  // item, or moving it down yourself.
+  function heldBack (v: BaseVerdict): boolean {
+    const type = v.block?.type
+    return isDismissed(cfg().netDismissed, v) ||
+      cfg().edits.some(e => e.kind === 'move' && e.base === v.base && e.type === type)
+  }
+
   // A filter text with everything applied: build rules, price moves, your
   // edits and the safety net. The editor's own doc, and the preview's
   // other strictness levels, are made this way.
@@ -196,15 +204,15 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
       // woke: no prices (a new league, a fresh install) must not take the net
       // out of the file: the last list stays until there are prices again.
       const lookup = prices.safety.value
-      const bases = lookup
-        ? safetyBases(next, lookup, cfg().safetyNet.minChaos, v => isDismissed(cfg().healthDismissed, v))
-        : lastNetList(next, cfg().safetyNet.last)
-      if (lookup) netFresh = bases
+      const line = cfg().safetyNet.minChaos
+      const verdicts = auditBases(next, lookup ?? lastLookup(cfg().safetyNet.last, line), line)
+      const bases = netFromAudit(verdicts, v => heldBack(v))
+      if (lookup) netFresh = valuableFromAudit(verdicts)
       const netBlocks = safetyBlocks(bases)
       if (cfg().presets.colourBlind.on) netBlocks.forEach(colourBlindActions)
       insertBuildBlocks(next, netBlocks)
       netCount = bases.plain.length + bases.unique.length
-      if (netCount) netList = JSON.stringify(bases)
+      if (lookup || netCount) netList = JSON.stringify(bases)
     }
     for (const r of applyEdits(next, cfg().edits.filter(isNetEdit))) results.set(r.edit.id, r)
     return { doc: next, results, buildCount, netCount, netList, netFresh, movesFit, presetChanges, presetSig: JSON.stringify(presetTop.map(b => b.conditions)) }
@@ -257,7 +265,7 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
     const d = doc.value
     const lookup = prices.safety.value
     if (!d || !lookup) return []
-    return auditBases(d, lookup, Math.min(cfg().safetyNet.minChaos, 10)).filter(v => v.state !== 'ok' && !v.mine)
+    return auditBases(d, lookup, Math.min(cfg().safetyNet.minChaos, 10)).filter(v => v.state !== 'ok' && !v.mine && !heldBack(v))
   })
 
   // Applies the planned moves (all, or the ones passed).
@@ -312,7 +320,7 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
   }
 
   // Price index updates, or settings that change the net: refresh.
-  watch(() => [prices.lookup.value, prices.safety.value, cfg().safetyNet.on, cfg().safetyNet.minChaos, cfg().priceTiers.on, cfg().healthDismissed], () => {
+  watch(() => [prices.lookup.value, prices.safety.value, cfg().safetyNet.on, cfg().safetyNet.minChaos, cfg().priceTiers.on, cfg().netDismissed], () => {
     if (baseText.value != null) rebuild()
   })
 

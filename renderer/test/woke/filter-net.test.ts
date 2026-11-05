@@ -4,7 +4,7 @@ import { describe, it, expect } from 'vitest'
 import { parseFilter } from '@/web/woke/loot-filter/parse'
 import { ECONOMY_GROUPS, planRetier, priceBreakdown, priceLookup, safetyLookup } from '@/web/woke/loot-filter/economy'
 import type { PriceLookup } from '@/web/woke/loot-filter/economy'
-import { auditBases, lastNetList, safetyBases, safetyBlocks, SAFETY_RULE_TYPE } from '@/web/woke/loot-filter/safety'
+import { auditBases, lastLookup, netFromAudit, safetyBases, safetyBlocks, valuableFromAudit, SAFETY_RULE_TYPE } from '@/web/woke/loot-filter/safety'
 import { insertBuildBlocks } from '@/web/woke/loot-filter/build-rules'
 import { applyEdits } from '@/web/woke/loot-filter/edits'
 import { matchItem } from '@/web/woke/loot-filter/match'
@@ -80,10 +80,49 @@ describe('who gets the net', () => {
     expect(list.plain).toEqual(['Hidden Gem'])
   })
 
-  it('keeps the last list when there are no prices, without names the filter lost', () => {
+  it('a rule of yours with no Rarity, for a rare of a base, leaves its unique to the net', () => {
+    const doc = parseFilter([
+      'Hide # $type->woke->rule $tier->mine',
+      '\tClass == "Belts"',
+      '\tBaseType == "Leather Belt"',
+      '',
+      'Show # $type->uniques $tier->t1',
+      '\tRarity Unique',
+      '\tBaseType == "Leather Belt"',
+      ''
+    ].join('\n'))
+    const v = auditBases(doc, everything, 20).find(x => x.group.unique && x.base === 'Leather Belt')
+    expect(v?.state).toBe('hidden')
+    expect(v?.mine).toBe(false)
+  })
+
+  it('with no prices, judges what was valuable by the filter as it stands now', () => {
+    const remembered = valuableFromAudit(auditBases(parseFilter(FILTER), everything, 20))
+    expect(remembered.plain).toEqual(['Hidden Gem', 'Low Card', 'The Doctor', 'Top Card'])
     const doc = parseFilter(FILTER)
-    expect(lastNetList(doc, { plain: ['Hidden Gem', 'Removed Card'], unique: [] })).toEqual({ plain: ['Hidden Gem'], unique: [] })
-    expect(lastNetList(doc, undefined)).toEqual({ plain: [], unique: [] })
+    // A name this filter lost can't come back: only listed bases are looked at.
+    const look = lastLookup({ plain: [...remembered.plain, 'Removed Card'], unique: [] }, 20)
+    expect(netFromAudit(auditBases(doc, look, 20)).plain).toEqual(['Hidden Gem', 'Low Card'])
+    // A base you hid yourself since stays hidden.
+    applyEdits(doc, [{ id: 1, kind: 'item', type: 'divination', tier: 't5', base: 'Low Card', visibility: 'Hide', patch: {}, pin: true }])
+    expect(netFromAudit(auditBases(doc, look, 20)).plain).toEqual(['Hidden Gem'])
+    expect(lastLookup(undefined, 20)(ECONOMY_GROUPS[0], 'Hidden Gem')).toBeNull()
+  })
+
+  it('looks at items with an exact price but no price tiers', () => {
+    const doc = parseFilter([
+      'Hide # $type->currency $tier->t9',
+      '\tBaseType == "Chaotic Astrolabe"',
+      '',
+      'Hide # $type->vials $tier->t2',
+      '\tBaseType == "Vial of the Ghost"',
+      ''
+    ].join('\n'))
+    const items: PriceItem[] = [
+      { type: 'Astrolabe', name: 'Chaotic Astrolabe', variant: '', chaos: 150, gaps: 0 },
+      { type: 'Vial', name: 'Vial of the Ghost', variant: '', chaos: 2000, gaps: 0 }
+    ]
+    expect(safetyBases(doc, safetyLookup(items, () => []), 20).plain).toEqual(['Chaotic Astrolabe', 'Vial of the Ghost'])
   })
 })
 
