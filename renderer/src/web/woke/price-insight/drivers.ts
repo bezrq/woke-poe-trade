@@ -10,7 +10,7 @@ import { shallowRef, watch } from 'vue'
 import type { ItemFilters, FilterOrGroup, StatFilter } from '@/web/price-check/filters/interfaces'
 import { createTradeRequest, requestTradeResultList, requestResults } from '@/web/price-check/trade/pathofexile-trade'
 import { AppConfig } from '@/web/Config'
-import { RATE_LIMIT_RULES } from '@/web/price-check/trade/common'
+import { RATE_LIMIT_RULES, restrictedMs } from '@/web/price-check/trade/common'
 import { RateLimiter } from '@/web/price-check/trade/RateLimiter'
 import { buildInsight, InsightOptions, Insight } from './insight'
 
@@ -101,8 +101,9 @@ export interface PricedSearch { total: number, insight: Insight }
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function searchBudget (count: number, _tick?: number): { left: number, waitMs: number } {
   const limiters = Array.from(RATE_LIMIT_RULES.SEARCH)
-  const left = limiters.length ? Math.min(...limiters.map(l => l.available)) : 0
-  const waitMs = RateLimiter.estimateTime(count, limiters)
+  const penalty = restrictedMs(RATE_LIMIT_RULES.SEARCH)
+  const left = (limiters.length && !penalty) ? Math.min(...limiters.map(l => l.available)) : 0
+  const waitMs = Math.max(RateLimiter.estimateTime(count, limiters), penalty)
   return { left, waitMs }
 }
 

@@ -1,6 +1,6 @@
 import { DateTime } from 'luxon'
 import { Host } from '@/web/background/IPC'
-import { TradeResponse, Account, getTradeEndpoint, RATE_LIMIT_RULES, adjustRateLimits, tradeTag, preventQueueCreation } from './common'
+import { TradeResponse, Account, getTradeEndpoint, RATE_LIMIT_RULES, adjustRateLimits, tradeTag, preventQueueCreation, throwIfRateLimited } from './common'
 import { RateLimiter } from './RateLimiter'
 import { ItemFilters } from '../filters/interfaces'
 import { ParsedItem } from '@/parser'
@@ -75,6 +75,7 @@ async function requestTradeResultList (body: TradeRequest, leagueId: string): Pr
       body: JSON.stringify(body)
     })
     adjustRateLimits(RATE_LIMIT_RULES.EXCHANGE, response.headers)
+    throwIfRateLimited(RATE_LIMIT_RULES.EXCHANGE, response)
 
     const _data = await response.json() as TradeResponse<SearchResult>
     if (_data.error) {
