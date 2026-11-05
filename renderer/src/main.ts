@@ -12,12 +12,14 @@ import { captureRendererErrors } from './web/woke/app/report'
 const isSetupWindow = window.location.hash === '#setup'
 
 ;(async function () {
+  // woke: settings may have to save while loading (see initConfig), which needs
+  // the connection first.
+  await perfTimeAsync('Startup: connect to app', Host.init())
   await perfTimeAsync('Startup: load settings', initConfig())
-  // woke: these three don't depend on each other, so load them side by side.
+  // woke: these two don't depend on each other, so load them side by side.
   const [i18nPlugin] = await Promise.all([
     perfTimeAsync('Startup: load translations', I18n.init(AppConfig().language)),
-    isSetupWindow ? Promise.resolve() : perfTimeAsync('Startup: load item + stat data', Data.init(AppConfig().language)),
-    perfTimeAsync('Startup: connect to app', Host.init())
+    isSetupWindow ? Promise.resolve() : perfTimeAsync('Startup: load item + stat data', Data.init(AppConfig().language))
   ])
   captureRendererErrors()
 

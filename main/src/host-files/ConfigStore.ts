@@ -14,8 +14,8 @@ const READ_RETRY_MS = 250
 
 function isConfigText (text: string): boolean {
   try {
-    const value = JSON.parse(text) as unknown
-    return typeof value === 'object' && value !== null && !Array.isArray(value)
+    const value = JSON.parse(text) as { widgets?: unknown } | null
+    return typeof value === 'object' && value !== null && Array.isArray(value.widgets)
   } catch {
     return false
   }
@@ -25,8 +25,7 @@ export class ConfigStore {
   private isTmpFile = false
   private cfgPath = path.join(app.getPath('userData'), 'apt-data', 'config.json')
   private lastBackupAt = 0
-  private loaded = false
-  private loadedContents: string | null = null
+  private firstLoad: Promise<string | null> | null = null
   notice: ConfigNotice | null = null
 
   constructor (server: ServerEvents, private logger?: Pick<Logger, 'write'>) {
@@ -42,46 +41,63 @@ export class ConfigStore {
     })
   }
 
+  // As at a fresh start. For the test host, whose one process plays many runs.
+  startOver () {
+    if (this.isTmpFile) this.cfgPath = this.cfgPath.slice(0, -'.tmp'.length)
+    this.isTmpFile = false
+    this.firstLoad = null
+    this.lastBackupAt = 0
+    this.notice = null
+  }
+
   private get backupPath () { return path.join(path.dirname(this.cfgPath), 'config.backup.json') }
 
   // woke: a file we can't use is never a reason to lose settings. A damaged one
   // is moved aside and the backup takes over. One we can't read right now
   // (antivirus, a sync tool) is left alone, and this run's saves go elsewhere.
   async load (): Promise<string | null> {
+    if (!this.firstLoad) {
+      this.firstLoad = this.loadFirst()
+      return await this.firstLoad
+    }
     // A later page load in this run (a reload after a crash) must see what the
     // file holds now, and shouldn't move anything aside again.
-    if (this.loaded) return await this.readCurrent()
-    this.loaded = true
-    this.loadedContents = await this.loadFirst()
-    return this.loadedContents
-  }
-
-  private async readCurrent (): Promise<string | null> {
+    const first = await this.firstLoad
     // A write in progress may be holding the newest contents.
     await this.writing
     try {
       return await fs.readFile(this.cfgPath, 'utf8')
     } catch {
-      return this.loadedContents
+      return first
     }
   }
 
-  private async loadFirst (): Promise<string | null> {
-    let text: string | null = null
+  // Null when the file doesn't exist. Throws if it's there but stays unreadable.
+  private async readWithRetries (file: string): Promise<string | null> {
     for (let attempt = 1; ; attempt++) {
       try {
-        text = await fs.readFile(this.cfgPath, 'utf8')
-        break
+        return await fs.readFile(file, 'utf8')
       } catch (e) {
-        if ((e as NodeJS.ErrnoException).code === 'ENOENT') break
-        if (attempt >= READ_ATTEMPTS) {
-          this.logger?.write(`error [ConfigStore] Can't read the settings file: ${String(e)}`)
-          this.useTempFile()
-          this.notice = 'unreadable'
-          return null
-        }
+        if ((e as NodeJS.ErrnoException).code === 'ENOENT') return null
+        if (attempt >= READ_ATTEMPTS) throw e
         await new Promise(resolve => setTimeout(resolve, READ_RETRY_MS))
       }
+    }
+  }
+
+  private cantRead (e: unknown): null {
+    this.logger?.write(`error [ConfigStore] Can't read the settings file: ${String(e)}`)
+    this.useTempFile()
+    this.notice = 'unreadable'
+    return null
+  }
+
+  private async loadFirst (): Promise<string | null> {
+    let text: string | null
+    try {
+      text = await this.readWithRetries(this.cfgPath)
+    } catch (e) {
+      return this.cantRead(e)
     }
 
     if (text != null && isConfigText(text)) return text
@@ -98,15 +114,32 @@ export class ConfigStore {
       }
     }
 
-    let backup: string | null = null
+    let saved: string | null
     try {
-      const saved = await fs.readFile(this.backupPath, 'utf8')
-      if (isConfigText(saved)) backup = saved
-    } catch {}
+      saved = await this.readWithRetries(this.backupPath)
+    } catch (e) {
+      // It may be good, so nothing may replace it this run.
+      return this.cantRead(e)
+    }
+    const backup = saved != null && isConfigText(saved) ? saved : null
 
-    // Missing with no backup is simply a first run.
-    if (backup != null) this.notice = 'restored'
-    else if (!missing) this.notice = 'reset'
+    if (backup != null) {
+      this.notice = 'restored'
+      // Back in place now: a crash before the first save must still find it.
+      if (!this.isTmpFile) {
+        try {
+          await fs.mkdir(path.dirname(this.cfgPath), { recursive: true })
+          await this.writeSynced(this.cfgPath, backup)
+        } catch (e) {
+          this.logger?.write(`error [ConfigStore] Couldn't restore the settings file: ${String(e)}`)
+        }
+      }
+      // What's on disk now is this backup; no need to copy it over itself.
+      this.lastBackupAt = Date.now()
+    } else if (!missing) {
+      // Missing with no backup is simply a first run.
+      this.notice = 'reset'
+    }
     return backup
   }
 
@@ -162,7 +195,15 @@ export class ConfigStore {
     } finally {
       await file.close()
     }
-    await fs.rename(partial, target)
+    try {
+      await fs.rename(partial, target)
+    } catch {
+      // Windows can refuse the rename while something (antivirus, backup) has
+      // the file open. Only here: on a full disk the temp write above fails and
+      // the real file is never touched.
+      await fs.writeFile(target, contents)
+      await fs.rm(partial, { force: true })
+    }
   }
 
   private async flush () {
@@ -173,14 +214,7 @@ export class ConfigStore {
     try {
       await fs.mkdir(path.dirname(target), { recursive: true })
       await this.backUp(target)
-      try {
-        await this.writeSynced(target, contents)
-      } catch {
-        // Windows can refuse the rename while something (antivirus, backup)
-        // has the file open; a plain write is still one writer at a time.
-        await fs.writeFile(target, contents)
-        await fs.rm(`${target}.writing`, { force: true })
-      }
+      await this.writeSynced(target, contents)
     } catch (e) {
       // woke: used to quit the app. The next save tries again.
       this.logger?.write(`error [ConfigStore] Couldn't save settings: ${String(e)}`)

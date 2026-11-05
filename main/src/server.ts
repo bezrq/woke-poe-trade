@@ -21,6 +21,10 @@ export async function configFlushed () {
   await configStore?.flushed()
 }
 
+export function startConfigOver () {
+  configStore?.startOver()
+}
+
 addFileUploadRoutes(server)
 
 if (!process.env.VITE_DEV_SERVER_URL) {

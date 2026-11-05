@@ -38,9 +38,9 @@ beforeEach(() => {
 
 describe('loading', () => {
   it('reads a good file', async () => {
-    write('config.json', '{"a":1}')
+    write('config.json', '{"a":1,"widgets":[]}')
     const { store } = make()
-    expect(await store.load()).toBe('{"a":1}')
+    expect(await store.load()).toBe('{"a":1,"widgets":[]}')
     expect(store.notice).toBeNull()
   })
 
@@ -50,11 +50,11 @@ describe('loading', () => {
     expect(store.notice).toBeNull()
   })
 
-  it.each([['damaged', '{"a":1'], ['empty', ''], ['not settings', '[1,2]']])('a %s file gives way to the backup and is kept', async (_name, text) => {
+  it.each([['damaged', '{"a":1'], ['empty', ''], ['not settings', '[1,2]'], ['empty settings', '{}']])('a %s file gives way to the backup and is kept', async (_name, text) => {
     write('config.json', text)
-    write('config.backup.json', '{"a":"backup"}')
+    write('config.backup.json', '{"a":"backup","widgets":[]}')
     const { store } = make()
-    expect(await store.load()).toBe('{"a":"backup"}')
+    expect(await store.load()).toBe('{"a":"backup","widgets":[]}')
     expect(store.notice).toBe('restored')
     const kept = fs.readdirSync(path.dirname(cfg())).filter(f => f.startsWith('config.broken-'))
     expect(kept).toHaveLength(1)
@@ -77,19 +77,37 @@ describe('loading', () => {
   })
 
   it('a missing file with a backup is restored', async () => {
-    write('config.backup.json', '{"a":"backup"}')
+    write('config.backup.json', '{"a":"backup","widgets":[]}')
     const { store } = make()
-    expect(await store.load()).toBe('{"a":"backup"}')
+    expect(await store.load()).toBe('{"a":"backup","widgets":[]}')
     expect(store.notice).toBe('restored')
+  })
+
+  it('a restored backup is back in place at once', async () => {
+    write('config.json', 'nonsense')
+    write('config.backup.json', '{"a":"backup","widgets":[]}')
+    const { store } = make()
+    await store.load()
+    expect(fs.readFileSync(cfg(), 'utf8')).toBe('{"a":"backup","widgets":[]}')
+  })
+
+  it('two loads at once move the file aside only once', async () => {
+    write('config.json', 'nonsense')
+    write('config.backup.json', '{"a":"backup","widgets":[]}')
+    const { store } = make()
+    const [one, two] = await Promise.all([store.load(), store.load()])
+    expect(one).toBe('{"a":"backup","widgets":[]}')
+    expect(two).toBe('{"a":"backup","widgets":[]}')
+    expect(fs.readdirSync(path.dirname(cfg())).filter(f => f.startsWith('config.broken-'))).toHaveLength(1)
   })
 
   it('later loads in one run read the file again and move nothing', async () => {
     write('config.json', 'nonsense')
-    write('config.backup.json', '{"a":"backup"}')
+    write('config.backup.json', '{"a":"backup","widgets":[]}')
     const { store, save } = make()
     await store.load()
-    await save('{"a":"new"}')
-    expect(await store.load()).toBe('{"a":"new"}')
+    await save('{"a":"new","widgets":[]}')
+    expect(await store.load()).toBe('{"a":"new","widgets":[]}')
     expect(fs.readdirSync(path.dirname(cfg())).filter(f => f.startsWith('config.broken-'))).toHaveLength(1)
   })
 })
@@ -97,53 +115,53 @@ describe('loading', () => {
 describe('saving', () => {
   it('writes the newest contents and leaves no temp file', async () => {
     const { save } = make()
-    await save('{"a":1}')
-    await save('{"a":2}')
-    expect(fs.readFileSync(cfg(), 'utf8')).toBe('{"a":2}')
+    await save('{"a":1,"widgets":[]}')
+    await save('{"a":2,"widgets":[]}')
+    expect(fs.readFileSync(cfg(), 'utf8')).toBe('{"a":2,"widgets":[]}')
     expect(fs.existsSync(cfg('config.json.writing'))).toBe(false)
   })
 
   it('the backup holds the settings from before this run', async () => {
-    write('config.json', '{"a":"before"}')
+    write('config.json', '{"a":"before","widgets":[]}')
     const { save } = make()
-    await save('{"a":"after"}')
-    await save('{"a":"later"}')
-    expect(fs.readFileSync(cfg('config.backup.json'), 'utf8')).toBe('{"a":"before"}')
+    await save('{"a":"after","widgets":[]}')
+    await save('{"a":"later","widgets":[]}')
+    expect(fs.readFileSync(cfg('config.backup.json'), 'utf8')).toBe('{"a":"before","widgets":[]}')
   })
 
   it('a damaged file is never backed up', async () => {
     write('config.json', '{"a":')
-    write('config.backup.json', '{"a":"good"}')
+    write('config.backup.json', '{"a":"good","widgets":[]}')
     const { save } = make()
-    await save('{"a":"new"}')
-    expect(fs.readFileSync(cfg('config.backup.json'), 'utf8')).toBe('{"a":"good"}')
+    await save('{"a":"new","widgets":[]}')
+    expect(fs.readFileSync(cfg('config.backup.json'), 'utf8')).toBe('{"a":"good","widgets":[]}')
   })
 
   it('a quiet save reaches the disk with no echo', async () => {
     const { save, echoes } = make()
-    await save('{"a":1}', { quiet: true })
-    expect(fs.readFileSync(cfg(), 'utf8')).toBe('{"a":1}')
+    await save('{"a":1,"widgets":[]}', { quiet: true })
+    expect(fs.readFileSync(cfg(), 'utf8')).toBe('{"a":1,"widgets":[]}')
     expect(echoes).toEqual([])
-    await save('{"a":2}')
+    await save('{"a":2,"widgets":[]}')
     expect(echoes).toHaveLength(1)
   })
 
   it('a temporary save leaves the real file alone', async () => {
-    write('config.json', '{"a":"real"}')
+    write('config.json', '{"a":"real","widgets":[]}')
     const { save } = make()
-    await save('{"a":"temp"}', { isTemporary: true })
-    await save('{"a":"temp2"}')
-    expect(fs.readFileSync(cfg(), 'utf8')).toBe('{"a":"real"}')
-    expect(fs.readFileSync(cfg('config.json.tmp'), 'utf8')).toBe('{"a":"temp2"}')
+    await save('{"a":"temp","widgets":[]}', { isTemporary: true })
+    await save('{"a":"temp2","widgets":[]}')
+    expect(fs.readFileSync(cfg(), 'utf8')).toBe('{"a":"real","widgets":[]}')
+    expect(fs.readFileSync(cfg('config.json.tmp'), 'utf8')).toBe('{"a":"temp2","widgets":[]}')
   })
 
   it('a failed write doesn\'t stop the next one', async () => {
     const { save } = make()
     // A folder where the file should go: every write to it fails.
     fs.mkdirSync(cfg(), { recursive: true })
-    await save('{"a":1}')
+    await save('{"a":1,"widgets":[]}')
     fs.rmdirSync(cfg())
-    await save('{"a":2}')
-    expect(fs.readFileSync(cfg(), 'utf8')).toBe('{"a":2}')
+    await save('{"a":2,"widgets":[]}')
+    expect(fs.readFileSync(cfg(), 'utf8')).toBe('{"a":2,"widgets":[]}')
   })
 })

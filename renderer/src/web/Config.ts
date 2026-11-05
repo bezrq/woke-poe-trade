@@ -108,7 +108,7 @@ export async function initConfig () {
   try {
     updateConfig(upgradeConfig(config))
   } catch (e) {
-    console.error('[config] upgrade failed', e)
+    console.warn('[config] upgrade failed', e)
     updateConfig(defaultConfig())
     Host.configNotice.value = 'upgrade-failed'
     saveConfig({ isTemporary: true })

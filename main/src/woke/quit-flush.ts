@@ -1,6 +1,7 @@
-// Before the app quits, however it quits (Settings, the tray, restart to update):
-// the page saves what it hasn't yet, and main waits for the write to finish.
-// Quitting never hangs on this: a page that's gone just doesn't answer.
+// Before the app quits (Settings, the tray, restart to update): the page saves
+// what it hasn't yet, and main waits for the write to finish. Quitting never
+// hangs on this: a page that's gone just doesn't answer. Electron skips this on
+// a Windows shutdown; Settings changes are already on disk by then.
 import { app } from 'electron'
 import type { ServerEvents } from '../server'
 
