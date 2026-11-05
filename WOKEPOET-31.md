@@ -105,7 +105,7 @@ history:
     to: Ready
     user: Agent
     date: '2026-11-05T06:34:12.847Z'
-swimlane: open-pr
+swimlane: null
 needsAction: null
 branch: flux/WOKEPOET-31-give-woke-its-own-icon-and-overlay-mark
 baselineCommit: 37f4e851970b046d13916551eeab175b77a7486d
