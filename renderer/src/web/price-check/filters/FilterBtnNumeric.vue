@@ -118,6 +118,11 @@ export default defineComponent({
       },
       handlePointerMove (e: PointerEvent) {
         if (!drag) return
+        // The press ended outside the tile, before a drag captured the pointer.
+        if (!dragging.value && !(e.buttons & 1)) {
+          drag = null
+          return
+        }
         const up = drag.startY - e.clientY
         if (!dragging.value) {
           if (Math.abs(up) < DRAG_START_PX) return
