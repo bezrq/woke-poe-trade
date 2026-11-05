@@ -19,6 +19,8 @@ export class OverlayWindow {
   private window?: BrowserWindow
   private overlayKey: string = 'Shift + Space'
   private isOverlayKeyUsed = false
+  // woke: keys an open panel handles while the overlay has focus.
+  private panelKeys = new Set<string>()
 
   constructor (
     private server: ServerEvents,
@@ -26,6 +28,9 @@ export class OverlayWindow {
     private poeWindow: GameWindow,
   ) {
     this.server.onEventAnyClient('OVERLAY->MAIN::focus-game', this.assertGameActive)
+    this.server.onEventAnyClient('OVERLAY->MAIN::woke-panel-keys', ({ keys }) => {
+      this.panelKeys = new Set(keys)
+    })
     this.poeWindow.on('active-change', this.handlePoeWindowActiveChange)
     this.poeWindow.onAttach(this.handleOverlayAttached)
     // The library goes click-through whenever the game gets focus, which can
@@ -64,6 +69,8 @@ export class OverlayWindow {
     })
 
     this.window.webContents.on('before-input-event', this.handleExtraCommands)
+    // woke: a reload takes any open panel with it, without it saying so.
+    this.window.webContents.on('did-navigate', () => { this.panelKeys.clear() })
     this.window.webContents.on('did-attach-webview', (_, webviewWebContents) => {
       webviewWebContents.on('before-input-event', this.handleExtraCommands)
     })
@@ -184,7 +191,8 @@ export class OverlayWindow {
       code = code.slice('Digit'.length)
     }
 
-    if (shiftKey && altKey) code = `Shift + Alt + ${code}`
+    if (ctrlKey && shiftKey && altKey) code = `Ctrl + Shift + Alt + ${code}`
+    else if (shiftKey && altKey) code = `Shift + Alt + ${code}`
     else if (ctrlKey && shiftKey) code = `Ctrl + Shift + ${code}`
     else if (ctrlKey && altKey) code = `Ctrl + Alt + ${code}`
     else if (altKey) code = `Alt + ${code}`
@@ -202,6 +210,16 @@ export class OverlayWindow {
         event.preventDefault()
         process.nextTick(this.toggleActiveState)
         break
+      }
+      default: {
+        if (!this.panelKeys.has(code)) break
+        event.preventDefault()
+        if (!input.isAutoRepeat) {
+          this.server.sendEventTo('broadcast', {
+            name: 'MAIN->OVERLAY::woke-panel-key',
+            payload: { key: code }
+          })
+        }
       }
     }
   }
