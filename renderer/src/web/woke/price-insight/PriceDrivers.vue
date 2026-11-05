@@ -90,7 +90,9 @@ const error = shallowRef<string | null>(null)
 // Rate-limit budget, refreshed every second while the panel is open.
 const tick = shallowRef(0)
 const ticker = setInterval(() => { tick.value++ }, 1000)
-onUnmounted(() => { clearInterval(ticker) })
+let gone = false
+const isCancelled = () => gone
+onUnmounted(() => { clearInterval(ticker); gone = true })
 const budget = computed(() => searchBudget(candidates.value.length, tick.value))
 const measureWait = computed(() => Math.ceil(budget.value.waitMs / 1000))
 const ladderWait = computed(() => Math.ceil(searchBudget(2, tick.value).waitMs / 1000))
@@ -131,7 +133,7 @@ async function measure () {
   drivers.value = []
   try {
     drivers.value = await measureDrivers(props.filters, props.stats, baseFair.value, candidates.value, props.options,
-      (done, wait) => { drivers.value = done; waiting.value = wait })
+      (done, wait) => { drivers.value = done; waiting.value = wait }, isCancelled)
     cacheDrivers(driverKey.value, drivers.value)
     shareDrivers()
   } catch (err) {
@@ -147,7 +149,7 @@ async function widen () {
   error.value = null
   try {
     ladder.value = await runLadder(props.filters, props.stats, candidates.value, props.options,
-      (steps, wait) => { ladder.value = steps; waiting.value = wait })
+      (steps, wait) => { ladder.value = steps; waiting.value = wait }, isCancelled)
     cacheLadder(driverKey.value, ladder.value)
   } catch (err) {
     error.value = (err as Error).message

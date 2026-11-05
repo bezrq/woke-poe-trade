@@ -771,6 +771,8 @@ export async function requestTradeResultList (body: TradeRequest, leagueId: stri
     ])
 
     await RateLimiter.waitMulti(RATE_LIMIT_RULES.SEARCH)
+    // A penalty can start while this request waits for its slot.
+    throwIfRestricted(RATE_LIMIT_RULES.SEARCH)
 
     const response = await Host.proxy(`${getTradeEndpoint()}/api/trade/search/${leagueId}`, {
       method: 'POST',
@@ -806,6 +808,8 @@ export async function requestResults (
   if (!data) {
     throwIfRestricted(RATE_LIMIT_RULES.FETCH)
     await RateLimiter.waitMulti(RATE_LIMIT_RULES.FETCH)
+    // A penalty can start while this request waits for its slot.
+    throwIfRestricted(RATE_LIMIT_RULES.FETCH)
 
     const response = await Host.proxy(`${getTradeEndpoint()}/api/trade/fetch/${resultIds.join(',')}?query=${queryId}`)
     adjustRateLimits(RATE_LIMIT_RULES.FETCH, response.headers)

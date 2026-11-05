@@ -15,7 +15,8 @@ vi.mock('@/web/Config', () => ({
 /* eslint-disable import/first */
 import { RATE_LIMIT_RULES, adjustRateLimits, preventQueueCreation, restrictedMs } from '@/web/price-check/trade/common'
 import { requestResults, requestTradeResultList } from '@/web/price-check/trade/pathofexile-trade'
-import { searchBudget } from '@/web/woke/price-insight/drivers'
+import { RateLimiter } from '@/web/price-check/trade/RateLimiter'
+import { CANCELLED, pricedSearch, searchBudget } from '@/web/woke/price-insight/drivers'
 /* eslint-enable import/first */
 
 const RESTRICTED = {
@@ -104,6 +105,22 @@ describe('rate limit penalties', () => {
   it('holds listing fetches during a fetch penalty', async () => {
     adjustRateLimits(RATE_LIMIT_RULES.FETCH, new Headers({ 'retry-after': '30' }))
     await expect(requestResults('q', ['a'], { accountName: '' })).rejects.toThrow('Retry after 30 seconds')
+    expect(proxyCalls).toHaveLength(0)
+  })
+
+  it('does not send a request that was queued when the penalty started', async () => {
+    const slot = new RateLimiter(1, 0.05)
+    RATE_LIMIT_RULES.FETCH.add(slot)
+    void slot.wait()
+    const queued = requestResults('q', ['queued'], { accountName: '' })
+    adjustRateLimits(RATE_LIMIT_RULES.FETCH, new Headers({ 'retry-after': '30' }))
+    await expect(queued).rejects.toThrow('Retry after 30 seconds')
+    expect(proxyCalls).toHaveLength(0)
+  })
+
+  it('stops a waiting Measure once its panel is gone', async () => {
+    nextResponse = () => tooMany()
+    await expect(pricedSearch({ trade: {}, searchExact: {} } as never, [], { divine: 180 }, undefined, () => true)).rejects.toThrow(CANCELLED)
     expect(proxyCalls).toHaveLength(0)
   })
 

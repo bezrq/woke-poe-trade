@@ -1,6 +1,6 @@
 import { DateTime } from 'luxon'
 import { Host } from '@/web/background/IPC'
-import { TradeResponse, Account, getTradeEndpoint, RATE_LIMIT_RULES, adjustRateLimits, tradeTag, preventQueueCreation, throwIfRateLimited } from './common'
+import { TradeResponse, Account, getTradeEndpoint, RATE_LIMIT_RULES, adjustRateLimits, tradeTag, preventQueueCreation, throwIfRateLimited, throwIfRestricted } from './common'
 import { RateLimiter } from './RateLimiter'
 import { ItemFilters } from '../filters/interfaces'
 import { ParsedItem } from '@/parser'
@@ -65,6 +65,8 @@ async function requestTradeResultList (body: TradeRequest, leagueId: string): Pr
     ])
 
     await RateLimiter.waitMulti(RATE_LIMIT_RULES.EXCHANGE)
+    // A penalty can start while this request waits for its slot.
+    throwIfRestricted(RATE_LIMIT_RULES.EXCHANGE)
 
     const response = await Host.proxy(`${getTradeEndpoint()}/api/trade/exchange/${leagueId}`, {
       method: 'POST',

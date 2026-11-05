@@ -17,8 +17,10 @@ export function useRetryCountdown (error: Ref<string | null>) {
     const match = RETRY_AFTER.exec(text ?? '')
     left.value = match ? Number(match[1]) : 0
     if (left.value <= 0) return
+    // From a deadline, because a hidden window's timers run late.
+    const deadline = Date.now() + left.value * 1000
     timer = setInterval(() => {
-      left.value -= 1
+      left.value = Math.max(Math.ceil((deadline - Date.now()) / 1000), 0)
       if (left.value <= 0) stop()
     }, 1000)
   }, { immediate: true })
