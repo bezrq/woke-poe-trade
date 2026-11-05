@@ -6,7 +6,7 @@ import fs from 'fs'
 import path from 'path'
 import { decodePng } from '../fake-host/png'
 import { readScarabTab } from '../../main/src/woke/stash-read'
-import { SCARAB_SLOTS } from '../../main/src/woke/stash-scarab-data'
+import { SCARAB_LAYOUTS } from '../../main/src/woke/stash-scarab-data'
 
 const SCREENS = path.resolve(__dirname, '../fixtures/screens')
 
@@ -64,14 +64,14 @@ describe('reading the scarab tab', () => {
     const res = read(tab)
     expect(res.found).toBe(true)
     if (!res.found) return
-    expect(res.slots.length).toBe(SCARAB_SLOTS.length)
+    expect(res.slots.length).toBe(SCARAB_LAYOUTS[0].slots.length)
     const by = new Map(res.slots.map(s => [s.name, s]))
     expect(by.get('Horned Scarab of Bloodlines')?.filled).toBe(true)
     expect(by.get('Breach Scarab of the Hive')?.filled).toBe(true)
     // These two show as dim ghosts in this screenshot.
     expect(by.get('Cartography Scarab of Risk')?.filled).toBe(false)
     expect(by.get('Scarab of Radiant Storms')?.filled).toBe(false)
-    expect(res.slots.filter(s => s.filled).length).toBe(SCARAB_SLOTS.length - 2)
+    expect(res.slots.filter(s => s.filled).length).toBe(113)
   })
 
   it('reads fast enough to feel instant', () => {
@@ -102,15 +102,42 @@ describe('reading the scarab tab', () => {
     // Up by the missing folder row, not sideways.
     expect(Math.round(res.slots[0].x * shot.width)).toBe(Math.round(base.slots[0].x * tab.width))
     expect(Math.round(res.slots[0].y * shot.height)).toBe(251)
-    expect(res.slots.filter(s => s.filled).length).toBe(SCARAB_SLOTS.length - 2)
+    expect(res.slots.filter(s => s.filled).length).toBe(113)
+  })
+
+  it('reads a stash with an extra sub-tab button, using its own slot table', () => {
+    const res = read(screen('stash-scarab-breach-real.png'))
+    expect(res.found).toBe(true)
+    if (!res.found) return
+    expect(res.slots.length).toBe(SCARAB_LAYOUTS[1].slots.length)
+    const at = (name: string) => {
+      const s = res.slots.find(s => s.name === name)!
+      return [Math.round(s.x * 2560), Math.round(s.y * 1440), s.filled]
+    }
+    // Rows keep their family between layouts; these stacks are in the screenshot.
+    expect(at('Divination Scarab of The Cloister')).toEqual([77, 361, true])
+    expect(at('Torment Scarab')).toEqual([77, 991, true])
+    expect(at('Abyss Scarab of Multitudes')).toEqual([454, 424, true])
+    expect(at('Scarab of Wisps')).toEqual([721, 725, true])
+    expect(res.slots.map(s => s.name)).not.toContain('Scarab of Hunted Traitors')
+  })
+
+  it('tells filled slots from empty ones on a darker screen', () => {
+    for (const file of ['stash-scarab-real.png', 'stash-scarab-breach-real.png']) {
+      const s = screen(file)
+      const base = read(s)
+      const data = s.data.map((v, i) => i % 4 === 3 ? v : v * 0.5)
+      const dim = read({ ...s, data })
+      expect(dim.found && base.found && dim.slots.filter(x => x.filled).length).toBe(base.found && base.slots.filter(x => x.filled).length)
+    }
   })
 
   it('scales to a smaller window', () => {
     // Exactly half, a clean resample. Real smaller windows are still untested.
-    const res = read(shrunk(tab, 720))
-    expect(res.found).toBe(true)
-    if (!res.found) return
-    expect(res.slots.filter(s => s.filled).length).toBeGreaterThan(SCARAB_SLOTS.length - 6)
+    const small = read(shrunk(tab, 720))
+    expect(small.found).toBe(true)
+    if (small.found) expect(small.slots.filter(s => s.filled).length).toBeGreaterThan(SCARAB_LAYOUTS[0].slots.length - 6)
+    expect(read(shrunk(screen('stash-scarab-breach-real.png'), 720)).found).toBe(true)
   })
 
   it('refuses another sub-tab, though it shows the same button', () => {
