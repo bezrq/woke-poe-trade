@@ -36,7 +36,18 @@ history:
       pool's best trusted price. Level 1 EVs today, red/green/blue: now
       254/245/1314c, A or B 106/113/71c, C 142/198/117c. Toggle saved per
       window, default off.
-swimlane: require-input
+  - type: comment
+    user: Agent
+    comment: 'Guy picked A: thin gems count as 0 and leave the list.'
+    date: '2026-11-05T10:37:12.406Z'
+    id: c-2026-11-05t10-37-12-406z
+  - type: swimlane_change
+    swimlane: require-input
+    action: cleared
+    user: Agent
+    date: '2026-11-05T10:37:12.406Z'
+    comment: 'Guy picked A: thin gems count as 0 and leave the list.'
+swimlane: null
 needsAction: null
 ---
 > **TL;DR:** Gems marked "!" (thin market on poe.ninja) still inflate the Lab gems EVs. Add a saved toggle that leaves them out of the sums and the lists.
