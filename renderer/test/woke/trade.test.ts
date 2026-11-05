@@ -5,8 +5,8 @@ import { describe, it, expect } from 'vitest'
 import { fixture } from '../helpers/game-data'
 import fs from 'fs'
 import path from 'path'
-import { CURRENCY_TAGS, parseOffer, parsePrice, parseTradeLine, offerLabel, priceLabel } from '@/web/woke/trade/whispers'
-import { applyEvent, front, markSent, markTraded, newBook, nextStep, prune, queue, recordFor, skip, OPEN_FOR_MS } from '@/web/woke/trade/book'
+import { artNames, CURRENCY_TAGS, parseOffer, parsePrice, parseTradeLine, offerLabel, priceLabel } from '@/web/woke/trade/whispers'
+import { alreadyClosed, applyEvent, belongsInHistory, dismiss, front, markSent, markTraded, newBook, nextStep, prune, queue, recordFor, reopen, skip, OPEN_FOR_MS } from '@/web/woke/trade/book'
 import type { Offer, TradeBook } from '@/web/woke/trade/book'
 import { DEFAULT_REPLIES, fillReply, replyText } from '@/web/woke/trade/widget'
 import { bulkDelta, priceChaos } from '@/web/woke/trade/value'
@@ -316,5 +316,80 @@ describe('skipping an offer', () => {
     skip(front(book)!, Date.now())
     replay(['2026/11/04 21:40:20 1 2 [INFO Client 1] @From First: still there?'], book)
     expect(front(book)!.who).toBe('First')
+  })
+})
+
+describe('reopening closed offers', () => {
+  const whisper = (book: TradeBook, who: string, at: number) => applyEvent(book, {
+    kind: 'whisper-in',
+    at,
+    who,
+    body: 'x',
+    offer: { item: "Doedre's Damning, Paua Ring", qty: 1, bulk: false, price: { amount: 10, currency: 'Chaos Orb' }, league: 'Standard', tab: null, note: '' }
+  }).added!
+
+  it('puts a dismissed offer back at the step it reached', () => {
+    const book = newBook()
+    const o = whisper(book, 'Ignithor', 1000)
+    markSent(book, o, 'invite', 2000)
+    dismiss(o, 3000)
+    expect(queue(book)).toEqual([])
+    expect(belongsInHistory(o)).toBe(true)
+    const open = reopen(book, o, 4000)
+    expect(queue(book)[0].id).toBe(o.id)
+    expect(open.step).toBe(1)
+    expect(open.closed).toBe(null)
+  })
+
+  it('brings an offer back from the history alone, and it does not expire at once', () => {
+    const book = newBook()
+    const old = whisper(book, 'Ignithor', 1000)
+    dismiss(old, 2000)
+    const saved = JSON.parse(JSON.stringify(old))
+    prune(book, 2000 + 200_000)
+    expect(book.offers).toEqual([])
+    const at = 10 * OPEN_FOR_MS
+    reopen(book, saved, at)
+    prune(book, at + 1000)
+    expect(queue(book).map(o => o.who)).toEqual(['Ignithor'])
+  })
+
+  it('does not make a second copy when they already whispered again', () => {
+    const book = newBook()
+    const old = whisper(book, 'Ignithor', 1000)
+    dismiss(old, 2000)
+    const again = whisper(book, 'Ignithor', 3000)
+    expect(reopen(book, old, 4000).id).toBe(again.id)
+    expect(queue(book).length).toBe(1)
+  })
+
+  it('gives an offer closed past its last step something for the key to do', () => {
+    const book = newBook()
+    const o = whisper(book, 'Ignithor', 1000)
+    markSent(book, o, 'kick', 2000)
+    expect(o.closed).toBe('dismissed')
+    expect(nextStep(reopen(book, o, 3000))).toBe('kick')
+  })
+
+  it('leaves traded offers to the sales log', () => {
+    const book = newBook()
+    const o = whisper(book, 'Ignithor', 1000)
+    markTraded(o, 2000)
+    expect(belongsInHistory(o)).toBe(false)
+  })
+
+  it('knows a replayed whisper was closed, but not a newer one', () => {
+    const book = newBook()
+    const o = whisper(book, 'Ignithor', 1000)
+    dismiss(o, 2000)
+    expect(alreadyClosed([o], { dir: 'sell', who: 'Ignithor', item: o.item, at: 1000 })).toBe(true)
+    expect(alreadyClosed([o], { dir: 'sell', who: 'Ignithor', item: o.item, at: 3000 })).toBe(false)
+    expect(alreadyClosed([o], { dir: 'sell', who: 'Someone', item: o.item, at: 1000 })).toBe(false)
+  })
+})
+
+describe('item art names', () => {
+  it('finds a unique named with a comma and its base', () => {
+    expect(artNames("Doedre's Damning, Paua Ring")).toContain("Doedre's Damning")
   })
 })

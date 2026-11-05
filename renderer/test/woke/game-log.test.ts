@@ -4,7 +4,7 @@
 import { describe, it, expect } from 'vitest'
 import { fixture } from '../helpers/game-data'
 import { parseLogLine, actFromAreaId, isTown } from '@/web/woke/campaign/log-parse'
-import { pickStage, socketRegex } from '@/web/woke/pob-builds/build-model'
+import { pickStage } from '@/web/woke/pob-builds/build-model'
 import { gemData } from '@/web/woke/pob-builds/gems'
 import { bundledRoute, routeData } from '@/web/woke/campaign/route-data'
 import { actProgress, advanceOnEnter, resyncTo, DEFAULT_ROUTE_OPTIONS, xpMultiplier } from '@/web/woke/campaign/route-parse'
@@ -319,13 +319,6 @@ describe('build gems', () => {
     expect(gemData('Kinetic Blast of Clustering')).toMatchObject({ name: 'Kinetic Blast of Clustering', colour: 'b', requiredLevel: 28, sources: [] })
     expect(gemData('Combustion')?.name).toBe('Combustion Support')
     expect(gemData('Not A Gem of Anything')).toBeNull()
-  })
-
-  it('searches for the 4-link when its colour orderings fit the 250-character box', () => {
-    const s = socketRegex(['r', 'r', 'g', 'b'])
-    expect(s).toMatchObject({ size: 4, exact: true })
-    expect(s!.regex.split('|')).toHaveLength(12)
-    expect(s!.regex).toContain('b-g-r-r')
   })
 })
 

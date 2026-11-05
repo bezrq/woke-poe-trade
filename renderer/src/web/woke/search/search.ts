@@ -2,6 +2,7 @@
 // Market tracker all rank and group prices the same way.
 import { itemKey, isCorrupted } from '../market/types'
 import type { PriceItem, CorruptedFilter } from '../market/types'
+import type { ItemTipRef } from '../ui/tooltip/item-tip'
 
 export const MIN_QUERY = 2
 // More than this and the list is too long to read: keep typing.
@@ -40,6 +41,12 @@ export interface PriceGroup {
   variants: PriceItem[] // most expensive first
   high: number
   low: number
+}
+
+// The item tooltip for a whole result: one price is that price, several a range.
+export function groupTip (group: PriceGroup): ItemTipRef {
+  if (group.variants.length === 1) return group.variants[0]
+  return { name: group.name, type: group.type, prices: { low: group.low, high: group.high, count: group.variants.length } }
 }
 
 export function groupKey (group: { type: string, name: string }): string {

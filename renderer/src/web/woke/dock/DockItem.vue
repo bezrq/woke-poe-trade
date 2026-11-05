@@ -79,6 +79,10 @@ function peek (text: string, ms = PEEK_MS) {
   }, ms + 50)
 }
 
+function unpeek () {
+  entry.peek = null
+}
+
 // Keep the card open until asked again. It never outlives the icon, and a
 // click's pin ends with the overlay.
 function togglePin () {
@@ -90,8 +94,9 @@ watch(() => props.show && !isDismissed(props.id), (show) => { if (!show) entry.p
 watch(() => wm?.active.value, (active) => { if (!active && entry.pinned === 'click') entry.pinned = null })
 
 const clickPinned = computed(() => entry.pinned === 'click')
+const pinned = computed(() => entry.pinned != null)
 
-defineExpose({ peek, togglePin, clickPinned })
+defineExpose({ peek, unpeek, togglePin, clickPinned, pinned })
 </script>
 
 <template>

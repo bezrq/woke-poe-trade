@@ -120,8 +120,6 @@ test('gem colours, item art and tooltips', async ({ overlay }) => {
   await page.mouse.move(5, 5)
   await expect(tip).toHaveCount(0)
 
-  await detail.getByRole('tab', { name: 'Setups' }).click()
-  await overlay.snap('setups')
   await detail.getByRole('tab', { name: 'Notes' }).click()
   if (showcase) {
     await expect(detail.getByText('Fire', { exact: true })).toHaveCSS('color', 'rgb(255, 85, 85)')
@@ -173,15 +171,14 @@ test('a picked loadout reaches the other windows, is saved, and Auto undoes it',
   await expect(strip).toContainText(`Your links · ${later}`)
   await expect(strip).toContainText('Fireball')
 
-  // Gear tab: its set and "Links you need now" are the same loadout.
+  // Gear tab: its set and the gems on its items are the same loadout.
   await detail.getByRole('tab', { name: 'Gear' }).click()
   await expect(chip(later)).toContainText('now')
-  await expect(detail.locator('[class*="gearRow"]')).toContainText('Later Loop')
+  await expect(detail.locator('[class*="gearRow"]').filter({ hasText: 'Later Loop' })).toBeVisible()
   await expect(detail.getByText('Fireball').first()).toBeVisible()
   await overlay.snap('gear follows the picked loadout')
 
-  // Setups: the matching tree is the one in use.
-  await detail.getByRole('tab', { name: 'Setups' }).click()
+  // The matching tree is the one in use.
   await expect(detail.getByRole('link', { name: `${later} · now` })).toBeVisible()
   await expect.poll(() => overlay.savedWidget('woke-pob-builds')?.loadouts?.[LOADOUTS_FILE]).toEqual({ skillSet: later })
 

@@ -106,6 +106,18 @@ export function itemKey (item: { type: string, name: string, variant: string }):
   return `${item.type}\u0000${item.name}\u0000${item.variant}`
 }
 
+// Snapshots saved before poe.ninja's doubled Currency and Fragment lists were
+// dropped hold those rows twice. Repeated keys make Vue leave old rows on screen.
+export function uniqueItems<T extends { type: string, name: string, variant: string }> (items: T[]): T[] {
+  const seen = new Set<string>()
+  return items.filter(item => {
+    const key = itemKey(item)
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+}
+
 export function utcDate (ts: number): string {
   return new Date(ts).toISOString().slice(0, 10)
 }
