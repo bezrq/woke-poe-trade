@@ -58,6 +58,7 @@ import { MainProcess } from '@/web/background/IPC'
 import { ItemCategory, ItemRarity, parseClipboard, ParsedItem } from '@/parser'
 import { registerActions } from './hotkeyable-actions'
 import type { WidgetManager } from '../overlay/interfaces'
+import type { Anchor } from '../overlay/widgets'
 
 import Widget from '../overlay/Widget.vue'
 import MapCheck from '../map-check/MapCheck.vue'
@@ -126,9 +127,9 @@ const anchor = computed(() => {
 })
 
 // The computed anchor over the real config, so a panel's saved size sticks.
-const widgetConfig = new Proxy(props.config, {
+const widgetConfig = computed(() => new Proxy(props.config as ItemCheckWidget & { anchor: Anchor }, {
   get: (target, key, receiver) => key === 'anchor' ? anchor.value : Reflect.get(target, key, receiver)
-})
+}))
 
 // Sets Map mods up (with APT's ratings brought over) the first time a map is checked.
 watch(item, (it) => { if (it && wokeIsMapLike(it)) ensureMapModsConfig() })
