@@ -54,7 +54,26 @@ history:
     to: In Progress
     user: Agent
     date: '2026-11-05T08:51:15.947Z'
-swimlane: null
+  - type: comment
+    user: Agent
+    comment: >-
+      Which reload prompt: A (dock icon and card), B (a note and one new key),
+      or C (rail badge)? Recommended: A, with no new hotkey. Also, build the
+      tray status and hotkey rescue as drawn (WOKEPOET-46, 49)? Default: yes.
+      Mocks: https://claude.ai/artifact/18ihCQ5vBMjx9mZUXTJQwU
+    date: '2026-11-05T11:02:36.868Z'
+    id: c-2026-11-05t11-02-36-868z
+  - type: swimlane_change
+    swimlane: require-input
+    action: set
+    user: Agent
+    date: '2026-11-05T11:02:36.868Z'
+    comment: >-
+      Which reload prompt: A (dock icon and card), B (a note and one new key),
+      or C (rail badge)? Recommended: A, with no new hotkey. Also, build the
+      tray status and hotkey rescue as drawn (WOKEPOET-46, 49)? Default: yes.
+      Mocks: https://claude.ai/artifact/18ihCQ5vBMjx9mZUXTJQwU
+swimlane: require-input
 needsAction: null
 subtasks:
   - WOKEPOET-40
