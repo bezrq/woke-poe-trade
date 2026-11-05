@@ -33,7 +33,8 @@ export interface Blend {
 
 export interface BlendInput {
   insight: Insight
-  ninja?: { chaos: number, gaps: number } | null
+  /** `fits` false: the search looks for something poe.ninja's price doesn't cover. */
+  ninja?: { chaos: number, gaps: number, fits?: boolean } | null
   poeprices?: { min: number, max: number, confidence: number } | null
   /** Your last check of the same search, made before this session's checks. */
   mine?: { chaos: number, ts: number } | null
@@ -82,18 +83,22 @@ export function buildBlend (input: BlendInput): Blend {
       const ratio = fair / input.ninja.chaos
       ninjaSuspect = ratio >= 2 || ratio <= 0.5
     }
+    // With no listings it's still the best guess available.
+    const offTarget = input.ninja.fits === false && fair != null
     points.push({
       key: 'ninja',
       label: 'poe.ninja',
       low: input.ninja.chaos,
       high: input.ninja.chaos,
       mid: input.ninja.chaos,
-      weight: ninjaSuspect ? 0 : thin ? NINJA_THIN_WEIGHT : NINJA_WEIGHT,
-      note: ninjaSuspect
-        ? `No price on ${input.ninja.gaps} of the last 7 days and far from the listings: may be faked, not counted`
-        : thin
-          ? `No price on ${input.ninja.gaps} of the last 7 days: counted lightly`
-          : 'Average of recent listings across the league'
+      weight: (ninjaSuspect || offTarget) ? 0 : thin ? NINJA_THIN_WEIGHT : NINJA_WEIGHT,
+      note: offTarget
+        ? 'Its price is for any roll, uncorrupted and without a Foulborn mod, so it can\'t speak for this search: not counted'
+        : ninjaSuspect
+          ? `No price on ${input.ninja.gaps} of the last 7 days and far from the listings: may be faked, not counted`
+          : thin
+            ? `No price on ${input.ninja.gaps} of the last 7 days: counted lightly`
+            : 'Average of recent listings across the league'
     })
   }
 
@@ -156,6 +161,8 @@ export function headlinePrice (blend: Blend, insight: Insight): { chaos: number,
   if (blend.fair != null) {
     // Nobody pays more than an instant buyout that's sitting there, whatever other sources say.
     if (insight.ceiling != null && blend.fair > insight.ceiling) return { chaos: insight.ceiling, from: 'listings' }
+    // Nor does it sell for less than the cheapest listing anyone trusts.
+    if (insight.range && blend.fair < insight.range.low) return { chaos: insight.range.low, from: 'listings' }
     const onlyListings = blend.points.filter(p => p.weight > 0).every(p => p.key === 'listings')
     return { chaos: blend.fair, from: onlyListings ? 'listings' : 'blend' }
   }

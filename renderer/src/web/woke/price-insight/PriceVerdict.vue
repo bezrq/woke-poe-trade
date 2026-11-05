@@ -115,6 +115,8 @@ const props = defineProps<{
   blankSearch?: boolean
   /** A rare searched without one of its top mods: the price may still be right, "worthless" isn't. */
   skipsTopMods?: boolean
+  /** False when the search looks for something poe.ninja's price doesn't cover. */
+  ninjaFits: boolean
 }>()
 
 const LOW_VALUE = 3
@@ -130,7 +132,7 @@ const CONFIDENCE_HINT: Record<Confidence, string> = {
 }
 const RISK_LABEL: Record<FixRisk, string> = { none: '', low: 'fixing risk: low', medium: 'fixing risk: medium', high: 'fixing risk: high' }
 
-const smart = useSmartPrice(toRef(props, 'item'), toRef(props, 'insight'), toRef(props, 'divine'), toRef(props, 'logKey'), toRef(props, 'league'))
+const smart = useSmartPrice(toRef(props, 'item'), toRef(props, 'insight'), toRef(props, 'divine'), toRef(props, 'logKey'), toRef(props, 'league'), toRef(props, 'ninjaFits'))
 onUnmounted(smart.stop)
 const { ninjaInfo, blend, headline, ranges, series, leagueLoading } = smart
 

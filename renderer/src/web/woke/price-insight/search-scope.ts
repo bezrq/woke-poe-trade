@@ -2,6 +2,7 @@
 // so listings found without them say nothing about it. Pure functions.
 
 import { ItemRarity, ParsedItem } from '@/parser'
+import { FilterTag } from '@/web/price-check/filters/interfaces'
 import type { FilterOrGroup, ItemFilters } from '@/web/price-check/filters/interfaces'
 import { isTopTierFilter } from '@/web/price-check/filters/create-stat-filters'
 
@@ -22,6 +23,22 @@ export function isBlankRareSearch (item: ParsedItem, filters: ItemFilters, stats
     (filters.veiled && !filters.veiled.disabled) ||
     filters.influences?.some(i => !i.disabled)
   )
+}
+
+/**
+ * Whether poe.ninja's price covers what this search looks for. Its unique
+ * prices are for any roll, uncorrupted and without a Foulborn mod.
+ */
+export function ninjaFitsSearch (item: ParsedItem, stats: FilterOrGroup[]): boolean {
+  if (item.rarity !== ItemRarity.Unique) return true
+  if (item.isCorrupted || item.isFoulborn) return false
+  return !stats.some(s => {
+    if (s.group || s.disabled || s.hidden || s.tag === FilterTag.Property) return false
+    const { roll } = s
+    if (!roll?.bounds) return false
+    return (typeof roll.min === 'number' && roll.min > roll.bounds.min) ||
+      (typeof roll.max === 'number' && roll.max < roll.bounds.max)
+  })
 }
 
 /** A rare searched without one of its T1 or T2 mods: too low a bar to call it worthless. */
