@@ -171,7 +171,7 @@ const otherButtons = computed<Array<{ id: ReplyId, label: string, title: string 
 .summary { flex: 1 1 0; display: flex; flex-direction: column; gap: 2px; min-width: 0; text-align: left; background: none; border: 0; padding: 0; color: inherit; font: inherit; cursor: pointer; }
 .closed .summary { cursor: default; }
 .summary:focus-visible { outline: 2px solid var(--w-accent); outline-offset: 1px; }
-.oneLine { flex-direction: row; align-items: center; gap: 6px; min-height: 22px; }
+.oneLine { flex-direction: row; align-items: center; gap: 6px; min-height: calc(22px * var(--w-text-scale, 1)); }
 .line { display: flex; align-items: center; gap: 6px; min-width: 0; }
 .who { font-weight: 600; }
 .whoShort { font-weight: 600; flex: 0 1 auto; max-width: 7rem; }
@@ -179,24 +179,24 @@ const otherButtons = computed<Array<{ id: ReplyId, label: string, title: string 
 .dot { width: 7px; height: 7px; border-radius: 50%; flex: none; }
 .dotUp { background: var(--w-up); }
 .dotDown { background: var(--w-down); }
-.chip { font-size: 10.5px; line-height: 14px; border-radius: 999px; padding: 0 6px; border: 1px solid var(--w-line-strong, var(--w-line)); color: var(--w-dim); white-space: nowrap; }
+.chip { font-size: calc(10.5px * var(--w-text-scale, 1)); line-height: calc(14px * var(--w-text-scale, 1)); border-radius: 999px; padding: 0 6px; border: 1px solid var(--w-line-strong, var(--w-line)); color: var(--w-dim); white-space: nowrap; }
 .up { color: var(--w-up); border-color: color-mix(in srgb, var(--w-up) 45%, transparent); }
 .down { color: var(--w-down); border-color: color-mix(in srgb, var(--w-down) 45%, transparent); }
 .item { display: flex; align-items: center; gap: 6px; min-width: 0; }
 .art { width: 18px; height: 18px; object-fit: contain; flex: none; }
 /* The same width whether it holds the age or the button, so nothing jumps. */
-.slot { position: relative; flex: none; width: 62px; min-height: 22px; display: flex; align-items: center; justify-content: flex-end; }
+.slot { position: relative; flex: none; width: calc(62px * var(--w-text-scale, 1)); min-height: calc(22px * var(--w-text-scale, 1)); display: flex; align-items: center; justify-content: flex-end; }
 .age { cursor: pointer; white-space: nowrap; }
 .next { width: 100%; }
 .slotHover .next { position: absolute; inset: 0 0 0 auto; opacity: 0; pointer-events: none; }
 .row:hover .slotHover .next, .slotHover .next:focus-visible { opacity: 1; pointer-events: auto; }
 .row:hover .slotHover .age { visibility: hidden; }
-.tab { display: flex; align-items: center; gap: 8px; font-size: 11.5px; line-height: 1.35; padding-top: 2px; }
+.tab { display: flex; align-items: center; gap: 8px; font-size: calc(11.5px * var(--w-text-scale, 1)); line-height: 1.35; padding-top: 2px; }
 .grid { --n: 12; display: grid; grid-template-columns: repeat(var(--n), 1fr); gap: 1px; width: 49px; height: 49px; flex: none; }
 .grid i { background: color-mix(in srgb, var(--w-fg) 9%, transparent); border-radius: 0.5px; }
 .grid i.on { background: var(--w-accent); box-shadow: 0 0 4px var(--w-accent); }
 .btns { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; padding-top: 2px; }
-.btn { display: inline-flex; align-items: center; justify-content: center; gap: 4px; flex: none; min-height: 22px; font-size: 11.5px; line-height: 20px; padding: 0 8px; border-radius: var(--w-r-sm, 3px);
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 4px; flex: none; min-height: calc(22px * var(--w-text-scale, 1)); font-size: calc(11.5px * var(--w-text-scale, 1)); line-height: calc(20px * var(--w-text-scale, 1)); padding: 0 8px; border-radius: var(--w-r-sm, 3px);
   border: 1px solid var(--w-line-strong, var(--w-line)); background: var(--w-panel-solid, transparent); color: var(--w-fg); cursor: pointer; white-space: nowrap; }
 .btn:hover { background: color-mix(in srgb, var(--w-fg) 12%, var(--w-panel-solid, transparent)); }
 .btn:focus-visible { outline: 2px solid var(--w-accent); outline-offset: 1px; }

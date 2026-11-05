@@ -131,7 +131,7 @@ export default defineComponent({
   min-width: 6rem;
   font-family: var(--w-body);
   font-size: var(--w-fs-xs);
-  line-height: 14px;
+  line-height: calc(14px * var(--w-text-scale, 1));
   font-variant-numeric: tabular-nums;
 }
 .track {

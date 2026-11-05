@@ -1,6 +1,7 @@
 // Woke UI framework: theme tokens + components every woke module builds on.
 // See README.md in this folder for usage.
 import './theme'
+import './text-scale'
 import './forms.css'
 
 export { wokeTheme, WOKE_THEMES } from './theme'

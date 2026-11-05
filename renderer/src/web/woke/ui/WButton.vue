@@ -20,9 +20,9 @@ withDefaults(defineProps<{
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 12px;
+  font-size: calc(12px * var(--w-text-scale, 1));
   font-weight: 500;
-  line-height: 18px;
+  line-height: calc(18px * var(--w-text-scale, 1));
   padding: 3px 10px;
   border: 1px solid var(--w-line-strong);
   border-radius: var(--w-radius-sm);
@@ -32,7 +32,7 @@ withDefaults(defineProps<{
 }
 .btn:hover { background: var(--w-panel-3); }
 .btn:disabled { opacity: 0.5; pointer-events: none; }
-.sm { padding: 1px 7px; font-size: 11.5px; }
+.sm { padding: 1px 7px; font-size: calc(11.5px * var(--w-text-scale, 1)); }
 .default {}
 .primary { background: var(--w-accent); border-color: var(--w-accent); color: var(--w-accent-fg); }
 .primary:hover { background: var(--w-accent); filter: brightness(1.1); }

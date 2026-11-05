@@ -581,5 +581,5 @@ const tiles = computed(() => mapTileRows(inView.value, props.config.unit, divine
   border-radius: var(--w-r-sm);
 }
 .input:focus { outline: none; border-color: var(--w-accent); }
-.trading { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; padding: 6px 0 2px; border-top: 1px solid var(--w-line); font-size: 12px; }
+.trading { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; padding: 6px 0 2px; border-top: 1px solid var(--w-line); font-size: calc(12px * var(--w-text-scale, 1)); }
 </style>

@@ -103,12 +103,12 @@ const uses = computed(() => {
 .warn { color: var(--w-warn); }
 .uses { display: flex; align-items: center; gap: var(--w-s2); flex-wrap: wrap; padding-top: var(--w-s2); font-size: var(--w-fs-sm); }
 .use {
-  display: inline-flex; align-items: center; gap: 4px; padding: 0 var(--w-s2); line-height: 20px;
+  display: inline-flex; align-items: center; gap: 4px; padding: 0 var(--w-s2); line-height: calc(20px * var(--w-text-scale, 1));
   border: 1px solid color-mix(in srgb, var(--w-info) 50%, transparent); border-radius: var(--w-r-pill);
   color: var(--w-info); background: color-mix(in srgb, var(--w-info) 8%, transparent); font-size: var(--w-fs-xs);
 }
 .use:hover { background: color-mix(in srgb, var(--w-info) 16%, transparent); }
-.use i { font-size: 9px; }
+.use i { font-size: calc(9px * var(--w-text-scale, 1)); }
 .editor { padding-top: var(--w-s2); }
 .note { font-size: var(--w-fs-sm); padding: var(--w-s2) 0; }
 </style>

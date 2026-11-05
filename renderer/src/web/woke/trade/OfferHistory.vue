@@ -40,9 +40,9 @@ const visible = computed(() => props.offers.slice(0, limit.value))
 
 <style module>
 .wrap { display: flex; flex-direction: column; border-top: 1px solid var(--w-line); }
-.toggle { display: flex; align-items: center; gap: 6px; min-height: 24px; padding: 0 var(--w-pad); background: none; border: 0; color: var(--w-dim); font: inherit; font-size: 11.5px; cursor: pointer; text-align: left; }
+.toggle { display: flex; align-items: center; gap: 6px; min-height: calc(24px * var(--w-text-scale, 1)); padding: 0 var(--w-pad); background: none; border: 0; color: var(--w-dim); font: inherit; font-size: calc(11.5px * var(--w-text-scale, 1)); cursor: pointer; text-align: left; }
 .toggle:hover { color: var(--w-fg); }
 .toggle:focus-visible, .more:focus-visible { outline: 2px solid var(--w-accent); outline-offset: -2px; }
-.more { min-height: 24px; padding: 0 var(--w-pad); background: none; border: 0; border-top: 1px solid var(--w-line); color: var(--w-dim); font: inherit; font-size: 11.5px; cursor: pointer; text-align: left; }
+.more { min-height: calc(24px * var(--w-text-scale, 1)); padding: 0 var(--w-pad); background: none; border: 0; border-top: 1px solid var(--w-line); color: var(--w-dim); font: inherit; font-size: calc(11.5px * var(--w-text-scale, 1)); cursor: pointer; text-align: left; }
 .more:hover { color: var(--w-fg); }
 </style>

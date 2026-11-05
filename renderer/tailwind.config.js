@@ -1,9 +1,26 @@
+function textScaled (v) {
+  return `calc(${v} * var(--w-text-scale, 1))`
+}
+
 module.exports = {
   content: ['./src/**/*.{ts,vue}'],
   theme: {
     extend: {
       fontFamily: {
-      }
+      },
+      // Tailwind's own sizes, following the Text size setting (woke/ui/text-scale.ts).
+      fontSize: Object.fromEntries(Object.entries({
+        xs: ['0.75rem', '1rem'],
+        sm: ['0.875rem', '1.25rem'],
+        base: ['1rem', '1.5rem'],
+        lg: ['1.125rem', '1.75rem'],
+        xl: ['1.25rem', '1.75rem'],
+        '2xl': ['1.5rem', '2rem'],
+        '3xl': ['1.875rem', '2.25rem'],
+        '4xl': ['2.25rem', '2.5rem']
+      }).map(([k, [size, line]]) => [k, [textScaled(size), textScaled(line)]])),
+      lineHeight: Object.fromEntries(['3', '4', '5', '6', '7', '8', '9', '10']
+        .map(k => [k, textScaled(`${Number(k) / 4}rem`)]))
     },
     colors: {
       transparent: 'transparent',

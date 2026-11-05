@@ -40,7 +40,7 @@ const title = computed(() => {
   align-self: center;
   font-family: var(--w-num);
   font-size: var(--w-fs-xs);
-  line-height: 16px;
+  line-height: calc(16px * var(--w-text-scale, 1));
   padding: 0 5px;
   border-radius: var(--w-r-sm);
   white-space: nowrap;

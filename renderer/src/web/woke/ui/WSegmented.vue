@@ -24,10 +24,10 @@ const emit = defineEmits<{ (e: 'update:modelValue', v: string): void }>()
   overflow: hidden;
 }
 .seg button {
-  font-size: 12px;
+  font-size: calc(12px * var(--w-text-scale, 1));
   color: var(--w-dim);
   padding: 0 6px;
-  line-height: 22px;
+  line-height: calc(22px * var(--w-text-scale, 1));
   white-space: nowrap;
   font-family: var(--w-body);
 }

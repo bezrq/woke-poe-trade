@@ -29,5 +29,5 @@ const lines = computed(() => {
 <style module>
 .body { display: flex; flex-direction: column; gap: 4px; padding: 6px var(--w-pad) 8px; }
 .line { display: flex; gap: 6px; color: var(--w-down); }
-.line i { margin-top: 3px; font-size: 11px; }
+.line i { margin-top: 3px; font-size: calc(11px * var(--w-text-scale, 1)); }
 </style>

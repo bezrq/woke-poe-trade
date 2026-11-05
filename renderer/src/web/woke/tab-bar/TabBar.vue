@@ -608,10 +608,10 @@ onBeforeUnmount(() => document.removeEventListener('paste', onOverlayPaste))
   right: 1px;
   top: 1px;
   min-width: 13px;
-  height: 13px;
+  height: calc(13px * var(--w-text-scale, 1));
   padding: 0 2px;
   border-radius: var(--w-r-sm);
-  font: var(--w-fs-xs)/13px var(--w-num);
+  font: var(--w-fs-xs)/calc(13px * var(--w-text-scale, 1)) var(--w-num);
   text-align: center;
   color: var(--w-accent-fg);
   background: var(--w-warn);
@@ -704,7 +704,7 @@ onBeforeUnmount(() => document.removeEventListener('paste', onOverlayPaste))
   outline: 0;
   background: none;
   color: var(--w-fg);
-  font: var(--w-text)/18px var(--w-body);
+  font: var(--w-text)/calc(18px * var(--w-text-scale, 1)) var(--w-body);
 }
 .findInput::placeholder { color: var(--w-dim); }
 .prices { margin-bottom: 8px; padding-bottom: 6px; border-bottom: 1px solid var(--w-line); }

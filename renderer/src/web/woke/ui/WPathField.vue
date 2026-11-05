@@ -60,13 +60,13 @@ async function browse () {
 <style module>
 .wrap { display: flex; align-items: center; gap: var(--w-s2); width: 100%; min-width: 0; }
 .field {
-  flex: 1; min-width: 0; height: 26px; padding: 0 8px;
+  flex: 1; min-width: 0; height: calc(26px * var(--w-text-scale, 1)); padding: 0 8px;
   font-family: var(--w-mono); font-size: var(--w-fs-sm); color: var(--w-fg);
   background: var(--w-panel-2); border: 1px solid var(--w-line); border-radius: var(--w-r-sm);
 }
 .field:focus { outline: none; border-color: var(--w-accent); }
 .field::placeholder { color: var(--w-faint); font-family: var(--w-body); }
-.chip { flex: none; font-size: var(--w-fs-xs); border-radius: var(--w-r-pill); padding: 0 8px; line-height: 18px; border: 1px solid currentColor; white-space: nowrap; }
+.chip { flex: none; font-size: var(--w-fs-xs); border-radius: var(--w-r-pill); padding: 0 8px; line-height: calc(18px * var(--w-text-scale, 1)); border: 1px solid currentColor; white-space: nowrap; }
 .ok { color: var(--w-up); }
 .bad { color: var(--w-down); }
 .auto { color: var(--w-dim); }
