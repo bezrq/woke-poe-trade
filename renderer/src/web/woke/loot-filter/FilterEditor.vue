@@ -150,7 +150,7 @@
                 <button type="button" :class="$style.chipX" :title="movedHere(b) ? 'Back to where it was' : 'Take it off this tier'" :aria-label="`Take ${b} off this tier`" @click="takeOff(b)"><i aria-hidden="true" class="fas fa-times" /></button>
               </span>
             </div>
-            <AddItemField v-if="store.doc.value && selType && targets.includes(tier.tier)" :doc="store.doc.value" :type="selType" :tier="tier.tier" @add="addItem" />
+            <AddItemField v-if="store.doc.value && selType && targets.includes(tier.tier)" :key="`${selType}|${tier.tier}`" :doc="store.doc.value" :type="selType" :tier="tier.tier" @add="addItem" />
             <div v-if="picked.length && targets.length > 1" class="flex items-center gap-2 text-sm" style="margin-top: 6px;">
               <span class="w-dim">Move {{ picked.length > 1 ? `${picked.length} items` : picked[0] }} to</span>
               <select :class="$style.select" value="" aria-label="Target tier" @change="moveBase(($event.target as HTMLSelectElement).value)">
@@ -624,7 +624,7 @@ function addItem (r: AddResult) {
   if (!type || !to) return
   const from = r.sameGroup ? r.block?.tier ?? '' : ''
   const undo = props.store.editWithUndo({ kind: 'move', type, base: r.base, from, to })
-  const note = r.caughtEarlier && r.block ? `. ${ruleLabel(r.block.type, r.block.tier)} comes first, so it still decides how it looks` : ''
+  const note = r.caughtBy ? `. ${ruleLabel(r.caughtBy.type, r.caughtBy.tier)} comes first, so it still decides how it looks` : ''
   toast(`${r.sameGroup ? 'Moved' : 'Added'} ${r.base} to ${tierLabel(to)}${note}`, { anchor: panel.value?.el, undo })
 }
 

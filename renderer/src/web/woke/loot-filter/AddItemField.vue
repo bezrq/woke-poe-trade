@@ -43,6 +43,8 @@ function allGameBases (): string[] {
   if (!gameBases) {
     const names = new Set<string>()
     for (const i of ITEMS_ITERATOR('"namespace":"ITEM"') as Generator<BaseType>) names.add(i.refName)
+    // Game data still loading gives none: look again next time.
+    if (!names.size) return []
     gameBases = [...names]
   }
   return gameBases

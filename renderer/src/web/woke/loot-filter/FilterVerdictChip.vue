@@ -21,7 +21,7 @@ import { matchItem } from './match'
 import { conditionSignature, readStyle } from './edits'
 import type { StylePatch } from './edits'
 import { SAFETY_LOOK, SAFETY_RULE_TYPE } from './safety'
-import { groupName } from './groups'
+import { ruleLabel } from './parse'
 
 const props = defineProps<{ item: ParsedItem }>()
 const active = useActiveFilter()
@@ -49,7 +49,7 @@ const verdict = computed<Verdict | null>(() => {
   const facts = itemFacts(props.item.rawText, props.item)
   const m = matchItem(doc, { ...facts, areaLevel: store.areaLevel.value ?? store.config.fallbackAreaLevel })
   const b = m.final?.block
-  const where = b?.type ? `${groupName(b.type)}${b.tier && !b.tier.startsWith('#') ? ` › ${b.tier}` : ''}` : 'no rule'
+  const where = ruleLabel(b?.type ?? null, b?.tier ?? null)
   const price = chaos.value
   const line = store.config.safetyNet.minChaos
   const base = facts.baseType

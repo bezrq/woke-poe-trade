@@ -78,8 +78,8 @@ describe('adding an item to a tier', () => {
     expect(rusted.block?.tier).toBe('t4')
     const [mitts] = addSearch(doc, 'scarabs', 't3', 'mitts')
     expect(mitts.sameGroup).toBe(false)
-    expect(mitts.caughtEarlier).toBe(true)
-    expect(addSearch(doc, 'scarabs', 't2', 'mitts')[0].caughtEarlier).toBe(false)
+    expect(mitts.caughtBy?.tier).toBe('x')
+    expect(addSearch(doc, 'scarabs', 't2', 'mitts')[0].caughtBy).toBeNull()
   })
 
   it('also finds any item in the game, after what the filter lists', () => {
@@ -126,9 +126,31 @@ describe('adding an item to a tier', () => {
     expect(describeEdit({ id: 1, kind: 'move', type: 'scarabs', base: 'X', from: 't4', to: '' })).toBe('X: taken off Scarabs › Tier 4')
   })
 
-  it('taking off an item no longer there is reported, not silent', () => {
+  it('taking off an item already gone counts as done, so it never asks for a new home', () => {
     const doc = parseFilter(source)
-    expect(applyEdits(doc, [{ id: 1, kind: 'move', type: 'scarabs', base: 'Gone', from: 't4', to: '' }])[0].ok).toBe(false)
+    expect(applyEdits(doc, [{ id: 1, kind: 'move', type: 'scarabs', base: 'Gone', from: 't4', to: '' }])[0].ok).toBe(true)
+  })
+
+  it('names its real tier when an own rule or another group lists it first', () => {
+    const doc = parseFilter([
+      'Show # $type->woke->own $tier->divine-1', '\tBaseType == "Divine Orb"', '',
+      'Show # $type->other $tier->o', '\tBaseType == "Divine Orb"', '',
+      'Show # $type->currency $tier->t1', '\tBaseType == "Mirror"', '',
+      'Show # $type->currency $tier->t2', '\tBaseType == "Divine Orb"', ''
+    ].join('\n'))
+    const [r] = addSearch(doc, 'currency', 't1', 'divine')
+    expect(r.sameGroup).toBe(true)
+    expect(r.block?.tier).toBe('t2')
+    expect(r.caughtBy?.type).toBe('woke->own')
+  })
+
+  it('judges what comes first by the tier\'s live rule', () => {
+    const doc = parseFilter([
+      '#Show # $type->c $tier->t1', '#\tBaseType == "Off"', '',
+      'Show # $type->other $tier->o', '\tBaseType == "Item"', '',
+      'Show # $type->c $tier->t1', '\tBaseType == "On"', ''
+    ].join('\n'))
+    expect(addSearch(doc, 'c', 't1', 'item')[0].caughtBy?.tier).toBe('o')
   })
 
   it('adding then taking off in one go undoes it', () => {

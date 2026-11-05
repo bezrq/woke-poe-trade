@@ -82,7 +82,7 @@ export function isValidEdit (e: unknown): e is FilterEdit {
   if (!x || typeof x !== 'object' || typeof x.id !== 'number' || typeof x.type !== 'string') return false
   const str = (...keys: string[]) => keys.every(k => typeof x[k] === 'string')
   switch (x.kind) {
-    case 'move': return str('base', 'from', 'to')
+    case 'move': return str('base', 'from', 'to') && Boolean(x.from || x.to)
     case 'style': return str('tier') && isPatch(x.patch)
     case 'visibility': return str('tier') && VISIBILITIES.includes(x.visibility as string)
     case 'group': return typeof x.hidden === 'boolean'
@@ -245,7 +245,8 @@ function applyOne (doc: FilterDoc, edit: FilterEdit): EditStatus {
       const named = listed.filter(b => b.tier === edit.from)
       const sources = edit.from === '' ? [] : (named.length || edit.to === '' ? named : listed)
       if (edit.to === '') {
-        if (!sources.length) return { edit, ok: false, blocks: 0, message: `${edit.base} is no longer in this tier` }
+        // Already gone (a new version took it off): that's what you wanted.
+        if (!sources.length) return { edit, ok: true, blocks: 0 }
         for (const b of sources) {
           const c = baseTypeCondition(b)!
           c.values = c.values.filter(v => v !== edit.base)
