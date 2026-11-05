@@ -20,7 +20,10 @@ export const DEFAULT_SEED = [
   '+# to Level of all',
   'to Level of Socketed',
   'increased Movement Speed',
+  // A rare's life usually reaches the search as its total.
+  'total maximum Life',
   'to maximum Life',
+  'total maximum Energy Shield',
   'to maximum Energy Shield',
   'increased maximum Energy Shield',
   'to all Elemental Resistances',
@@ -122,6 +125,12 @@ export function cachedDrivers (key: string) { return driverCache.get(key) }
 export function cacheDrivers (key: string, v: DriverResult[]) { driverCache.set(key, v); trim(driverCache) }
 export function cachedLadder (key: string) { return ladderCache.get(key) }
 export function cacheLadder (key: string, v: LadderResult[]) { ladderCache.set(key, v); trim(ladderCache) }
+
+/** For a fresh search: measured results from before it no longer apply. */
+export function clearDriverCaches () {
+  driverCache.clear()
+  ladderCache.clear()
+}
 
 function trim (m: Map<string, unknown>) {
   while (m.size > 50) m.delete(m.keys().next().value as string)
