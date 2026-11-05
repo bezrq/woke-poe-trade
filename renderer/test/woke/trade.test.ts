@@ -363,6 +363,14 @@ describe('reopening closed offers', () => {
     expect(queue(book).length).toBe(1)
   })
 
+  it('gives an offer closed past its last step something for the key to do', () => {
+    const book = newBook()
+    const o = whisper(book, 'Ignithor', 1000)
+    markSent(book, o, 'kick', 2000)
+    expect(o.closed).toBe('dismissed')
+    expect(nextStep(reopen(book, o, 3000))).toBe('kick')
+  })
+
   it('leaves traded offers to the sales log', () => {
     const book = newBook()
     const o = whisper(book, 'Ignithor', 1000)

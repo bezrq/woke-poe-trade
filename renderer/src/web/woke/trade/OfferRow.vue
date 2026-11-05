@@ -185,9 +185,8 @@ const otherButtons = computed<Array<{ id: ReplyId, label: string, title: string 
 .item { display: flex; align-items: center; gap: 6px; min-width: 0; }
 .art { width: 18px; height: 18px; object-fit: contain; flex: none; }
 /* The same width whether it holds the age or the button, so nothing jumps. */
-.slot { position: relative; flex: none; width: 3.8rem; min-height: 22px; display: flex; align-items: center; justify-content: flex-end; }
+.slot { position: relative; flex: none; width: 62px; min-height: 22px; display: flex; align-items: center; justify-content: flex-end; }
 .age { cursor: pointer; white-space: nowrap; }
-.action { padding: 0 6px; }
 .next { width: 100%; }
 .slotHover .next { position: absolute; inset: 0 0 0 auto; opacity: 0; pointer-events: none; }
 .row:hover .slotHover .next, .slotHover .next:focus-visible { opacity: 1; pointer-events: auto; }
@@ -203,4 +202,5 @@ const otherButtons = computed<Array<{ id: ReplyId, label: string, title: string 
 .btn:focus-visible { outline: 2px solid var(--w-accent); outline-offset: 1px; }
 .primary { border-color: var(--w-accent); color: var(--w-accent); }
 .kbd { margin-left: 2px; }
+.action { padding: 0 6px; }
 </style>

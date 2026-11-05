@@ -107,7 +107,8 @@ test('offers close on click, show the next step on hover, and a dismissed one ca
   await reopen.click()
   await expect(row.locator('[data-reply="trade"]')).toBeVisible()
   await expect(reopen).toHaveCount(0)
-  await expect.poll(() => fs.readFileSync(saved, 'utf8')).not.toContain('Kaltenhalt')
+  // Kept, marked reopened, so a restart can't lose it.
+  await expect.poll(() => fs.readFileSync(saved, 'utf8')).toContain('reopenedAt')
 })
 
 test('the row style setting: next step always shown, or two lines', async ({ overlay }) => {
@@ -152,6 +153,22 @@ test('the history keeps old offers across restarts and reopens them', async ({ o
   await toggle.click()
   await overlay.snap('offer history open')
   await trade.locator('[data-offer="Ignithor"] [data-reopen]').click()
+  await expect(trade.locator('[data-offer="Ignithor"] [data-reply="invite"]')).toBeVisible()
+  await expect(trade.locator('[data-offer-history]')).toHaveCount(0)
+})
+
+test('an offer reopened before a restart comes back open, old as it is', async ({ overlay, fakeApp }) => {
+  const dir = path.join(fakeApp.opts.userData, 'woke-offer-history')
+  fs.mkdirSync(dir, { recursive: true })
+  const at = Date.now() - 3 * 86_400_000
+  fs.writeFileSync(path.join(dir, 'offers.json'), JSON.stringify([{
+    id: 'old-2', dir: 'sell', who: 'Ignithor', body: 'x', item: "Doedre's Damning, Paua Ring", qty: 1, bulk: false,
+    price: { amount: 10, currency: 'Chaos Orb' }, league: 'Testleague', tab: null, note: '',
+    at, lastAt: at, repeats: 0, step: 0, inArea: false, traded: false, offline: false, messages: [],
+    skippedAt: null, actedAt: null, closedAt: at + 60_000, closed: 'dismissed', reopenedAt: Date.now() - 60_000
+  }]))
+  await overlay.boot({ widgets: [{ ...TRADE, wmWants: 'show' as const, tab: 'offers' }], overlayActive: true })
+  const trade = overlay.widget('woke-trade')
   await expect(trade.locator('[data-offer="Ignithor"] [data-reply="invite"]')).toBeVisible()
   await expect(trade.locator('[data-offer-history]')).toHaveCount(0)
 })

@@ -38,6 +38,8 @@ export interface Offer extends TradeOffer {
   // Closed offers stay a moment so you see what happened, then drop off.
   closedAt: number | null
   closed: 'done' | 'dismissed' | 'expired' | null
+  // In a saved history record: when it was reopened, so a restart brings it back.
+  reopenedAt?: number | null
 }
 
 // A finished trade, for the sales log.
@@ -73,7 +75,8 @@ export function newBook (): TradeBook {
 
 let seq = 0
 function offerId (at: number): string {
-  return `${at.toString(36)}-${(seq++).toString(36)}`
+  // Random too: saved in the history, so it must not repeat after a restart.
+  return `${at.toString(36)}-${(seq++).toString(36)}-${Math.random().toString(36).slice(2, 7)}`
 }
 
 export function isOpen (o: Offer): boolean {
@@ -265,6 +268,8 @@ export function reopen (book: TradeBook, o: Offer, at: number): Offer {
   open.skippedAt = null
   // Fresh, or the next prune would expire it again.
   open.lastAt = at
+  // Kick and Thanks close an offer past its last step; the key needs one to do.
+  open.step = Math.min(open.step, stepsOf(open).length - 1)
   if (!live) book.offers.push(open)
   return open
 }

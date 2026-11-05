@@ -100,7 +100,7 @@ import { logTail } from '../campaign/log-tail'
 import { onGameLog } from '../shared/game-log'
 import OfferRow from './OfferRow.vue'
 import OfferHistory from './OfferHistory.vue'
-import { alreadyClosed, applyEvent, belongsInHistory, dismiss, front, markSent, markTraded, newBook, prune, queue, recordFor, reopen, skip } from './book'
+import { OPEN_FOR_MS, alreadyClosed, applyEvent, belongsInHistory, dismiss, front, markSent, markTraded, newBook, prune, queue, recordFor, reopen, skip } from './book'
 import type { Offer, TradeBook, TradeRecord } from './book'
 import { DEFAULT_REPLIES, parseHotkeyTarget, replyText } from './widget'
 import type { ReplyId } from './widget'
@@ -178,7 +178,7 @@ const anyInArea = computed(() => shown.value.some(o => !o.closed && o.inArea))
 // The history, minus what's still on show above it.
 const older = computed(() => {
   const onShow = new Set(shown.value.map(o => o.id))
-  return history.offers.value.filter(o => !onShow.has(o.id) && (props.config.trackBuying !== false || o.dir === 'sell'))
+  return history.offers.value.filter(o => belongsInHistory(o) && !onShow.has(o.id) && (props.config.trackBuying !== false || o.dir === 'sell'))
 })
 const historyOpen = shallowRef(false)
 function toggleHistory () {
@@ -265,7 +265,7 @@ onGameLog((lines) => {
 
 // After a restart, pick up offers from the last half hour of Client.txt. The
 // history comes first, so offers you already closed stay closed.
-history.load().catch(() => {}).then(() => logTail()).then(tail => {
+loadHistory().then(() => logTail()).then(tail => {
   const since = Date.now() - 30 * 60_000
   const until = Date.now() + 60_000
   for (const line of tail.lines) {
@@ -282,6 +282,29 @@ history.load().catch(() => {}).then(() => logTail()).then(tail => {
   replayed = true
   seenLive.clear()
 })
+
+// Offers you reopened and hadn't closed again come back; old ones rest in the history.
+function restoreReopened () {
+  for (const rec of history.offers.value) {
+    if (rec.reopenedAt == null) continue
+    if (Date.now() - rec.reopenedAt < OPEN_FOR_MS) reopen(book, rec, rec.reopenedAt)
+    else history.forgetReopened(rec.id)
+  }
+}
+
+async function loadHistory () {
+  for (let tries = 0; tries < 3; tries++) {
+    try {
+      await history.load()
+      restoreReopened()
+      return
+    } catch (err) {
+      // A locked file throws rather than reading as empty.
+      if (tries === 2) toast(`Couldn't read the offer history: ${(err as Error).message}`)
+      else await new Promise(resolve => setTimeout(resolve, 2000))
+    }
+  }
+}
 
 function ping () {
   try {
@@ -328,20 +351,28 @@ function reply (o: Offer, id: ReplyId) {
 
 function traded (o: Offer) {
   const t = markTraded(o, Date.now())
-  if (t) logTrade(t, Date.now(), true)
+  if (t) {
+    logTrade(t, Date.now(), true)
+    // No "Trade accepted" line to find, so remember it: otherwise a restart
+    // brings the whisper back open, and it could be sold twice. History hides it.
+    history.add(o).catch(() => {})
+  }
 }
 
 function dismissOffer (o: Offer) {
   dismiss(o, Date.now())
-  toast(`Removed ${o.who}'s offer`, {
-    anchor: panel.value?.$el,
-    undo: () => reopenOffer(o)
-  })
+  // In the dock card the row's Reopen does this: a toast out on the screen isn't
+  // clickable while the game has the mouse.
+  const el: Element | undefined = panel.value?.$el
+  if (!el?.getBoundingClientRect().width) return
+  toast(`Removed ${o.who}'s offer`, { anchor: el, undo: () => reopenOffer(o) })
 }
 
 function reopenOffer (o: Offer) {
   const open = reopen(book, o, Date.now())
-  history.remove(o.id).catch(() => {})
+  // They whispered again meanwhile, so the new offer stands in for this one.
+  if (open.id !== o.id) history.remove(o.id).catch(() => {})
+  else history.markReopened(o.id, Date.now()).catch(() => {})
   picked.value = open.id
   now.value = Date.now()
 }
@@ -349,7 +380,9 @@ function reopenOffer (o: Offer) {
 // Closed offers go into the history as they close, so a restart can't lose them.
 watch(() => book.offers.filter(belongsInHistory).map(o => o.id).join(), () => {
   for (const o of book.offers) {
-    if (belongsInHistory(o) && !history.has(o.id)) {
+    if (!belongsInHistory(o)) continue
+    const saved = history.get(o.id)
+    if (!saved || saved.reopenedAt != null) {
       history.add(o).catch((err: Error) => toast(`Couldn't save the offer history: ${err.message}`))
     }
   }

@@ -53,14 +53,35 @@ export const useOfferHistory = createGlobalState(() => {
     offers.value = [...offers.value, ...list.filter(o => !mine.has(o.id))].sort(byClosed)
   }
 
-  function has (id: string): boolean {
-    return offers.value.some(o => o.id === id)
+  function get (id: string): Offer | undefined {
+    return offers.value.find(o => o.id === id)
   }
 
   async function add (o: Offer): Promise<void> {
     const plain = JSON.parse(JSON.stringify(o)) as Offer
+    delete plain.reopenedAt
     offers.value = [plain, ...offers.value.filter(x => x.id !== plain.id)].sort(byClosed)
+    try {
+      await hostRequest('offer-history-add', { offer: plain })
+    } catch (err) {
+      // Not in memory either, so the next offer to close tries it again.
+      offers.value = offers.value.filter(x => x !== plain)
+      throw err
+    }
+  }
+
+  // The record stays until the offer closes again, so a restart can't lose it.
+  async function markReopened (id: string, at: number): Promise<void> {
+    const rec = get(id)
+    if (!rec) return
+    const plain = { ...rec, reopenedAt: at }
+    offers.value = offers.value.map(x => x.id === id ? plain : x)
     await hostRequest('offer-history-add', { offer: plain })
+  }
+
+  // After a restart: back to a plain old record.
+  function forgetReopened (id: string) {
+    offers.value = offers.value.map(x => x.id === id ? { ...x, reopenedAt: null } : x)
   }
 
   async function remove (id: string): Promise<void> {
@@ -68,7 +89,7 @@ export const useOfferHistory = createGlobalState(() => {
     await hostRequest('offer-history-delete', { id })
   }
 
-  return { offers, load, has, add, remove }
+  return { offers, load, get, add, markReopened, forgetReopened, remove }
 })
 
 const DAY_MS = 24 * 3_600_000

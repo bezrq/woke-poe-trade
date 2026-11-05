@@ -48,7 +48,7 @@ export const tradeLogHandlers: Record<string, (args: Args) => Promise<unknown>> 
       return true
     })
   },
-  // Only when an offer is reopened: it's back in the queue.
+  // Only when an offer was replaced by a newer copy of itself.
   'offer-history-delete': async ({ id }) => {
     return await queued(async () => {
       const list = await readHistory()
