@@ -13,6 +13,10 @@ export class GameWindow extends EventEmitter {
 
   get isActive () { return this._isActive }
 
+  // woke: what Windows last reported. isActive also turns true the moment we
+  // ask for focus, before the game actually has it.
+  get hasFocus () { return OverlayController.targetHasFocus }
+
   set isActive (active: boolean) {
     if (this.isActive !== active) {
       this._isActive = active

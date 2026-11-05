@@ -1,7 +1,7 @@
 // Plain names for tags, and the add-item box on a tier.
 import { describe, it, expect } from 'vitest'
 import { groupLabel, sectionLabel, tierLabel } from '@/web/woke/loot-filter/names'
-import { addSearch, groupName } from '@/web/woke/loot-filter/groups'
+import { addSearch, byPrice, groupName, pickBases } from '@/web/woke/loot-filter/groups'
 import { addEdit, applyEdits, describeEdit, moveTargets } from '@/web/woke/loot-filter/edits'
 import { matchItem } from '@/web/woke/loot-filter/match'
 import { parseFilter, ruleLabel, serializeFilter } from '@/web/woke/loot-filter/parse'
@@ -52,6 +52,35 @@ describe('group names', () => {
   it('leaves mixed-case chapter titles alone and calms capitals', () => {
     expect(sectionLabel('IDENTIFIED MOD FILTERING')).toBe('Identified mod filtering')
     expect(sectionLabel('Exotic Bases')).toBe('Exotic Bases')
+  })
+})
+
+describe('picking chips', () => {
+  const list = ['a', 'b', 'c', 'd', 'e']
+
+  it('a click picks or unpicks, keeping the others', () => {
+    expect(pickBases(list, [], 'b', false, null)).toEqual(['b'])
+    expect(pickBases(list, ['b'], 'd', false, 'b')).toEqual(['b', 'd'])
+    expect(pickBases(list, ['b', 'd'], 'b', false, 'd')).toEqual(['d'])
+  })
+
+  it('shift picks the run from the last one clicked, either way', () => {
+    expect(pickBases(list, ['b'], 'd', true, 'b')).toEqual(['b', 'c', 'd'])
+    expect(pickBases(list, ['d'], 'b', true, 'd')).toEqual(['d', 'b', 'c'])
+    expect(pickBases(list, ['e'], 'a', true, 'b')).toEqual(['e', 'a', 'b'])
+  })
+
+  it('shift with nothing to run from is a plain click', () => {
+    expect(pickBases(list, [], 'c', true, null)).toEqual(['c'])
+    expect(pickBases(list, [], 'c', true, 'gone')).toEqual(['c'])
+  })
+})
+
+describe('sorting chips by price', () => {
+  it('puts the most valuable first and no price last, otherwise as they were', () => {
+    const prices: Record<string, number> = { b: 5, c: 90, d: 5 }
+    expect(byPrice(['a', 'b', 'c', 'd', 'e'], x => prices[x] ?? null)).toEqual(['c', 'b', 'd', 'a', 'e'])
+    expect(byPrice(['x', 'y'], () => null)).toEqual(['x', 'y'])
   })
 })
 

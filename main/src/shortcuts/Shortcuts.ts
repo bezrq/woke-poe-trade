@@ -17,6 +17,8 @@ import { perfRecord } from '../woke/perf'
 type UiohookKeyT = keyof typeof UiohookKey
 // woke: the heist gem OCR worker shuts down after this long unused.
 const OCR_IDLE_MS = 5 * 60 * 1000
+const FOCUS_SETTLE_MS = 120
+const FOCUS_WAIT_MS = 600
 const UiohookToName = Object.fromEntries(Object.entries(UiohookKey).map(([k, v]) => ([v, k])))
 
 export class Shortcuts {
@@ -31,6 +33,48 @@ export class Shortcuts {
       else setTimeout(tick, Math.max(100, idleMs - idle))
     }
     tick()
+  }
+
+  // woke: injected keys go to whichever window has focus, so a command asked for
+  // from the overlay must never type into Discord or a browser. Dropped if
+  // neither the game nor the overlay has focus, or the game never takes it.
+  private typeIntoGame (what: string, type: () => void, onDropped?: () => void) {
+    const dropped = () => {
+      this.logger.write(`warn [Shortcuts] Dropped a ${what}: the game doesn't have focus.`)
+      onDropped?.()
+    }
+    if (this.poeWindow.hasFocus && !this.overlay.isInteractable) {
+      type()
+      return
+    }
+    if (this.overlay.isInteractable) {
+      if (!this.overlay.isFocused) {
+        dropped()
+        return
+      }
+      this.overlay.assertGameActive()
+    } else if (!this.poeWindow.isActive) {
+      dropped()
+      return
+    }
+    // Focus is on its way. Give the game a moment after it arrives.
+    const started = Date.now()
+    let focusedAt: number | undefined
+    const tick = () => {
+      const now = Date.now()
+      if (this.poeWindow.hasFocus) {
+        focusedAt ??= now
+        if (now - focusedAt >= FOCUS_SETTLE_MS) {
+          type()
+          return
+        }
+      } else {
+        focusedAt = undefined
+      }
+      if (focusedAt === undefined && now - started >= FOCUS_WAIT_MS) dropped()
+      else setTimeout(tick, 20)
+    }
+    setTimeout(tick, 20)
   }
 
   private actions: ShortcutAction[] = []
@@ -77,17 +121,14 @@ export class Shortcuts {
 
     this.server.onEventAnyClient('CLIENT->MAIN::user-action', (e) => {
       if (e.action === 'stash-search') {
-        stashSearch(e.text, this.clipboard, this.overlay)
+        this.typeIntoGame('stash search', () => { stashSearch(e.text, this.clipboard, this.overlay) })
       } else if (e.action === 'paste-in-chat') {
         // woke: wait for a pause in typing so the command never lands in the
         // middle of a chat message or a key you're holding.
         this.whenKeysIdle(() => {
-          // A click in the overlay: give the game focus a moment to arrive
-          // before typing into it.
-          const wasOverlay = this.overlay.isInteractable
-          this.overlay.assertGameActive()
-          if (wasOverlay) setTimeout(() => typeInChat(e.text, true, this.clipboard), 120)
-          else typeInChat(e.text, true, this.clipboard)
+          this.typeIntoGame('chat command', () => { typeInChat(e.text, true, this.clipboard) }, () => {
+            this.server.sendEventTo('broadcast', { name: 'MAIN->CLIENT::woke-event', payload: { topic: 'chat-dropped', data: { text: e.text } } })
+          })
         }, e.immediate ? 0 : undefined)
       }
     })
