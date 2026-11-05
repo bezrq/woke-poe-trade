@@ -12,6 +12,9 @@
       </w-setting-row>
     </w-setting-section>
     <w-setting-section title="Offers">
+      <w-setting-row label="Keep the offer bubble" hint="How long the bubble with the buyer and item stays, and the icon after your last offer, counted from the last whisper or reply.">
+        <w-select v-model="bubbleSeconds" :options="BUBBLE_TIMES" class="w-64" />
+      </w-setting-row>
       <w-setting-row label="Offer rows" hint="How offers look until you click one open. Clicking opens all the options either way.">
         <w-select v-model="rowStyle" :options="ROW_STYLES" class="w-64" />
       </w-setting-row>
@@ -45,6 +48,13 @@ import { DEFAULT_REPLIES, REPLY_LABELS } from './widget'
 import type { TradeReplies, TradeRowStyle, TradeWidget } from './widget'
 
 const REPLY_KEYS = Object.keys(DEFAULT_REPLIES) as Array<keyof TradeReplies>
+const BUBBLE_TIMES = [
+  { value: '5', label: '5 seconds' },
+  { value: '30', label: '30 seconds' },
+  { value: '60', label: '1 minute' },
+  { value: '300', label: '5 minutes' },
+  { value: '0', label: 'Until no offers are open' }
+]
 const ROW_STYLES: Array<{ value: TradeRowStyle, label: string }> = [
   { value: 'hover', label: 'One line, next step on hover' },
   { value: 'button', label: 'One line, next step always shown' },
@@ -65,6 +75,8 @@ export default defineComponent({
     return {
       REPLY_KEYS,
       ROW_STYLES,
+      BUBBLE_TIMES,
+      bubbleSeconds: computed<string>({ get: () => String(w().bubbleSeconds ?? 60), set: (v) => { w().bubbleSeconds = Number(v) } }),
       rowStyle: computed<TradeRowStyle>({ get: () => w().rowStyle ?? 'hover', set: (v) => { w().rowStyle = v } }),
       REPLY_LABELS,
       DEFAULT_REPLIES,

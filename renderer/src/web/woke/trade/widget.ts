@@ -59,6 +59,9 @@ export interface TradeWidget extends Widget {
   trackBuying: boolean
   tab: 'offers' | 'log'
   rowStyle?: TradeRowStyle
+  // How long after the last trade activity the bubble and icon stay, in seconds.
+  // 0: the bubble stays until no offers are open.
+  bubbleSeconds?: number
 }
 
 export function hotkeyTarget (wmId: number, what: 'step' | 'busy' | 'skip'): string {

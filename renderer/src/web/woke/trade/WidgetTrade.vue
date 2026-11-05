@@ -2,7 +2,7 @@
   <Widget :config="config" move-handles="corners" :inline-edit="false">
     <!-- While you play: an icon with a badge for open offers that peeks when
          one arrives (A1); resting on it opens the offers with buttons (B1). -->
-    <DockItem ref="dockRef" id="trade" title="Trades" :show="shown.length > 0"
+    <DockItem ref="dockRef" id="trade" title="Trades" :show="shown.length > 0 || lingering"
       :badge="sellCount || null" :tone="anyInArea ? 'up' : 'accent'" :led="book.afk ? 'warn' : null" :wm-id="config.wmId"
       card-width="23rem" @open-change="onCard">
       <template #card>
@@ -247,8 +247,46 @@ function handle (line: string, live: boolean) {
 function announce (o: Offer) {
   if (o.dir !== 'sell') return
   if (props.config.ping !== false) ping()
-  nextTick(() => dockRef.value?.peek(`${o.who}: ${offerLabel(o)} · ${priceLabel(o.price)}`))
+  touched()
+  showBubble(o)
 }
+
+// --- The bubble: the icon grown into one line naming an offer. It stays until
+// the time in the settings has passed since the last whisper or reply, and the
+// icon stays that long too, so you can get back to what you just closed. ---
+const BUBBLE_HOLD_MS = 24 * 3_600_000
+const lingering = shallowRef(false)
+const bubbleId = shallowRef<string | null>(null)
+let lingerTimer: ReturnType<typeof setTimeout> | undefined
+
+function showBubble (o: Offer) {
+  bubbleId.value = o.id
+  // Ended by endBubble, not by the peek's own clock.
+  nextTick(() => dockRef.value?.peek(`${o.who}: ${offerLabel(o)} · ${priceLabel(o.price)}`, BUBBLE_HOLD_MS))
+}
+function endBubble () {
+  bubbleId.value = null
+  dockRef.value?.unpeek()
+}
+function touched () {
+  clearTimeout(lingerTimer)
+  const seconds = props.config.bubbleSeconds ?? 60
+  lingering.value = seconds > 0
+  if (seconds <= 0) return
+  lingerTimer = setTimeout(() => {
+    lingering.value = false
+    endBubble()
+  }, seconds * 1000)
+}
+// The offer it names is closed: the next one takes over, or it ends.
+watch(() => shown.value.filter(o => !o.closed && o.dir === 'sell').map(o => o.id).join(), () => {
+  const id = bubbleId.value
+  if (!id) return
+  const open = shown.value.filter(o => !o.closed && o.dir === 'sell')
+  if (open.some(o => o.id === id)) return
+  if (open.length) showBubble(open[0])
+  else endBubble()
+})
 
 // Lines handled live before the start-up read came back: that read (it
 // retries for a few seconds while the log watcher starts) can hold them too.
@@ -344,12 +382,14 @@ function reply (o: Offer, id: ReplyId) {
     return
   }
   lastSentAt = Date.now()
+  touched()
   send(text)
   markSent(book, o, id, Date.now())
   if (picked.value === o.id && o.closed) picked.value = null
 }
 
 function traded (o: Offer) {
+  touched()
   const t = markTraded(o, Date.now())
   if (t) {
     logTrade(t, Date.now(), true)
@@ -360,6 +400,7 @@ function traded (o: Offer) {
 }
 
 function dismissOffer (o: Offer) {
+  touched()
   dismiss(o, Date.now())
   // In the dock card the row's Reopen does this: a toast out on the screen isn't
   // clickable while the game has the mouse.
@@ -369,6 +410,7 @@ function dismissOffer (o: Offer) {
 }
 
 function reopenOffer (o: Offer) {
+  touched()
   const open = reopen(book, o, Date.now())
   // They whispered again meanwhile, so the new offer stands in for this one.
   if (open.id !== o.id) history.remove(o.id).catch(() => {})
@@ -406,6 +448,7 @@ const hotkeys = MainProcess.onEvent('MAIN->CLIENT::widget-action', (e) => {
     skip(o, Date.now())
     const next = front(book)
     if (next && next !== o) dockRef.value?.peek(`Next: ${next.who}, ${offerLabel(next)}`, 2500)
+    touched()
     return
   }
   if (parsed.what === 'busy') {
@@ -424,6 +467,7 @@ function onCard (open: boolean) {
 onUnmounted(() => {
   hotkeys.abort()
   clearInterval(clock)
+  clearTimeout(lingerTimer)
 })
 
 // --- Log tab ---

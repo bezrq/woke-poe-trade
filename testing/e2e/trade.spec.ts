@@ -7,6 +7,8 @@ import { test, expect, logFixture } from './harness'
 
 const LINES = logFixture('client-logs/trade-hideout.txt')
 const upTo = (text: string) => LINES.slice(0, LINES.findIndex(l => l.includes(text)) + 1)
+// A worker's tests share one user data folder, and a reopened offer comes back.
+const clearHistory = (userData: string) => fs.rmSync(path.join(userData, 'woke-offer-history'), { recursive: true, force: true })
 const TRADE = { wmType: 'woke-trade', stepHotkey: 'F3', busyHotkey: 'F4', ping: false }
 
 test('a buyer whispers: the trade icon peeks, and one key invites, trades, thanks and kicks', async ({ overlay, fakeApp }) => {
@@ -133,6 +135,27 @@ test('two-line rows have no next step button and close on click too', async ({ o
   await expect(icon.locator('[data-next]')).toHaveCount(0)
   await expect(row).toContainText('Headhunter Leather Belt')
   await overlay.snap('two-line rows')
+})
+
+test('the bubble stays past the old five seconds and through a hover, then ends on the set time', async ({ overlay, fakeApp }) => {
+  clearHistory(fakeApp.opts.userData)
+  await overlay.boot({ widgets: [TRADE] })
+  await overlay.log(upTo('Kaltenhalt: Hi, I would like to buy your Headhunter'))
+  const icon = overlay.dockIcon('trade')
+  await expect(icon).toContainText('Kaltenhalt: Headhunter Leather Belt · 120 div')
+  await overlay.hoverDockIcon('trade')
+  await overlay.page.waitForTimeout(5500)
+  await expect(icon.locator('[class*="peekText"]')).toContainText('Kaltenhalt: Headhunter')
+})
+
+test('with a short bubble time the bubble ends, and the icon stays while offers are open', async ({ overlay, fakeApp }) => {
+  clearHistory(fakeApp.opts.userData)
+  await overlay.boot({ widgets: [{ ...TRADE, bubbleSeconds: 1 }] })
+  await overlay.log(upTo('Kaltenhalt: Hi, I would like to buy your Headhunter'))
+  const icon = overlay.dockIcon('trade')
+  await expect(icon).toContainText('Kaltenhalt: Headhunter')
+  await expect(icon.locator('[class*="peekText"]')).toHaveCount(0, { timeout: 3000 })
+  await expect(icon).toBeVisible()
 })
 
 test('the history keeps old offers across restarts and reopens them', async ({ overlay, fakeApp }) => {
