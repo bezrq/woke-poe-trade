@@ -1,12 +1,14 @@
 import type { StatFilter, FilterOrGroup } from '@/web/price-check/filters/interfaces'
 
-// "Low rolls" / "Current rolls" shortcuts for the price check.
+// Low / Approx / High shortcuts for the price check, for all mods or just one.
 // Only ticked mods with a variable roll are touched.
 
-export type RollPreset = 'low' | 'current'
+export type RollPreset = 'low' | 'current' | 'high'
 
-// Share of the tier range kept on each side of the item's roll by "Current rolls".
+// Share of the tier range kept on each side of the item's roll by "Approx".
 const CURRENT_WINDOW = 0.1
+// Share of the tier range "High" searches, from the best end.
+const HIGH_SHARE = 0.25
 
 // Map and heist properties have no tiers: their bounds run up to a
 // MAX_SAFE_INTEGER placeholder, which must never reach the trade site.
@@ -52,12 +54,51 @@ function presetRange (roll: Roll, preset: RollPreset): { min: number | undefined
       ? { min: roll.value, max: undefined }
       : { min: undefined, max: roll.value }
   }
+  if (preset === 'high') {
+    const span = (bounds.max - bounds.min) * HIGH_SHARE
+    return roll.better === 1
+      ? { min: Math.min(bounds.max, round(bounds.max - span, roll.dp, Math.ceil)), max: undefined }
+      : { min: undefined, max: Math.max(bounds.min, round(bounds.min + span, roll.dp, Math.floor)) }
+  }
   const step = roll.dp ? 0.01 : 1
   const delta = Math.max((bounds.max - bounds.min) * CURRENT_WINDOW, step)
   return {
     min: Math.max(bounds.min, round(roll.value - delta, roll.dp, Math.floor)),
     max: Math.min(bounds.max, round(roll.value + delta, roll.dp, Math.ceil))
   }
+}
+
+/** True when this one mod can take a preset: a variable roll with a known better direction. */
+export function canPickRoll (filter: StatFilter): boolean {
+  const bounds = filter.roll?.bounds
+  return Boolean(bounds && filter.roll!.better && !isOpenBound(bounds.min) && !isOpenBound(bounds.max))
+}
+
+export function applyRollToFilter (filter: StatFilter, preset: RollPreset) {
+  const r = presetRange(filter.roll!, preset)
+  filter.roll!.min = r.min
+  filter.roll!.max = r.max
+  filter.disabled = false
+}
+
+function rollMatches (roll: Roll, preset: RollPreset): boolean {
+  const r = presetRange(roll, preset)
+  const min = (typeof roll.min === 'number') ? roll.min : undefined
+  const max = (typeof roll.max === 'number') ? roll.max : undefined
+  return min === r.min && max === r.max
+}
+
+const PRESETS = ['low', 'current', 'high'] as const
+
+/** Which preset this one mod's min and max match, if any. */
+export function activeRollOf (filter: StatFilter): RollPreset | '' {
+  if (filter.disabled || !canPickRoll(filter)) return ''
+  return PRESETS.find(p => rollMatches(filter.roll!, p)) ?? ''
+}
+
+/** High means nothing on stats with no range to take a quarter of, like map stats. */
+export function canUseHighRolls (filters: FilterOrGroup[]): boolean {
+  return rollable(filters).some(canPickRoll)
 }
 
 export function canUseRollPresets (filters: FilterOrGroup[]): boolean {
@@ -76,13 +117,5 @@ export function applyRollPreset (filters: FilterOrGroup[], preset: RollPreset) {
 export function activeRollPreset (filters: FilterOrGroup[]): RollPreset | '' {
   const list = rollable(filters)
   if (!list.length) return ''
-  for (const preset of ['low', 'current'] as const) {
-    if (list.every(s => {
-      const r = presetRange(s.roll!, preset)
-      const min = (typeof s.roll!.min === 'number') ? s.roll!.min : undefined
-      const max = (typeof s.roll!.max === 'number') ? s.roll!.max : undefined
-      return min === r.min && max === r.max
-    })) return preset
-  }
-  return ''
+  return PRESETS.find(p => list.every(s => rollMatches(s.roll!, p))) ?? ''
 }

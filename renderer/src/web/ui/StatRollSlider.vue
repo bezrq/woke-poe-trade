@@ -1,20 +1,19 @@
 <template>
-  <div class="flex justify-between bg-gray-700 rounded relative p-0.5 items-center h-5"
-    ref="rootEl"
-    :class="$style[state.mode]"
+  <div :class="[$style.root, $style[state.mode]]"
     title="Left-click sets min, right-click sets max"
-    @mousedown="handleMousedown"
     @contextmenu.prevent>
     <span :class="[$style.bound, { [$style.inclusive]: state.minInclusive }]">{{ bounds.min }}</span>
-    <div v-if="state.mode !== 'none'"
-      :class="[$style.fill]"
-      :style="{ '--left': `${state.percentLeft}%`, '--right': `${state.percentRight}%` }"
-    />
-    <div :class="$style.tick" :style="{ 'left': `max(0.125rem, min(${percentRoll}% - 0.0625rem, 100% - 0.25rem))` }" />
-    <div v-if="popupValue != null && popupValue !== ''"
-      :class="$style.popup"
-      :style="(editing === 'min') ? { '--left': `${state.percentLeft}%` } : { '--right': `${state.percentRight}%` }"
-    >{{ popupValue }}</div>
+    <div :class="$style.track" ref="rootEl" @mousedown="handleMousedown">
+      <div v-if="state.mode !== 'none'"
+        :class="[$style.fill]"
+        :style="{ '--left': `${state.percentLeft}%`, '--right': `${state.percentRight}%` }"
+      />
+      <div :class="$style.tick" :style="{ left: `${percentRoll}%` }" />
+      <div v-if="popupValue != null && popupValue !== ''"
+        :class="$style.popup"
+        :style="(editing === 'min') ? { '--left': `${state.percentLeft}%` } : { '--right': `${state.percentRight}%` }"
+      >{{ popupValue }}</div>
+    </div>
     <span :class="[$style.bound, { [$style.inclusive]: state.maxInclusive }]">{{ bounds.max }}</span>
   </div>
 </template>
@@ -101,7 +100,8 @@ export default defineComponent({
       rootEl,
       percentRoll: computed(() => {
         const { bounds } = props
-        return (props.roll - bounds.min) / (bounds.max - bounds.min) * 100
+        // Corrupted and catalysed rolls can sit outside the range.
+        return Math.min(Math.max((props.roll - bounds.min) / (bounds.max - bounds.min) * 100, 0), 100)
       }),
       editing,
       popupValue: computed(() => editing.value === 'min' ? dirty.value?.[0] : dirty.value?.[1]),
@@ -124,63 +124,87 @@ export default defineComponent({
 </script>
 
 <style lang="postcss" module>
+.root {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 6rem;
+  font-family: var(--w-body);
+  font-size: var(--w-fs-xs);
+  line-height: 14px;
+  font-variant-numeric: tabular-nums;
+}
+.track {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 0;
+  height: 10px;
+  border-radius: 2px;
+  background: var(--w-panel-3);
+  border: 1px solid var(--w-line);
+  cursor: pointer;
+}
+/* Your roll. */
 .tick {
   position: absolute;
-  @apply w-0.5;
-  background: linear-gradient(to bottom, #000 10%, transparent 30%, transparent 70%, #000 90%);
-  height: 100%;
+  top: -3px;
+  bottom: -3px;
+  width: 2px;
+  margin-left: -1px;
+  border-radius: 1px;
+  background: var(--w-fg);
   pointer-events: none;
+  z-index: 1;
 }
+/* What gets searched. */
 .fill {
   position: absolute;
   top: 0;
   bottom: 0;
-  @apply rounded;
-  padding: inherit;
-  background-clip: content-box;
-  min-width: 0.75rem;
+  min-width: 2px;
+  background: color-mix(in srgb, var(--w-accent) 32%, transparent);
   pointer-events: none;
 
   .min & {
-    width: calc(100% - var(--left));
+    left: clamp(0%, var(--left), 100%);
     right: 0;
-    background-image: linear-gradient(to right, transparent calc(-1 * var(--left) - 5%), theme('colors.gray.400') 80%);
+    border-left: 2px solid var(--w-accent);
   }
 
   .max & {
-    width: calc(100% - var(--right));
     left: 0;
-    background-image: linear-gradient(to left, transparent calc(-1 * var(--right) - 5%), theme('colors.gray.400') 80%);
+    right: clamp(0%, var(--right), 100%);
+    border-right: 2px solid var(--w-accent);
   }
 
   .range & {
-    left: var(--left);
-    right: var(--right);
-    background-color: theme('colors.gray.400');
+    left: clamp(0%, var(--left), 100%);
+    right: clamp(0%, var(--right), 100%);
+    border-left: 2px solid var(--w-accent);
+    border-right: 2px solid var(--w-accent);
   }
 }
-
 .bound {
-  line-height: none;
-  z-index: 1;
-  @apply text-gray-500;
-  pointer-events: none;
+  flex: none;
+  min-width: 18px;
+  font-weight: 600;
+  color: var(--w-dim);
   user-select: none;
 
-  &.inclusive { @apply text-black; }
-
-  &:first-child { @apply pl-1; }
-  &:last-child { @apply pr-1; }
+  &:last-child { text-align: right; }
+  &.inclusive { color: var(--w-fg); }
 }
-
 .popup {
   position: absolute;
-  @apply bg-blue-600;
-  @apply px-1 mb-1;
-  @apply rounded;
-  bottom: 100%;
+  bottom: calc(100% + 4px);
+  padding: 0 4px;
+  border-radius: var(--w-r-sm);
+  background: var(--w-accent);
+  color: var(--w-accent-fg);
+  font-weight: 600;
   min-width: 1.8rem;
   text-align: center;
+  z-index: 2;
 
   left: calc(var(--left) - 0.8rem);
   right: calc(var(--right) - 0.8rem);

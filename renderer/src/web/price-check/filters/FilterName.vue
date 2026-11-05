@@ -1,15 +1,22 @@
 <template>
   <div class="filter-name">
-    <button class="filter-name-label px-2 rounded border overflow-hidden text-ellipsis"
-      :data-rarity="item.rarity"
-      :class="{ 'border-gray-500': showAsActive, 'border-gray-900': !showAsActive }"
-      @click="toggleAccuracy">{{ label }}</button>
-    <span class="ml-auto" />
-    <slot />
-    <button v-if="filters.corrupted" class="px-2" @click="corrupted = !corrupted">
-      <span v-if="corrupted" class="text-red-500">{{ t('item.corrupted') }}</span>
-      <span v-else class="text-gray-600">{{ t('item.not_corrupted') }}</span>
-    </button>
+    <div class="filter-name-top">
+      <button class="filter-name-label rounded border overflow-hidden text-ellipsis"
+        :data-rarity="item.rarity"
+        :class="{ 'border-gray-500': showAsActive, 'border-transparent': !showAsActive }"
+        @click="toggleAccuracy">{{ label }}</button>
+      <span class="ml-auto" />
+      <slot name="meta" />
+    </div>
+    <div class="filter-name-sub">
+      <span v-if="baseName">{{ baseName }}</span>
+      <button v-if="filters.corrupted" @click="corrupted = !corrupted">
+        <span v-if="corrupted" class="text-red-500">{{ t('item.corrupted') }}</span>
+        <span v-else>{{ t('item.not_corrupted') }}</span>
+      </button>
+      <span class="ml-auto" />
+      <slot />
+    </div>
   </div>
 </template>
 
@@ -55,6 +62,12 @@ export default defineComponent({
       return '??? Report if you see this text'
     })
 
+    const baseName = computed(() => {
+      const { item } = props
+      if (item.uniqueBase) return item.uniqueBase.name
+      return (item.info.name !== label.value) ? item.info.name : ''
+    })
+
     const showAsActive = computed(() => {
       const { filters } = props
 
@@ -82,6 +95,7 @@ export default defineComponent({
     return {
       t,
       label,
+      baseName,
       showAsActive,
       toggleAccuracy,
       corrupted
@@ -92,21 +106,41 @@ export default defineComponent({
 
 <style lang="postcss">
 .filter-name {
-  @apply mb-2 rounded;
-  background: var(--w-pc-well, theme('colors.gray.900'));
-  line-height: 1.25rem;
+  margin-bottom: 0.5rem;
   display: flex;
-  justify-content: space-between;
+  flex-direction: column;
+  gap: 2px;
+}
+.filter-name-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  white-space: nowrap;
+}
+.filter-name-sub {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 8px;
+  min-height: 20px;
+  font-family: var(--w-body);
+  font-size: 12px;
+  color: var(--w-dim);
+}
+.filter-name-sub button:hover { color: var(--w-fg); }
+.filter-name-label {
+  font-size: 18px;
+  line-height: 24px;
+  padding: 0 4px;
+  margin-left: -5px;
   white-space: nowrap;
 }
 
 /* woke: the item's name is the top of the window, in the game's rarity colours. */
-:root:not([data-woke-theme="classic"]) .filter-name-label {
-  font-size: var(--w-fs-lg);
-  color: var(--w-fg);
-}
+:root:not([data-woke-theme="classic"]) .filter-name-label { color: var(--w-fg); }
 :root:not([data-woke-theme="classic"]) .filter-name-label[data-rarity="Normal"] { color: var(--w-r-normal); }
 :root:not([data-woke-theme="classic"]) .filter-name-label[data-rarity="Magic"] { color: var(--w-r-magic); }
 :root:not([data-woke-theme="classic"]) .filter-name-label[data-rarity="Rare"] { color: var(--w-r-rare); }
-:root:not([data-woke-theme="classic"]) .filter-name-label[data-rarity="Unique"] { color: var(--w-r-unique); filter: brightness(1.25); }
+:root:not([data-woke-theme="classic"]) .filter-name-label[data-rarity="Unique"] { color: #d98a4a; }
 </style>

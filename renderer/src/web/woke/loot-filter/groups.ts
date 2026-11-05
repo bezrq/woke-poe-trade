@@ -107,12 +107,12 @@ export function findBase (doc: FilterDoc, query: string): Array<{ base: string, 
 
 export interface AddResult {
   base: string
-  // The first live rule that lists it now, for its look and where it is.
+  // Where it sits now: its tier in this group, or else the first rule listing it.
   block: FilterBlock | null
   // Listed in another tier of this group, so it moves; otherwise it's added.
   sameGroup: boolean
-  // That rule comes before this tier, so it would still catch the item first.
-  caughtEarlier: boolean
+  // A live rule before this tier lists it, and would still catch it first.
+  caughtBy: FilterBlock | null
 }
 
 // The add-item box: bases matching the text, best first, without what the tier
@@ -122,36 +122,42 @@ export function addSearch (doc: FilterDoc, type: string, tier: string, query: st
   if (q.length < 2) return []
   const here = doc.blocks.filter(b => b.type === type && b.tier === tier)
   const inTier = new Set(here.flatMap(b => b.conditions.filter(c => c.key === 'BaseType' && c.op === '==').flatMap(c => c.values)))
-  const firstHere = Math.min(...here.map(b => b.index))
-  const found = new Map<string, FilterBlock | null>()
-  const inGroup = new Set<string>()
+  const live = here.filter(b => !b.disabled)
+  const firstHere = live.length ? Math.min(...live.map(b => b.index)) : Infinity
+  const inGroup = new Map<string, FilterBlock>()
+  const elsewhere = new Map<string, FilterBlock>()
+  const editors = new Map<string, FilterBlock>()
+  const first = new Map<string, FilterBlock>()
   for (const b of doc.blocks) {
     if (b.disabled) continue
     for (const c of b.conditions) {
       if (c.key !== 'BaseType' || c.op !== '==') continue
       for (const v of c.values) {
         if (inTier.has(v) || !v.toLowerCase().includes(q)) continue
-        if (!found.get(v)) found.set(v, b)
-        if (b.type === type) inGroup.add(v)
+        if (!first.has(v)) first.set(v, b)
+        const list = b.type === type ? inGroup : b.type?.startsWith('woke->') ? editors : elsewhere
+        if (!list.has(v)) list.set(v, b)
       }
     }
   }
-  for (const v of extra) {
-    if (!inTier.has(v) && !found.has(v) && v.toLowerCase().includes(q)) found.set(v, null)
-  }
+  const names = new Set<string>(first.keys())
+  for (const v of extra) if (!inTier.has(v) && v.toLowerCase().includes(q)) names.add(v)
   const score = (name: string) => {
     const n = name.toLowerCase()
     if (n === q) return 0
     if (n.startsWith(q)) return 1
     return n.split(/\s+/).some(w => w.startsWith(q)) ? 2 : 3
   }
-  return [...found.entries()]
-    .sort(([a, x], [b, y]) => score(a) - score(b) || Number(!x) - Number(!y) || a.localeCompare(b))
+  return [...names]
+    .sort((a, b) => score(a) - score(b) || Number(!first.has(a)) - Number(!first.has(b)) || a.localeCompare(b))
     .slice(0, limit)
-    .map(([base, block]) => ({
-      base,
-      block,
-      sameGroup: inGroup.has(base),
-      caughtEarlier: Boolean(block && !inGroup.has(base) && block.index < firstHere)
-    }))
+    .map(base => {
+      const earliest = first.get(base)
+      return {
+        base,
+        block: inGroup.get(base) ?? elsewhere.get(base) ?? editors.get(base) ?? null,
+        sameGroup: inGroup.has(base),
+        caughtBy: earliest && earliest.index < firstHere ? earliest : null
+      }
+    })
 }

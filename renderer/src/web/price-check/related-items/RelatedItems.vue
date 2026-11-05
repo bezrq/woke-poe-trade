@@ -1,37 +1,42 @@
 <template>
-  <div v-if="result" :class="[$style['wrapper'], $style[clickPosition]]">
+  <div v-if="result" :class="$style.wrapper" class="w-pc-side">
     <div v-if="'error' in result" class="p-2">
       {{ result.error }}
     </div>
-    <div v-if="'related' in result" class="flex-1 p-2 w-1/2">
-      <div v-for="item in result.related" :key="item.name"
-        :class="{ 'bg-gray-700': item.highlight }" class="rounded px-1">
-        <item-quick-price currency-text fraction class="text-base"
-          :price="item.price"
-          :item-img="item.icon" />
-        <div class="text-left text-gray-600 mb-1 whitespace-nowrap overflow-hidden">{{ item.name }}</div>
+    <template v-if="'related' in result && result.related.length > 1">
+      <div :class="$style.hd">Related to {{ item!.info.name }}</div>
+      <div v-for="row in result.related" :key="row.name"
+        :class="[$style.row, { [$style.me]: row.highlight }]">
+        <img :class="$style.art" :src="row.icon" :alt="''">
+        <span :class="$style.name" :title="row.name">{{ row.name }}</span>
+        <span :class="$style.price">
+          <template v-if="row.price">{{ priceText(row.price) }}<img :class="$style.coin" :src="coin(row.price)" :alt="row.price.currency"></template>
+          <span v-else :class="$style.none" title="poe.ninja has no price for this">?</span>
+        </span>
       </div>
-    </div>
-    <div v-if="'items' in result && result.items.length" class="flex-1 p-2 w-1/2">
-      <div v-for="item in result.items" :key="item.name">
-        <item-quick-price currency-text fraction class="text-base"
-          :price="item.price"
-          :item-img="item.icon" />
-        <div class="text-left text-gray-600 mb-1 whitespace-nowrap overflow-hidden">{{ item.name }}</div>
+    </template>
+    <template v-if="'items' in result && result.items.length">
+      <div :class="$style.hd">Drops in {{ item!.info.name }}</div>
+      <div v-for="row in result.items" :key="row.name" :class="$style.row">
+        <img :class="$style.art" :src="row.icon" :alt="''">
+        <span :class="$style.name" :title="row.name">{{ row.name }}</span>
+        <span :class="$style.price">
+          <template v-if="row.price">{{ priceText(row.price) }}<img :class="$style.coin" :src="coin(row.price)" :alt="row.price.currency"></template>
+          <span v-else :class="$style.none" title="poe.ninja has no price for this">?</span>
+        </span>
       </div>
-    </div>
+    </template>
   </div>
 </template>
 
 <script lang="ts">
 import { computed, defineComponent, PropType } from 'vue'
 import { BaseType, ITEM_BY_REF, ITEM_DROP } from '@/assets/data'
-import { usePoeninja, CurrencyValue } from '@/web/background/Prices'
+import { usePoeninja, CurrencyValue, displayRounding } from '@/web/background/Prices'
 import { getDetailsId } from '../trends/getDetailsId'
 import { ParsedItem } from '@/parser'
-import ItemQuickPrice from '@/web/ui/ItemQuickPrice.vue'
 
-const { findPriceByQuery, autoCurrency } = usePoeninja()
+const { findPriceByQuery, autoCurrency, xchgRate } = usePoeninja()
 
 function findItemByQueryId (queryId: string): BaseType | undefined {
   const [ns, encodedName] = queryId.split('::')
@@ -60,7 +65,7 @@ function getItemPrices (queryId: string) {
 
   const out = {
     related: [] as Array<{ name: string, icon: string, price?: CurrencyValue, highlight: boolean }>,
-    items: [] as Array<{ name: string, icon: string, price?: CurrencyValue }>
+    items: [] as Array<{ name: string, icon: string, price?: CurrencyValue, chaos: number }>
   }
   for (const itemId of dropEntry.query) {
     const dbItem = findItemByQueryId(itemId)
@@ -77,18 +82,20 @@ function getItemPrices (queryId: string) {
     const dbItem = findItemByQueryId(itemId)
     if (!dbItem) return { error: `Can't find "${itemId}".` }
 
+    const price = findPriceByQueryId(itemId)
     out.items.push({
       icon: dbItem.icon,
       name: dbItem.name,
-      price: findPriceByQueryId(itemId)
+      price,
+      chaos: !price ? -1 : (price.currency === 'div' ? price.max * (xchgRate.value ?? 1) : price.max)
     })
   }
+  out.items.sort((a, b) => b.chaos - a.chaos)
 
   return out
 }
 
 export default defineComponent({
-  components: { ItemQuickPrice },
   props: {
     item: {
       type: Object as PropType<ParsedItem | null>,
@@ -109,29 +116,53 @@ export default defineComponent({
       return getItemPrices(`${queryId.ns}::${queryId.name}${queryId.variant ? ` // ${queryId.variant}` : ''}`)
     })
 
-    return { result }
+    return {
+      result,
+      priceText: (price: CurrencyValue) => (price.min === price.max)
+        ? displayRounding(price.min, true)
+        : `${displayRounding(price.min, true)}–${displayRounding(price.max, true)}`,
+      coin: (price: CurrencyValue) => (price.currency === 'div') ? '/images/divine.png' : '/images/chaos.png'
+    }
   }
 })
 </script>
 
 <style lang="postcss" module>
 .wrapper {
-  display: flex;
-  @apply bg-gray-800 text-gray-400 mt-6;
-  @apply border border-gray-900;
-  border-width: 0.25rem;
-  max-width: min(100%, 24rem);
+  width: 17.5rem;
+  max-width: 100%;
+  margin-top: 1.5rem;
+  background: var(--w-panel-2);
+  border: 1px solid var(--w-line);
+  border-radius: var(--w-r-md);
+  overflow: hidden;
+  color: var(--w-fg);
+  font-family: var(--w-body);
+  font-size: var(--w-fs-md);
+  box-shadow: var(--w-shadow);
 }
-
-.inventory {
-  @apply rounded-l-lg;
-  box-shadow: inset -0.5rem 0 0.5rem -0.5rem rgb(0 0 0 / 70%);
-  border-right: none;
+.hd {
+  padding: 6px 12px;
+  background: var(--w-panel-solid);
+  border-bottom: 1px solid var(--w-line);
+  font-family: var(--w-head);
+  font-size: var(--w-fs-lg);
+  color: var(--w-accent);
 }
-
-.stash {
-  @apply rounded-r-lg;
-  box-shadow: inset 0.5rem 0 0.5rem -0.5rem rgb(0 0 0 / 70%);
-  border-left: none;
+.row {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  min-height: 36px;
+  padding: 2px 12px;
+  border-bottom: 1px solid var(--w-line-soft);
 }
+.row:last-child { border-bottom: 0; }
+.me { background: var(--w-accent-soft); }
+.art { width: 28px; height: 28px; object-fit: contain; }
+.name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #d98a4a; }
+.price { display: inline-flex; align-items: center; gap: 3px; font-weight: 600; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.coin { width: 16px; height: 16px; object-fit: contain; }
+.none { color: var(--w-faint); font-weight: 400; }
 </style>

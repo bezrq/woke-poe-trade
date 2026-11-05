@@ -47,6 +47,7 @@
           ? t('filters.selected_some', [totalSelectedMods, stats.length])
           : t('filters.selected_none')"
       />
+      <slot name="rolls" />
     </div>
     <div v-if="!statsVisibility.disabled && hasStats" class="mb-3" :class="(presets.length > 1) ? 'mt-1' : 'mt-0'">
       <div class="flex" v-if="presets.length > 1">
