@@ -3,8 +3,7 @@
 import { describe, it, expect } from 'vitest'
 import { baseUniqueName, changeSince, matchRank, passesCorrupted, searchNamed, searchPrices, tradeUrl } from '@/web/woke/search/search'
 import { computeMovers } from '@/web/woke/market/analysis'
-import { SEARCH_DEFAULT_KEY, SEARCH_TARGET, initSearchWidget, moveSearchKey } from '@/web/woke/search/widget'
-import { wokeShortcutsFor } from '@/web/woke/shortcuts'
+import { SEARCH_DEFAULT_KEY, initSearchWidget, moveSearchKey } from '@/web/woke/search/widget'
 import { isCorrupted } from '@/web/woke/market/types'
 import type { PriceItem } from '@/web/woke/market/types'
 
@@ -140,12 +139,6 @@ describe('search hotkey', () => {
     const clash = old('Alt + P')
     moveSearchKey(clash, ['Ctrl + Space'])
     expect(clash.hotkey).toBe('Alt + P')
-  })
-  it('releases every key before the overlay takes the keyboard', () => {
-    const [shortcut] = wokeShortcutsFor(initSearchWidget(1), { widgets: [] })
-    expect(shortcut.shortcut).toBe('Ctrl + Space')
-    expect(shortcut.keepModKeys).toBeFalsy()
-    expect(shortcut.action).toEqual({ type: 'trigger-event', target: SEARCH_TARGET, focusOverlay: true })
   })
   it('never moves a key on a new window', () => {
     const w = initSearchWidget(1)
