@@ -30,6 +30,15 @@ history:
     comment: >-
       Which layout: A, B or C? Recommended: C. Mocks:
       https://claude.ai/artifact/8ijRB7sNGAW8r6NuRThEiX
+  - type: activity
+    user: Agent
+    date: '2026-11-05T09:48:19.898Z'
+    comment: >-
+      Added scope from Guy: a dismissed offer gets a Reopen button on its row,
+      so an accidental dismiss can be undone. Mocks A, B and C updated. Also in
+      scope: unique art lookup keeps the comma in the name, and the ✓ ✕ buttons
+      render squashed.
+    id: a-2026-11-05t09-48-19-898z
 swimlane: require-input
 needsAction: null
 ---
