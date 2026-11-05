@@ -102,6 +102,10 @@ export class Overlay {
       this.app.clearReceived()
       await this.page.goto(this.app.url)
       await this.app.waitForReceived('CLIENT->MAIN::update-host-config', undefined, 20_000)
+    // A line written before the watcher is following the file counts as old and
+    // is never seen. The extra moment is for watchFile's first look at the file.
+    await this.app.logWatcherReady
+    await this.page.waitForTimeout(150)
       // The overlay saves its settings when it loses focus.
       await this.page.evaluate(() => window.dispatchEvent(new Event('blur')))
       const saved = await this.app.waitForReceived('CLIENT->MAIN::save-config')
@@ -144,6 +148,10 @@ export class Overlay {
     this.app.focusGame(true)
     await this.page.goto(this.app.url)
     await this.app.waitForReceived('CLIENT->MAIN::update-host-config', undefined, 20_000)
+    // A line written before the watcher is following the file counts as old and
+    // is never seen. The extra moment is for watchFile's first look at the file.
+    await this.app.logWatcherReady
+    await this.page.waitForTimeout(150)
     // Hotkeys register once the game window is attached and focused.
     await expect.poll(() => this.app.registeredHotkeys().length).toBeGreaterThan(0)
     if (opts.overlayActive) await this.pressHotkey(config.overlayKey)

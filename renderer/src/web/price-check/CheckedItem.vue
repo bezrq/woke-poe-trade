@@ -1,5 +1,7 @@
 <template>
   <div v-if="show" class="p-4 layout-column min-h-0">
+    <!-- woke: TradeListing puts the improved verdict here, the first thing in the window. -->
+    <div ref="verdictSlot" class="w-pc-verdict-slot" />
     <filter-name
       :filters="itemFilters"
       :item="item">
@@ -10,8 +12,6 @@
       <woke-filter-verdict-chip :item="item" />
     </filter-name>
     <woke-map-strip :item="item" class="mb-2" />
-    <!-- woke: TradeListing puts the improved verdict here, above the mods. -->
-    <div ref="verdictSlot" class="w-pc-verdict-slot" />
     <!-- woke: the improved verdict below shows poeprices and poe.ninja once listings load. -->
     <template v-if="!wokeVerdictShown">
       <price-prediction v-if="showPredictedPrice" class="mb-4"

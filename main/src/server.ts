@@ -39,6 +39,7 @@ export const server = createServer((req, res) => {
 const websocketServer = new WebSocketServer({ noServer: true })
 let lastActiveClient: WebSocket | undefined
 let configStore: ConfigStore | undefined
+let portWasBusy = false
 
 // woke: resolves once every save asked for so far is on disk.
 export async function configFlushed () {
@@ -158,7 +159,7 @@ export async function startServer (
         version: app.getVersion(),
         updater: appUpdater.info,
         contents: await store.load(),
-        configNotice: store.notice
+        configNotice: store.notice ?? (portWasBusy ? 'port-busy' : null)
       }
       res.end(JSON.stringify(resBody))
     }
@@ -181,6 +182,9 @@ export async function startServer (
     })
     server.on('error', (err: NodeJS.ErrnoException) => {
       if (err.code === 'EADDRINUSE' && !listenOpt && !process.env.VITE_DEV_SERVER_URL && port !== 0) {
+        // woke: browser storage belongs to the address, so it looks empty on another port.
+        logger.write('warn [server] Port 8585 is in use, so saved window settings will look reset this run.')
+        portWasBusy = true
         port = 0
         server.listen({ port, host })
       } else {

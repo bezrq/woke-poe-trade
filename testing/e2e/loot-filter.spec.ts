@@ -254,6 +254,8 @@ test('Alt + F: a card alone for the hovered item, a key hides it', async ({ over
 })
 
 test('prices: a hidden valuable unique lists what else would show, and Show it does what it says', async ({ overlay, fakeApp }) => {
+  // A long walk through the editor: under full-suite load it can outlast the default.
+  test.slow()
   const folder = fs.mkdtempSync(path.join(os.tmpdir(), 'woke-filters-'))
   fs.writeFileSync(path.join(folder, 'NeverSink.filter'), [
     '# NeverSink test',

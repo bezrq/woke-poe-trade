@@ -33,12 +33,14 @@ export const shell = {
   async openExternal (url: string) { shellCalls.push({ op: 'openExternal', target: url }) }
 }
 
-export const screen = {
+export const powerMonitor = new EventEmitter()
+
+export const screen = Object.assign(new EventEmitter(), {
   getCursorScreenPoint: () => ({ ...game.cursor }),
   dipToScreenPoint: (p: { x: number, y: number }) => p,
   dipToScreenRect: (_w: unknown, r: unknown) => r,
   getPrimaryDisplay: () => ({ scaleFactor: 1, bounds: game.bounds, workArea: game.bounds })
-}
+})
 
 export const clipboard = {
   readText: () => game.clipboard,
@@ -70,4 +72,4 @@ export const net = { request () { throw new Error('No network in the fake app') 
 export const session = { defaultSession: { webRequest: { onHeadersReceived () {} } } }
 export type Rectangle = { x: number, y: number, width: number, height: number }
 
-export default { app, shell, screen, clipboard, globalShortcut, dialog, Menu, BrowserWindow, nativeImage, Tray, net, session }
+export default { app, shell, screen, powerMonitor, clipboard, globalShortcut, dialog, Menu, BrowserWindow, nativeImage, Tray, net, session }
