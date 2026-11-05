@@ -5,15 +5,15 @@
       <w-hotkey-cell v-model="hotkeyOverlay" />
       <span>Hotkey: open in your browser</span>
       <w-hotkey-cell v-model="hotkeyExternal" />
-      <span>Hotkeys open</span>
+      <span>Usual difficulty</span>
       <w-select v-model="defaultDifficulty" :options="DIFFICULTIES.map(d => ({ value: d, label: labLabel(d) }))" class="w-40" />
     </div>
     <div class="w-dim text-sm">Pressing the overlay hotkey again closes the layout.</div>
-    <w-toggle v-model="autoOpen">Load the layout into the lab icon when I enter Aspirants' Plaza (difficulty from the area level)</w-toggle>
+    <w-toggle v-model="autoOpen">Load the layout into the lab icon when I enter Aspirants' Plaza (the difficulty below, then the real one from the first room)</w-toggle>
     <label class="flex flex-col gap-1">
       <span>Lab notes</span>
       <textarea v-model="notes" rows="4" class="w-input rounded px-1"
-        placeholder="Enchants you're after, trial status, tips…" />
+        placeholder="Gems you're after, trial status, tips…" />
     </label>
     <div>
       <div class="mb-1">Layout pages</div>

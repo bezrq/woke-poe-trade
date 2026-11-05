@@ -16,7 +16,7 @@ import { BOSS_AREAS, bossAreaIds } from '@/web/woke/shared/boss-areas'
 import { BOSS_ARENAS, arenaBosses, zoneKind } from '@/web/woke/shared/zone'
 import { BOSSES } from '@/web/woke/boss-runs/bosses'
 import { mechanicForZone } from '@/web/woke/mechanics/data'
-import { difficultyForAreaLevel, isPlazaArea, msUntilLabReset, PLAZA_ZONE, staleLayoutDate } from '@/web/woke/lab/lab'
+import { difficultyForAreaLevel, labDifficultyOf, isPlazaArea, msUntilLabReset, PLAZA_ZONE, staleLayoutDate } from '@/web/woke/lab/lab'
 
 function logLines (name: string): string[] {
   return fixture(`client-logs/${name}`).split('\n').filter(l => l && !l.startsWith('#'))
@@ -278,15 +278,19 @@ describe('league mechanics', () => {
 })
 
 describe('lab', () => {
-  it('picks the difficulty from the area level and spots the plaza', () => {
+  it('takes the difficulty from the first room, because the plaza is the same for all', () => {
     const lines = logLines('lab-merciless.txt')
-    const area = lines.map(parseLogLine).find(e => e?.kind === 'area')
-    expect(area && area.kind === 'area' && difficultyForAreaLevel(area.areaLevel)).toBe('merciless')
+    const areas = lines.map(parseLogLine).filter(e => e?.kind === 'area')
+    const [plaza, room] = areas as Array<{ areaId: string, areaLevel: number }>
+    expect(labDifficultyOf(plaza.areaId, plaza.areaLevel)).toBeNull()
+    expect(labDifficultyOf(room.areaId, room.areaLevel)).toBe('merciless')
     expect(lines.map(parseLogLine).some(e => e?.kind === 'zone' && e.name === PLAZA_ZONE)).toBe(true)
     // Recognised by area id, whatever the client language calls it.
-    expect(area && area.kind === 'area' && isPlazaArea(area.areaId)).toBe(true)
-    expect(isPlazaArea('EndGame_Labyrinth_Airlock')).toBe(true)
+    expect(isPlazaArea(plaza.areaId)).toBe(true)
+    expect(isPlazaArea('Labyrinth_Airlock')).toBe(true)
     expect(isPlazaArea('3_Labyrinth_boss_3')).toBe(false)
+    expect(labDifficultyOf('1_Labyrinth_boss_3', 33)).toBe('normal')
+    expect(labDifficultyOf('EndGame_Labyrinth_OH_branch', 75)).toBe('uber')
     expect(difficultyForAreaLevel(33)).toBe('normal')
     expect(difficultyForAreaLevel(55)).toBe('cruel')
     expect(difficultyForAreaLevel(75)).toBe('uber')
