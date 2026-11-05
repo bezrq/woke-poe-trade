@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { buildTip, gearStats, kindOfNinjaType, parseGemVariant, parseMarkup } from '@/web/woke/ui/tooltip/tip-content'
+import { attributeNeeds, buildTip, gearStats, kindOfNinjaType, parseGemVariant, parseMarkup } from '@/web/woke/ui/tooltip/tip-content'
 import type { TipLine, TipModel, TipPack } from '@/web/woke/ui/tooltip/tip-content'
 
 const read = (file: string) => JSON.parse(readFileSync(join(__dirname, '../../public/data/tips', `${file}.json`), 'utf8'))
@@ -98,6 +98,50 @@ describe('gaps', () => {
     const tip = buildTip(pack, { name: 'Zealot Helmet', kind: 'item' })!
     expect(tip.frame).toBe('normal')
     expect(all(tip)).toContain('Armour: 119-137')
+  })
+})
+
+describe('what the review found', () => {
+  const gems = pack.gems!
+  const quality = (name: string, variant = '20/20') => all(buildTip(pack, { name, kind: 'gem', variant }))
+
+  it('never shows a quality line with a wrong unit', () => {
+    for (const name of Object.keys(gems)) {
+      const fromQuality = (gems[name].q ?? []).map(q => q.t)
+      expect(fromQuality.every(t => /#% (increased|reduced|more|less) /.test(t))).toBe(true)
+      for (const line of quality(name).filter(l => !l.startsWith('Cost &'))) expect(line).not.toMatch(/\b1000\b.*(seconds|%)/)
+    }
+    expect(quality('Bear Trap').join(' ')).not.toContain('1000')
+  })
+
+  it('words negative quality as reduced', () => {
+    const tip = buildTip({ gems: { G: { c: 'r', t: [], q: [{ t: 'Has #% increased Duration', v: [-1000] }], lv: { 1: {} } } } }, { name: 'G', kind: 'gem', variant: '1/20' })
+    expect(all(tip)).toContain('Has 20% reduced Duration')
+  })
+
+  it('has no blank gem lines, and no cast time on attacks', () => {
+    for (const name of Object.keys(gems)) expect(quality(name).every(l => l.trim())).toBe(true)
+    expect(quality('Cleave').some(l => l.startsWith('Cast Time'))).toBe(false)
+    expect(quality('Fireball').some(l => l.startsWith('Cast Time'))).toBe(true)
+  })
+
+  it('counts flat defence the base lacks, on armour only', () => {
+    expect(gearStats({ ar: [100, 100] }, ['+50 to maximum Energy Shield']).map(text)).toEqual(['Armour: 100', 'Energy Shield: 50'])
+    expect(gearStats({}, ['+50 to maximum Energy Shield'])).toEqual([])
+  })
+
+  it('leaves out physical damage a weapon has none of', () => {
+    expect(gearStats({ ph: [10, 20] }, ['No Physical Damage'])).toEqual([])
+  })
+
+  it('prints a reduced range low to high', () => {
+    expect(gearStats({ at: 1000 }, ['(15-20)% reduced Attack Speed']).map(text)).toEqual(['Attacks per Second: 0.80-0.85'])
+  })
+
+  it('applies mods to attribute requirements', () => {
+    expect(attributeNeeds({ s: 50, i: 50 }, ['Has no Attribute Requirements'])).toEqual([])
+    expect(attributeNeeds({ d: 100 }, ['+257 Intelligence Requirement'])).toEqual(['100 Dex', '257 Int'])
+    expect(attributeNeeds({ s: 100 }, ['100% increased Attribute Requirements'])).toEqual(['200 Str'])
   })
 })
 

@@ -143,8 +143,9 @@ const add = (a: Range, b: Range): Range => [a[0] + b[0], a[1] + b[1]]
 const scale = (a: Range, inc: Range): Range => [a[0] * (1 + inc[0] / 100), a[1] * (1 + inc[1] / 100)]
 
 function show (r: Range, digits = 0): string {
-  const a = r[0].toFixed(digits)
-  const b = r[1].toFixed(digits)
+  // A "reduced" range runs high to low.
+  const a = Math.min(r[0], r[1]).toFixed(digits)
+  const b = Math.max(r[0], r[1]).toFixed(digits)
   return a === b ? a : `${a}-${b}`
 }
 
@@ -201,13 +202,15 @@ export function gearStats (base: TipBase, mods: string[]): TipLine[] {
     if (mod === 'Has no Energy Shield') none.add('es')
     if (mod === 'Has no Armour') none.add('ar')
     if (mod === 'Has no Evasion Rating') none.add('ev')
+    if (mod === 'No Physical Damage') none.add('ph')
   }
 
   const lines: TipLine[] = []
+  // Flat defence is local only on armour: on a ring, it's a global mod.
+  const isArmour = !!(base.ar ?? base.ev ?? base.es ?? base.wd)
   const defence = (key: 'ar' | 'ev' | 'es' | 'wd', label: string) => {
-    const b = base[key]
-    if (!b || none.has(key)) return
-    const total = scale(add(b, flat[key] ?? [0, 0]), inc[key] ?? [0, 0])
+    if (!isArmour || none.has(key) || !(base[key] ?? flat[key])) return
+    const total = scale(add(base[key] ?? [0, 0], flat[key] ?? [0, 0]), inc[key] ?? [0, 0])
     lines.push(pair(label, show(total)))
   }
   defence('ar', 'Armour')
@@ -215,7 +218,7 @@ export function gearStats (base: TipBase, mods: string[]): TipLine[] {
   defence('es', 'Energy Shield')
   defence('wd', 'Ward')
 
-  if (base.ph) {
+  if (base.ph && !none.has('ph')) {
     const low = scale(add([base.ph[0], base.ph[0]], addedLow), inc.ph ?? [0, 0])
     const high = scale(add([base.ph[1], base.ph[1]], addedHigh), inc.ph ?? [0, 0])
     const wrap = (r: Range) => r[0].toFixed(0) === r[1].toFixed(0) ? show(r) : `(${show(r)})`
@@ -226,12 +229,33 @@ export function gearStats (base: TipBase, mods: string[]): TipLine[] {
   return lines
 }
 
-function requirements (level?: number, attrs?: { s?: number, d?: number, i?: number }): TipLine | null {
-  const list = [
-    ...(attrs?.s ? [`${attrs.s} Str`] : []),
-    ...(attrs?.d ? [`${attrs.d} Dex`] : []),
-    ...(attrs?.i ? [`${attrs.i} Int`] : [])
-  ]
+const RE_ATTR_FLAT = new RegExp(`^\\+?${NUM} (Strength|Dexterity|Intelligence) Requirement$`)
+const RE_ATTR_MORE = new RegExp(`^${NUM}% (increased|reduced) Attribute Requirements$`)
+
+// What a unique really asks for: its mods can change its base's requirements.
+export function attributeNeeds (base: TipBase | undefined, mods: string[]): string[] {
+  const needs: Record<string, Range> = {}
+  for (const [key, value] of [['Strength', base?.s], ['Dexterity', base?.d], ['Intelligence', base?.i]] as const) {
+    if (value) needs[key] = [value, value]
+  }
+  let inc: Range = [0, 0]
+  for (const mod of mods) {
+    if (mod === 'Has no Attribute Requirements') return []
+    const flat = RE_ATTR_FLAT.exec(mod)
+    if (flat) needs[flat[2]] = add(needs[flat[2]] ?? [0, 0], parseRange(flat[1]))
+    const more = RE_ATTR_MORE.exec(mod)
+    if (more) {
+      const r = parseRange(more[1])
+      const sign = more[2] === 'reduced' ? -1 : 1
+      inc = add(inc, [r[0] * sign, r[1] * sign])
+    }
+  }
+  return (['Strength', 'Dexterity', 'Intelligence'] as const)
+    .filter(key => needs[key])
+    .map(key => `${show(scale(needs[key], inc))} ${key.slice(0, 3)}`)
+}
+
+function requirements (level: number | undefined, list: string[]): TipLine | null {
   if (!level && !list.length) return null
   const line: TipLine = [part('Requires ', 'label')]
   line.push(part([...(level ? [`Level ${level}`] : []), ...list].join(', '), 'value'))
@@ -248,7 +272,7 @@ export function uniqueTip (name: string, unique: TipUnique, base: TipBase | unde
   const explicits = row?.e ?? []
   const mutated = row?.m ?? []
   const stats = base ? gearStats(base, [...implicits, ...explicits, ...mutated]) : []
-  const need = requirements(row?.l ?? base?.l, base)
+  const need = requirements(row?.l ?? base?.l, attributeNeeds(base, [...implicits, ...explicits, ...mutated]))
   return {
     name,
     base: unique.b || undefined,
@@ -272,9 +296,11 @@ export function parseGemVariant (variant?: string): { level: number, quality: nu
 }
 
 function qualityLine (q: { t: string, v: number[] }, quality: number): string {
-  let at = 0
   // RePoE's values are per 1000 points of quality per 1%: 1000 is 1% a point.
-  return q.t.replace(/#/g, () => String(Math.floor((q.v[at++] ?? 0) * quality / 1000)))
+  // The data script keeps only "#% increased" style lines, with one number.
+  const value = (q.v[0] ?? 0) * quality / 1000
+  const text = q.t.replace('#', String(Math.floor(Math.abs(value))))
+  return value < 0 ? text.replace(' increased ', ' reduced ').replace(' more ', ' less ') : text
 }
 
 export function gemTip (name: string, gem: TipGem, variant?: string): TipModel {
@@ -286,9 +312,9 @@ export function gemTip (name: string, gem: TipGem, variant?: string): TipModel {
   const figures: TipLine[] = [pair('Level', String(asked))]
   if (gem.cm) figures.push(pair('Cost & Reservation Multiplier', `${gem.cm}%`))
   if (row.c) figures.push(pair('Cost', row.c))
-  if (gem.ct) figures.push(pair('Cast Time', `${(gem.ct / 1000).toFixed(2)} sec`))
+  if (gem.ct && !gem.t.includes('Attack')) figures.push(pair('Cast Time', `${(gem.ct / 1000).toFixed(2)} sec`))
   if (quality) figures.push(pair('Quality', `+${quality}%`))
-  const need = requirements(row.r, row.a)
+  const need = requirements(row.r, attributeNeeds({ s: row.a?.s, d: row.a?.d, i: row.a?.i }, []))
   const stats = [...(gem.st ?? []), ...(row.x ?? [])]
   const fromQuality = quality ? (gem.q ?? []).map(q => qualityLine(q, quality)) : []
   return {
@@ -318,7 +344,7 @@ export function itemTip (name: string, item: TipItem, kind: TipKind): TipModel {
 }
 
 export function baseTip (name: string, base: TipBase): TipModel {
-  const need = requirements(base.l, base)
+  const need = requirements(base.l, attributeNeeds(base, []))
   return { name, frame: 'normal', sections: present([gearStats(base, []), need ? [need] : []]) }
 }
 

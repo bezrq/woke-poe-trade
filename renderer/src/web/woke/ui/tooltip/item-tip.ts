@@ -6,6 +6,7 @@
 // name. The text loads from public/data/tips on the first hover.
 import type { ObjectDirective } from 'vue'
 import { ITEM_BY_REF } from '@/assets/data'
+import { Host } from '@/web/background/IPC'
 import { usePoeninja } from '@/web/background/Prices'
 import { buildTip, kindOfNinjaType, packFiles } from './tip-content'
 import type { TipKind, TipModel, TipPack } from './tip-content'
@@ -110,8 +111,20 @@ function enter (e: Event) {
   }, SHOW_DELAY_MS)
 }
 
+// Dock cards take clicks while the game has focus. Leaving one makes the window
+// click-through, so its mouseleave can go missing; the main process still knows.
+let watchingZones = false
+function watchHoverZones () {
+  if (watchingZones) return
+  watchingZones = true
+  Host.onEvent('MAIN->OVERLAY::woke-hover', (e) => {
+    if (!e.inside && hovered && !hovered.closest('[data-w-panel]')) leave()
+  })
+}
+
 export const vItemTip: ObjectDirective<HTMLElement, ItemTipRef | null | undefined> = {
   mounted (el, binding) {
+    watchHoverZones()
     refs.set(el, binding.value)
     el.addEventListener('mouseenter', enter)
     el.addEventListener('mouseleave', leave)

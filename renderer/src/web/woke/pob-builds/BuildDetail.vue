@@ -166,7 +166,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, shallowRef, useCssModule, watch } from 'vue'
+import { computed, onBeforeUnmount, shallowRef, useCssModule, watch } from 'vue'
 import { WPanel, WButton, WEmpty, WTabs, WChip, WKbd, toast } from '../ui'
 import { useCopy } from '../ui/copy'
 import { SAVE_MESSAGE, saveToRegexLibrary } from '../regex-library/save'
@@ -209,6 +209,7 @@ const error = shallowRef('')
 const tab = shallowRef<'leveling' | 'gear' | 'setups' | 'filter' | 'notes'>('leveling')
 // The hovered row leaves with the tab, so no mouseleave comes.
 watch(tab, hideTip)
+onBeforeUnmount(hideTip)
 const tabOptions = [
   { value: 'leveling', label: 'Leveling' },
   { value: 'gear', label: 'Gear' },

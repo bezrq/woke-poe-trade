@@ -73,7 +73,7 @@ function compactUnique (entry) {
 function compactGem (gem) {
   const perLevel = gem.per_level ?? {}
   const lastLevel = (gem.base_item?.max_level ?? 20) + 1
-  const lines = (o) => Object.values(o?.stat_text ?? {}).map(unlink)
+  const lines = (o) => Object.values(o?.stat_text ?? {}).filter(Boolean).map(unlink)
   const lv = {}
   for (const key of Object.keys(perLevel)) {
     if (Number(key) > lastLevel) continue
@@ -89,10 +89,12 @@ function compactGem (gem) {
     }
   }
   const stat = gem.static ?? {}
+  // Only "#% increased" style lines have a known scale (1000 is 1% a quality
+  // point). Others use the stat's own unit, such as milliseconds or tenths.
   const quality = (stat.quality_stats ?? []).filter(q => q.stat).map(q => ({
     t: unlink(q.stat).replace(/\{[^}]+\}/g, () => '#'),
     v: Object.values(q.stats ?? {})
-  }))
+  })).filter(q => q.v.length === 1 && /^[^#]*#% (increased|reduced|more|less) [^#]*$/.test(q.t))
   const description = gem.active_skill?.description
   return {
     c: gem.color || 'w',
