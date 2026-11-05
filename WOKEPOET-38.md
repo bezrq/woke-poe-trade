@@ -1,7 +1,7 @@
 ---
 id: WOKEPOET-38
 title: Reusable item tooltip across the app
-status: In Progress
+status: Ready
 priority: Medium
 effort: None
 assignee: unassigned
@@ -26,7 +26,27 @@ history:
     to: In Progress
     user: Agent
     date: '2026-11-05T08:01:48.815Z'
+  - type: activity
+    user: Agent
+    date: '2026-11-05T08:34:17.124Z'
+    comment: Updated implementation link.
+    id: a-2026-11-05t08-34-17-124z
+  - type: comment
+    user: Agent
+    comment: >-
+      PR #132 is reviewed and passes local checks. Waiting on the merge route.
+      Gaps: 54 older uniques have no text, divination cards have no flavour
+      text.
+    date: '2026-11-05T08:34:17.150Z'
+    completionComment: true
+    id: c-2026-11-05t08-34-17-150z
+  - type: status_change
+    from: In Progress
+    to: Ready
+    user: Agent
+    date: '2026-11-05T08:34:17.151Z'
 needsAction: null
+implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/132'
 ---
 Hovering an item in the Market tracker shows nothing. Promote pob-builds/GameTooltip.vue to a shared component usable from a plain item name, for market, loot filter, boss drops, league investing, farming and price check.
 
