@@ -24,6 +24,12 @@ history:
       from this PC was refused, so the cloud merge step was requested. The dev
       build is still to do, after the merge and when PoE isn't in front.
     id: a-2026-11-05t04-59-46-780z
+  - type: activity
+    user: Agent
+    date: '2026-11-05T05:11:48.419Z'
+    comment: Updated implementation link.
+    id: a-2026-11-05t05-11-48-419z
+implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/101'
 ---
 > **TL;DR:** Overhaul the price check window's look: compact verdict at top, cleaner toolbar (Classic/Improved no longer clipped), tighter listings table with same-price grouping and stale de-emphasis, consistent fonts and spacing, PoE-flavored. All functions kept. WOKEPOET-22 owns moving/resizing the window, so this stays out of PriceCheckWindow's positioning.
 
