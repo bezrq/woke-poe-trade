@@ -36,6 +36,23 @@ history:
       blueprints and charts, or C keep it collapsed and labelled? All 9 of Guy's
       marks are already in Map mods with matching ratings, so no migration is
       needed.
+  - type: comment
+    user: Agent
+    comment: >-
+      Guy picked B and asked for tabs per mode (heist, maps, charts) plus a
+      Nightmare/T17 on/off toggle that mixes with maps. Mocks:
+      https://claude.ai/artifact/Tyc9XyZE9wA2TqMnUgFzHx (A tabs, B rail).
+      Findings: Nightmare maps are the T17 pool (`ubermap_exclusive`, 42
+      wordings), so one toggle covers both. Heist has 43 tagged wordings. Charts
+      have no tag in stats.ndjson: poedb lists a Deep Water chart pool of 150
+      rows, shared lines overlap map mods, and "adjacent Areas" lines are
+      missing from the app's stat data, so they'd show as not recognised; a
+      chart tab needs a curated list and a real chart to test. Toggle-off
+      proposal: hide T17 rows, drop T17 picks from the regex, keep ratings,
+      verdict card still flags them. Waiting on Guy's layout pick.
+    date: '2026-11-05T10:22:23.835Z'
+    selfAttested: true
+    id: c-2026-11-05t10-22-23-835z
 swimlane: require-input
 needsAction: null
 ---
