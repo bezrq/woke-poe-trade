@@ -37,6 +37,18 @@ describe('bargain warning', () => {
   it('still points out a real bargain', () => {
     expect(snipe([row('x', 20), ...market(100)])).toContain('20c')
   })
+
+  it('never rounds a tiny price to 0c', () => {
+    expect(snipe([row('x', 0.04), ...market(20)])).toContain('under 0.1c')
+  })
+
+  it('points out a bargain that pulls the fair price down to itself', () => {
+    const old = { indexedAt: new Date(NOW - 10 * 86400e3).toISOString(), accountStatus: 'offline' as const }
+    const rows = [row('x', 5), ...['a', 'b', 'c'].map(id => ({ ...row(id, 100), ...old }))]
+    const insight = buildInsight(rows, { divine: 180, now: NOW })
+    expect(insight.range?.fair).toBe(5)
+    expect(insight.signals.find(s => s.kind === 'snipe')?.text).toContain('5c')
+  })
 })
 
 describe('collapseForNewItem', () => {

@@ -243,8 +243,9 @@ export function buildInsight (listings: InsightListing[], opts: InsightOptions):
   if (bargain) {
     const cheapest = kept.find(k => k.instant)!
     // Saving a fraction of a chaos on a junk item isn't worth a line.
-    if (range.fair - cheapest.chaos >= SNIPE_MIN_SAVING) {
-      const shown = cheapest.chaos < 10 ? Math.round(cheapest.chaos * 10) / 10 : Math.round(cheapest.chaos)
+    // Measured from the floor: a fresh bargain can pull the fair price down to itself.
+    if (floor - cheapest.chaos >= SNIPE_MIN_SAVING) {
+      const shown = cheapest.chaos < 0.1 ? 'under 0.1' : cheapest.chaos < 10 ? Math.round(cheapest.chaos * 10) / 10 : Math.round(cheapest.chaos)
       signals.push({ kind: 'snipe', text: `An instant buyout at ${shown}c sits far under the rest, so it may be worth buying` })
     }
   }
