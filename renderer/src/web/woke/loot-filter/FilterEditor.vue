@@ -130,34 +130,41 @@
             <WButton v-if="tierChanged(tier.tier) && !isOwnGroup" size="sm" variant="ghost" icon="fas fa-undo" title="Take back your changes to this tier" @click="resetTier(tier.tier)">Reset tier</WButton>
           </div>
           <div class="text-xs w-faint">{{ tier.blocks.length > 1 ? `${tier.blocks.length} rules` : `line ${tier.blocks[0].line}` }}<span v-if="tier.disabled"> · commented out in the filter</span></div>
-          <StyleEditor :source="isOwnGroup || !selType ? null : store.sourceLook(selType, tier.tier)" :look="readStyle(firstLive(tier).actions)" :visibility="firstLive(tier).visibility"
-            :preview-text="tier.bases[0] ?? previewName(tier)" :copy-from="copyFrom"
+          <div v-if="bulkLook" :class="$style.bulkNote" class="text-xs">
+            <span class="grow">Changes here go to the {{ picked.length }} item{{ picked.length === 1 ? '' : 's' }} you picked, not the tier.</span>
+            <WButton size="sm" variant="ghost" @click="bulkLook = false">Whole tier</WButton>
+          </div>
+          <StyleEditor :source="bulkLook || isOwnGroup || !selType ? null : store.sourceLook(selType, tier.tier)" :look="readStyle(firstLive(tier).actions)" :visibility="firstLive(tier).visibility"
+            :preview-text="(bulkLook ? picked[0] : tier.bases[0]) ?? previewName(tier)" :copy-from="copyFrom"
             @patch="patchTier" @visibility="setTierVisibility" />
 
           <template v-if="!isOwnGroup && (tier.bases.length || targets.includes(tier.tier))">
             <div class="w-group-label" style="padding: 8px 0 2px;">Items in this tier · {{ tier.bases.length }}</div>
             <div class="flex flex-wrap gap-1">
-              <span v-for="b in tier.bases" :key="b" :class="$style.chipWrap">
+              <span v-for="b in tierItems" :key="b" :class="$style.chipWrap">
                 <WChip clickable :active="picked.includes(b)" draggable="true"
-                  title="Right-click to move it. Drag onto a tier, or shift-click to pick several."
+                  title="Click to pick it, shift-click to pick a run. Drag onto a tier to move it, with any others you've picked. Right-click for Move to."
                   @click="pickBase(b, $event)" @contextmenu="baseMenu($event, b)" @dragstart="onDragStart(b, $event)" @dragend="dragOver = null">
                   <span v-item-tip="{ name: b }" class="flex items-center gap-1">
                     <img v-if="baseIcon(b)" :src="baseIcon(b)!" :class="$style.chipArt" alt="">
                     <span>{{ b }}</span>
+                    <span v-if="priceOf(b) != null" class="w-num" :class="$style[`p_${priceGrade(priceOf(b), config.safetyNet.minChaos)}`]">{{ priceText(priceOf(b)!) }}</span>
                     <i v-if="movedHere(b)" class="fas fa-lock w-faint" style="font-size: 0.75em;" title="You put it here, so prices won't move it" />
                   </span>
                 </WChip>
                 <button type="button" :class="$style.chipX" :title="movedHere(b) ? 'Back to where it was' : 'Take it off this tier'" :aria-label="`Take ${b} off this tier`" @click="takeOff(b)"><i aria-hidden="true" class="fas fa-times" /></button>
               </span>
             </div>
-            <AddItemField v-if="store.doc.value && selType && targets.includes(tier.tier)" :key="`${selType}|${tier.tier}`" :doc="store.doc.value" :type="selType" :tier="tier.tier" @add="addItem" />
-            <div v-if="picked.length && targets.length > 1" class="flex items-center gap-2 text-sm" style="margin-top: 6px;">
-              <span class="w-dim">Move {{ picked.length > 1 ? `${picked.length} items` : picked[0] }} to</span>
-              <select :class="$style.select" value="" aria-label="Target tier" @change="moveBase(($event.target as HTMLSelectElement).value)">
-                <option value="" disabled>tier…</option>
-                <option v-for="t in targets" :key="t" :value="t" :disabled="t === tier.tier">{{ tierLabel(t) }}</option>
-              </select>
+            <div v-if="picked.length" :class="$style.bulkBar" role="toolbar" aria-label="Picked items">
+              <b class="text-xs">{{ picked.length }} picked</b>
+              <span class="grow" />
+              <WButton v-if="targets.length > 1" size="sm" variant="primary" @click="bulkMoveMenu">Move to</WButton>
+              <WButton size="sm" variant="ghost" @click="bulkHide">Hide</WButton>
+              <WButton size="sm" variant="ghost" title="Change the look of just these, using the controls above" @click="bulkLook = true">Own look</WButton>
+              <WButton size="sm" variant="ghost" @click="bulkTakeOff">Take off</WButton>
+              <button type="button" class="w-icon-btn" title="Clear" aria-label="Clear picked items" @click="picked = []"><i aria-hidden="true" class="fas fa-times" /></button>
             </div>
+            <AddItemField v-if="store.doc.value && selType && targets.includes(tier.tier)" :key="`${selType}|${tier.tier}`" :doc="store.doc.value" :type="selType" :tier="tier.tier" @add="addItem" />
           </template>
           <WButton v-if="isOwnGroup && ownEditFor(tier)" size="sm" variant="ghost" icon="fas fa-trash" @click="removeEdit(ownEditFor(tier)!)">Remove this own rule</WButton>
         </template>
@@ -308,7 +315,9 @@ import StyleEditor from './StyleEditor.vue'
 import type { LootFilterStore } from './store'
 import { outputName } from './widget'
 import type { LootFilterWidget } from './widget'
-import { OWN_RULE_TYPE, describeEdit, moveTargets, nextEditId, readStyle, rehome, rehomeOptions } from './edits'
+import { OWN_RULE_TYPE, addEdit, conditionSignature, describeEdit, moveTargets, nextEditId, readStyle, rehome, rehomeOptions } from './edits'
+import { ECONOMY_GROUPS } from './economy'
+import { priceGrade } from './health'
 import type { RehomeOption } from './edits'
 import type { FilterEdit, StylePatch } from './edits'
 import { ruleLabel, tierName } from './parse'
@@ -317,7 +326,7 @@ import { tierLabel } from './names'
 import AddItemField from './AddItemField.vue'
 import { baseIcon, labelCss } from './label-style'
 import type { AddResult } from './groups'
-import { buildTree, findBase, groupName } from './groups'
+import { buildTree, byPrice, findBase, groupName, pickBases } from './groups'
 import type { GroupNode, TierNode } from './groups'
 import { hostRequest } from '../shared/host'
 import { BUILD_RULE_TYPE, LEVELLING_BELOW, WEAPON_CLASSES } from './build-rules'
@@ -349,15 +358,34 @@ const selType = ref<string | null>(null)
 const selTier = ref<string | null>(null)
 // Bases picked in the selected tier (shift-click adds), to move or drag.
 const picked = ref<string[]>([])
+const lastPicked = ref<string | null>(null)
+// The look controls change the picked items, not the tier.
+const bulkLook = ref(false)
+watch(picked, (list) => { if (!list.length) bulkLook.value = false })
 const dragOver = ref<string | null>(null)
 // The own rule open in the rule builder.
 const editingRuleId = ref<number | null>(null)
 const editingRule = computed(() => props.config.rules.find(r => r.id === editingRuleId.value) ?? null)
 
+// Today's price of a base, in groups poe.ninja prices.
+function priceOf (base: string): number | null {
+  const lookup = props.store.prices.lookup.value
+  // Prices are in chaos, so poe.ninja doesn't list chaos itself.
+  if (lookup && base === 'Chaos Orb' && selType.value === 'currency') return 1
+  const group = ECONOMY_GROUPS.find(g => g.type === selType.value)
+  return (lookup && group && lookup(group, base)?.chaos) ?? null
+}
+const priceText = (chaos: number) => chaos >= 10 ? `${Math.round(chaos)}c` : (chaos < 0.1 ? '<0.1c' : `${Math.round(chaos * 10) / 10}c`)
+const tierItems = computed(() => byPrice(tier.value?.bases ?? [], priceOf))
+
 const tree = computed(() => props.store.doc.value ? buildTree(props.store.doc.value) : [])
 const allGroups = computed(() => tree.value.flatMap(s => s.groups))
 const group = computed<GroupNode | null>(() => allGroups.value.find(g => g.type === selType.value) ?? null)
 const tier = computed<TierNode | null>(() => group.value?.tiers.find(t => t.tier === selTier.value) ?? null)
+// An undo can take a picked item off the tier.
+watch(tierItems, (list) => {
+  if (picked.value.some(b => !list.includes(b))) picked.value = picked.value.filter(b => list.includes(b))
+})
 const isOwnGroup = computed(() => selType.value === OWN_RULE_TYPE)
 const results = computed(() => props.store.doc.value ? findBase(props.store.doc.value, search.value) : [])
 const targets = computed(() => props.store.doc.value && selType.value ? moveTargets(props.store.doc.value, selType.value) : [])
@@ -557,6 +585,10 @@ function ownEditFor (t: TierNode) {
 
 function patchTier (patch: StylePatch) {
   if (!selType.value || !selTier.value) return
+  if (bulkLook.value) {
+    bulkOwnRules(tier.value!, { patch })
+    return
+  }
   if (isOwnGroup.value) {
     const own = tier.value && ownEditFor(tier.value)
     if (own) props.store.edit({ ...own, patch })
@@ -567,6 +599,10 @@ function patchTier (patch: StylePatch) {
 
 function setTierVisibility (v: Visibility) {
   if (!selType.value || !selTier.value) return
+  if (bulkLook.value) {
+    bulkOwnRules(tier.value!, { visibility: v })
+    return
+  }
   if (isOwnGroup.value) {
     const own = tier.value && ownEditFor(tier.value)
     if (own) props.store.edit({ ...own, visibility: v, patch: {} })
@@ -585,13 +621,76 @@ function moveBases (bases: string[], to: string) {
   selTier.value = to
 }
 
-function moveBase (to: string) {
-  moveBases(picked.value, to)
+function pickBase (b: string, e: MouseEvent) {
+  picked.value = pickBases(tierItems.value, picked.value, b, e.shiftKey, lastPicked.value)
+  lastPicked.value = b
 }
 
-function pickBase (b: string, e: MouseEvent) {
-  if (e.shiftKey) picked.value = picked.value.includes(b) ? picked.value.filter(x => x !== b) : [...picked.value, b]
-  else picked.value = picked.value.length === 1 && picked.value[0] === b ? [] : [b]
+// ---- several items at once ----
+
+function ownVisibility (type: string, t: string, base: string): Visibility | undefined {
+  const own = props.config.edits.find(e => e.kind === 'item' && e.type === type && e.tier === t && e.base === base)
+  return own?.kind === 'item' ? own.visibility : undefined
+}
+
+// Changes the picked items' own rules, one undo for all of them.
+function bulkOwnRules (t: TierNode, change: { visibility?: Visibility, patch?: StylePatch }) {
+  const type = selType.value
+  if (!type || !picked.value.length) return undefined
+  const block = firstLive(t)
+  return props.store.editsWithUndo(picked.value.map(base => ({
+    kind: 'item' as const,
+    type,
+    tier: t.tier,
+    base,
+    // A look change leaves an item you already hid hidden.
+    visibility: change.visibility ?? ownVisibility(type, t.tier, base) ?? block.visibility,
+    patch: change.patch ?? {},
+    anchor: conditionSignature(block)
+  })))
+}
+
+function bulkHide () {
+  const t = tier.value
+  if (!t) return
+  const n = picked.value.length
+  const undo = bulkOwnRules(t, { visibility: 'Hide' })
+  picked.value = []
+  if (undo) toast(`Hid ${n} item${n === 1 ? '' : 's'}`, { anchor: panel.value?.el, undo })
+}
+
+function bulkTakeOff () {
+  const type = selType.value
+  const from = selTier.value
+  if (!type || !from || !picked.value.length) return
+  const bases = picked.value
+  const moved = (e: FilterEdit, b: string) => e.kind === 'move' && e.type === type && e.base === b && e.to === from
+  const undo = props.store.changeWithUndo(c => {
+    let edits = c.edits
+    for (const base of bases) {
+      edits = edits.some(e => moved(e, base))
+        ? edits.filter(e => !moved(e, base))
+        : addEdit(edits, { id: nextEditId(), kind: 'move', type, base, from, to: '' })
+    }
+    c.edits = edits
+  })
+  picked.value = []
+  toast(`Took ${bases.length} item${bases.length === 1 ? '' : 's'} off ${tierLabel(from)}`, { anchor: panel.value?.el, undo })
+}
+
+function tierMoveEntries (bases: () => string[]) {
+  const doc = props.store.doc.value
+  const type = selType.value
+  if (!doc || !type) return []
+  return targets.value.filter(t => t !== selTier.value).map(t => {
+    const block = doc.blocks.find(x => x.type === type && x.tier === t && !x.disabled) ?? doc.blocks.find(x => x.type === type && x.tier === t)
+    return { label: tierLabel(t), labelStyle: block ? labelCss(block.actions) : undefined, icon: 'fas fa-share', action: () => { moveBases(bases(), t) } }
+  })
+}
+
+function bulkMoveMenu (e: MouseEvent) {
+  const list = [...picked.value]
+  openMenu(e, tierMoveEntries(() => list))
 }
 
 // ---- what you changed ----
@@ -647,17 +746,13 @@ function addItem (r: AddResult) {
 
 // Every tier drawn in its own look, so you see the result before you pick.
 function baseMenu (ev: MouseEvent, b: string) {
-  const doc = props.store.doc.value
-  const type = selType.value
-  if (!doc || !type) return
   const moved = moveEditHere(b)
   openMenu(ev, [
-    ...targets.value.filter(t => t !== selTier.value).map(t => {
-      const block = doc.blocks.find(x => x.type === type && x.tier === t && !x.disabled) ?? doc.blocks.find(x => x.type === type && x.tier === t)
-      return { label: tierLabel(t), labelStyle: block ? labelCss(block.actions) : undefined, icon: 'fas fa-share', action: () => { moveBases([b], t) } }
-    }),
+    ...tierMoveEntries(() => picked.value.includes(b) ? [...picked.value] : [b]),
     { separator: true as const },
-    { label: moved ? 'Back to where it was' : 'Take it off this tier', icon: 'fas fa-times', action: () => { takeOff(b) } }
+    picked.value.includes(b) && picked.value.length > 1
+      ? { label: `Take ${picked.value.length} off this tier`, icon: 'fas fa-times', action: bulkTakeOff }
+      : { label: moved ? 'Back to where it was' : 'Take it off this tier', icon: 'fas fa-times', action: () => { takeOff(b) } }
   ])
 }
 
@@ -953,6 +1048,29 @@ function openFolder () {
 .rowArt { width: 18px; height: 18px; object-fit: contain; flex: none; }
 .chipArt { width: 16px; height: 16px; object-fit: contain; flex: none; }
 .chipWrap { display: inline-flex; align-items: center; }
+.p_high { color: var(--w-accent); }
+.p_mid { color: var(--w-dim); }
+.p_trash { color: var(--w-down); }
+.p_unknown { color: var(--w-faint); }
+.bulkBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  margin-top: 6px;
+  padding: 4px 6px;
+  background: var(--w-panel-3);
+  border: 1px solid var(--w-line-strong);
+  border-radius: var(--w-r-sm);
+}
+.bulkNote {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 6px;
+  background: var(--w-accent-soft);
+  border-radius: var(--w-r-sm);
+}
 .chipX {
   background: none;
   border: 0;

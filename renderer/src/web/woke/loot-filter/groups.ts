@@ -161,3 +161,21 @@ export function addSearch (doc: FilterDoc, type: string, tier: string, query: st
       }
     })
 }
+
+// Clicking a chip: a plain click picks or unpicks it, shift picks the run from
+// the last one clicked.
+export function pickBases (list: string[], picked: string[], base: string, shift: boolean, last: string | null): string[] {
+  if (shift && last != null && list.includes(last)) {
+    const [a, b] = [list.indexOf(last), list.indexOf(base)].sort((x, y) => x - y)
+    return [...new Set([...picked, ...list.slice(a, b + 1)])]
+  }
+  return picked.includes(base) ? picked.filter(x => x !== base) : [...picked, base]
+}
+
+// Most valuable first; with no price, they keep their order at the end.
+export function byPrice (bases: string[], priceOf: (base: string) => number | null): string[] {
+  return bases
+    .map((base, i) => ({ base, i, chaos: priceOf(base) }))
+    .sort((a, b) => a.chaos == null && b.chaos == null ? a.i - b.i : (b.chaos ?? -1) - (a.chaos ?? -1) || a.i - b.i)
+    .map(x => x.base)
+}
