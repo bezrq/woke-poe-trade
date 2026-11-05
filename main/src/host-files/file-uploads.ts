@@ -2,19 +2,20 @@ import path from 'path'
 import crypto from 'crypto'
 import fs from 'fs'
 import { app } from 'electron'
-import type { Server } from 'http'
+import type { EventEmitter } from 'events'
+import type { IncomingMessage, ServerResponse } from 'http'
+import { sendFile } from './request-guard'
 
-export function addFileUploadRoutes (server: Server) {
+export function addFileUploadRoutes (routes: EventEmitter) {
   const uploadsPath = path.join(app.getPath('userData'), 'apt-data', 'files')
 
-  server.addListener('request', (req, res) => {
+  routes.addListener('request', (req: IncomingMessage, res: ServerResponse) => {
     if (req.method !== 'GET' || !req.url?.startsWith('/uploads/')) return
 
-    fs.createReadStream(path.join(uploadsPath, req.url.slice('/uploads/'.length)))
-      .pipe(res)
+    sendFile(uploadsPath, req.url.slice('/uploads'.length), res)
   })
 
-  server.addListener('request', (req, res) => {
+  routes.addListener('request', (req: IncomingMessage, res: ServerResponse) => {
     if (req.method !== 'POST' || !req.url?.startsWith('/uploads/')) return
 
     let contents = Buffer.alloc(0)

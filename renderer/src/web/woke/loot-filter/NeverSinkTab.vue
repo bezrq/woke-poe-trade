@@ -56,7 +56,7 @@
             <WSelect :model-value="String(step.level)" :options="levelOptions" @update:model-value="v => step.level = Number(v)" />
           </div>
         </div>
-        <div class="w-faint text-xs">Switches only when you enter town or your hideout, never mid-map, and says so with Undo.</div>
+        <div class="w-faint text-xs">Switches only when you enter town or your hideout, never mid-map, and says so with Undo. Press Reload now to use the new strictness.</div>
       </div>
 
       <div class="w-group-label" :class="$style.label">Look</div>

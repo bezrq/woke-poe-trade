@@ -97,7 +97,9 @@ export async function showBuild (args: { dir?: string, relPath: string }): Promi
 // Starts Path of Building with the build file as its argument.
 export async function openBuild (args: { dir?: string, relPath: string, pobExe?: string }): Promise<void> {
   const full = resolveBuild(args?.dir, args?.relPath)
-  const exe = typeof args?.pobExe === 'string' ? args.pobExe.trim() : ''
+  // With --listen other machines can call this: never start a program for them.
+  const isListening = process.argv.some(arg => arg.startsWith('--listen'))
+  const exe = typeof args?.pobExe === 'string' && !isListening ? args.pobExe.trim() : ''
   if (!exe) {
     const err = await shell.openPath(full)
     if (err) throw new Error(err)

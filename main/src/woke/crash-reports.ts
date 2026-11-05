@@ -115,6 +115,13 @@ export function startCrashReporting () {
     recordCrash('main-error', `Error in the app: ${err instanceof Error ? err.message : String(err)}`, errorText(err))
   })
 
+  // A failed promise nobody handled: worth a log line, not a crash report.
+  process.on('unhandledRejection', (err) => {
+    const text = `error [main] Unhandled: ${errorText(err)}`
+    if (logger) logger.write(text)
+    else console.error(text)
+  })
+
   const reloads: number[] = []
   app.on('render-process-gone', (_e, wc, details) => {
     if (details.reason === 'clean-exit') return
