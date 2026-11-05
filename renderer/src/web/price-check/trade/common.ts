@@ -23,7 +23,7 @@ export type TradeResponse<T> = (T & { error?: null }) | {
 
 /** Trade listings name accounts as `Name#1234`; settings may hold it with or without the number. */
 export function isOwnAccount (listed: string, configured: string): boolean {
-  const mine = configured.trim()
+  const mine = (configured ?? '').trim()
   return mine !== '' && (listed === mine || listed.split('#')[0] === mine)
 }
 

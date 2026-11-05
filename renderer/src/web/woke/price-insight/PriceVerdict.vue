@@ -138,7 +138,10 @@ const smart = useSmartPrice(toRef(props, 'item'), toRef(props, 'insight'), toRef
 onUnmounted(smart.stop)
 const { ninjaInfo, blend, headline, ranges, series, leagueLoading } = smart
 
-const lowValue = computed(() => !props.skipsTopMods && (headline.value?.chaos ?? props.insight.range?.fair ?? 0) < LOW_VALUE)
+// With divine listings left out, what's left may not be the real price: no advice on it.
+const missingDivines = computed(() => props.insight.signals.some(s => s.kind === 'norate'))
+
+const lowValue = computed(() => !props.skipsTopMods && !missingDivines.value && (headline.value?.chaos ?? props.insight.range?.fair ?? 0) < LOW_VALUE)
 
 const railInput = computed(() => ({
   low: props.insight.range?.low ?? 0,
@@ -154,7 +157,7 @@ const showSignals = computed(() => props.insight.signals.length > 0 && (
   props.insight.signals.some(s => s.kind === 'old' || s.kind === 'norate')
 ))
 
-const accountMissing = computed(() => !AppConfig().accountName.trim())
+const accountMissing = computed(() => !AppConfig().accountName?.trim())
 
 const SPARK_LABEL: Record<HistoryRange, string> = { week: 'poe.ninja 7d', league: 'poe.ninja', mine: 'My checks' }
 
@@ -237,7 +240,7 @@ const blendTitle = computed(() => {
 
 const notes = computed(() => {
   const s = props.insight.suggest
-  if (!s) return []
+  if (!s || missingDivines.value) return []
   const fast = noteText(notePrice(s.fast, props.divine))
   // Listings nobody has bought say little: being patient means asking the blended price.
   const oldOnly = props.insight.signals.some(sig => sig.kind === 'old')
