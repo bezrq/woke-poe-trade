@@ -88,7 +88,7 @@ export interface LootFilterWidget extends Widget {
   saveMode: SaveMode
   // After saving, type `/itemfilter <name>` in chat to make the game reload it.
   reloadViaChat: boolean
-  // Hold that chat command until you're in town or your hideout.
+  // Outside town or your hideout, that command waits for you to press Reload now.
   reloadWhenSafe: boolean
   edits: FilterEdit[]
   // NeverSink version the edits were last saved against, to spot updates.

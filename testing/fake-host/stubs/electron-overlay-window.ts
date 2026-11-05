@@ -11,6 +11,7 @@ game.on('focus-change', (focused: boolean) => {
 })
 
 export const OverlayController = {
+  get targetHasFocus () { return game.focused },
   events,
   get targetBounds () { return game.bounds },
   attachByTitle (_window: unknown, _title: string) {

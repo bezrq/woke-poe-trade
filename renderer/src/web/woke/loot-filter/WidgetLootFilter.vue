@@ -253,7 +253,7 @@ const allNotes = computed<Notice[]>(() => {
   if (store.failed.value.length) out.push({ id: 'failed', value: store.failed.value.length, warn: true, tab: 'changes', text: `${store.failed.value.length} change(s) need a new home after a NeverSink update.` })
   if (store.sourceChanged.value) out.push({ id: 'source-changed', value: 1, passing: true, tab: 'changes', text: 'The filter you started from has changed. Save to bring your copy up to date.' })
   if (store.netWaitsForReload.value && !store.pendingReload.value) out.push({ id: 'net-reload', value: 1, passing: true, tab: 'prices', text: 'Prices changed the safety net. It takes effect the next time you reload the filter.' })
-  if (store.pendingReload.value) out.push({ id: 'pending', value: 1, passing: true, text: 'Saved. Reloads when you\'re next in town or your hideout.' })
+  if (store.pendingReload.value) out.push({ id: 'pending', value: 1, passing: true, text: 'Saved. Press Reload now in the filter window to use it in game.' })
   return out
 })
 // Warnings' Got it lasts until a restart, so it isn't saved.

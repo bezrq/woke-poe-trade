@@ -100,6 +100,8 @@ export class OverlayWindow {
 
   get isGameActive () { return this.poeWindow.isActive }
 
+  get isFocused () { return this.window?.isFocused() ?? true }
+
   // The mouse is over a dock icon or card: the window takes clicks while the
   // game keeps focus, so keys still reach the game.
   takeMouse = () => {

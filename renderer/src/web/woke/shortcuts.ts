@@ -28,6 +28,9 @@ import type { FarmingWidget } from './farming/farming'
 import { TRADE_TYPE, hotkeyTarget as tradeHotkeyTarget } from './trade/widget'
 import type { TradeWidget } from './trade/widget'
 
+import { SEARCH_TYPE, SEARCH_TARGET } from './search/widget'
+import type { SearchWidget } from './search/widget'
+
 export const HIDE_ALL_TARGET = 'woke-hide-all'
 
 // Default map check key, used until the Map mods widget exists.
@@ -49,6 +52,10 @@ export function wokeGlobalShortcuts (config: { woke?: { setupDone: boolean, off:
 export function wokeShortcutsFor (widget: Widget, config: { woke?: { setupDone: boolean, off: string[], hideAllHotkey?: string | null }, widgets: Widget[] }): ShortcutAction[] {
   // Modules that are switched off register no hotkeys.
   if (!isWidgetTypeOn(config, widget.wmType)) return []
+  if (widget.wmType === SEARCH_TYPE) {
+    const key = (widget as SearchWidget).hotkey
+    return key ? [{ shortcut: key, keepModKeys: true, action: { type: 'trigger-event', target: SEARCH_TARGET, focusOverlay: true } }] : []
+  }
   if (widget.wmType === REGEX_LIBRARY_TYPE) {
     const lib = widget as RegexLibraryWidget
     if (!lib.enableHotkeys) return []

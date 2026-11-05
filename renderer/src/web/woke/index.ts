@@ -36,10 +36,12 @@ import WidgetScarabFlip from './scarab-flip/WidgetScarabFlip.vue'
 import WidgetLootFilter from './loot-filter/WidgetLootFilter.vue'
 import WidgetSessionAnalytics from './analytics/WidgetSessionAnalytics.vue'
 import WidgetTrade from './trade/WidgetTrade.vue'
+import WidgetSearch from './search/WidgetSearch.vue'
 
 type WidgetComponent = Component & { widget: WidgetSpec }
 
 export const wokeWidgets: WidgetComponent[] = [
+  WidgetSearch as unknown as WidgetComponent,
   WidgetRegexLibrary as unknown as WidgetComponent,
   WidgetTradeSearches as unknown as WidgetComponent,
   WidgetMarketTracker as unknown as WidgetComponent,

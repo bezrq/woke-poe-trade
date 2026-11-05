@@ -30,7 +30,7 @@
     </label>
     <label class="flex items-center gap-2 ml-6">
       <input v-model="reloadWhenSafe" type="checkbox" :disabled="!reloadViaChat">
-      <span>Quick fixes and automatic saves reload only in town or hideout. "Save + reload" and "Reload now" always reload right away.</span>
+      <span>Quick fixes reload at once only in town or hideout; elsewhere they wait for "Reload now". Automatic saves always wait: GGG's rules need a key press or click for every command.</span>
     </label>
 
     <div class="text-sm" style="color: var(--w-dim);">

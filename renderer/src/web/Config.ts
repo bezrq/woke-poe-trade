@@ -9,6 +9,7 @@ import { wokeGlobalShortcuts, wokeShortcutsFor } from './woke/shortcuts'
 import { LOOT_FILTER_TYPE, seedLootFilterWidget } from './woke/loot-filter/widget'
 import { ensureWokeConfig, filterAptShortcuts, isModuleOn, needsGameLog } from './woke/modules'
 import { MAP_CHECK_TYPE, initMapCheckWidget } from './woke/map-mods/map-check'
+import { SEARCH_TYPE, initSearchWidget } from './woke/search/widget'
 import { moveStashSearchToLibrary } from './woke/regex-library/apt-import'
 import { movePopupsToNewSpot } from './woke/ui/window-anchor'
 import type { WokeModulesConfig } from './woke/modules'
@@ -486,6 +487,12 @@ function upgradeConfig (_config: Config): Config {
   // woke: single-instance windows are only created on a fresh config.
   if (!config.widgets.some(w => w.wmType === MAP_CHECK_TYPE)) {
     config.widgets.push(initMapCheckWidget(Math.max(0, ...config.widgets.map(w => w.wmId)) + 1))
+  }
+  // woke: the search hotkey. A key you already use elsewhere isn't taken over.
+  if (!config.widgets.some(w => w.wmType === SEARCH_TYPE)) {
+    const taken = [...JSON.stringify(config).matchAll(/"((?:[A-Z][a-z]+ \+ )+\w+)"/g)].map(m => m[1])
+    taken.push(`${priceCheck.hotkeyHold} + ${priceCheck.hotkey}`)
+    config.widgets.push(initSearchWidget(Math.max(0, ...config.widgets.map(w => w.wmId)) + 1, taken))
   }
   // woke: the filter rule hotkey works without adding the editor first.
   // Once only, so one you removed stays removed.
