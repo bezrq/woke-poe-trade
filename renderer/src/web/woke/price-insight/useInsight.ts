@@ -1,5 +1,6 @@
 import { computed, Ref } from 'vue'
 import { usePoeninja } from '@/web/background/Prices'
+import { useLeagues } from '@/web/background/Leagues'
 import { buildInsight, InsightListing, InsightOptions } from './insight'
 
 // Trade API currency ids we can value through poe.ninja, besides chaos and divine.
@@ -15,10 +16,13 @@ const NINJA_CURRENCY: Record<string, string> = {
   mirror: 'Mirror of Kalandra'
 }
 
-export function useInsight (listings: Ref<InsightListing[]>) {
+export function useInsight (listings: Ref<InsightListing[]>, league: Ref<string>) {
   const ninja = usePoeninja()
+  const leagues = useLeagues()
 
-  const divine = computed(() => ninja.xchgRate.value)
+  // poe.ninja only holds the league picked in settings, and its rates are wrong
+  // for any other. With no rate, poe.ninja's price and history stay out too.
+  const divine = computed(() => league.value === leagues.selectedId.value ? ninja.xchgRate.value : undefined)
 
   // Rates for every convertible currency; re-read when poe.ninja reloads,
   // which also refreshes the divine rate.

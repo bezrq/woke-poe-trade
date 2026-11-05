@@ -56,6 +56,7 @@
       <div v-if="showSignals" :class="$style.signals">
         <div v-for="s in insight.signals" :key="s.kind" :class="$style.signal"><span :class="$style.flag">⚑</span> {{ s.text }}</div>
       </div>
+      <p v-if="accountMissing" :class="$style.note">Your own listings may be counted here. Add your account name in settings to leave them out.</p>
       <div v-if="!lowValue && notes.length" :class="$style.actions">
         <button v-for="n in notes" :key="n.key" type="button" :class="$style.note2"
           :title="'Copy the listing note: ' + n.text" @click="copy(n)">
@@ -90,6 +91,7 @@
 <script setup lang="ts">
 import { computed, onUnmounted, toRef, watch } from 'vue'
 import { ParsedItem } from '@/parser'
+import { AppConfig } from '@/web/Config'
 import { WPrice, WSpark } from '../ui'
 import { useCopy } from '../ui/copy'
 import NinjaLine from './NinjaLine.vue'
@@ -149,8 +151,10 @@ const railInput = computed(() => ({
 // Warnings stay out of the way unless they change what the price means.
 const showSignals = computed(() => props.insight.signals.length > 0 && (
   expanded.value || props.insight.risk === 'medium' || props.insight.risk === 'high' ||
-  props.insight.signals.some(s => s.kind === 'old')
+  props.insight.signals.some(s => s.kind === 'old' || s.kind === 'norate')
 ))
+
+const accountMissing = computed(() => !AppConfig().accountName.trim())
 
 const SPARK_LABEL: Record<HistoryRange, string> = { week: 'poe.ninja 7d', league: 'poe.ninja', mine: 'My checks' }
 
@@ -199,6 +203,8 @@ const rangeUnit = computed(() => {
 const emptyText = computed(() => {
   if (props.blankSearch) return 'No mods are ticked, so these listings can\'t price this rare. Tick the mods that matter, then search.'
   if (props.total === 0) return 'Nobody is selling this with these filters'
+  const noRate = props.insight.signals.find(s => s.kind === 'norate')
+  if (noRate) return noRate.text
   if (props.insight.dropped.size) return 'All listings looked unreliable'
   return 'No listings yet'
 })
