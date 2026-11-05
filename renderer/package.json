@@ -7,7 +7,8 @@
     "lint": "eslint --ext .ts,.vue src",
     "build": "vue-tsc --noEmit && vite build",
     "test": "vitest run",
-    "typecheck:test": "vue-tsc -p test/tsconfig.json"
+    "typecheck:test": "vue-tsc -p test/tsconfig.json",
+    "tip-data": "node scripts/build-tip-data.mjs"
   },
   "dependencies": {
     "@fontsource/inter": "^5.3.0",

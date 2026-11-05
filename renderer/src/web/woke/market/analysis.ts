@@ -1,6 +1,6 @@
 import { findDivinePrice } from './parse'
-import { isThin, itemKey } from './types'
-import type { PriceItem } from './types'
+import { isCorrupted, isThin, itemKey } from './types'
+import type { CorruptedFilter, PriceItem } from './types'
 
 export interface Mover {
   type: string
@@ -29,6 +29,7 @@ export function computeMovers (
     divNow?: number | null
     divThen?: number | null
     hideThin?: boolean
+    corrupted?: CorruptedFilter
   }
 ): Mover[] {
   const inDiv = opts.unit === 'div' && opts.divNow && opts.divThen
@@ -43,6 +44,8 @@ export function computeMovers (
     if (prev == null || prev <= 0) continue
     if (Math.max(item.chaos, prev) < opts.minChaos) continue
     if (opts.hideThin && isThin(item)) continue
+    if (opts.corrupted === 'only' && !isCorrupted(item)) continue
+    if (opts.corrupted === 'hide' && isCorrupted(item)) continue
     if (inDiv && item.type === 'Currency' && item.name === 'Divine Orb' && !item.variant) continue
     out.push({
       type: item.type,

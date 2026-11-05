@@ -1,4 +1,6 @@
+import { shallowRef } from 'vue'
 import type { Widget, Anchor } from '@/web/overlay/widgets'
+import type { CorruptedFilter } from './types'
 
 export const MARKET_TRACKER_TYPE = 'woke-market-tracker'
 
@@ -43,4 +45,9 @@ export interface MarketTrackerWidget extends Widget {
   unit?: 'chaos' | 'div'
   // Show items poe.ninja barely saw trade on.
   showThin?: boolean
+  // Corrupted gems: all of them, only them, or none of them.
+  corrupted?: CorruptedFilter
 }
+
+// Opens the tracker on a search, from the search palette.
+export const marketSearchRequest = shallowRef<string | null>(null)

@@ -93,7 +93,7 @@ test('the launcher lists every tool, finds them, opens them and pins them', asyn
   const { page } = overlay
   await boot(overlay)
   await icon(overlay, 'All tools').click()
-  const box = page.getByRole('textbox', { name: 'Find a tool, or paste an item' })
+  const box = page.getByRole('textbox', { name: 'Find a tool or an item, or paste an item' })
   await expect(box).toBeFocused()
   await expect(page.getByRole('button', { name: 'Challenges', exact: true })).toBeVisible()
   await expect(page.getByText('Economy', { exact: true })).toBeVisible()
@@ -116,7 +116,7 @@ test('the launcher lists every tool, finds them, opens them and pins them', asyn
 
   await icon(overlay, 'All tools').click()
   await box.fill('nothing like this')
-  await expect(page.getByText('No tool matches')).toBeVisible()
+  await expect(page.getByText('Nothing matches')).toBeVisible()
   expect(overlay.errors).toEqual([])
 })
 
@@ -126,7 +126,7 @@ test('the launcher opens toward the screen when the rail is on the right', async
     menu.anchor = { pos: 'tr', x: 100, y: 10.5 }
   })
   await icon(overlay, 'All tools').click()
-  const panel = overlay.page.getByRole('textbox', { name: 'Find a tool, or paste an item' })
+  const panel = overlay.page.getByRole('textbox', { name: 'Find a tool or an item, or paste an item' })
   const railBox = (await rail.boundingBox())!
   const panelBox = (await panel.boundingBox())!
   expect(panelBox.x + panelBox.width).toBeLessThan(railBox.x)
@@ -137,7 +137,7 @@ test('an item pasted into the launcher goes to the price check, other text is a 
   const { page } = overlay
   await boot(overlay)
   await icon(overlay, 'All tools').click()
-  const box = page.getByRole('textbox', { name: 'Find a tool, or paste an item' })
+  const box = page.getByRole('textbox', { name: 'Find a tool or an item, or paste an item' })
   const paste = (text: string) => box.evaluate((el, t) => {
     const data = new DataTransfer()
     data.setData('text/plain', t)
