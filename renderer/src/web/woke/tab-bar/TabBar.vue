@@ -49,12 +49,12 @@
       <div v-if="popup" :class="$style.backdrop" @mousedown="closePopup" @contextmenu.prevent="closePopup" />
 
       <!-- Tools: every tool, one box for search and item paste -->
-      <div v-if="popup?.kind === 'launcher'" ref="popupEl" :class="[$style.menu, $style.launcher]" :style="popupStyle" @contextmenu.prevent>
+      <div v-if="popup?.kind === 'launcher'" ref="popupEl" :class="[$style.menu, $style.launcher]" :style="popupStyle" tabindex="-1" @contextmenu.prevent @keydown.esc="closePopup">
         <label :class="$style.find">
           <i class="fas fa-search" />
           <textarea ref="searchInput" v-model="query" :class="$style.findInput" rows="1" spellcheck="false"
             aria-label="Find a tool, or paste an item" placeholder="Find a tool, or paste an item (Ctrl V)"
-            @paste="onBoxPaste" @keydown.esc="closePopup" @keydown.enter.prevent="openFirstMatch" />
+            @paste="onBoxPaste" @keydown.enter.prevent="openFirstMatch" />
         </label>
         <div :class="$style.cols">
           <div v-for="(col, i) in launcherColumns" :key="i">
@@ -586,7 +586,7 @@ function addFirstMatch () {
   font-size: var(--w-text);
 }
 
-.launcher { box-sizing: border-box; width: 900px; max-width: calc(100vw - 8px); padding: 10px; background: var(--w-panel-solid); }
+.launcher { outline: 0; box-sizing: border-box; width: 900px; max-width: calc(100vw - 8px); padding: 10px; background: var(--w-panel-solid); }
 .find {
   display: flex;
   align-items: center;
