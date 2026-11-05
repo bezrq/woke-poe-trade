@@ -38,6 +38,16 @@ history:
       Which concept (A Waking Eye, B Forged W, C Daybreak, D Lantern, E Risen)?
       And should the tab bar and dock get the mark too? Mocks:
       https://claude.ai/artifact/Bwu7RtrW93ktFE7kUbw8Zy
+  - type: comment
+    user: Agent
+    comment: >-
+      Guy asked about PoE item art instead. Sheet of bundled art sent. Bundled
+      sources are only about 26 to 48px (77px for today's orb), so a 256px app
+      icon would blur. Maven witness and Divine Orb hold up best at 16px.
+      Waiting on his pick.
+    date: '2026-11-05T06:09:45.297Z'
+    selfAttested: true
+    id: c-2026-11-05t06-09-45-297z
 swimlane: require-input
 needsAction: null
 ---

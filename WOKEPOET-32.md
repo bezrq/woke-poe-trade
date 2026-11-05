@@ -1,7 +1,7 @@
 ---
 id: WOKEPOET-32
 title: 'Campaign tracker: dock icon only, sleep on endgame characters'
-status: Grooming
+status: In Progress
 priority: None
 effort: None
 assignee: unassigned
@@ -48,6 +48,11 @@ history:
     comment: >-
       Guy picked B and asked for a card shortcut to settings for optional pinned
       readouts; mocking that next.
+  - type: status_change
+    from: Grooming
+    to: In Progress
+    user: Agent
+    date: '2026-11-05T06:10:00.963Z'
 swimlane: null
 needsAction: null
 ---
