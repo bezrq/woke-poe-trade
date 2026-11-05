@@ -123,6 +123,16 @@ async fn handle_socket(socket: WebSocket) {
         let attached = json!({ "name": "MAIN->OVERLAY::overlay-attached", "payload": null });
         let _ = sink.send(Message::Text(attached.to_string().into())).await;
     }
+    // The overlay hides everything until it hears the game has focus. If the
+    // game was already focused before the page connected, that event was sent
+    // to nobody, so repeat the current state to every new connection.
+    let focus = json!({ "name": "MAIN->OVERLAY::focus-change", "payload": {
+        "game": h.game_active.load(Ordering::SeqCst),
+        "overlay": h.is_interactable(),
+        "usingHotkey": false
+    } });
+    let _ = sink.send(Message::Text(focus.to_string().into())).await;
+    h.log(&format!("overlay page connected (game focused: {})", h.game_active.load(Ordering::SeqCst)));
 
     let forward = tokio::spawn(async move {
         while let Ok(msg) = rx.recv().await {

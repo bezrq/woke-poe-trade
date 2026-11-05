@@ -49,6 +49,7 @@ static ACTIVATED_BY_HOVER: AtomicBool = AtomicBool::new(false);
 
 thread_local! {
     static LOCATION_HOOK: std::cell::Cell<isize> = const { std::cell::Cell::new(0) };
+    static LAST_RECT: std::cell::Cell<(i32, i32, i32, i32)> = const { std::cell::Cell::new((0, 0, 0, 0)) };
 }
 
 fn hwnd(v: isize) -> HWND {
@@ -215,6 +216,10 @@ fn cover_game() {
             return;
         }
         let _ = SetWindowPos(ov, Some(HWND_TOPMOST), pt.x, pt.y, w, hgt, SWP_NOACTIVATE | SWP_SHOWWINDOW);
+        let r = (pt.x, pt.y, w, hgt);
+        if LAST_RECT.with(|c| c.replace(r)) != r {
+            h.log(&format!("overlay placed over the game at {},{} size {}x{}", r.0, r.1, r.2, r.3));
+        }
     }
 }
 
@@ -241,6 +246,7 @@ fn on_foreground(fg: HWND) {
     }
     let was = h.game_active.swap(is_game, Ordering::SeqCst);
     if was != is_game {
+        h.log(&format!("focus: game {is_game}, overlay {is_overlay}"));
         if is_game && h.interactable.swap(false, Ordering::SeqCst) {
             set_click_through(true);
         }
@@ -267,6 +273,7 @@ fn force_foreground(target: HWND) {
 
 fn do_activate_overlay() {
     let h = hub();
+    h.log("do_activate_overlay");
     if h.is_interactable() {
         return;
     }
@@ -279,6 +286,7 @@ fn do_activate_overlay() {
 
 fn do_focus_game() {
     let h = hub();
+    h.log("do_focus_game");
     ACTIVATED_BY_HOVER.store(false, Ordering::SeqCst);
     if !h.is_interactable() {
         return;

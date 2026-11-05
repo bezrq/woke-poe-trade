@@ -79,6 +79,12 @@ fn main() {
                 .focused(false)
                 .visible(false)
                 .initialization_script(INIT_JS)
+                // Like the Electron app (app.disableHardwareAcceleration()):
+                // no GPU process work for a mostly idle overlay. The other
+                // flags are Tauri's defaults, which this replaces.
+                .additional_browser_args(
+                    "--disable-gpu --disable-gpu-compositing --disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection",
+                )
                 .build()?;
             win.set_ignore_cursor_events(true)?;
             overlay::start(win.hwnd()?.0 as isize);
