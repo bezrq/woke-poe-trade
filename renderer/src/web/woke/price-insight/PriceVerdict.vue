@@ -1,28 +1,36 @@
 <template>
   <div :class="[$style.card, $style[insight.confidence]]">
-    <div :class="$style.band">
-      <div :class="$style.answer">
-        <template v-if="!insight.range">
-          <div v-if="!loading && headline" :class="$style.value" :title="blendTitle">
-            <w-price :class="[$style.headline, $style.headlinePrice]" :chaos="headline.chaos" :divine="divine" />
-          </div>
-          <div :class="$style.trust">
-            <span :class="$style.badge">{{ loading ? '…' : blankSearch ? 'NO MODS' : (headline ? 'NO LISTINGS' : 'NO DATA') }}</span>
-            <span>{{ loading ? 'Reading listings…' : (headline ? 'Other sources say' : '') }}</span>
-          </div>
-        </template>
-        <template v-else>
-          <div :class="$style.value">
-            <span v-if="lowValue" :class="$style.headline">Not worth listing</span>
-            <w-price v-else :class="[$style.headline, $style.headlinePrice]" :chaos="headline?.chaos ?? insight.range.fair" :divine="divine" />
-          </div>
-          <div :class="$style.trust">
-            <span :class="$style.badge" :title="CONFIDENCE_HINT[insight.confidence]">{{ CONFIDENCE_LABEL[insight.confidence] }}</span>
-            <span class="whitespace-nowrap" :title="blendTitle">{{ lowValue ? `Under ${LOW_VALUE}c` : 'Asking around' }}</span>
-            <span v-if="insight.risk !== 'none'" :class="[$style.risk, $style['risk-' + insight.risk]]" :title="riskTitle"
-              @click="verdictExpanded = true">⚑ {{ RISK_LABEL[insight.risk] }}</span>
-          </div>
-        </template>
+    <!-- One row with the answer; everything else opens from the chevron. -->
+    <div :class="$style.row">
+      <span v-if="!insight.range && loading">Reading listings…</span>
+      <template v-else-if="!insight.range">
+        <w-price v-if="headline" :class="$style.price" :title="blendTitle" :chaos="headline.chaos" :divine="divine" />
+        <span :class="$style.badge">{{ blankSearch ? 'NO MODS' : (headline ? 'NO LISTINGS' : 'NO DATA') }}</span>
+        <span v-if="!headline" :class="$style.rowNote">{{ emptyText }}</span>
+      </template>
+      <template v-else>
+        <span v-if="lowValue" :class="$style.priceText" :title="blendTitle">Not worth listing</span>
+        <w-price v-else :class="$style.price" :title="blendTitle" :chaos="headline?.chaos ?? insight.range.fair" :divine="divine" />
+        <span :class="$style.badge" :title="CONFIDENCE_HINT[insight.confidence]">{{ CONFIDENCE_LABEL[insight.confidence] }}</span>
+        <span v-if="!expanded" class="w-num" :class="$style.fact">Cheapest <w-price :class="$style.factPrice" :chaos="insight.range.low" :divine="divine" :unit="ninjaInfo ? 'auto' : rangeUnit" /></span>
+      </template>
+      <span v-if="!expanded && ninjaInfo" class="w-num" :class="$style.fact" :title="ninjaNotCounted ? 'poe.ninja isn\'t counted in this price' : undefined">
+        <span :class="$style.ninjaName">poe.ninja</span>
+        <w-price :class="[$style.ninjaPrice, { [$style.notCounted]: ninjaNotCounted }]" :chaos="ninjaInfo.chaos" :divine="divine" />
+      </span>
+      <button v-if="hasWarning" type="button" :class="[$style.warn, { [$style.warnHigh]: insight.range && insight.risk === 'high' }]" :title="warningTitle"
+        @click="verdictExpanded = true">⚑<template v-if="riskLabel"> {{ riskLabel }}</template></button>
+      <span class="flex-1" />
+      <button type="button" class="w-icon-btn" :title="expanded ? 'Show less' : 'Show more detail and what drives the price'"
+        @click="verdictExpanded = !verdictExpanded">
+        <i class="fas text-xs" :class="expanded ? 'fa-chevron-up' : 'fa-chevron-down'" />
+      </button>
+    </div>
+
+    <template v-if="expanded">
+      <p v-if="!insight.range && !loading && headline" :class="$style.note">{{ emptyText }}</p>
+      <div v-if="insight.range && insight.signals.length" :class="$style.signals">
+        <div v-for="s in insight.signals" :key="s.kind" :class="$style.signal"><span :class="$style.flag">⚑</span> {{ s.text }}</div>
       </div>
       <div v-if="insight.range && !lowValue && notes.length" :class="$style.actions">
         <button v-for="n in notes" :key="n.key" type="button" :class="$style.note2"
@@ -31,39 +39,30 @@
           <span class="w-num">{{ copied === n.key ? 'Copied' : n.text }}</span>
         </button>
       </div>
-    </div>
 
-    <p v-if="!insight.range && !loading" :class="$style.note">{{ emptyText }}</p>
-    <div v-if="insight.range && showSignals" :class="$style.signals">
-      <div v-for="s in insight.signals" :key="s.kind" :class="$style.signal"><span :class="$style.flag">⚑</span> {{ s.text }}</div>
-    </div>
+      <div v-if="insight.range || ranges.length" :class="$style.line">
+        <template v-if="insight.range">
+          <span class="w-num" :class="$style.fact">Cheapest <w-price :class="$style.factPrice" :chaos="insight.range.low" :divine="divine" :unit="rangeUnit" /></span>
+          <span v-if="insight.range.high > insight.range.low" class="w-num" :class="$style.fact">up to <w-price :class="$style.factPrice" :chaos="insight.range.high" :divine="divine" :unit="rangeUnit" /></span>
+        </template>
+        <button v-if="ranges.length" type="button" :class="[$style.sparkBtn, { [$style.on]: historyOpen }]"
+          :title="(historyOpen ? 'Hide price history' : 'Show price history') + (ninjaNotCounted ? '. poe.ninja isn\'t counted in this price' : '')" @click="historyOpen = !historyOpen">
+          <w-spark :values="sparkValues" :width="40" :height="14" />
+          <span class="w-num" :class="$style.fact">
+            <span :class="{ [$style.ninjaName]: ninjaInfo }">{{ ninjaInfo ? 'poe.ninja' : 'My checks' }}</span>
+            <w-price v-if="ninjaInfo" :class="[$style.ninjaPrice, { [$style.notCounted]: ninjaNotCounted }]" :chaos="ninjaInfo.chaos" :divine="divine" />
+            <span v-if="ninjaInfo && ninjaNotCounted">not counted</span>
+            <span v-if="sparkChange != null" :class="sparkChange >= 0 ? 'w-up' : 'w-down'">{{ sparkChange >= 0 ? '+' : '' }}{{ Math.round(sparkChange * 100) }}%</span>
+          </span>
+        </button>
+        <span class="flex-1" />
+        <span v-if="insight.range" :class="$style.count" :title="droppedTitle">{{ countText }}</span>
+      </div>
 
-    <div :class="$style.line">
-      <template v-if="insight.range">
-        <span class="w-num" :class="$style.fact">Cheapest <w-price :class="$style.factPrice" :chaos="insight.range.low" :divine="divine" :unit="ninjaInfo ? 'auto' : rangeUnit" /></span>
-        <span v-if="(!ninjaInfo || expanded) && insight.range.high > insight.range.low" class="w-num" :class="$style.fact">up to <w-price :class="$style.factPrice" :chaos="insight.range.high" :divine="divine" :unit="rangeUnit" /></span>
-      </template>
-      <button v-if="ranges.length" type="button" :class="[$style.sparkBtn, { [$style.on]: historyOpen }]"
-        :title="(historyOpen ? 'Hide price history' : 'Show price history') + (ninjaNotCounted ? '. poe.ninja isn\'t counted in this price' : '')" @click="historyOpen = !historyOpen">
-        <w-spark :values="sparkValues" :width="40" :height="14" />
-        <span class="w-num" :class="$style.fact">
-          <span :class="{ [$style.ninjaName]: ninjaInfo }">{{ ninjaInfo ? 'poe.ninja' : 'My checks' }}</span>
-          <w-price v-if="ninjaInfo" :class="[$style.ninjaPrice, { [$style.notCounted]: ninjaNotCounted }]" :chaos="ninjaInfo.chaos" :divine="divine" />
-          <span v-if="ninjaInfo && ninjaNotCounted">not counted</span>
-          <span v-if="sparkChange != null" :class="sparkChange >= 0 ? 'w-up' : 'w-down'">{{ sparkChange >= 0 ? '+' : '' }}{{ Math.round(sparkChange * 100) }}%</span>
-        </span>
-      </button>
-      <span class="flex-1" />
-      <span v-if="insight.range" :class="$style.count" :title="droppedTitle">{{ countText }}</span>
-      <button type="button" class="w-icon-btn" :title="expanded ? 'Show less' : 'Show more detail and what drives the price'"
-        @click="verdictExpanded = !verdictExpanded">
-        <i class="fas text-xs" :class="expanded ? 'fa-chevron-up' : 'fa-chevron-down'" />
-      </button>
-    </div>
+      <p v-if="age" :class="$style.note" :style="age.stale ? { color: 'var(--w-warn)' } : undefined">{{ age.text }}</p>
+    </template>
 
-    <p v-if="age && (expanded || age.stale)" :class="$style.note" :style="age.stale ? { color: 'var(--w-warn)' } : undefined">{{ age.text }}</p>
-
-    <price-history-chart v-if="historyOpen && ranges.length" :ranges="ranges" :series="series" :divine="divine"
+    <price-history-chart v-if="expanded && historyOpen && ranges.length" :ranges="ranges" :series="series" :divine="divine"
       :from-ninja="Boolean(ninjaInfo)" :loading="leagueLoading" @range="onRange" />
 
     <div v-if="expanded && sourcesAddAnything(blend, headline?.from)" :class="$style.sources">
@@ -133,7 +132,7 @@ const CONFIDENCE_HINT: Record<Confidence, string> = {
   low: 'Few or widely spread listings: treat the price as a rough guess',
   none: 'No usable listings'
 }
-const RISK_LABEL: Record<FixRisk, string> = { none: '', low: 'fixing risk: low', medium: 'fixing risk: medium', high: 'fixing risk: high' }
+const RISK_LABEL: Record<FixRisk, string> = { none: '', low: 'Fixing: low', medium: 'Fixing: medium', high: 'Fixing: high' }
 
 const smart = useSmartPrice(toRef(props, 'item'), toRef(props, 'insight'), toRef(props, 'divine'), toRef(props, 'logKey'), toRef(props, 'league'), toRef(props, 'ninjaFits'))
 onUnmounted(smart.stop)
@@ -147,11 +146,17 @@ const missingDivines = computed(() => props.insight.signals.some(s => s.kind ===
 
 const lowValue = computed(() => !props.skipsTopMods && !missingDivines.value && (headline.value?.chaos ?? props.insight.range?.fair ?? 0) < LOW_VALUE)
 
-// Warnings stay out of the way unless they change what the price means.
-const showSignals = computed(() => props.insight.signals.length > 0 && (
-  expanded.value || props.insight.risk === 'medium' || props.insight.risk === 'high' ||
-  props.insight.signals.some(s => s.kind === 'old' || s.kind === 'norate' || s.kind === 'snipe' || s.kind === 'oneseller')
-))
+// A flag on the row, only for what changes what the price means. The text opens with the chevron.
+// With no listings to go on, a price from other sources needs its reason flagged too.
+const hasWarning = computed(() => Boolean(age.value?.stale) || (props.insight.range != null
+  ? riskLabel.value !== '' ||
+    props.insight.signals.some(s => s.kind === 'old' || s.kind === 'norate' || s.kind === 'snipe' || s.kind === 'oneseller')
+  : !props.loading && headline.value != null))
+const riskLabel = computed(() => props.insight.range && (props.insight.risk === 'medium' || props.insight.risk === 'high') ? RISK_LABEL[props.insight.risk] : '')
+const warningTitle = computed(() => [
+  ...(props.insight.range ? props.insight.signals.map(s => s.text) : (!props.loading && headline.value ? [emptyText.value] : [])),
+  ...(age.value?.stale ? [age.value.text] : [])
+].join('\n') || 'Some listings look placed to fake the price')
 
 const accountMissing = computed(() => !AppConfig().accountName?.trim())
 
@@ -223,8 +228,6 @@ const droppedTitle = computed(() => {
   return Array.from(counts, ([reason, n]) => `${n} × ${DROP_LABEL[reason]}`).join('\n')
 })
 
-const riskTitle = computed(() => props.insight.signals.map(s => s.text).join('\n') || 'Some listings look placed to fake the price')
-
 const blendTitle = computed(() => {
   const lines = blend.value.points.map(p =>
     `${p.label}: ${Math.round(p.low)}${p.high > p.low ? '–' + Math.round(p.high) : ''}c${p.weight === 0 ? ' (not counted)' : ''}. ${p.note}`)
@@ -265,12 +268,14 @@ async function copy (n: { key: string, text: string }) {
   font-size: var(--w-text);
   font-variant-numeric: tabular-nums;
 }
-/* The answer and what to do with it: the first thing in the window. */
-/* The buttons drop under the price when the window is too narrow for both. */
-.band { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; padding: 10px 1rem; }
-.answer { display: flex; flex-direction: column; gap: 2px; flex: 1 1 calc(150px * var(--w-text-scale, 1)); min-width: 0; }
-.trust { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; min-width: 0; color: var(--w-dim); font-size: calc(12px * var(--w-text-scale, 1)); line-height: calc(16px * var(--w-text-scale, 1)); }
-.value { display: flex; align-items: center; gap: 8px; min-width: 0; overflow: hidden; }
+/* The answer, on one row. It only wraps when the text is scaled past the window. */
+.row { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 10px; min-height: 32px; padding: 2px calc(1rem - 4px) 2px 1rem; font-size: calc(12px * var(--w-text-scale, 1)); color: var(--w-dim); white-space: nowrap; }
+.rowNote { flex: 1 1 100%; white-space: normal; order: 1; padding-bottom: 4px; }
+.price { justify-content: flex-start; font-family: var(--w-num); font-size: calc(16px * var(--w-text-scale, 1)); font-weight: 600; color: var(--w-accent); }
+.price img { width: calc(16px * var(--w-text-scale, 1)); height: calc(16px * var(--w-text-scale, 1)); }
+.priceText { font-family: var(--w-head); font-size: calc(16px * var(--w-text-scale, 1)); color: var(--w-accent); }
+.warn { color: var(--w-warn); }
+.warnHigh { color: var(--w-down); }
 .count { color: var(--w-dim); font-size: var(--w-fs-xs); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .note { margin: 0; padding: 0 1rem 8px; color: var(--w-dim); font-size: calc(12px * var(--w-text-scale, 1)); line-height: calc(17px * var(--w-text-scale, 1)); }
 /* One line of facts, for whoever wants them. */
@@ -293,37 +298,12 @@ async function copy (n: { key: string, text: string }) {
 .high .badge { color: var(--w-up); border-color: currentColor; }
 .medium .badge { color: var(--w-accent); border-color: currentColor; }
 .low .badge { color: var(--w-warn); border-color: currentColor; }
-.headline {
-  font-family: var(--w-head);
-  font-size: calc(22px * var(--w-text-scale, 1));
-  line-height: calc(32px * var(--w-text-scale, 1));
-  color: var(--w-accent);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-/* Fontin's old-style digits dip and rise: a price wants even figures. */
-.headlinePrice { justify-content: flex-start; font-family: var(--w-num); font-size: calc(28px * var(--w-text-scale, 1)); font-weight: 600; letter-spacing: 0; }
-.headlinePrice img { width: 24px; height: 24px; }
-.risk {
-  flex: none;
-  font-size: var(--w-fs-xs);
-  padding: 0 6px;
-  border-radius: var(--w-r-sm);
-  border: 1px solid var(--w-line);
-  white-space: nowrap;
-  cursor: pointer;
-}
-.risk-low { color: var(--w-dim); }
-.risk-medium { color: var(--w-warn); border-color: currentColor; }
-.risk-high { color: var(--w-down); border-color: currentColor; }
 .sparkBtn { display: inline-flex; align-items: center; gap: 6px; flex: none; padding: 1px 4px; margin: 0 -4px; border-radius: var(--w-r-sm); border: 1px solid transparent; }
 .sparkBtn:hover, .sparkBtn.on { border-color: var(--w-line-strong); background: var(--w-panel-3); }
-/* Only when something changes what the price means, right under it. */
 .signals { display: flex; flex-direction: column; gap: 2px; padding: 6px 1rem; color: var(--w-fg); background: color-mix(in srgb, var(--w-down) 10%, transparent); border-top: 1px solid color-mix(in srgb, var(--w-down) 35%, transparent); }
 .signal { font-size: calc(12px * var(--w-text-scale, 1)); line-height: calc(17px * var(--w-text-scale, 1)); }
 .flag { color: var(--w-down); }
-.actions { display: grid; gap: 4px; flex: 1 1 calc(212px * var(--w-text-scale, 1)); max-width: 100%; min-width: 0; }
+.actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(calc(160px * var(--w-text-scale, 1)), 1fr)); gap: 4px 8px; padding: 6px 1rem; border-top: 1px solid var(--w-line-soft); }
 .note2 {
   display: flex;
   align-items: center;

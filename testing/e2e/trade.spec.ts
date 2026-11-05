@@ -158,6 +158,45 @@ test('with a short bubble time the bubble ends, and the icon stays while offers 
   await expect(icon).toBeVisible()
 })
 
+test('an offer open since before a restart shows the bubble', async ({ overlay, fakeApp }) => {
+  clearHistory(fakeApp.opts.userData)
+  const d = new Date()
+  const p = (n: number) => String(n).padStart(2, '0')
+  const stamp = `${d.getFullYear()}/${p(d.getMonth() + 1)}/${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`
+  const whisper = LINES.find(l => l.includes('Kaltenhalt: Hi, I would like to buy your Headhunter'))!
+  await overlay.boot({ widgets: [TRADE], logBefore: [whisper.replace(/^\d{4}\/\d\d\/\d\d \d\d:\d\d:\d\d/, stamp)] })
+  // A restart, now the app follows this test's log: the first load may have read
+  // the tail of the previous test's.
+  await expect.poll(() => fakeApp.logFollowed).toBe(true)
+  await overlay.page.reload()
+  await expect(overlay.dockIcon('trade').locator('[class*="peekText"]')).toContainText('Kaltenhalt: Headhunter', { timeout: 15_000 })
+})
+
+test('the skip key moves the bubble on, and reopening brings it back', async ({ overlay, fakeApp }) => {
+  clearHistory(fakeApp.opts.userData)
+  await overlay.boot({ widgets: [{ ...TRADE, skipHotkey: 'F5' }] })
+  await overlay.log(upTo('Kaltenhalt: Hi, I would like to buy your Headhunter'))
+  const icon = overlay.dockIcon('trade')
+  const bubble = icon.locator('[class*="peekText"]')
+  await expect(bubble).toContainText('Kaltenhalt')
+  await overlay.log(upTo('#Spammer').slice(upTo('Kaltenhalt: Hi, I would like to buy your Headhunter').length))
+  await overlay.pressHotkey('F5')
+  await expect(bubble).toContainText('xXLeagueStartXx')
+  // Past the old short peek: it stays.
+  await overlay.page.waitForTimeout(3000)
+  await expect(bubble).toContainText('xXLeagueStartXx')
+
+  await overlay.hoverDockIcon('trade')
+  for (const who of ['xXLeagueStartXx', 'Kaltenhalt']) {
+    const row = icon.locator(`[data-offer="${who}"]`)
+    if (!await row.locator('[data-reply="dismiss"]').count()) await row.locator('button').first().click()
+    await row.locator('[data-reply="dismiss"]').click()
+  }
+  await expect(bubble).toHaveCount(0)
+  await icon.locator('[data-offer="Kaltenhalt"] [data-reopen]').click()
+  await expect(bubble).toContainText('Kaltenhalt')
+})
+
 test('the history keeps old offers across restarts and reopens them', async ({ overlay, fakeApp }) => {
   const dir = path.join(fakeApp.opts.userData, 'woke-offer-history')
   fs.mkdirSync(dir, { recursive: true })

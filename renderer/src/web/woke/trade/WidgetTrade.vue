@@ -317,6 +317,12 @@ loadHistory().then(() => logTail()).then(tail => {
     handle(line, false)
   }
   prune(book, Date.now())
+  // Offers open since before a restart: no ping, but the bubble stays until
+  // none are open, so it shows for them too.
+  if ((props.config.bubbleSeconds ?? 0) <= 0 && !bubbleId.value) {
+    const open = shown.value.find(o => !o.closed && o.dir === 'sell')
+    if (open) showBubble(open)
+  }
 }).catch(() => {}).finally(() => {
   replayed = true
   seenLive.clear()
@@ -418,6 +424,8 @@ function reopenOffer (o: Offer) {
   else history.markReopened(o.id, Date.now()).catch(() => {})
   picked.value = open.id
   now.value = Date.now()
+  // An offer is open again, so the bubble that ended with the last one is back.
+  if ((props.config.bubbleSeconds ?? 0) <= 0 && !bubbleId.value && open.dir === 'sell') showBubble(open)
 }
 
 // Closed offers go into the history as they close, so a restart can't lose them.
@@ -448,7 +456,11 @@ const hotkeys = MainProcess.onEvent('MAIN->CLIENT::widget-action', (e) => {
   if (parsed.what === 'skip') {
     skip(o, Date.now())
     const next = front(book)
-    if (next && next !== o) dockRef.value?.peek(`Next: ${next.who}, ${offerLabel(next)}`, 2500)
+    // The bubble moves on to the next offer; a short peek would end it for good.
+    if (next && next !== o) {
+      if (bubbleId.value && next.dir === 'sell') showBubble(next)
+      else dockRef.value?.peek(`Next: ${next.who}, ${offerLabel(next)}`, 2500)
+    }
     touched()
     return
   }
