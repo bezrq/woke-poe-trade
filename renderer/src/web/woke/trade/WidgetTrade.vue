@@ -2,7 +2,7 @@
   <Widget :config="config" move-handles="corners" :inline-edit="false">
     <!-- While you play: an icon with a badge for open offers that peeks when
          one arrives (A1); resting on it opens the offers with buttons (B1). -->
-    <DockItem ref="dockRef" id="trade" title="Trades" :show="shown.length > 0"
+    <DockItem :menu="dockMenu" :wake="sellCount" ref="dockRef" id="trade" title="Trades" :show="shown.length > 0"
       :badge="sellCount || null" :tone="anyInArea ? 'up' : 'accent'" :led="book.afk ? 'warn' : null" :wm-id="config.wmId"
       card-width="23rem" @open-change="onCard">
       <template #card>
@@ -88,16 +88,17 @@ import Widget from '@/web/overlay/Widget.vue'
 import { WPanel, WTabs, WEmpty, WButton, WBanner, WSkeleton, WKbd, openMenu, toast } from '../ui'
 import { gameIcon } from '../ui/game-icons'
 import DockItem from '../dock/DockItem.vue'
-import { hideWhilePlaying } from '../dock/dock'
+import type { DockMenuAction } from '../dock/dock'
+import { dockIconEl, hideWhilePlaying, saveDock } from '../dock/dock'
 import { usePriceIndex } from '../market/price-index'
 import { priceResolver } from '../boss-runs/calc'
 import { useLeagues } from '@/web/background/Leagues'
 import { logTail } from '../campaign/log-tail'
 import { onGameLog } from '../shared/game-log'
 import OfferRow from './OfferRow.vue'
-import { applyEvent, dismiss, front, markSent, markTraded, newBook, prune, queue, recordFor, skip } from './book'
+import { applyEvent, dismiss, front, markSent, markTraded, newBook, nextStep, prune, queue, recordFor, skip } from './book'
 import type { Offer, TradeBook, TradeRecord } from './book'
-import { DEFAULT_REPLIES, parseHotkeyTarget, replyText } from './widget'
+import { DEFAULT_REPLIES, REPLY_LABELS, parseHotkeyTarget, replyText } from './widget'
 import type { ReplyId } from './widget'
 import { offerLabel, parseTradeLine, priceLabel } from './whispers'
 import { bulkDelta, priceChaos } from './value'
@@ -348,6 +349,17 @@ onUnmounted(() => {
   clearInterval(clock)
 })
 
+function clearOffers () {
+  const open = shown.value.filter(o => !o.closed)
+  if (!open.length) return
+  const at = Date.now()
+  for (const o of open) dismiss(o, at)
+  toast(open.length > 1 ? `Cleared ${open.length} offers` : 'Cleared the offer', {
+    anchor: dockIconEl('trade'),
+    undo: () => { for (const o of open) { o.closed = null; o.closedAt = null } }
+  })
+}
+
 // --- Log tab ---
 const leagues = useLeagues()
 const leagueId = computed(() => leagues.selectedId.value ?? '')
@@ -390,6 +402,26 @@ function logMenu (e: MouseEvent, t: TradeRecord) {
     }
   }])
 }
+
+// The icon's right-click menu.
+const dockMenu = computed<DockMenuAction[]>(() => {
+  const o = frontOffer.value
+  const step = o && nextStep(o)
+  const openCount = shown.value.filter(x => !x.closed).length
+  const rows: DockMenuAction[] = []
+  // Sends one chat line, from this click.
+  if (o && step) rows.push({ label: `${REPLY_LABELS[step]} ${o.who}`, icon: 'fas fa-reply', action: () => { reply(o, step) } })
+  rows.push(
+    { label: openCount > 1 ? `Clear all ${openCount} offers` : 'Clear the offer', icon: 'fas fa-broom', disabled: openCount === 0, action: clearOffers },
+    {
+      label: 'Sound on new offers',
+      icon: 'fas fa-volume-up',
+      checked: props.config.ping !== false,
+      action: () => { props.config.ping = props.config.ping === false; saveDock() }
+    }
+  )
+  return rows
+})
 </script>
 
 <style module>

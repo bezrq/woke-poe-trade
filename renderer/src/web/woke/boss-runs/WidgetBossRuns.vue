@@ -1,7 +1,7 @@
 <template>
   <Widget :config="config" move-handles="corners" :inline-edit="false" :readonly="true">
     <!-- In a boss arena: what can drop and how often, then your own runs if you log any. Click: this boss's drops. -->
-    <DockItem id="boss-runs" title="Boss runs" :show="arenaBosses.length > 0"
+    <DockItem :menu="dockMenu" id="boss-runs" title="Boss runs" :show="arenaBosses.length > 0"
       :badge="arenaBosses.length === 1 && arenaBosses[0].kills ? arenaBosses[0].kills : null" :wm-id="config.wmId" card-width="22rem" @activate="openArenaBoss">
       <template #card>
         <div style="padding: 4px var(--w-pad) 6px;" class="flex flex-col gap-2">
@@ -272,6 +272,8 @@ import { usePriceIndex } from '../market/price-index'
 import { useLeagues } from '@/web/background/Leagues'
 import { BOSSES } from './bosses'
 import DockItem from '../dock/DockItem.vue'
+import { showWithOverlay } from '../dock/dock'
+import type { DockMenuAction } from '../dock/dock'
 import { arenaBosses as arenaBossIds, useZone } from '../shared/zone'
 import { bossesAtLevel, cardDrops, evaluateBoss, formatRunTime, killDropPrice, luck, parseRunTime, priceResolver, unidentifiedTradeUrl } from './calc'
 import type { BossResult, DropRow, KillRecord, PriceMode, RateSource } from './calc'
@@ -514,6 +516,17 @@ function killMenu (e: MouseEvent, id: string, index: number) {
 function killValue (kill: KillRecord) {
   return kill.drops.reduce((n, d) => n + (killDropPrice(d, px.value, props.config) ?? 0) * d.qty, 0)
 }
+
+// The icon's right-click menu.
+const dockMenu = computed<DockMenuAction[]>(() => [{
+  label: 'Log a kill',
+  icon: 'fas fa-plus',
+  action: () => {
+    openArenaBoss()
+    startLog()
+    showWithOverlay(wm, props.config.wmId)
+  }
+}])
 </script>
 
 <style module>

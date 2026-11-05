@@ -1,6 +1,6 @@
 <template>
   <Widget :config="config" move-handles="corners" :inline-edit="false">
-    <DockItem id="essence-scan" title="Essence scan" :show="running || paused || !!message"
+    <DockItem :menu="dockMenu" :wake="unseenCorrupt" id="essence-scan" title="Essence scan" :show="running || paused || !!message"
       :led="message ? 'error' : paused ? 'warn' : running ? 'on' : null" :badge="unseenCorrupt || null"
       :wm-id="config.wmId" card-width="18rem" @open-change="onCard">
       <template #card>
@@ -105,6 +105,7 @@ import { formatChaos } from '../ui/format'
 import { WPanel, WButton, WEmpty, WKbd, WPrice, toast } from '../ui'
 import { hostRequest } from '../shared/host'
 import DockItem from '../dock/DockItem.vue'
+import type { DockMenuAction } from '../dock/dock'
 import { hideWhilePlaying } from '../dock/dock'
 import { usePriceIndex } from '../market/price-index'
 import { parseMonolith, rateMonolith, shortEssenceName } from './essences'
@@ -317,6 +318,13 @@ onUnmounted(() => {
   if (running.value) hostRequest('essence-scan-stop', null).catch(() => {})
   clearTimeout(onceTimer)
 })
+
+// The icon's right-click menu.
+const dockMenu = computed<DockMenuAction[]>(() => [
+  { label: 'Read the screen once', icon: 'fas fa-eye', action: () => { readOnce().catch(() => {}) } },
+  { label: running.value && !paused.value ? 'Stop scanning' : 'Start scanning', icon: running.value && !paused.value ? 'fas fa-stop' : 'fas fa-play', action: () => { toggle().catch(() => {}) } },
+  { label: 'Clear the list', icon: 'fas fa-broom', disabled: !entries.value.length, action: clear }
+])
 </script>
 
 <style module>

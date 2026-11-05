@@ -1,6 +1,6 @@
 <template>
   <Widget :config="config" move-handles="corners" :inline-edit="false">
-    <DockItem id="map-scan" title="Map scan" :show="running || paused || !!message"
+    <DockItem :menu="dockMenu" id="map-scan" title="Map scan" :show="running || paused || !!message"
       :led="message ? 'error' : paused ? 'warn' : running ? 'on' : null" :badge="rolling ? rolls.length : null"
       :wm-id="config.wmId" card-width="18rem">
       <template #card>
@@ -120,6 +120,7 @@ import Widget from '@/web/overlay/Widget.vue'
 import { WPanel, WButton, WEmpty, WKbd, toast } from '../ui'
 import { hostRequest } from '../shared/host'
 import DockItem from '../dock/DockItem.vue'
+import type { DockMenuAction } from '../dock/dock'
 import { hideWhilePlaying } from '../dock/dock'
 import { DEFAULT_JUICE_WEIGHTS, defaultProfile, juiceScore, rateMods, shortLabel } from './rules'
 import type { ModRating, Verdict } from './rules'
@@ -341,6 +342,13 @@ onUnmounted(() => {
   // the scan (screenshots several times a second) until its idle timeout.
   if (running.value) hostRequest('map-scan-stop', null).catch(() => {})
 })
+
+// The icon's right-click menu.
+const dockMenu = computed<DockMenuAction[]>(() => [
+  { label: running.value && !paused.value ? 'Stop scanning' : 'Start scanning', icon: running.value && !paused.value ? 'fas fa-stop' : 'fas fa-play', action: () => { toggle().catch(() => {}) } },
+  { label: rolling.value ? 'Stop rolling' : 'Start rolling', icon: 'fas fa-dice', action: () => { roll().catch(() => {}) } },
+  { label: 'Clear the list', icon: 'fas fa-broom', disabled: !entries.value.length && !rolls.value.length, action: clear }
+])
 </script>
 
 <style module>

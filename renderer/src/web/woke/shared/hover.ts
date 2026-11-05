@@ -17,6 +17,9 @@ export function useHoverZone (
     // The left button went down on the zone, even while the game has focus
     // (the game gets that click too).
     onClick?: () => void
+    // The right button went down on the zone, with the mouse already taken (so
+    // the game didn't get it).
+    onRightClick?: () => void
   }
 ): Ref<boolean> {
   const owner = `woke-hover-${nextOwner++}`
@@ -72,6 +75,10 @@ export function useHoverZone (
     if (e.id === zoneId) opts.onClick?.()
   })
 
+  const contextListener = Host.onEvent('MAIN->OVERLAY::woke-hover-context', (e) => {
+    if (e.id === zoneId) opts.onRightClick?.()
+  })
+
   const onEnter = () => { domInside.value = true; sync() }
   const onLeave = () => { domInside.value = false; sync() }
 
@@ -106,6 +113,7 @@ export function useHoverZone (
   onUnmounted(() => {
     listener.abort()
     clickListener.abort()
+    contextListener.abort()
     bind(null)
     observer?.disconnect()
     if (timer) clearInterval(timer)
