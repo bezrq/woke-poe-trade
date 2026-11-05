@@ -239,6 +239,11 @@ export class Overlay {
     await this.page.waitForTimeout(50)
   }
 
+  async dragMouse (x: number, y: number) {
+    this.app.dragMouse(x, y)
+    await this.page.waitForTimeout(50)
+  }
+
   // Clicks a dock icon in game, then leaves it straight away, so only the
   // click can have opened its card (the hover delay gets cancelled).
   async clickDockIconAndLeave (moduleId: string) {

@@ -3,7 +3,6 @@
 // under the cursor, and sends new readings to the overlay. Text is re-read
 // whenever it changes, so rerolling the same map gives a new reading.
 // Used by map scan (map tooltips) and essence scan (essence monolith labels).
-import { uIOhook } from 'uiohook-napi'
 import { screen } from 'electron'
 import fs from 'fs'
 import os from 'os'
@@ -18,8 +17,10 @@ import { ocrDir, USER_OCR_DIR } from './ocr-dir'
 
 // Stop after this long without the game focused, so it can't run forever.
 const IDLE_STOP_MS = 30 * 60 * 1000
-// Only take a screenshot once the cursor has rested this long.
-const REST_MS = 150
+// Rolling: the cursor moved this far from where it locked (fraction of window
+// height, about one quad tab cell), so it's on something else: find the tooltip
+// again instead of watching the old box.
+const LOCK_DRIFT = 0.024
 
 // Files the OCR worker loads (the same ones APT's heist gem reader uses).
 // The worker swallows load errors, so they're checked up front instead.
@@ -237,7 +238,6 @@ export class ScreenScanner {
   private timer: ReturnType<typeof setTimeout> | undefined
   private running = false
   private mouse = { x: 0, y: 0 }
-  private movedAt = 0
   // Cursor position of the last frame that found no tooltip; while the
   // cursor stays there, no screenshots are taken.
   private emptyAt: { x: number, y: number } | null = null
@@ -263,12 +263,6 @@ export class ScreenScanner {
     private readonly poeWindow: GameWindow,
     private readonly kind: ScannerKind = MAP_SCAN
   ) {}
-
-  // Only listened to while scanning: mouse events arrive at polling rate.
-  private readonly onMouseMove = (e: { x: number, y: number }) => {
-    this.mouse = { x: e.x, y: e.y }
-    this.movedAt = Date.now()
-  }
 
   get isRunning () { return this.running }
   get isRolling () { return this.rolling }
@@ -298,10 +292,7 @@ export class ScreenScanner {
     this.lastReadingAt = Date.now()
     this.emptyAt = null
     this.failures = 0
-    // mousemove only arrives once the cursor moves, so a scan started
-    // while resting on a map would otherwise read nothing.
     this.mouse = cursorInScreenPixels()
-    this.movedAt = 0
   }
 
   // Toggles rolling mode, starting the scanner if it's off.
@@ -345,7 +336,6 @@ export class ScreenScanner {
       runningScanners.add(this)
       this.fresh()
       this.loopId++
-      uIOhook.on('mousemove', this.onMouseMove)
       claimOcr(this)
       this.schedule()
       this.emitState()
@@ -366,7 +356,6 @@ export class ScreenScanner {
       this.unlock()
       this.loopId++
       clearTimeout(this.timer)
-      uIOhook.removeListener('mousemove', this.onMouseMove)
       scannerStopped(this)
       this.emitState(reason)
     }
@@ -396,7 +385,18 @@ export class ScreenScanner {
     this.lastActive = Date.now()
     const bounds = this.poeWindow.bounds
     if (!bounds.width || !bounds.height) return
+    // Asked for on every frame: the mouse hook reports no moves while a button
+    // is held, which would leave the position (and the badge) behind.
+    const now = cursorInScreenPixels()
+    const moved = now.x !== this.mouse.x || now.y !== this.mouse.y
+    this.mouse = now
     const cursor = { x: this.mouse.x - bounds.x, y: this.mouse.y - bounds.y }
+    if (this.lock && this.lockAt &&
+      Math.hypot(cursor.x - this.lockAt.x * bounds.width, cursor.y - this.lockAt.y * bounds.height) > bounds.height * LOCK_DRIFT) {
+      this.lock = null
+      this.lockAt = null
+      this.emitState()
+    }
     const lock = this.lock
     if (!lock && (cursor.x < 0 || cursor.y < 0 || cursor.x >= bounds.width || cursor.y >= bounds.height)) return
     if (this.kind.noReadingStopMs && Date.now() - this.lastReadingAt > this.kind.noReadingStopMs) {
@@ -406,7 +406,7 @@ export class ScreenScanner {
     if (!lock) {
       // Wait for the cursor to rest, and skip frames while it sits where
       // there was nothing to read.
-      if (Date.now() - this.movedAt < REST_MS) return
+      if (moved) return
       if (this.emptyAt && this.emptyAt.x === this.mouse.x && this.emptyAt.y === this.mouse.y) return
     }
 
