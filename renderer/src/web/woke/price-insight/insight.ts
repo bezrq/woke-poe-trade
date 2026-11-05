@@ -82,6 +82,8 @@ const FIXER_RATIO = 0.5
 const THIN_FIXER_RATIO = 0.25
 const MAX_ROWS_PER_SELLER = 2
 const MAX_BELOW_FLOOR = 2
+// Chaos a bargain has to save before it's worth pointing out.
+const SNIPE_MIN_SAVING = 5
 // A seller's pile of copies counts as a wall when it asks less than this share
 // of what other sellers ask.
 const WALL_RATIO = 0.7
@@ -240,7 +242,11 @@ export function buildInsight (listings: InsightListing[], opts: InsightOptions):
 
   if (bargain) {
     const cheapest = kept.find(k => k.instant)!
-    signals.push({ kind: 'snipe', text: `An instant buyout at ${Math.round(cheapest.chaos)}c sits far under the rest, so it may be worth buying` })
+    // Saving a fraction of a chaos on a junk item isn't worth a line.
+    if (range.fair - cheapest.chaos >= SNIPE_MIN_SAVING) {
+      const shown = cheapest.chaos < 10 ? Math.round(cheapest.chaos * 10) / 10 : Math.round(cheapest.chaos)
+      signals.push({ kind: 'snipe', text: `An instant buyout at ${shown}c sits far under the rest, so it may be worth buying` })
+    }
   }
 
   return {
