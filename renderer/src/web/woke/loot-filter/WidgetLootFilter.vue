@@ -251,6 +251,7 @@ const allNotes = computed<Notice[]>(() => {
   if (store.gameFilter.value.loaded === false) out.push({ id: 'load', value: 1, warn: true, tab: 'changes', text: 'The game couldn\'t load your filter. Open the editor and save again.' })
   else if (store.wrongFilterInGame.value) out.push({ id: 'wrong', value: store.gameFilter.value.name ?? '', warn: true, text: `The game is using "${store.gameFilter.value.name}", not your saved copy.` })
   if (store.failed.value.length) out.push({ id: 'failed', value: store.failed.value.length, warn: true, tab: 'changes', text: `${store.failed.value.length} change(s) need a new home after a NeverSink update.` })
+  if (store.netWaitsForReload.value && !store.pendingReload.value) out.push({ id: 'net-reload', value: 1, passing: true, tab: 'prices', text: 'Prices changed the safety net. It takes effect the next time you reload the filter.' })
   if (store.pendingReload.value) out.push({ id: 'pending', value: 1, passing: true, text: 'Saved. Reloads when you\'re next in town or your hideout.' })
   return out
 })

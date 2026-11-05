@@ -240,6 +240,114 @@ describe('reloading in game', () => {
   })
 })
 
+describe('the step-by-step list', () => {
+  const wait = () => new Promise(resolve => setTimeout(resolve, 600))
+
+  it('records a change, undoes and redoes it, and the file only changes on save', async () => {
+    const { store, config } = await opened()
+    store.edit({ kind: 'style', type: 'currency', tier: 't1exalted', patch: { fontSize: 44 } })
+    await wait()
+    expect(config.timeline.steps).toHaveLength(1)
+    expect(config.timeline.steps[0].label).toMatch(/General currency › Tier 1: font size \d+ → 44/)
+    expect(readStyle(store.doc.value!.blocks.find(b => b.tier === 't1exalted')!.actions).fontSize).toBe(44)
+
+    store.undoStep()
+    expect(config.edits).toEqual([])
+    expect(config.timeline.at).toBe(0)
+    expect(readStyle(store.doc.value!.blocks.find(b => b.tier === 't1exalted')!.actions).fontSize).not.toBe(44)
+
+    store.redoStep()
+    expect(config.edits).toHaveLength(1)
+    expect(config.timeline.at).toBe(1)
+    expect(readStyle(store.doc.value!.blocks.find(b => b.tier === 't1exalted')!.actions).fontSize).toBe(44)
+    expect(host.writes).toEqual([])
+  })
+
+  it('quick changes to one setting gather into one step', async () => {
+    const { store, config } = await opened()
+    for (const fontSize of [30, 31, 32, 33]) store.edit({ kind: 'style', type: 'currency', tier: 't1exalted', patch: { fontSize } })
+    await wait()
+    expect(config.timeline.steps).toHaveLength(1)
+  })
+
+  it('an Undo note taking a change back keeps the list in step', async () => {
+    const { store, config } = await opened()
+    const undo = store.editWithUndo({ kind: 'visibility', type: 'currency', tier: 't1exalted', visibility: 'Hide' })
+    await wait()
+    undo()
+    await wait()
+    expect(config.timeline.steps).toHaveLength(1)
+    expect(config.timeline.at).toBe(0)
+    store.redoStep()
+    expect(config.edits).toHaveLength(1)
+  })
+
+  it('goes back to any step, across price moves and rules too, and forward again', async () => {
+    const { store, config } = await opened()
+    store.edit({ kind: 'visibility', type: 'currency', tier: 't1exalted', visibility: 'Hide' })
+    await wait()
+    store.applyPrices([{ type: 'currency', base: 'Chaos Orb', from: 't4chaos', to: 't1exalted', chaos: 1 }])
+    await wait()
+    store.changeWithUndo(c => { c.presets.quiet.on = true })
+    await wait()
+    expect(config.timeline.steps).toHaveLength(3)
+    store.goToStep(1)
+    expect(config.edits).toHaveLength(1)
+    expect(config.priceTiers.moves).toEqual([])
+    expect(config.presets.quiet.on).toBe(false)
+    await wait()
+    expect(config.timeline.steps).toHaveLength(3)
+    store.goToStep(3)
+    expect(config.priceTiers.moves).toHaveLength(1)
+    expect(config.presets.quiet.on).toBe(true)
+  })
+
+  it('a new change after going back drops the steps ahead', async () => {
+    const { store, config } = await opened()
+    store.edit({ kind: 'visibility', type: 'currency', tier: 't1exalted', visibility: 'Hide' })
+    await wait()
+    store.edit({ kind: 'visibility', type: 'currency', tier: 't2divine', visibility: 'Hide' })
+    await wait()
+    store.undoStep()
+    store.edit({ kind: 'visibility', type: 'currency', tier: 't4chaos', visibility: 'Hide' })
+    await wait()
+    expect(config.timeline.steps).toHaveLength(2)
+    expect(config.timeline.at).toBe(2)
+    expect(config.edits.map(e => (e as { tier: string }).tier)).toEqual(['t1exalted', 't4chaos'])
+  })
+
+  it('undoing right away, before the step settled, still works', async () => {
+    const { store, config } = await opened()
+    store.edit({ kind: 'visibility', type: 'currency', tier: 't1exalted', visibility: 'Hide' })
+    store.undoStep()
+    expect(config.edits).toEqual([])
+    await wait()
+    expect(config.timeline.at).toBe(0)
+  })
+
+  it('a change in the last moment before the window closes still becomes a step', async () => {
+    const { store, config } = await opened()
+    store.edit({ kind: 'visibility', type: 'currency', tier: 't1exalted', visibility: 'Hide' })
+    store.redoStep()
+    expect(config.timeline.steps).toHaveLength(1)
+  })
+
+  it('presets count as how the filter came, so they show no changes to reset', async () => {
+    const { store, config } = await opened()
+    const size = store.sourceLook('currency', 't9armour').fontSize ?? 32
+    config.presets.bigger = { on: true, size: Math.max(size + 1, 44) }
+    expect(store.sourceLook('currency', 't9armour').fontSize).toBe(Math.max(size + 1, 44))
+  })
+
+  it('tells the look in the filter as it came', async () => {
+    const { store } = await opened()
+    const before = store.sourceLook('currency', 't1exalted').fontSize
+    store.edit({ kind: 'style', type: 'currency', tier: 't1exalted', patch: { fontSize: 20 } })
+    expect(store.sourceLook('currency', 't1exalted').fontSize).toBe(before)
+    expect(store.sourceLook('nope', 'nope')).toEqual({})
+  })
+})
+
 describe('sources', () => {
   it('an online filter is read only: saves go to a copy', async () => {
     const text = neverSink('1-REGULAR')

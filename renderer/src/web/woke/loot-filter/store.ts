@@ -4,13 +4,16 @@ import { MainProcess } from '@/web/background/IPC'
 import { hostRequest } from '../shared/host'
 import { customSoundsIn, installPackSounds } from './sounds'
 import { ruleBlocks } from './rules'
-import { applyPresetChanges, colourBlindActions, presetBlocks, presetsOn } from './presets'
+import { applyPresetChanges, colourBlindActions, normalizePresets, presetBlocks, presetsOn } from './presets'
+import { clearUndoToasts } from '../ui/layer'
 import { isTownLike } from '../campaign/log-parse'
 import { onGameLog } from '../shared/game-log'
 import { parseFilter, serializeFilter } from './parse'
 import type { FilterDoc } from './parse'
-import { addEdit, applyEdits, nextEditId } from './edits'
-import type { EditStatus, FilterEdit, NewFilterEdit } from './edits'
+import { addEdit, applyEdits, nextEditId, readStyle } from './edits'
+import type { EditStatus, FilterEdit, NewFilterEdit, StylePatch } from './edits'
+import { describeStep, observe, settingsAt } from './timeline'
+import type { Settings } from './timeline'
 import { HISTORY_SIZE, baseFromCopy, isWokeCopy, outputName } from './widget'
 import type { LootFilterWidget } from './widget'
 import { buildRuleBlocks, insertBuildBlocks } from './build-rules'
@@ -111,6 +114,8 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
   // Problems found by the last save attempt.
   const problems = shallowRef<FilterProblem[]>([])
   const safetyCount = ref(0)
+  // The file has a newer net list than the game has loaded.
+  const netWaitsForReload = ref(false)
   // No prices to judge by: the net is on its last list, or empty.
   const netWithoutPrices = computed(() => cfg().safetyNet.on && !prices.safety.value && doc.value != null)
   const lastSaved = ref<number | null>(null)
@@ -155,6 +160,7 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
     stopLog()
     clearTimeout(reloadTimer)
     clearInterval(nowTimer)
+    if (settleTimer) settle()
   })
 
   const dirty = computed(() => signature() !== savedEdits.value)
@@ -309,6 +315,76 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
       rebuild()
     }
   }
+
+  // ---- the step-by-step list of changes ----
+
+  const currentSettings = (): Settings => {
+    const c = cfg()
+    return { edits: c.edits, rules: c.rules, presets: c.presets, moves: c.priceTiers.moves, locks: c.priceTiers.locks }
+  }
+  // A plain copy: rules and presets are changed in place by their editors.
+  const copySettings = (): Settings => JSON.parse(JSON.stringify(currentSettings()))
+  // What the settings were at the last recorded step. Changes are gathered for a
+  // moment, so dragging a slider is one step and not fifty.
+  const TIMELINE_WAIT_MS = 500
+  let settled = copySettings()
+  let settleTimer: ReturnType<typeof setTimeout> | undefined
+
+  function sourceLook (type: string, tier: string): StylePatch {
+    if (baseText.value == null) return {}
+    // With your presets on it: bigger labels aren't a change to reset, tier by tier.
+    const presets = JSON.stringify(cfg().presets)
+    if (sourceDoc?.text !== baseText.value || sourceDoc.presets !== presets) {
+      const doc = parseFilter(baseText.value)
+      applyPresetChanges(doc, cfg().presets)
+      sourceDoc = { text: baseText.value, presets, doc }
+    }
+    const blocks = sourceDoc.doc.blocks.filter(b => b.type === type && b.tier === tier)
+    const b = blocks.find(x => !x.disabled) ?? blocks[0]
+    return b ? readStyle(b.actions) : {}
+  }
+  let sourceDoc: { text: string, presets: string, doc: FilterDoc } | null = null
+
+  function settle () {
+    clearTimeout(settleTimer)
+    settleTimer = undefined
+    const now = copySettings()
+    cfg().timeline = observe(cfg().timeline, settled, now, describeStep(settled, now, sourceLook))
+    settled = now
+  }
+
+  // Settings swapped in a whole new config: that's not a change of yours.
+  watch(cfg, () => {
+    clearTimeout(settleTimer)
+    settled = copySettings()
+  }, { flush: 'sync' })
+
+  watch(() => JSON.stringify(currentSettings()), () => {
+    if (JSON.stringify(settled) === JSON.stringify(currentSettings())) return
+    clearTimeout(settleTimer)
+    settleTimer = setTimeout(settle, TIMELINE_WAIT_MS)
+  })
+
+  // Back or forward to `at` steps in. Keeps the file as it is until you save.
+  function goToStep (at: number) {
+    settle()
+    const t = cfg().timeline
+    if (at < 0 || at > t.steps.length || at === t.at) return
+    const part = settingsAt(t, at)
+    const c = cfg()
+    if (part.edits) c.edits = part.edits
+    if (part.rules) c.rules = part.rules
+    if (part.presets) c.presets = normalizePresets(part.presets)
+    if (part.moves) c.priceTiers.moves = part.moves
+    if (part.locks) c.priceTiers.locks = part.locks
+    c.timeline = { ...t, at }
+    settled = copySettings()
+    clearUndoToasts()
+    rebuild()
+  }
+
+  const undoStep = () => { settle(); if (cfg().timeline.at > 0) goToStep(cfg().timeline.at - 1) }
+  const redoStep = () => { settle(); if (cfg().timeline.at < cfg().timeline.steps.length) goToStep(cfg().timeline.at + 1) }
 
   // Back to NeverSink's own tiers for every price group.
   function resetPrices () {
@@ -739,13 +815,13 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
   // Saves run one at a time: two quick fixes in a row must not race for the
   // same temp file, and the last one writes the latest edits.
   let saveQueue: Promise<unknown> = Promise.resolve()
-  function save (opts: { reloadNow?: boolean } = {}): Promise<boolean> {
+  function save (opts: { reloadNow?: boolean, noReload?: boolean } = {}): Promise<boolean> {
     const run = saveQueue.then(() => saveNow(opts))
     saveQueue = run.catch(() => {})
     return run
   }
 
-  async function saveNow (opts: { reloadNow?: boolean }): Promise<boolean> {
+  async function saveNow (opts: { reloadNow?: boolean, noReload?: boolean }): Promise<boolean> {
     if (!doc.value || baseText.value == null) return false
     problems.value = validateFilter(doc.value)
     if (problems.value.length) {
@@ -783,7 +859,11 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
       pushHistory(written.edits, written.moves)
       cfg().lastVersion = written.version
       lastSaved.value = Date.now()
-      if (cfg().reloadViaChat) reloadInGame(opts.reloadNow === true)
+      if (opts.noReload) netWaitsForReload.value = true
+      else {
+        netWaitsForReload.value = false
+        if (cfg().reloadViaChat) reloadInGame(opts.reloadNow === true)
+      }
       setTimeout(() => { readGameFilter().catch(() => {}) }, 8000)
       return true
     } catch (e) {
@@ -819,7 +899,8 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
   watch(safetyList, () => {
     if (!cfg().safetyNet.on || !prices.safety.value || baseText.value == null) return
     if (!outputSaved.value || loading.value || !dirty.value || userDirty()) return
-    save().catch(() => {})
+    // Nobody pressed anything, so nothing gets typed into chat for this.
+    save({ noReload: true }).catch(() => {})
   }, { flush: 'post' })
 
   watch(rulesSig, (sig) => { if (baseText.value != null && sig !== builtRulesSig) rebuild() })
@@ -834,6 +915,7 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
     health,
     safetyCount,
     netWithoutPrices,
+    netWaitsForReload,
     pricesStale,
     pricesTooOld,
     priceAgeHours,
@@ -842,6 +924,10 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
     applyPrices,
     lockItem,
     unmovePrice,
+    goToStep,
+    undoStep,
+    redoStep,
+    sourceLook,
     resetPrices,
     editWithUndo,
     editsWithUndo,

@@ -97,11 +97,17 @@ describe('the net follows prices into the file', () => {
   it('writes a new list by itself when nothing of yours is unsaved', async () => {
     const { store } = await opened()
     await store.save()
+    const chatBefore = sent.chat.length
+    const wasPending = store.pendingReload.value
     expect(netBases()).toEqual([])
     P.safety.value = VALUABLE
     await settled()
     expect(netBases()).toEqual(['Low One'])
     expect(store.dirty.value).toBe(false)
+    // Nobody pressed a key, so nothing is typed into the game for it.
+    expect(sent.chat.filter(c => c.startsWith('/itemfilter'))).toHaveLength(chatBefore)
+    expect(store.pendingReload.value).toBe(wasPending)
+    expect(store.netWaitsForReload.value).toBe(true)
   })
 
   it('waits while you have unsaved changes', async () => {
