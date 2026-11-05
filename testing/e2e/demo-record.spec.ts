@@ -12,7 +12,7 @@ import fs from 'fs'
 import os from 'os'
 import path from 'path'
 import { fileURLToPath } from 'url'
-import { test, expect, FIXTURES, haveOcr } from './harness'
+import { test, expect, FIXTURES, haveOcr, logFixture } from './harness'
 import type { Overlay } from './harness'
 
 const OUT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../docs/public/demo/recording.json')
@@ -24,8 +24,27 @@ interface Rec { dir: 'in' | 'out', name: string, payload: unknown }
 // The demo's tools: the rail of a player who maps, plus the scanners.
 const WIDGETS = [
   'woke-market-tracker', 'woke-farming', 'woke-session-analytics', 'woke-map-mods', 'woke-map-scan', 'woke-essence-scan',
-  'woke-atlas-strategies', 'woke-mechanics', 'woke-lab', 'woke-lab-gems', 'woke-scarab-flip', 'woke-trade', 'woke-regex-library', 'woke-trade-searches'
+  'woke-atlas-strategies', 'woke-mechanics', 'woke-lab', 'woke-lab-gems', 'woke-scarab-flip', 'woke-trade', 'woke-regex-library', 'woke-trade-searches',
+  'woke-boss-runs', 'woke-campaign', 'woke-run-timer'
 ]
+
+// The fake app stamps each line with the time it's written.
+const stamp = (l: string) => l.replace(/^.*?\] /, '')
+// Where the demo's scenes are, as Client.txt says so. The overlay's icon row
+// shows what fits the zone.
+const SCENES: Record<string, string[]> = {
+  'zone-map': [
+    'Generating level 83 area "MapWorldsJungleValley" with seed 3912385001',
+    ': You have entered Jungle Valley.'
+  ],
+  'zone-hideout': logFixture('client-logs/trade-hideout.txt').slice(1, 7).map(stamp),
+  'zone-boss': [
+    'Generating level 80 area "MapAtziri2" with seed 3345257283',
+    ': You have entered The Alluring Abyss.'
+  ],
+  'zone-campaign': logFixture('client-logs/campaign-act1.txt')
+    .filter(l => /Generating level|You have entered|is now level/.test(l)).slice(0, 18).map(stamp)
+}
 
 function cursorOf (screen: string): { x: number, y: number } {
   return JSON.parse(fs.readFileSync(path.join(FIXTURES, `screens/${screen}.json`), 'utf8')).cursor
@@ -81,7 +100,8 @@ test('record the demo', async ({ overlay, fakeApp }) => {
     ],
     patch: (config) => {
       const menu = config.widgets.find((w: { wmType: string }) => w.wmType === 'menu')
-      const pinned = ['woke-market-tracker', 'woke-farming', 'woke-map-mods', 'woke-essence-scan', 'woke-loot-filter', 'woke-lab', 'woke-trade']
+      const pinned = ['woke-market-tracker', 'woke-farming', 'woke-session-analytics', 'woke-boss-runs', 'woke-map-mods', 'woke-essence-scan', 'woke-loot-filter',
+        'woke-campaign', 'woke-lab', 'woke-trade', 'woke-regex-library']
       menu.pinned = config.widgets.filter((w: { wmType: string }) => pinned.includes(w.wmType)).map((w: { wmId: number }) => w.wmId)
       menu.dismissed = []
     }
@@ -145,6 +165,12 @@ test('record the demo', async ({ overlay, fakeApp }) => {
   })
   await record('map-scan-stop', async () => { await overlay.pressHotkey('Alt + S') })
 
+  // Scenes: what the app sends as the game writes Client.txt.
+  await backToGame()
+  for (const [name, lines] of Object.entries(SCENES)) {
+    await record(name, async () => { await overlay.log(lines) })
+  }
+
   // What the overlay asked the app, with what it answered.
   const all = [...boot, ...Object.values(actions).flat()]
   const requests: Record<string, unknown> = {}
@@ -156,9 +182,11 @@ test('record the demo', async ({ overlay, fakeApp }) => {
       requests[asked.get(p.id)!] = { ok: p.ok, data: p.data, error: p.error }
     }
   }
-  // Responses to requests are answered by the demo itself; drop them from replays.
+  // Responses to requests are answered by the demo itself; drop them from
+  // replays, and the app's config echoes, which would undo the visitor's layout.
+  const NOT_REPLAYED = ['MAIN->CLIENT::woke-response', 'MAIN->CLIENT::log-entry', 'MAIN->CLIENT::config-changed']
   for (const k of Object.keys(actions)) {
-    actions[k] = actions[k].filter(r => r.name !== 'MAIN->CLIENT::woke-response' && r.name !== 'MAIN->CLIENT::log-entry')
+    actions[k] = actions[k].filter(r => !NOT_REPLAYED.includes(r.name))
   }
 
   fs.mkdirSync(path.dirname(OUT), { recursive: true })

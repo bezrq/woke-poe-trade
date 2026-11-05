@@ -5,6 +5,7 @@ import { appPrefs } from './woke/app-prefs'
 
 export class AppUpdater {
   private _checkedAtStartup = false
+  private isRestarting = false
   private _info: UpdateInfo = { state: 'initial' }
 
   public noAutoUpdatesReason:
@@ -30,6 +31,10 @@ export class AppUpdater {
       if (action === 'check-for-update') {
         this.check()
       } else if (action === 'update-and-restart') {
+        // woke: quitting now waits for a save, so a second click can land before
+        // it's done, and would start the installer twice.
+        if (this.isRestarting) return
+        this.isRestarting = true
         autoUpdater.quitAndInstall(false)
       }
     })

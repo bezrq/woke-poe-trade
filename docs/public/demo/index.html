@@ -94,6 +94,9 @@ select { padding-right: 28px; }
     <button type="button" data-screen="jungle" aria-pressed="true">In a map</button>
     <button type="button" data-screen="essence" aria-pressed="false">Essence</button>
     <button type="button" data-screen="stash" aria-pressed="false">Map in stash</button>
+    <button type="button" data-screen="hideout" aria-pressed="false">Hideout trade</button>
+    <button type="button" data-screen="boss" aria-pressed="false">Boss arena</button>
+    <button type="button" data-screen="campaign" aria-pressed="false">Campaign</button>
   </div>
   <span class="tag">Demo · sample prices</span>
 </header>
@@ -129,17 +132,35 @@ select { padding-right: 28px; }
   'use strict'
   // Screens are 1920x1080 here; the scan cursors are the recorded ones
   // (testing/fixtures/screens/*.json, 2560x1440) scaled by 0.75.
+  // Each screen is a zone (a recorded Client.txt scene, which decides the
+  // icons in the row along the top) and maybe a spot to point at: a place on
+  // the screen, or an icon in that row (dock), found once it's drawn.
   var SCREENS = {
-    jungle: { file: 'screenshot-0020.jpg' },
-    essence: { file: 'screenshot-0025.jpg', spot: { x: 714, y: 401, label: 'Essence monolith: press Alt+E' } },
-    stash: { file: 'screenshot-0007.jpg', spot: { x: 454, y: 608, label: 'Hovered map: press Alt+S' } }
+    jungle: { file: 'screenshot-0020.jpg', zone: 'zone-map',
+      hint: 'In a map. Price check with Ctrl+D, or open the overlay with Shift+Space and try the tools on the rail.' },
+    essence: { file: 'screenshot-0025.jpg', zone: 'zone-map', spot: { x: 714, y: 401, label: 'Essence monolith: press Alt+E' },
+      hint: 'Press Alt+E with the mouse on a monolith: the overlay reads it and says whether to corrupt.' },
+    stash: { file: 'screenshot-0007.jpg', zone: 'zone-hideout', spot: { x: 454, y: 608, label: 'Hovered map: press Alt+S' },
+      hint: 'Press Alt+S with the mouse on a map: the overlay reads its mods and flags the dangerous ones.' },
+    hideout: { file: 'screenshot-0010.jpg', zone: 'zone-hideout', spot: { dock: 'trade', label: 'Buyers whispered: rest the mouse here' },
+      hint: 'Two buyers whispered. The icon row along the top shows only what fits where you are; rest the mouse on an icon to open its card.' },
+    boss: { file: 'screenshot-0012.jpg', zone: 'zone-boss', spot: { dock: 'boss-runs', label: 'Rest the mouse here for the drops' },
+      hint: 'In an Uber Atziri arena, the boss runs icon shows what she drops at today\'s prices.' },
+    campaign: { file: 'screenshot-0017.jpg', zone: 'zone-campaign', spot: { dock: 'campaign', label: 'Rest the mouse here for your next steps' },
+      hint: 'Levelling through act 1: the campaign icon knows the zone and shows the next steps of the route.' }
+  }
+  var ITEMS = {
+    'price-unique': 'Kaom\'s Heart, priced from trade listings: likely price, the cheapest and the top of the range, and whether your loot filter hides it.',
+    'price-rare': 'A rare ring: each mod is a filter you can loosen. Low rolls and Current rolls set them all at once.',
+    'price-currency': 'Currency is priced from poe.ninja straight away; the trade site is only searched when you ask.',
+    'price-map': 'A T16 map: the danger strip marks mods your build can\'t run, from the Map mods tool.'
   }
   var frame = document.getElementById('app')
   var stage = document.getElementById('stage')
   var wrap = document.getElementById('wrap')
   var spot = document.getElementById('spot')
   var hint = document.getElementById('hint')
-  var state = { screen: 'jungle', overlay: false, essence: false, map: false, ready: false }
+  var state = { screen: 'jungle', zone: null, overlay: false, essence: false, map: false, ready: false, hovering: false }
 
   function fit () {
     var s = Math.min(wrap.clientWidth / 1920, wrap.clientHeight / 1080)
@@ -161,19 +182,79 @@ select { padding-right: 28px; }
     state.screen = name
     var s = SCREENS[name]
     stage.style.backgroundImage = 'url(screens/' + s.file + ')'
-    spot.hidden = !s.spot
+    spot.hidden = true
     if (s.spot) {
-      spot.style.left = s.spot.x + 'px'
-      spot.style.top = s.spot.y + 'px'
       document.getElementById('spot-label').textContent = s.spot.label
+      if (s.spot.dock) locate()
+      else { clearTimeout(loc.timer); loc.gen++; place(s.spot.x, s.spot.y) }
+    } else {
+      clearTimeout(loc.timer)
+      loc.gen++
     }
+    enterZone()
+    if (state.ready) hint.textContent = s.hint
     document.querySelectorAll('[data-screen]').forEach(function (b) {
       b.setAttribute('aria-pressed', String(b.dataset.screen === name))
     })
   }
+  function place (x, y) {
+    spot.style.left = x + 'px'
+    spot.style.top = y + 'px'
+    spot.dataset.placed = 'true'
+    sync()
+  }
+  // A dock icon moves as icons come and go: ask the overlay where it is, and
+  // keep asking while the row settles. A newer ask (another screen, the
+  // overlay closing) drops the older one.
+  var loc = { gen: 0, timer: null, last: null, same: 0 }
+  function locate () {
+    clearTimeout(loc.timer)
+    loc.gen++
+    loc.last = null
+    loc.same = 0
+    spot.dataset.placed = 'false'
+    var s = SCREENS[state.screen].spot
+    if (s && s.dock) ask(s.dock, 0, 600)
+  }
+  function ask (dock, tries, wait) {
+    var gen = loc.gen
+    loc.timer = setTimeout(function () {
+      if (state.ready && gen === loc.gen) send({ demo: 'locate', dock: dock, gen: gen, tries: tries })
+    }, wait)
+  }
+  function located (msg) {
+    var want = SCREENS[state.screen].spot
+    if (msg.gen !== loc.gen || !want || !want.dock || want.dock !== msg.dock) return
+    if (msg.x != null) {
+      var key = Math.round(msg.x) + ',' + Math.round(msg.y)
+      loc.same = key === loc.last ? loc.same + 1 : 0
+      loc.last = key
+      place(msg.x, msg.y)
+      // Settled: the same spot three times running.
+      if (loc.same >= 2) return
+    }
+    if (msg.tries < 12) ask(msg.dock, msg.tries + 1, 400)
+  }
+  // The game writes Client.txt as you change zones: replay that once per zone.
+  function enterZone () {
+    var zone = SCREENS[state.screen].zone
+    if (!state.ready || zone === state.zone) return
+    state.zone = zone
+    act(zone)
+  }
+  // The icon row may have changed while the overlay hid it: find the icon again.
+  function overlay (open) {
+    var was = state.overlay
+    state.overlay = open
+    var s = SCREENS[state.screen].spot
+    if (was && !open && s && s.dock) locate()
+    sync()
+  }
   function sync () {
-    // The marker points at what to scan; once scanning, the result is there.
-    spot.hidden = !SCREENS[state.screen].spot || state.essence || state.map
+    // The marker points at what to scan or hover; once scanning, or with the
+    // overlay open (no icon row), it's out of the way.
+    var s = SCREENS[state.screen]
+    spot.hidden = !s.spot || spot.dataset.placed !== 'true' || state.essence || state.map || state.hovering || (state.overlay && Boolean(s.spot.dock))
     document.getElementById('overlay-key').setAttribute('aria-pressed', String(state.overlay))
     document.getElementById('essence-key').setAttribute('aria-pressed', String(state.essence))
     document.getElementById('map-key').setAttribute('aria-pressed', String(state.map))
@@ -184,10 +265,10 @@ select { padding-right: 28px; }
     switch (combo) {
       case 'Ctrl+D':
         act(document.getElementById('item').value)
-        hint.textContent = 'Priced from recorded trade site listings. Change the item under the cursor to try another.'
+        hint.textContent = ITEMS[document.getElementById('item').value]
         break
       case 'Shift+Space':
-        state.overlay = !state.overlay
+        overlay(!state.overlay)
         send({ demo: 'overlay', open: state.overlay })
         hint.textContent = state.overlay
           ? 'The overlay is open: click around. The rail on the left edge holds every tool. Shift+Space closes it.'
@@ -234,9 +315,13 @@ select { padding-right: 28px; }
     if (msg.demo === 'ready') {
       state.ready = true
       document.getElementById('loading').hidden = true
+      showScreen(state.screen)
     }
+    if (msg.demo === 'spot') located(msg)
+    // The card covers the marker: hide it while the mouse rests on an icon.
+    if (msg.demo === 'hover') { state.hovering = msg.inside; sync() }
     if (msg.demo === 'key') press(msg.combo)
-    if (msg.demo === 'overlay') { state.overlay = msg.open; sync() }
+    if (msg.demo === 'overlay') overlay(msg.open)
   })
   showScreen('jungle')
 })()
