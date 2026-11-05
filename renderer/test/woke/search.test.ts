@@ -119,15 +119,15 @@ describe('searchNamed', () => {
 describe('search hotkey', () => {
   const old = (hotkey: string | null) => ({ ...initSearchWidget(1), hotkey, keyMoved: undefined })
 
-  it('defaults to Alt + Space, unless that key is in use', () => {
-    expect(initSearchWidget(1).hotkey).toBe('Alt + Space')
-    expect(SEARCH_DEFAULT_KEY).toBe('Alt + Space')
-    expect(initSearchWidget(1, ['Alt + Space']).hotkey).toBeNull()
+  it('defaults to Ctrl + Space, unless that key is in use', () => {
+    expect(initSearchWidget(1).hotkey).toBe('Ctrl + Space')
+    expect(SEARCH_DEFAULT_KEY).toBe('Ctrl + Space')
+    expect(initSearchWidget(1, ['Ctrl + Space']).hotkey).toBeNull()
   })
   it('moves the old default once', () => {
     const w = old('Alt + P')
     moveSearchKey(w, [])
-    expect(w.hotkey).toBe('Alt + Space')
+    expect(w.hotkey).toBe('Ctrl + Space')
     w.hotkey = 'Alt + P' // chosen again later
     moveSearchKey(w, [])
     expect(w.hotkey).toBe('Alt + P')
@@ -137,7 +137,7 @@ describe('search hotkey', () => {
     moveSearchKey(chosen, [])
     expect(chosen.hotkey).toBe('Ctrl + K')
     const clash = old('Alt + P')
-    moveSearchKey(clash, ['Alt + Space'])
+    moveSearchKey(clash, ['Ctrl + Space'])
     expect(clash.hotkey).toBe('Alt + P')
   })
   it('never moves a key on a new window', () => {

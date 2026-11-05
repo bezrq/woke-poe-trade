@@ -3,7 +3,7 @@
 import { test, expect } from './harness'
 import type { Overlay } from './harness'
 
-const SEARCH_KEY = 'Alt + Space'
+const SEARCH_KEY = 'Ctrl + Space'
 
 // Prices are saved a moment after they load.
 async function waitForPrices (overlay: Overlay) {
@@ -26,7 +26,7 @@ test('the hotkey opens the palette ready to type, and Esc leaves it', async ({ o
   await overlay.page.setViewportSize({ width: 2560, height: 1440 })
   await overlay.boot(bootOptions())
   await overlay.showScreen('screens/map-real-01.png')
-  expect(overlay.app.registeredHotkeys()).toContain('Alt+Space')
+  expect(overlay.app.registeredHotkeys()).toContain('Ctrl+Space')
 
   await overlay.pressHotkey(SEARCH_KEY)
   const palette = overlay.widget('woke-search')
@@ -45,7 +45,7 @@ test('the hotkey opens the palette ready to type, and Esc leaves it', async ({ o
   // The same key closes it, since global hotkeys are off while it has the keyboard.
   await overlay.pressHotkey(SEARCH_KEY)
   await expect(box).toBeFocused()
-  await overlay.page.keyboard.press('Alt+Space')
+  await overlay.page.keyboard.press('Ctrl+Space')
   await expect(box).toBeHidden()
 })
 

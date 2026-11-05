@@ -5,7 +5,7 @@ import type { Widget, Anchor } from '@/web/overlay/widgets'
 
 export const SEARCH_TYPE = 'woke-search'
 export const SEARCH_TARGET = 'woke-search-open'
-export const SEARCH_DEFAULT_KEY = 'Alt + Space'
+export const SEARCH_DEFAULT_KEY = 'Ctrl + Space'
 const OLD_DEFAULT_KEY = 'Alt + P'
 
 export interface SearchWidget extends Widget {
