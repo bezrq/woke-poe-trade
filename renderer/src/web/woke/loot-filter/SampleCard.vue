@@ -232,7 +232,7 @@ function removeOwnRule () {
 
 function afterFix (text: string, undo: () => void) {
   toast(text, { undo: () => { undo(); props.store.save() } })
-  // Saved now; the game reloads it when you're next in town or hideout.
+  // Saved now; outside town or hideout it waits for you to press Reload now.
   props.store.save()
 }
 

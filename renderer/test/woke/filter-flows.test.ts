@@ -20,13 +20,16 @@ import { CLASS_ITEMS, STATE_ITEMS } from '../helpers/filter-items'
 import { fakeHost } from '../helpers/filter-host'
 import type { FakeHost } from '../helpers/filter-host'
 
-const sent = vi.hoisted(() => ({ chat: [] as string[], log: null as null | ((lines: unknown[]) => void), host: null as FakeHost | null }))
+const sent = vi.hoisted(() => ({ chat: [] as string[], log: null as null | ((lines: unknown[]) => void), host: null as FakeHost | null, wokeEvent: null as null | ((e: { topic: string, data: unknown }) => void) }))
 
 vi.mock('@/web/woke/shared/host', () => ({ hostRequest: (name: string, args: Record<string, unknown>) => sent.host!.request(name, args) }))
 vi.mock('@/web/background/IPC', () => ({
   MainProcess: {
     sendEvent: (e: { payload: { text: string } }) => { sent.chat.push(e.payload.text) },
-    onEvent: () => ({ abort () {} })
+    onEvent: (name: string, fn: (e: { topic: string, data: unknown }) => void) => {
+      if (name === 'MAIN->CLIENT::woke-event') sent.wokeEvent = fn
+      return { abort () {} }
+    }
   },
   Host: {}
 }))
@@ -203,6 +206,16 @@ describe('reloading in game', () => {
     await store.save()
     expect(sent.chat).toEqual(['/itemfilter NeverSink (woke)'])
     expect(store.pendingReload.value).toBe(false)
+  })
+
+  it('a command that never reached the game is still waiting', async () => {
+    const { store } = await opened()
+    await store.save({ reloadNow: true })
+    expect(store.pendingReload.value).toBe(false)
+    sent.wokeEvent!({ topic: 'chat-dropped', data: { text: 'something else' } })
+    expect(store.pendingReload.value).toBe(false)
+    sent.wokeEvent!({ topic: 'chat-dropped', data: { text: '/itemfilter NeverSink (woke)' } })
+    expect(store.pendingReload.value).toBe(true)
   })
 
   it('sends nothing with chat reload off', async () => {

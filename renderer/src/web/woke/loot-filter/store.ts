@@ -101,8 +101,13 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
   const areaLevel = ref<number | null>(null)
   // Town or hideout (null until Client.txt shows an area change).
   const inSafeZone = ref<boolean | null>(null)
-  // A reload held until the next town/hideout visit.
+  // A saved filter waiting for you to press Reload now.
   const pendingReload = ref(false)
+  let remindedOfReload = false
+  function holdReload () {
+    pendingReload.value = true
+    remindedOfReload = false
+  }
   const RELOAD_READY = 'Loot filter saved. Press Reload now in the filter window to use it.'
   // The area line is written while the loading screen is still up; wait until
   // the zone has loaded.
@@ -127,7 +132,10 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
           if (followLadder()) return
           // A reminder only. GGG's macro rules need every command to come from
           // a key press or click, so a log line or timer must never send one.
-          if (pendingReload.value) toast(RELOAD_READY)
+          if (pendingReload.value && !remindedOfReload) {
+            remindedOfReload = true
+            toast(RELOAD_READY)
+          }
         }, RELOAD_AFTER_LOAD_MS)
       }
     }
@@ -460,7 +468,7 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
     await load()
   }
 
-  // Switches strictness, saves, and reloads in game (when safe). Returns Undo.
+  // Switches strictness and saves. Returns Undo, or null if nothing was saved.
   async function setLevel (level: number, opts: { auto?: boolean } = {}): Promise<(() => void) | null> {
     const ns = cfg().neversink
     if (!ns.on) return null
@@ -471,7 +479,7 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
     await load()
     // A newer switch (a second key press) saves its own level.
     if (cfg().neversink.level !== next) return null
-    if (doc.value) await save({ auto: opts.auto })
+    if (!doc.value || !await save({ auto: opts.auto })) return null
     return () => { setLevel(before).catch(() => {}) }
   }
 
@@ -511,7 +519,7 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
     const top = Math.max(...recentAreas)
     setLevel(target, { auto: true }).then(undo => {
       if (!undo) return
-      toast(`Loot filter: ${LEVEL_NAMES[target]}, for area level ${top} maps. Press Reload now in the filter window to use it.`, {
+      toast(`Loot filter: ${LEVEL_NAMES[target]}, for area level ${top} maps.${cfg().reloadViaChat ? ' Press Reload now in the filter window to use it.' : ''}`, {
         undo: () => { cfg().strictAuto.paused = true; undo() }
       })
     }).catch(() => {})
@@ -796,7 +804,7 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
       cfg().lastVersion = written.version
       lastSaved.value = Date.now()
       if (cfg().reloadViaChat) {
-        if (opts.auto) pendingReload.value = true
+        if (opts.auto) holdReload()
         else reloadInGame(opts.reloadNow === true)
       }
       setTimeout(() => { readGameFilter().catch(() => {}) }, 8000)
@@ -813,20 +821,30 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
   // reloadWhenSafe holds it outside town/hideout until you press Reload now.
   function reloadInGame (force = false) {
     if (!force && cfg().reloadWhenSafe && inSafeZone.value !== true) {
-      pendingReload.value = true
+      holdReload()
       return
     }
     pendingReload.value = false
     sendReload()
   }
 
+  const reloadCommand = () => `/itemfilter ${stem(outputName(cfg()))}`
+
   function sendReload () {
     sentOver.value = gameFilter.value.name
     MainProcess.sendEvent({
       name: 'CLIENT->MAIN::user-action',
-      payload: { action: 'paste-in-chat', text: `/itemfilter ${stem(outputName(cfg()))}` }
+      payload: { action: 'paste-in-chat', text: reloadCommand() }
     })
   }
+
+  // The game didn't have focus, so the command never went out: still waiting.
+  const chatDropped = MainProcess.onEvent('MAIN->CLIENT::woke-event', ({ topic, data }) => {
+    if (topic !== 'chat-dropped' || (data as { text?: string }).text !== reloadCommand()) return
+    sentOver.value = null
+    holdReload()
+  })
+  onUnmounted(() => { chatDropped.abort() })
 
   watch(rulesSig, (sig) => { if (baseText.value != null && sig !== builtRulesSig) rebuild() })
 

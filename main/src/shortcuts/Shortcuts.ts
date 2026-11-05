@@ -38,22 +38,40 @@ export class Shortcuts {
   // woke: injected keys go to whichever window has focus, so a command asked for
   // from the overlay must never type into Discord or a browser. Dropped if
   // neither the game nor the overlay has focus, or the game never takes it.
-  private typeIntoGame (what: string, type: () => void) {
-    const dropped = () => this.logger.write(`warn [Shortcuts] Dropped a ${what}: the game doesn't have focus.`)
+  private typeIntoGame (what: string, type: () => void, onDropped?: () => void) {
+    const dropped = () => {
+      this.logger.write(`warn [Shortcuts] Dropped a ${what}: the game doesn't have focus.`)
+      onDropped?.()
+    }
     if (this.poeWindow.hasFocus && !this.overlay.isInteractable) {
       type()
       return
     }
-    if (!this.overlay.isInteractable || !this.overlay.isFocused) {
+    if (this.overlay.isInteractable) {
+      if (!this.overlay.isFocused) {
+        dropped()
+        return
+      }
+      this.overlay.assertGameActive()
+    } else if (!this.poeWindow.isActive) {
       dropped()
       return
     }
-    this.overlay.assertGameActive()
+    // Focus is on its way. Give the game a moment after it arrives.
     const started = Date.now()
+    let focusedAt: number | undefined
     const tick = () => {
-      // Give the game a moment after it has focus before typing into it.
-      if (this.poeWindow.hasFocus && Date.now() - started >= FOCUS_SETTLE_MS) type()
-      else if (Date.now() - started >= FOCUS_WAIT_MS) dropped()
+      const now = Date.now()
+      if (this.poeWindow.hasFocus) {
+        focusedAt ??= now
+        if (now - focusedAt >= FOCUS_SETTLE_MS) {
+          type()
+          return
+        }
+      } else {
+        focusedAt = undefined
+      }
+      if (focusedAt === undefined && now - started >= FOCUS_WAIT_MS) dropped()
       else setTimeout(tick, 20)
     }
     setTimeout(tick, 20)
@@ -108,7 +126,9 @@ export class Shortcuts {
         // woke: wait for a pause in typing so the command never lands in the
         // middle of a chat message or a key you're holding.
         this.whenKeysIdle(() => {
-          this.typeIntoGame('chat command', () => { typeInChat(e.text, true, this.clipboard) })
+          this.typeIntoGame('chat command', () => { typeInChat(e.text, true, this.clipboard) }, () => {
+            this.server.sendEventTo('broadcast', { name: 'MAIN->CLIENT::woke-event', payload: { topic: 'chat-dropped', data: { text: e.text } } })
+          })
         }, e.immediate ? 0 : undefined)
       }
     })
