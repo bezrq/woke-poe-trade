@@ -294,6 +294,45 @@ test('prices: a hidden valuable unique lists what else would show, and Show it d
   }).toMatch(/Show # \$type->woke->own [^\n]*\n(\t[^\n]*\n)*\tBaseType == "Despot Axe"/)
 })
 
+test('a save nobody asked to reload waits on the dock icon, and one key sends it once', async ({ overlay, fakeApp }) => {
+  test.slow()
+  const folder = fs.mkdtempSync(path.join(os.tmpdir(), 'woke-filters-'))
+  fs.writeFileSync(path.join(folder, 'NeverSink.filter'), [
+    '# NeverSink test',
+    'Hide # $type->uniques $tier->hideable',
+    '\tRarity Unique',
+    '\tBaseType == "Despot Axe"',
+    ''
+  ].join('\r\n'))
+  await overlay.boot({ widgets: [lootFilter(folder)] })
+  await openEditor(overlay, fakeApp)
+  const page = overlay.page
+  await page.getByRole('tab', { name: /^Prices/ }).click()
+  await page.getByRole('button', { name: /Despot Axe/ }).click()
+  await page.getByRole('button', { name: 'Show it', exact: true }).click()
+  await expect.poll(() => fs.existsSync(path.join(folder, 'NeverSink (woke).filter'))).toBe(true)
+  expect(fakeApp.game.chat).toEqual([])
+
+  // Back in the game: nothing has been typed, and the icon says what's waiting.
+  fakeApp.focusGame(true)
+  await expect(overlay.dockIcon('loot-filter')).toContainText('Reload')
+  await expect(async () => {
+    // Off and back on: the card opens on arriving, not on a mouse already there.
+    await overlay.moveMouse(1000, 900)
+    await overlay.hoverDockIcon('loot-filter')
+    await expect(page.getByRole('button', { name: 'Reload now' }).last()).toBeVisible({ timeout: 2000 })
+  }).toPass({ timeout: 20_000 })
+  await expect(page.getByText('The game still uses your old filter.')).toBeVisible()
+  await overlay.snap('reload waiting on the dock card')
+  await overlay.moveMouse(1000, 900)
+  await page.waitForTimeout(100)
+  expect(fakeApp.game.chat).toEqual([])
+
+  await overlay.pressHotkey('Alt + R')
+  await expect.poll(() => fakeApp.game.chat).toEqual(['/itemfilter NeverSink (woke)'])
+  await expect(overlay.dockIcon('loot-filter').filter({ hasText: 'Reload' })).toHaveCount(0)
+})
+
 test('back from a rule returns to the same pile, by button and by the mouse back button', async ({ overlay, fakeApp }) => {
   const folder = filterFolder()
   await overlay.boot({ widgets: [lootFilter(folder)] })

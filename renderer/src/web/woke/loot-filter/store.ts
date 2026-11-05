@@ -147,7 +147,8 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
     pendingReload.value = true
     remindedOfReload = false
   }
-  const RELOAD_READY = 'Loot filter saved. Press Reload now in the filter window to use it.'
+  // How to use a filter that's saved but not reloaded, for a short note.
+  const reloadHint = () => cfg().reloadHotkey ? `Press ${cfg().reloadHotkey} to use it.` : 'Click its dock icon to use it.'
   // The area line is written while the loading screen is still up; wait until
   // the zone has loaded.
   const RELOAD_AFTER_LOAD_MS = 4000
@@ -176,7 +177,7 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
           // a key press or click, so a log line or timer must never send one.
           if (pendingReload.value && !remindedOfReload) {
             remindedOfReload = true
-            toast(RELOAD_READY)
+            toast(`Loot filter saved. ${reloadHint()}`)
           }
         }, RELOAD_AFTER_LOAD_MS)
       }
@@ -622,7 +623,7 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
     const top = Math.max(...recentAreas)
     setLevel(target, { auto: true }).then(undo => {
       if (!undo) return
-      toast(`Loot filter: ${LEVEL_NAMES[target]}, for area level ${top} maps.${cfg().reloadViaChat ? ' Press Reload now in the filter window to use it.' : ''}`, {
+      toast(`Loot filter: ${LEVEL_NAMES[target]}, for area level ${top} maps.${cfg().reloadViaChat ? ` ${reloadHint()}` : ''}`, {
         undo: () => { cfg().strictAuto.paused = true; undo() }
       })
     }).catch(() => {})
