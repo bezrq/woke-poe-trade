@@ -315,10 +315,10 @@ export default defineComponent({
     // woke: the verdict's slot sits above the mods, as for item listings.
     const verdictSlot = inject<ShallowRef<HTMLElement | null>>('price-verdict-slot', shallowRef(null))
     const need = computed(() => props.item.stackSize?.value ?? 1)
-    const bulkInsight = computed(() => buildBulkInsight(
-      selectedResults.value.filter((r): r is PricingResult => !('marketRatio' in r)),
-      need.value
-    ))
+    const bulkInsight = computed(() => {
+      if (!slowdown.isReady.value || !result.value) return null
+      return buildBulkInsight(result.value[selectedCurr.value].listedLazy.value, need.value)
+    })
 
     // woke: real rows only once loaded, with placeholder rows until then.
     const tableLoading = computed(() => {
