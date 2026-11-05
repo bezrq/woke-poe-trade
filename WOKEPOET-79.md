@@ -57,6 +57,16 @@ history:
     to: In Progress
     user: Agent
     date: '2026-11-05T10:44:17.959Z'
+  - type: activity
+    user: Agent
+    date: '2026-11-05T10:50:43.299Z'
+    comment: >-
+      PR #152 at e185d3e2: review findings fixed (dock card label, zero-column
+      highlight, pool EV highlight now marks the best colour, e2e EV assertion).
+      Local checks pass. Merge requested through the cloud merge thread. Not
+      changed: graphGaps in market/parse.ts counts a missing graph as 0 gaps, so
+      such a gem would count as trusted; not confirmed in the live feed.
+    id: a-2026-11-05t10-50-43-299z
 swimlane: null
 needsAction: null
 implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/152'
