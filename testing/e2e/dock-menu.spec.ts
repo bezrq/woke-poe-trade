@@ -123,7 +123,8 @@ test('a click on a menu row leaves no card behind', async ({ overlay, fakeApp })
   await row.click()
   await overlay.page.waitForTimeout(300)
   await expect(overlay.dockIcon('trade').locator('[data-dock-menu]')).toHaveCount(0)
-  await expect(overlay.dockIcon('trade').getByText('Kaltenhalt')).toHaveCount(0)
+  // The offer's row, not the name: the bubble keeps naming the buyer.
+  await expect(overlay.dockIcon('trade').locator('[data-offer]')).toHaveCount(0)
 })
 
 test('undoing one dismissal leaves another alone', async ({ overlay, fakeApp }) => {
