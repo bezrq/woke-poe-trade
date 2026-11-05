@@ -158,7 +158,7 @@ function setOverride (member: string, di: number, e: Event) {
 .name { margin: 0; font-family: var(--w-head); font-size: var(--w-fs-xl); font-weight: 600; }
 .show { margin-left: auto; }
 .badge {
-  padding: 0 7px; line-height: 18px; white-space: nowrap;
+  padding: 1px 7px; white-space: nowrap;
   font-size: var(--w-fs-xs); border: 1px solid currentColor; border-radius: var(--w-r-pill);
 }
 .badge-zone { color: var(--w-up); }
