@@ -32,6 +32,8 @@ export const usePoeninja = createGlobalState(() => {
   const leagues = useLeagues()
 
   const xchgRate = shallowRef<number | undefined>(undefined)
+  // woke: when prices last loaded, so the verdict can say how old they are.
+  const updatedAt = shallowRef<number | null>(null)
 
   const isLoading = shallowRef(false)
   let PRICES_DB: PriceDatabase = []
@@ -55,15 +57,19 @@ export const usePoeninja = createGlobalState(() => {
       const response = await Host.proxy(`poe.ninja/poe1/api/economy/current/dense/overviews?league=${league.id}&language=en`, {
         signal: downloadController.signal
       })
-      const jsonBlob = await response.text()
+      // woke: an error page or empty answer keeps the prices we have and retries soon.
+      if (!response.ok) return
+      const database = splitJsonBlob(await response.text())
+      if (!database.length) return
 
-      PRICES_DB = splitJsonBlob(jsonBlob)
+      PRICES_DB = database
       emitWokePricesLoaded(league.id, PRICES_DB)
       const divine = findPriceByQuery({ ns: 'ITEM', name: 'Divine Orb', variant: undefined })
+      lastUpdateTime = Date.now()
       if (divine && divine.chaos >= 30) {
         xchgRate.value = divine.chaos
+        updatedAt.value = lastUpdateTime
       }
-      lastUpdateTime = Date.now()
     } finally {
       isLoading.value = false
     }
@@ -155,13 +161,18 @@ export const usePoeninja = createGlobalState(() => {
   }, RETRY_INTERVAL_MS)
 
   watch(leagues.selectedId, () => {
+    // woke: a load still running is for the old league.
+    downloadController?.abort()
     xchgRate.value = undefined
+    updatedAt.value = null
     PRICES_DB = []
     load(true)
   })
 
   return {
     xchgRate: readonly(xchgRate),
+    updatedAt: readonly(updatedAt),
+    isLoading: readonly(isLoading),
     findPriceByQuery,
     findPriceByName,
     autoCurrency,

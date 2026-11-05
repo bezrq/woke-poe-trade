@@ -281,10 +281,10 @@ export const PAGES: SettingsPage[] = [
     group: 'modules',
     sub: 'Maps & atlas',
     icon: modulePageIcon('mechanics'),
-    description: 'Picks and the Betrayal board for the zone you are in.',
+    description: 'What the overlay shows for each league mechanic, when it shows it, and what you can change.',
     modules: ['mechanics'],
     widgets: ['woke-mechanics'],
-    find: ['Switch tab by zone', 'Mechanics shown', 'Betrayal board', 'Syndicate']
+    find: ['Panel follows my zone', 'Show or hide a mechanic', 'Betrayal rewards', 'Syndicate', 'Delve', 'Expedition', 'Harvest', 'Blight', 'Essence', 'Breach', 'Legion', 'Delirium', 'Ritual', 'Ultimatum', 'Sanctum', 'Heist', 'Bestiary', 'Incursion']
   },
   {
     id: 'loot-filter',
