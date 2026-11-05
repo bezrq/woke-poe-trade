@@ -36,7 +36,24 @@ history:
       for the panel, and 1 (same key again) or 2 (own key) for the pop-out. I
       recommend B and 1. Tested headlessly with the overlay's browser identity:
       wiki, poedb and the Craft of Exile item link all load.
-swimlane: require-input
+  - type: comment
+    user: Agent
+    comment: >-
+      Guy chose tabs (B), a pop-out icon in the header, and wants bookmarks.
+      Same key again also pops out (assumed, he didn't pick). Bookmark layout
+      mocked and asked in the thread; building tabs and pop-out meanwhile.
+    date: '2026-11-05T07:15:19.863Z'
+    id: c-2026-11-05t07-15-19-863z
+  - type: swimlane_change
+    swimlane: require-input
+    action: cleared
+    user: Agent
+    date: '2026-11-05T07:15:19.863Z'
+    comment: >-
+      Guy chose tabs (B), a pop-out icon in the header, and wants bookmarks.
+      Same key again also pops out (assumed, he didn't pick). Bookmark layout
+      mocked and asked in the thread; building tabs and pop-out meanwhile.
+swimlane: null
 needsAction: null
 ---
 > **TL;DR:** The wiki, poedb and Craft of Exile item hotkeys throw you out to your real browser. Guy wants them to open inside the overlay, with a shortcut to pop the page out afterwards. Mocks come first; no code until Guy picks.
