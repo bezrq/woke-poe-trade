@@ -145,7 +145,7 @@ import { latestSnapshots } from '../market/db'
 import { formatAmount, formatChaos } from '../ui/format'
 import { isThin, itemKey } from '../market/types'
 import type { Snapshot } from '../market/types'
-import { DumpImporter } from './dumps'
+import { DumpImporter, importLeagues } from './dumps'
 import type { LeagueHistory } from './dumps'
 import { THIN_RELIABILITY, opportunityKey, planBudget, rankOpportunities } from './invest'
 import type { Opportunity } from './invest'
@@ -342,11 +342,9 @@ async function onFiles (e: Event) {
     }
     const names = importer.leagues()
     if (!names.length) throw new Error('No challenge league data found in these files.')
-    for (const name of names) {
-      importMsg.value = `Processing ${name}…`
-      await saveLeague(importer.build(name))
-    }
-    importMsg.value = `Imported ${names.join(', ')}.`
+    const { imported, failed } = await importLeagues(importer, saveLeague, (name) => { importMsg.value = `Processing ${name}…` })
+    importError.value = failed.length > 0
+    importMsg.value = [imported.length ? `Imported ${imported.join(', ')}.` : '', ...failed].filter(Boolean).join(' ')
     await reloadHistories()
   } catch (err) {
     importError.value = true

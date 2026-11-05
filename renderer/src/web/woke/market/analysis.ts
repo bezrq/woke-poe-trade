@@ -1,3 +1,4 @@
+import { findDivinePrice } from './parse'
 import { isThin, itemKey } from './types'
 import type { PriceItem } from './types'
 
@@ -65,6 +66,12 @@ export function trendThen (items: PriceItem[], period: '24h' | '7d'): PriceItem[
     if (chaos != null) out.push({ ...item, chaos })
   }
   return out
+}
+
+// That list and the Divine Orb's price in it, so moves in divines work on it too.
+export function trendBaseline (items: PriceItem[], period: '24h' | '7d'): { then: PriceItem[], divThen: number | null } {
+  const then = trendThen(items, period)
+  return { then, divThen: findDivinePrice(then) }
 }
 
 export function formatChange (change: number): string {

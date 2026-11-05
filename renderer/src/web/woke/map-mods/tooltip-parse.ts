@@ -106,6 +106,9 @@ export class TooltipMatcher {
   private readonly byWord = new Map<string, Known[]>()
   // Mods without such a word: always compared.
   private readonly plain: Known[] = []
+  // Mods that show on several tooltip lines, each line normalised. OCR reads
+  // them one line at a time, so they're matched against runs of lines.
+  private readonly multi: Array<{ matcher: string, lines: string[] }> = []
   // Mods the user rated: always compared, whatever words OCR got wrong.
   private always: Known[] = []
   private alwaysKey = ''
@@ -115,6 +118,7 @@ export class TooltipMatcher {
   constructor (matchers: string[]) {
     for (const m of matchers) {
       const k = { matcher: m, norm: normalize(m) }
+      if (m.includes('\n')) this.multi.push({ matcher: m, lines: m.split('\n').map(normalize) })
       const words = keyWords(k.norm)
       if (!words.length) this.plain.push(k)
       for (const w of new Set(words)) {
@@ -175,12 +179,35 @@ export class TooltipMatcher {
     return { matcher: best.matcher, roll: num ? Number(num[1]) : undefined, score: best.score }
   }
 
+  // Runs of lines that spell out a multi-line mod. A rating on it counts as
+  // well as any rating on its lines read alone, and those lines aren't weak.
+  private multiLineMods (lines: string[]): { mods: Array<{ matcher: string, roll?: number }>, used: Set<number> } {
+    const mods: Array<{ matcher: string, roll?: number }> = []
+    const used = new Set<number>()
+    const norms = lines.map(normalize)
+    for (const m of this.multi) {
+      for (let i = 0; i + m.lines.length <= norms.length; i++) {
+        if (!m.lines.every((l, j) => similarity(norms[i + j], l) >= SURE_SIMILARITY)) continue
+        const num = /(-?\d+)/.exec(lines.slice(i, i + m.lines.length).join(' '))
+        mods.push({ matcher: m.matcher, roll: num ? Number(num[1]) : undefined })
+        for (let j = 0; j < m.lines.length; j++) used.add(i + j)
+        break
+      }
+    }
+    return { mods, used }
+  }
+
   // Null when the lines don't look like a map tooltip.
   parse (lines: string[]): ScannedMap | null {
     const out: ScannedMap = { props: {}, mods: [], weak: [] }
     let isMap = false
     const seen = new Set<string>()
-    for (const line of lines) {
+    const multi = this.multiLineMods(lines)
+    for (const m of multi.mods) {
+      seen.add(m.matcher)
+      out.mods.push(m)
+    }
+    for (const [lineIndex, line] of lines.entries()) {
       // Header line of magic maps (read when it's blue): "Map (Tier 16)".
       const header = /\bmap\s*\(\s*tier\s*(\d+)\s*\)/i.exec(line)
       if (header) {
@@ -201,6 +228,7 @@ export class TooltipMatcher {
         out.mods.push({ matcher: mod.matcher, roll: mod.roll })
       }
       const norm = normalize(line)
+      if (multi.used.has(lineIndex)) continue
       if ((mod && mod.score < SURE_SIMILARITY) || (!mod && norm.length >= 15 && MOD_LIKE.test(norm))) {
         out.weak.push(line)
       }

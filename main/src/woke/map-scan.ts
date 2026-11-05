@@ -376,6 +376,8 @@ export class ScreenScanner {
   private async frame () {
     if (this.paused) return
     if (!this.poeWindow.isActive) {
+      // Time away isn't time with nothing to read: coming back must not stop it.
+      this.lastReadingAt = Date.now()
       if (Date.now() - this.lastActive > IDLE_STOP_MS) this.stop('Stopped after 30 minutes away from the game.')
       return
     }
@@ -403,7 +405,10 @@ export class ScreenScanner {
       }
     }
     const lock = this.lock
-    if (!lock && (cursor.x < 0 || cursor.y < 0 || cursor.x >= bounds.width || cursor.y >= bounds.height)) return
+    if (!lock && (cursor.x < 0 || cursor.y < 0 || cursor.x >= bounds.width || cursor.y >= bounds.height)) {
+      this.lastReadingAt = Date.now()
+      return
+    }
     if (this.kind.noReadingStopMs && Date.now() - this.lastReadingAt > this.kind.noReadingStopMs) {
       this.stop(`Stopped: nothing to read for ${Math.round(this.kind.noReadingStopMs / 60000)} minutes.`)
       return

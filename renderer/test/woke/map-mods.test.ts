@@ -5,7 +5,7 @@ import { describe, it, expect, beforeAll } from 'vitest'
 import { loadGameData } from '../helpers/game-data'
 import { allAreaMods, allMapNames, profileRegex } from '@/web/woke/map-mods/data'
 import { atLeast, buildMapRegex, MAX_SEARCH_LENGTH, TOOLTIP_LINES } from '@/web/woke/map-mods/regex'
-import { PRESETS, defaultProfile, rateMods, juiceScore } from '@/web/woke/map-mods/rules'
+import { PRESETS, copyOfProfile, defaultProfile, rateMods, juiceScore } from '@/web/woke/map-mods/rules'
 import { TooltipMatcher } from '@/web/woke/map-mods/tooltip-parse'
 import type { MapModProfile } from '@/web/woke/map-mods/rules'
 
@@ -208,5 +208,36 @@ describe('APT map check ratings brought into Map mods', () => {
     expect(profiles[0].ratings['Monsters reflect #% of Physical Damage']).toBe('deadly')
     expect(profiles[0].ratings['Area has patches of Burning Ground']).toBeUndefined()
     expect(profiles[1].ratings).toEqual({ 'Monsters cannot be Leeched from': 'warn' })
+  })
+})
+
+describe('map scan: mods on several tooltip lines', () => {
+  const TWO_LINE = "Monsters' Action Speed cannot be modified to below Base Value\nMonsters' Movement Speed cannot be modified to below Base Value"
+
+  it('finds a two-line mod, so a rating on it counts', () => {
+    const scanned = new TooltipMatcher(allAreaMods()).parse(['Map Tier: 16', ...TWO_LINE.split('\n')])!
+    expect(scanned.mods.map(m => m.matcher)).toContain(TWO_LINE)
+    expect(scanned.weak).toEqual([])
+    expect(rateMods(scanned.mods, { ...defaultProfile(), ratings: { [TWO_LINE]: 'deadly' } }).verdict).toBe('skip')
+  })
+
+  it('still rates the lines on their own', () => {
+    const scanned = new TooltipMatcher(allAreaMods()).parse(TWO_LINE.split('\n'))!
+    expect(scanned.mods.map(m => m.matcher)).toContain(TWO_LINE.split('\n')[0])
+  })
+
+  it('needs every line of the mod', () => {
+    const scanned = new TooltipMatcher(allAreaMods()).parse(['Map Tier: 16', TWO_LINE.split('\n')[0]])!
+    expect(scanned.mods.map(m => m.matcher)).not.toContain(TWO_LINE)
+  })
+})
+
+describe('map mods profiles', () => {
+  it('a copy keeps every setting, and its own ratings', () => {
+    const p: MapModProfile = { ...defaultProfile(), id: 1, name: 'Build', minsAny: true, autoTrim: true, highlight: 'bad', mins: { quantity: 80 } }
+    const copy = copyOfProfile(p, 2)
+    expect(copy).toMatchObject({ id: 2, name: 'Build copy', minsAny: true, autoTrim: true, highlight: 'bad', mins: { quantity: 80 } })
+    copy.ratings.x = 'deadly'
+    expect(p.ratings.x).toBeUndefined()
   })
 })

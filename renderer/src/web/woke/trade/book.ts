@@ -97,13 +97,13 @@ function close (o: Offer, how: NonNullable<Offer['closed']>, at: number) {
   o.closedAt = at
 }
 
-// Offers in the order the keys act on them: buyers in your area first, then
-// the oldest whisper; skipped ones go last; buying after selling.
+// Offers in the order the keys act on them: skipped ones behind the rest, then
+// buyers in your area, then the oldest whisper; buying after selling.
 export function queue (book: TradeBook): Offer[] {
   return book.offers.filter(isOpen).sort((a, b) =>
     (a.dir === b.dir ? 0 : a.dir === 'sell' ? -1 : 1) ||
-    (Number(b.inArea) - Number(a.inArea)) ||
     ((a.skippedAt ?? 0) - (b.skippedAt ?? 0)) ||
+    (Number(b.inArea) - Number(a.inArea)) ||
     (a.dir === 'sell' ? a.at - b.at : b.at - a.at))
 }
 
@@ -131,6 +131,12 @@ export function applyEvent (book: TradeBook, ev: TradeEvent): ApplyResult {
           same.repeats++
           same.offline = false
           same.skippedAt = null
+          // A relisted item: the newest whisper says what they pay now.
+          same.price = ev.offer.price
+          same.qty = ev.offer.qty
+          same.tab = ev.offer.tab
+          same.note = ev.offer.note
+          same.body = ev.body
           return {}
         }
         const o: Offer = {
@@ -161,6 +167,7 @@ export function applyEvent (book: TradeBook, ev: TradeEvent): ApplyResult {
         for (const o of open) {
           o.messages = [...o.messages, ev.body].slice(-3)
           o.lastAt = ev.at
+          o.skippedAt = null
         }
       }
       return {}
@@ -170,6 +177,7 @@ export function applyEvent (book: TradeBook, ev: TradeEvent): ApplyResult {
       for (const o of book.offers) {
         if (!isOpen(o) || o.who !== ev.who) continue
         o.inArea = ev.kind === 'joined'
+        if (ev.kind === 'joined') o.skippedAt = null
         if (ev.kind === 'joined' && o.dir === 'sell' && o.step < 1) o.step = 1
         // They got their item and left: nothing more to do.
         if (ev.kind === 'left' && o.traded) close(o, 'done', ev.at)
