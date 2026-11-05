@@ -208,6 +208,12 @@ describe('colours', () => {
 })
 
 describe('showing them', () => {
+  it('doesn\'t round yours a second time, which can change it', () => {
+    // 1.15 truncates to 1.14 through float error, in the filter and here alike.
+    const speed = { ...onlyColumn(filter({ value: 1.14 })), dp: true }
+    expect(statTone(1.15, speed)).toBe('')
+  })
+
   it('formats whole numbers, decimals and missing values', () => {
     const whole = onlyColumn(filter({}))
     expect(formatStatValue(15.5, whole)).toBe('15')

@@ -230,7 +230,8 @@ export type StatTone = 'theirs' | 'yours' | ''
 export function statTone (value: number | null, column: StatColumn): StatTone {
   if (value == null || !column.better) return ''
   // The filter's own rounding, or the same mods on a listing could look different.
-  const diff = roundRoll(value, column.dp) - roundRoll(column.yours, column.dp)
+  // `yours` went through it already, and a second pass can change the number.
+  const diff = roundRoll(value, column.dp) - column.yours
   if (diff === 0) return ''
   return (diff > 0) === (column.better === 1) ? 'theirs' : 'yours'
 }

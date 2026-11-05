@@ -89,7 +89,7 @@
               <td v-if="showItemLevel" class="px-2 text-right">{{ item.itemLevel }}</td>
               <td v-if="item.category === 'Gem'" />
               <td v-if="filters.quality || item.category === 'Gem'" />
-              <td v-for="col in shownColumns" :key="col.key" class="w-pc-stat">{{ formatStatValue(col.yours, col) }}</td>
+              <td v-for="col in shownColumns" :key="col.key" class="w-pc-stat">{{ col.yours }}</td>
               <td v-if="hiddenColumns.length" />
               <td v-if="showSeller" />
               <td />

@@ -276,8 +276,12 @@ function capPerSeller (rows: KeptRow[], keepBuyouts: boolean): KeptRow[] {
 function dropWalls (kept: KeptRow[], dropped: Map<string, DropReason>): KeptRow[] {
   const bottom = kept.slice(0, WINDOW)
   const walls = new Set<string>()
+  // A seller's copies can be on separate rows when their stats differ.
+  const pile = (row: KeptRow) => kept
+    .filter(k => !k.instant && k.account === row.account && k.chaos === row.chaos)
+    .reduce((copies, k) => copies + k.copies, 0)
   for (const row of bottom) {
-    if (row.instant || row.copies < WALL_COPIES) continue
+    if (row.instant || pile(row) < WALL_COPIES) continue
     const others = kept.filter(k => k.account !== row.account).slice(0, WINDOW).map(k => k.chaos)
     if (others.length < 3) continue
     if (row.chaos < median(others) * WALL_RATIO) walls.add(row.account)
