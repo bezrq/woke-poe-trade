@@ -152,8 +152,27 @@ history:
     date: '2026-11-05T14:41:05.281Z'
     selfAttested: true
     id: c-2026-11-05t14-41-05-281z
+  - type: activity
+    user: Agent
+    date: '2026-11-05T15:12:34.165Z'
+    comment: Updated implementation link.
+    id: a-2026-11-05t15-12-34-165z
+  - type: comment
+    user: Agent
+    comment: >-
+      Scarab tab sent for merge in PR 198 at c686597e. Stays open: real Faustus
+      screenshot test, other tabs (Delve, Delirium, Essence, Blight), stack
+      counts. Generator: testing/tools/make-stash-slots.py. Reader design:
+      main/src/woke/stash-read.ts finds the SCARAB text anywhere on screen and
+      confirms with the row symbol. Other tabs need their own markers and slot
+      tables.
+    date: '2026-11-05T15:12:35.874Z'
+    selfAttested: true
+    pin: true
+    id: c-2026-11-05t15-12-35-874z
 swimlane: require-input
 needsAction: null
+implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/198'
 ---
 > **TL;DR:** When Flips is enabled and a stash tab is open, draw a coloured outline on each flippable item showing how worth flipping it is. Ticketed for later: mockups first, no build yet.
 
