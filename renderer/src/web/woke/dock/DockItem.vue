@@ -8,8 +8,8 @@
 //   </DockItem>
 import { computed, inject, onUnmounted, useSlots, watch } from 'vue'
 import type { WidgetManager } from '@/web/overlay/interfaces'
-import { PEEK_MS, dockConfig, peeksOn, registerDockEntry, unregisterDockEntry } from './dock'
-import type { DockLed, DockTone } from './dock'
+import { PEEK_MS, dockConfig, isDismissed, peeksOn, registerDockEntry, unregisterDockEntry, wakeIcon } from './dock'
+import type { DockLed, DockMenuAction, DockTone } from './dock'
 
 const props = withDefaults(defineProps<{
   id: string
@@ -27,6 +27,8 @@ const props = withDefaults(defineProps<{
   progress?: number | null
   pinnable?: boolean
   readouts?: Array<{ id: string, text: string, tone: 'up' | 'down' | 'dim' | null }>
+  menu?: DockMenuAction[]
+  wake?: number
 }>(), {
   icon: undefined,
   art: undefined,
@@ -38,7 +40,9 @@ const props = withDefaults(defineProps<{
   cardWidth: undefined,
   progress: null,
   pinnable: false,
-  readouts: undefined
+  readouts: undefined,
+  menu: undefined,
+  wake: undefined
 })
 
 const emit = defineEmits<{
@@ -58,6 +62,14 @@ const entry = registerDockEntry(props, useSlots(),
   })
 onUnmounted(() => { unregisterDockEntry(entry) })
 
+// New since the dock started: reading the log at start-up counts offers again
+// that you'd already dismissed the icon over.
+const WAKE_AFTER_MS = 20_000
+const mountedAt = Date.now()
+watch(() => props.wake, (n, old) => {
+  if (n != null && old != null && n > old && Date.now() - mountedAt > WAKE_AFTER_MS) wakeIcon(props.id)
+})
+
 // Grow into one line for a few seconds (when peeks are on for this module).
 function peek (text: string, ms = PEEK_MS) {
   if (!peeksOn(props.id) || !props.show) return
@@ -75,10 +87,10 @@ function unpeek () {
 // click's pin ends with the overlay.
 function togglePin () {
   // No icon to hold a card open on: don't arm it for later.
-  if (!props.show || dockConfig().hidden.includes(props.id)) return
+  if (!props.show || dockConfig().hidden.includes(props.id) || isDismissed(props.id)) return
   entry.pinned = entry.pinned ? null : 'key'
 }
-watch(() => props.show, (show) => { if (!show) entry.pinned = null })
+watch(() => props.show && !isDismissed(props.id), (show) => { if (!show) entry.pinned = null })
 watch(() => wm?.active.value, (active) => { if (!active && entry.pinned === 'click') entry.pinned = null })
 
 const clickPinned = computed(() => entry.pinned === 'click')

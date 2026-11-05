@@ -1,9 +1,9 @@
 <template>
   <div>
     <div v-if="pick" :class="$style.verdict">
-      Best: <b>{{ pick.best.item.name }}</b>
+      Best: <b v-item-tip="pick.best.item">{{ pick.best.item.name }}</b>
       <span class="w-dim">(<WPrice :chaos="pick.best.chaos" :divine="divine" />{{ pick.best.unit > 1 ? ` per ${pick.best.unit}` : '' }})</span>
-      <template v-if="pick.next">, then {{ pick.next.item.name }}</template>
+      <template v-if="pick.next">, then <span v-item-tip="pick.next.item">{{ pick.next.item.name }}</span></template>
     </div>
     <template v-for="g in shownGroups" :key="g.label">
       <div class="w-group-label">{{ g.label }}</div>

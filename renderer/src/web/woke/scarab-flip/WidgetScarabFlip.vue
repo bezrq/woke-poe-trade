@@ -1,11 +1,11 @@
 <template>
   <Widget :config="config" move-handles="corners" :inline-edit="false" :readonly="true">
     <!-- The verdict on hover, so a quick check doesn't open the panel. -->
-    <DockItem id="scarab-flip" title="Scarab flip" :show="dockShow" :wm-id="config.wmId">
+    <DockItem :menu="dockMenu" id="scarab-flip" title="Scarab flip" :show="dockShow" :wm-id="config.wmId">
       <template #card>
         <div v-if="model" class="flex flex-col gap-0.5" style="padding: 2px var(--w-pad) 6px;">
           <span class="w-num">{{ verdict }} · {{ verdictSub }}</span>
-          <span v-if="buy[0]" class="w-dim w-num">Best supply: {{ shortScarab(buy[0].name) }}, {{ fmt(buy[0].chaos) }}, +{{ fmt(buy[0].profit) }}</span>
+          <span v-if="buy[0]" class="w-dim w-num">Best supply: <span v-item-tip="{ name: buy[0].name, type: 'Scarab' }">{{ shortScarab(buy[0].name) }}</span>, {{ fmt(buy[0].chaos) }}, +{{ fmt(buy[0].profit) }}</span>
           <span v-if="rareCheap.length" class="w-dim"><i class="fas fa-star w-warn" /> {{ rareCheap.length }} rare and cheap</span>
         </div>
       </template>
@@ -81,7 +81,7 @@
         </div>
         <div class="w-group-label">Biggest sources of value</div>
         <div v-for="s in odds.sources" :key="s.name" class="w-row" :class="$style.sourceGrid" @contextmenu="rowMenu($event, s.name)">
-          <span class="w-trunc" :title="s.name">{{ shortScarab(s.name) }}</span>
+          <span v-item-tip="{ name: s.name, type: 'Scarab' }" class="w-trunc">{{ shortScarab(s.name) }}</span>
           <WPrice :chaos="s.chaos" :divine="snapshot?.divine" class="text-right" />
           <span class="text-right w-num w-dim">{{ pct(s.valueShare) }}</span>
         </div>
@@ -137,7 +137,7 @@ import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
 import { Host } from '@/web/background/IPC'
 import { useLeagues } from '@/web/background/Leagues'
-import { WPanel, WTabs, WSelect, WChip, WPrice, WEmpty, WSkeleton, openMenu, toast } from '../ui'
+import { WPanel, WTabs, WSelect, WChip, WPrice, WEmpty, WSkeleton, openMenu, toast, vItemTip } from '../ui'
 import { copyText } from '../ui/copy'
 import { formatAmount, formatChaos } from '../ui/format'
 import { gameIcon, moduleIcon } from '../ui/game-icons'
@@ -145,6 +145,8 @@ import { useMarketCollector } from '../market/collector'
 import { latestSnapshots } from '../market/db'
 import type { Snapshot } from '../market/types'
 import DockItem from '../dock/DockItem.vue'
+import { dockIconEl } from '../dock/dock'
+import type { DockMenuAction } from '../dock/dock'
 import { useZone } from '../shared/zone'
 import { RARE_SHARE, UNTRADED_CHAOS, JACKPOT_CHAOS, buyList, flipModel, flipOdds, parseExchange, rareCheapList, scarabQuotes, shortScarab } from './calc'
 import type { ExchangeQuotes, ScarabRow } from './calc'
@@ -288,6 +290,18 @@ function pct (p: number) {
   const v = p * 100
   return `${v < 1 ? Number(v.toFixed(2)) : Math.round(v)}%`
 }
+
+// The icon's right-click menu.
+const dockMenu = computed<DockMenuAction[]>(() => [{
+  label: buy.value[0] ? `Copy best supply: ${shortScarab(buy.value[0].name)}` : 'Copy best supply',
+  icon: 'far fa-copy',
+  disabled: !buy.value[0],
+  action: () => {
+    const name = buy.value[0]?.name
+    const el = dockIconEl('scarab-flip')
+    if (name) copyText(name).then(ok => { if (ok) toast(`Copied ${name}`, { anchor: el, dock: true, ms: 1800 }) }).catch(() => {})
+  }
+}])
 </script>
 
 <style module>

@@ -87,8 +87,9 @@ function joinsByLetter (token: string): boolean {
   return words.length > 1 && words.some(word => word.length < 2)
 }
 
-// Shortest substring of `target` found in none of `others`.
-export function uniqueToken (target: string, others: string[]): string | null {
+// Shortest substring of `target` found in none of `others`, of at least `minLen`
+// letters when it has one that long.
+export function uniqueToken (target: string, others: string[], minLen = 3): string | null {
   const segs = segments(target)
   // Compared line by line. A line that reads exactly like one of the target's
   // (a two-line mod that contains a one-line one) shows the same text in the
@@ -96,7 +97,7 @@ export function uniqueToken (target: string, others: string[]): string | null {
   const own = new Set(target.toLowerCase().split('\n'))
   const hay = others.flatMap(o => o.toLowerCase().split('\n')).filter(h => !own.has(h))
   let fallback: string | null = null
-  for (let len = 3; len <= 40; len++) {
+  for (let len = minLen; len <= 40; len++) {
     const found: string[] = []
     for (const seg of segs) {
       for (let i = 0; i + len <= seg.length; i++) {
@@ -110,7 +111,7 @@ export function uniqueToken (target: string, others: string[]): string | null {
     if (safe) return safe
     fallback ??= found[0] ?? null
   }
-  return fallback
+  return fallback ?? (minLen > 3 ? uniqueToken(target, others) : null)
 }
 
 // Regex for whole numbers >= n (n in 1..999), e.g. 80 -> ([89][0-9]|[1-9][0-9][0-9]).
@@ -157,7 +158,8 @@ export function tokenCost (token: string): number {
 
 // `universe`: every map mod matcher string (all variants), used to make the
 // tokens unique. `extraText`: other text a map tooltip can show (map names).
-export function buildMapRegex (input: MapRegexInput, universe: string[], extraText: string[] = []): MapRegexResult {
+// `minToken`: raise it for items whose random names can't be listed.
+export function buildMapRegex (input: MapRegexInput, universe: string[], extraText: string[] = [], minToken = 3): MapRegexResult {
   const missing: string[] = []
   const tokens: Record<string, string> = {}
 
@@ -166,7 +168,7 @@ export function buildMapRegex (input: MapRegexInput, universe: string[], extraTe
     const others = [...universe.filter(u => !allowedSet.has(u.toLowerCase())), ...TOOLTIP_LINES, ...extraText]
     const out = new Set<string>()
     for (const m of mods) {
-      const tok = uniqueToken(m, others)
+      const tok = uniqueToken(m, others, minToken)
       if (tok) {
         out.add(tok)
         tokens[m] = tok
@@ -206,10 +208,11 @@ export function buildTrimmedMapRegex (
   input: MapRegexInput,
   universe: string[],
   extraText: string[],
-  priority: (mod: string) => number
+  priority: (mod: string) => number,
+  minToken = 3
 ): MapRegexResult {
   let cur = { ...input, avoid: [...input.avoid], want: [...input.want] }
-  let res = buildMapRegex(cur, universe, extraText)
+  let res = buildMapRegex(cur, universe, extraText, minToken)
   const dropped: string[] = []
   while (res.tooLong) {
     const pool = cur.want.length && cur.highlight === 'good' ? cur.want : cur.avoid
@@ -218,7 +221,7 @@ export function buildTrimmedMapRegex (
       priority(a) - priority(b) || (res.tokens[b]?.length ?? 0) - (res.tokens[a]?.length ?? 0))[0]
     dropped.push(pick)
     cur = { ...cur, avoid: cur.avoid.filter(m => m !== pick), want: cur.want.filter(m => m !== pick) }
-    res = buildMapRegex(cur, universe, extraText)
+    res = buildMapRegex(cur, universe, extraText, minToken)
   }
   return { ...res, dropped }
 }

@@ -1,14 +1,14 @@
 <template>
   <Widget :config="config" move-handles="corners" :inline-edit="false">
     <!-- A live search keeps running out of sight; its icon counts new results. -->
-    <DockItem ref="dockRef" id="trade-live" icon="fas fa-bolt" :title="openEntry?.name || 'Live search'" :show="liveOpen"
+    <DockItem :menu="dockMenu" :wake="unseen" ref="dockRef" id="trade-live" icon="fas fa-bolt" :title="openEntry?.name || 'Live search'" :show="liveOpen"
       :badge="unseen || null" :tone="unseen ? 'down' : 'accent'" :led="liveOpen ? 'on' : null" :wm-id="config.wmId"
       card-width="20rem" @open-change="onCard">
       <template #card>
         <div style="padding: 4px var(--w-pad) 6px;">
           <div class="w-dim text-xs">{{ unseen ? `${unseen} new since you last looked` : 'No new results since you last looked' }}<template v-if="total >= 0"> · {{ total }} on the page</template></div>
           <div v-for="(r, i) in latest" :key="i" class="flex justify-between gap-2">
-            <span class="w-trunc">{{ r.name || 'Item' }}</span><span class="w-num w-accent whitespace-nowrap">{{ r.price }}</span>
+            <span v-item-tip="itemRefFromText(r.name)" class="w-trunc">{{ r.name || 'Item' }}</span><span class="w-num w-accent whitespace-nowrap">{{ r.price }}</span>
           </div>
           <div class="w-faint text-xs mt-1">Ping {{ config.liveAlert ? 'on' : 'off' }} · open the overlay and click the icon to whisper</div>
         </div>
@@ -95,10 +95,11 @@ import { Host, MainProcess } from '@/web/background/IPC'
 import { AppConfig, pushHostConfig } from '@/web/Config'
 import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
-import { WPanel, WField, WChip, WKbd, WEmpty, WListItem, WButton, openMenu, toast } from '../ui'
+import { WPanel, WField, WChip, WKbd, WEmpty, WListItem, WButton, itemRefFromText, openMenu, toast, vItemTip } from '../ui'
 import { copyText } from '../ui/copy'
 import DockItem from '../dock/DockItem.vue'
-import { hideWhilePlaying } from '../dock/dock'
+import type { DockMenuAction } from '../dock/dock'
+import { hideWhilePlaying, saveDock } from '../dock/dock'
 import { useLeagues } from '@/web/background/Leagues'
 import { groupByCategory, isLiveSearch, isValidUrl, leagueOf, matchesFilter, parseHotkeyTarget, withLeague } from './widget'
 import type { OpenTarget, TradeSearchEntry } from './widget'
@@ -279,6 +280,19 @@ function tooltip (entry: TradeSearchEntry) {
   return [entry.url, entry.tags.length ? `Tags: ${entry.tags.join(', ')}` : '', entry.notes]
     .filter(Boolean).join('\n')
 }
+
+// The icon's right-click menu.
+const dockMenu = computed<DockMenuAction[]>(() => [
+  { label: 'Stop live search', icon: 'fas fa-stop', action: closeBrowser },
+  { label: 'Mark results as seen', icon: 'fas fa-check-double', disabled: unseen.value === 0, action: () => { unseen.value = 0 } },
+  {
+    label: 'Beep on new results',
+    icon: 'fas fa-volume-up',
+    checked: !!props.config.liveAlert,
+    action: () => { props.config.liveAlert = !props.config.liveAlert; saveDock() }
+  },
+  { label: 'Open in your browser', icon: 'fas fa-external-link-alt', action: () => { if (openEntry.value) open(openEntry.value, 'external') } }
+])
 </script>
 
 <style module>

@@ -7,7 +7,7 @@
       <div v-for="item in identifiedVariants" :key="item.name" class="flex">
         <button @click="select(item)" class="bg-gray-700 rounded flex gap-x-3 items-center p-2 w-full">
           <img :src="item.icon" class="w-12" />
-          <div class="leading-tight text-left">{{ item.name }}</div>
+          <div v-item-tip="{ name: item.refName }" class="leading-tight text-left">{{ item.name }}</div>
         </button>
       </div>
     </div>
@@ -19,8 +19,10 @@ import { defineComponent, PropType, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { BaseType, ITEMS_ITERATOR } from '@/assets/data'
 import { ItemRarity, ParsedItem, makeIdentifiedUnique } from '@/parser'
+import { vItemTip } from '@/web/woke/ui/tooltip/item-tip'
 
 export default defineComponent({
+  directives: { itemTip: vItemTip },
   emits: ['identify'],
   props: {
     item: {

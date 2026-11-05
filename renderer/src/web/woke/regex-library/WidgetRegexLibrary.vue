@@ -1,7 +1,7 @@
 <template>
   <Widget :config="config" move-handles="corners" :inline-edit="false">
     <!-- Town and hideout: your hotkeyed strings at a glance. -->
-    <DockItem id="regex-library" title="Regex library" :show="dockShow" :wm-id="config.wmId" card-width="20rem">
+    <DockItem :menu="dockMenu" id="regex-library" title="Regex library" :show="dockShow" :wm-id="config.wmId" card-width="20rem">
       <template #card>
         <div style="padding: 4px 0 6px;">
           <button v-for="e in glance" :key="e.id" type="button" class="w-row w-full text-left" style="grid-template-columns: minmax(0, 1fr) auto;"
@@ -93,6 +93,8 @@ import { useCopy } from '../ui/copy'
 import { MAX_SEARCH_LENGTH, canNegate, effectiveText, groupByCategory, matchesFilter } from './widget'
 import type { RegexEntry } from './widget'
 import DockItem from '../dock/DockItem.vue'
+import { saveDock } from '../dock/dock'
+import type { DockMenuAction } from '../dock/dock'
 import { useZone } from '../shared/zone'
 
 const props = defineProps<{
@@ -165,4 +167,22 @@ function tooltip (entry: RegexEntry) {
   return [effectiveText(entry), entry.tags.length ? `Tags: ${entry.tags.join(', ')}` : '', entry.notes]
     .filter(Boolean).join('\n')
 }
+
+// The icon's right-click menu.
+const dockMenu = computed<DockMenuAction[]>(() => [
+  // Each types one stash search, from this click.
+  ...glance.value.slice(0, 3).map(e => ({
+    label: `Search stash: ${e.name || effectiveText(e)}`,
+    icon: 'fas fa-search',
+    action: () => { stashSearch(effectiveText(e)) }
+  })),
+  ...(hasHotkeys.value
+    ? [{
+        label: 'Entry hotkeys',
+        icon: 'far fa-keyboard',
+        checked: !!props.config.enableHotkeys,
+        action: () => { props.config.enableHotkeys = !props.config.enableHotkeys; saveDock() }
+      }]
+    : [])
+])
 </script>
