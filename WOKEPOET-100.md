@@ -14,6 +14,28 @@ history:
     user: Agent
     date: '2026-11-05T12:19:38.260Z'
     comment: Created ticket.
+    id: a-2026-11-05t12-19-38-260z
+  - type: comment
+    user: Agent
+    comment: >-
+      Mocks: https://claude.ai/artifact/2M97pMbz5oVy5F7uMwX1V5 . Pick A plain
+      columns, B columns against your item (recommended), or C stats on a second
+      line. Which extras: click-to-sort, best-value highlight, mod tier letter.
+      Nothing built yet.
+    date: '2026-11-05T12:23:32.641Z'
+    id: c-2026-11-05t12-23-32-641z
+  - type: swimlane_change
+    swimlane: require-input
+    action: set
+    user: Agent
+    date: '2026-11-05T12:23:32.641Z'
+    comment: >-
+      Mocks: https://claude.ai/artifact/2M97pMbz5oVy5F7uMwX1V5 . Pick A plain
+      columns, B columns against your item (recommended), or C stats on a second
+      line. Which extras: click-to-sort, best-value highlight, mod tier letter.
+      Nothing built yet.
+swimlane: require-input
+needsAction: null
 ---
 Guy wants the price check results list to show a column for each stat he ticked as a filter (pdps, resistances, evasion...). Price stays visible, columns are capped at what's readable.
 
