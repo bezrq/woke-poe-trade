@@ -62,6 +62,7 @@ export class FakeApp {
   readonly game = game
   readonly shellCalls = shellCalls
   clientLogPath: string
+  logWatcher: GameLogWatcher | null = null
   // Settles once the log watcher is following clientLogPath.
   logWatcherReady: Promise<unknown> = Promise.resolve()
 
@@ -80,6 +81,10 @@ export class FakeApp {
     fs.mkdirSync(path.dirname(this.clientLogPath), { recursive: true })
     fs.writeFileSync(this.clientLogPath, lines.map(l => l + '\r\n').join(''))
   }
+
+  // The app has opened the current Client.txt. Lines written before this are
+  // never read live: it starts following from the end of the file.
+  get logFollowed () { return this.logWatcher?.actualPath === this.clientLogPath }
 
   get url () { return `http://127.0.0.1:${this.port}/index.html` }
 
@@ -269,6 +274,7 @@ export async function startFakeApp (opts: FakeAppOptions): Promise<FakeApp> {
   }
 
   const gameLogWatcher = new GameLogWatcher(eventPipe, logger)
+  app.logWatcher = gameLogWatcher
   const gameConfig = new GameConfig(eventPipe, logger)
   const poeWindow = new GameWindow()
   fixtureProxy(app)

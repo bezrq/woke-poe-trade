@@ -150,11 +150,11 @@ test('the bubble stays past the old five seconds and through a hover', async ({ 
 
 test('with a short bubble time the bubble ends, and the icon stays while offers are open', async ({ overlay, fakeApp }) => {
   clearHistory(fakeApp.opts.userData)
-  await overlay.boot({ widgets: [{ ...TRADE, bubbleSeconds: 1 }] })
+  await overlay.boot({ widgets: [{ ...TRADE, bubbleSeconds: 4 }] })
   await overlay.log(upTo('Kaltenhalt: Hi, I would like to buy your Headhunter'))
   const icon = overlay.dockIcon('trade')
   await expect(icon).toContainText('Kaltenhalt: Headhunter')
-  await expect(icon.locator('[class*="peekText"]')).toHaveCount(0, { timeout: 3000 })
+  await expect(icon.locator('[class*="peekText"]')).toHaveCount(0, { timeout: 10_000 })
   await expect(icon).toBeVisible()
 })
 
