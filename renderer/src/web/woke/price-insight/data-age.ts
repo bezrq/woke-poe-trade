@@ -10,11 +10,13 @@ export interface DataAge {
   stale: boolean
 }
 
-export function dataAge (divine: number | undefined, updatedAt: number | null, now: number): DataAge | null {
+export function dataAge (divine: number | undefined, updatedAt: number | null, now: number, loading = false): DataAge | null {
   if (!divine || updatedAt == null) return null
   const age = Math.max(0, now - updatedAt)
   const rate = `1 div = ${Math.round(divine)}c`
   if (age > STALE_MS) {
+    // After a long idle a new load is normally already on its way.
+    if (loading) return { text: `${rate} · updating from poe.ninja`, stale: false }
     return { text: `${rate}, but poe.ninja hasn't updated in ${shortAge(age)}, so that may be off`, stale: true }
   }
   return { text: `${rate} · poe.ninja ${age < 60_000 ? 'just now' : `${shortAge(age)} ago`}`, stale: false }

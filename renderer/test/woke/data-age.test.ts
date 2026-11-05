@@ -17,6 +17,12 @@ describe('dataAge', () => {
     expect(dataAge(180, NOW - 119 * MIN, NOW)?.stale).toBe(false)
   })
 
+  it('does not warn while a new load is on its way', () => {
+    const age = dataAge(180, NOW - 360 * MIN, NOW, true)!
+    expect(age.stale).toBe(false)
+    expect(age.text).toContain('updating')
+  })
+
   it('says nothing with no rate or no load yet', () => {
     expect(dataAge(undefined, NOW, NOW)).toBeNull()
     expect(dataAge(180, null, NOW)).toBeNull()
