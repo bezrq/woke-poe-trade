@@ -52,6 +52,7 @@ const CONFIG_NOTICES: Record<ConfigNotice, string> = {
   'reset': 'Your settings file was damaged and there was no backup, so settings were reset. The old file is in the config folder.',
   'unreadable': 'Your settings file couldn\'t be read, so defaults are on for now and changes won\'t be kept. Restart the app to try again.',
   'newer': 'These settings come from a newer version, so changes won\'t be kept. Update the app to use them.',
+  'port-busy': 'Another program is using this app\'s port, so your look settings and price log seem reset for now. Close that program and restart the app to get them back.',
   'upgrade-failed': 'Your settings couldn\'t be upgraded, so defaults are on for now and changes won\'t be kept. Your file is untouched.'
 }
 const hiddenConfigNotice = shallowRef(false)

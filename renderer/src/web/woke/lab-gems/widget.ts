@@ -10,6 +10,8 @@ export interface LabGemsWidget extends Widget {
   specificMode: SpecificMode
   topN: number
   minProfit: number
+  // Leave thin-market gems out of the EVs, profits and lists.
+  skipThin?: boolean
   // Runner mode: count the lab entry, the gem you insert and your run time.
   runner?: boolean
   runnerLab?: 'merciless' | 'eternal'
