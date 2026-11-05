@@ -41,6 +41,8 @@
       </button>
     </template>
 
+    <span :class="$style.grip" title="Drag to move the rail"><i class="fas fa-grip-lines" /></span>
+
     <Teleport to="body">
       <div v-if="tip && !popup" :class="[$style.tip, { [$style.tipLeft]: tip.left }]" :style="{ left: `${tip.x}px`, top: `${tip.y}px` }">
         {{ tip.text }}<span v-if="tip.open" :class="$style.tipOpen">open</span>
@@ -49,7 +51,7 @@
       <div v-if="popup" :class="$style.backdrop" @mousedown="closePopup" @contextmenu.prevent="closePopup" />
 
       <!-- Tools: every tool, one box for search and item paste -->
-      <div v-if="popup?.kind === 'launcher'" ref="popupEl" :class="[$style.menu, $style.launcher]" :style="popupStyle" tabindex="-1" @contextmenu.prevent @keydown.esc="closePopup">
+      <div v-if="popup?.kind === 'launcher'" ref="popupEl" :class="[$style.menu, $style.launcher]" :style="popupStyle" @contextmenu.prevent>
         <label :class="$style.find">
           <i class="fas fa-search" />
           <textarea ref="searchInput" v-model="query" :class="$style.findInput" rows="1" spellcheck="false"
@@ -62,7 +64,7 @@
               <div v-if="group.items.length" :class="$style.head">{{ group.label }}</div>
               <div v-for="tab in group.items" :key="tab.wmId" :class="[$style.row, { [$style.rowOpen]: tab.open }]"
                 @contextmenu.prevent.stop="openMenu(tab, $event)">
-                <button :class="$style.rowMain" :aria-label="tab.name" @click="toggle(tab)">
+                <button :class="$style.rowMain" :aria-label="tab.name" @click="onRowClick(tab)">
                   <tool-icon :art="tab.art" :icon="tab.icon" />
                   <span :class="$style.rowName">{{ tab.name }}</span>
                   <span v-if="tab.copies > 1" :class="$style.dup" title="Several copies of this tool">×{{ tab.copies }}</span>
@@ -76,7 +78,7 @@
             </template>
           </div>
         </div>
-        <div v-if="!launcherHasMatch" :class="$style.none">No tool matches "{{ query.trim() }}"</div>
+        <div v-if="!launcherHasMatch" :class="$style.none">No tool matches "{{ launcherQuery }}"</div>
         <div :class="$style.foot">
           <span>Gold means open. Pin a tool to keep it on the rail.</span>
           <button :class="$style.footBtn" @click="openAdd"><i class="fas fa-plus" /> Add another tool</button>
@@ -150,7 +152,7 @@ import { isWidgetTypeOn } from '@/web/woke/modules'
 import { useI18n } from 'vue-i18n'
 import { useHotkeyHealth } from '../switchboard/hotkey-health'
 import ToolIcon from './ToolIcon.vue'
-import { artFor, iconFor, allowsCopies, groupByModule, groupTypes, looksLikeItem, migrateToRail, parseWidgetTitle } from './tools'
+import { ICON_TOOL_NAMES, artFor, iconFor, allowsCopies, groupByModule, groupTypes, looksLikeItem, migrateToRail, parseWidgetTitle } from './tools'
 import type { TabBarConfig } from './tools'
 
 const props = defineProps<{ config: TabBarConfig }>()
@@ -181,7 +183,8 @@ function typeName (wmType: string): string {
 const listed = computed(() => wm.widgets.value.filter(w =>
   !w.wmFlags.includes('menu::skip') && isWidgetTypeOn(AppConfig(), w.wmType)))
 
-migrateToRail(props.config, listed.value)
+// All tools, even switched-off ones: their pins just don't show until they're on.
+migrateToRail(props.config, wm.widgets.value.filter(w => !w.wmFlags.includes('menu::skip')))
 
 const tabs = computed<Tab[]>(() => {
   const counts = new Map<string, number>()
@@ -194,7 +197,7 @@ const tabs = computed<Tab[]>(() => {
     return {
       wmId: w.wmId,
       wmType: w.wmType,
-      name: title || typeName(w.wmType) || `#${w.wmId}`,
+      name: title || ICON_TOOL_NAMES[w.wmType] || typeName(w.wmType) || `#${w.wmId}`,
       icon: parsed.icon ?? iconFor(w.wmType),
       art: artFor(w.wmType),
       iconOnly: !title && !!parsed.icon,
@@ -218,7 +221,7 @@ const atEdge = computed(() => props.config.anchor.pos.endsWith('l') && props.con
 const railStyle = computed(() => {
   const { pos, y } = props.config.anchor
   const room = pos.startsWith('t') ? 100 - y : pos.startsWith('b') ? y : 2 * Math.min(y, 100 - y)
-  return { maxHeight: `calc(${room}vh - 8px)` }
+  return { maxHeight: `max(calc(${room}vh - 8px), 240px)` }
 })
 
 const pinnedTabs = computed(() => {
@@ -341,7 +344,7 @@ const popupStyle = computed(() => {
   const left = `${Math.max(4, x)}px`
   return popup.value.up
     ? { left, bottom: `${window.innerHeight - popup.value.above}px`, maxHeight: `${popup.value.above - 4}px`, overflowY: 'auto' as const }
-    : { left, top: `${popup.value.y}px` }
+    : { left, top: `${popup.value.y}px`, maxHeight: `calc(100vh - ${popup.value.y + 4}px)`, overflowY: 'auto' as const }
 })
 // Flip upward when the popup would run off the bottom of the screen and
 // there is more room above the click than below it.
@@ -394,8 +397,9 @@ const query = ref('')
 const searchInput = ref<HTMLInputElement | HTMLTextAreaElement>()
 
 // launcher
+const launcherQuery = computed(() => query.value.trim().replace(/\s+/g, ' ').toLowerCase())
 const launcherMatches = computed(() => {
-  const q = query.value.trim().toLowerCase()
+  const q = launcherQuery.value
   // Settings and search live on the rail; listed here only if taken off it,
   // so they can be put back.
   const shown = tabs.value.filter(tab => !(tab.iconOnly && tab.pinned))
@@ -407,7 +411,14 @@ const launcherColumns = computed(() => {
   const groups = groupByModule(launcherMatches.value)
   return [[groups[0]], [groups[1]], [groups[2]], groups.slice(3)]
 })
+// Opening a tool is what the launcher is for, so it steps aside; closing one
+// leaves it up for the next.
+function onRowClick (tab: Tab) {
+  toggle(tab)
+  if (!tab.open) closePopup()
+}
 function openFirstMatch () {
+  if (!launcherQuery.value) return
   const first = launcherColumns.value.flat().flatMap(g => g.items)[0]
   if (!first) return
   wm.show(first.wmId)
@@ -417,7 +428,10 @@ function openFirstMatch () {
 // An item pasted into the box, or anywhere in the overlay outside a text
 // field, goes to the price check. Other text in the box is a search.
 function sendItem (text: string, from: HTMLElement | null | undefined) {
-  emit('paste', text, (from ?? document.body).getBoundingClientRect())
+  closePopup()
+  const r = from?.getBoundingClientRect()
+  // The rail is hidden while another exclusive window (a price check) is up.
+  emit('paste', text, r?.width ? r : new DOMRect(onRight.value ? window.innerWidth : 0, 0, 0, 0))
 }
 function onBoxPaste (e: ClipboardEvent) {
   const text = e.clipboardData?.getData('text/plain') ?? ''
@@ -425,10 +439,11 @@ function onBoxPaste (e: ClipboardEvent) {
   e.preventDefault()
   const box = e.target as HTMLElement
   sendItem(text, box)
-  closePopup()
 }
 function onOverlayPaste (e: ClipboardEvent) {
   if (!wm.active.value) return
+  // A price check would close Settings, which isn't what a stray paste there means.
+  if (wm.widgets.value.some(w => w.wmType === 'settings' && w.wmWants === 'show')) return
   const target = e.target
   if (target instanceof Element && target.closest('input, textarea, [contenteditable]')) return
   const text = e.clipboardData?.getData('text/plain') ?? ''
@@ -461,7 +476,9 @@ function add (wmType: string) {
   }
   wm.create(wmType)
   const created = wm.widgets.value.reduce((a, b) => (a.wmId > b.wmId ? a : b))
-  props.config.pinned = [...(props.config.pinned ?? []), created.wmId]
+  // A window's own remove button leaves its id behind, and ids get reused.
+  props.config.pinned = [...(props.config.pinned ?? []).filter(id => id !== created.wmId), created.wmId]
+  setLabel(created.wmId, '')
   closePopup()
   // The widget initialises on mount; show it once that has happened.
   nextTick(() => nextTick(() => wm.show(created.wmId)))
@@ -527,6 +544,8 @@ function addFirstMatch () {
   color: var(--w-accent-fg);
   background: var(--w-warn);
 }
+.grip { flex: none; display: grid; place-items: center; width: 34px; height: 14px; color: var(--w-faint); font-size: var(--w-fs-xs); }
+.grip:hover { color: var(--w-dim); }
 .sep { flex: none; width: 22px; height: 1px; margin: 4px 0; background: var(--w-line); }
 
 .tip {
@@ -586,7 +605,7 @@ function addFirstMatch () {
   font-size: var(--w-text);
 }
 
-.launcher { outline: 0; box-sizing: border-box; width: 900px; max-width: calc(100vw - 8px); padding: 10px; background: var(--w-panel-solid); }
+.launcher { box-sizing: border-box; width: 900px; max-width: calc(100vw - 8px); padding: 10px; background: var(--w-panel-solid); }
 .find {
   display: flex;
   align-items: center;

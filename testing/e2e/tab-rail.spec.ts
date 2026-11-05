@@ -100,11 +100,14 @@ test('the launcher lists every tool, finds them, opens them and pins them', asyn
   await overlay.snap('launcher')
 
   await page.getByRole('button', { name: 'Pin Challenges to the rail' }).click()
-  await page.keyboard.press('Escape')
+  await page.mouse.click(1500, 1300)
   await expect(box).toHaveCount(0)
   await expect(icon(overlay, 'Challenges')).toBeVisible()
 
+  // Enter with nothing typed opens nothing.
   await icon(overlay, 'All tools').click()
+  await page.keyboard.press('Enter')
+  await expect(box).toBeVisible()
   await box.fill('chall')
   await expect(page.locator('[class*="launcher"]').getByRole('button', { name: 'Boss runs', exact: true })).toHaveCount(0)
   await page.keyboard.press('Enter')
@@ -169,6 +172,46 @@ test('Ctrl V does nothing while the overlay is closed', async ({ overlay }) => {
     data.setData('text/plain', t)
     document.body.dispatchEvent(new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true }))
   }, ITEM)
+  await page.waitForTimeout(300)
+  await expect(overlay.widget('price-check')).not.toContainText('Category: Ring')
+})
+
+test('opening a tool from the launcher gets the launcher out of the way', async ({ overlay }) => {
+  const { page } = overlay
+  await boot(overlay)
+  await icon(overlay, 'All tools').click()
+  const launcher = page.locator('[class*="launcher"]')
+  await launcher.getByRole('button', { name: 'Challenges', exact: true }).click()
+  await expect(launcher).toHaveCount(0)
+  await expect(icon(overlay, 'Challenges')).toHaveClass(/open/)
+  // Closing one leaves it up, for the next.
+  await icon(overlay, 'All tools').click()
+  await launcher.getByRole('button', { name: 'Challenges', exact: true }).click()
+  await expect(launcher).toBeVisible()
+  await expect(icon(overlay, 'Challenges')).toHaveCount(0)
+})
+
+test('Ctrl V with the launcher open and focus off its box closes the launcher', async ({ overlay }) => {
+  const { page } = overlay
+  await page.context().grantPermissions(['clipboard-read', 'clipboard-write'])
+  await boot(overlay)
+  await page.evaluate(t => navigator.clipboard.writeText(t), ITEM)
+  await icon(overlay, 'All tools').click()
+  const launcher = page.locator('[class*="launcher"]')
+  await launcher.getByRole('button', { name: 'Pin Challenges to the rail' }).click()
+  await page.keyboard.press('Control+V')
+  await expect(overlay.widget('price-check')).toContainText('Category: Ring')
+  await expect(launcher).toHaveCount(0)
+})
+
+test('Ctrl V leaves Settings alone', async ({ overlay }) => {
+  const { page } = overlay
+  await page.context().grantPermissions(['clipboard-read', 'clipboard-write'])
+  await boot(overlay)
+  await page.evaluate(t => navigator.clipboard.writeText(t), ITEM)
+  await icon(overlay, 'Settings').click()
+  await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur())
+  await page.keyboard.press('Control+V')
   await page.waitForTimeout(300)
   await expect(overlay.widget('price-check')).not.toContainText('Category: Ring')
 })

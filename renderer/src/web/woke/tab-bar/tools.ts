@@ -60,6 +60,12 @@ const APT_ICONS: Record<string, string> = {
   'timer': 'fa-stopwatch'
 }
 
+// APT's icon-only windows have no name of their own to show on hover.
+export const ICON_TOOL_NAMES: Record<string, string> = {
+  'settings': 'Settings',
+  'item-search': 'Item search'
+}
+
 export function artFor (wmType: string): string | null {
   return moduleIconForWidget(wmType)?.art ?? null
 }
