@@ -9,7 +9,7 @@
         @mouseenter="hl = i" @click="pick(item)">
         <img v-if="item.gameIcon" :src="item.gameIcon" class="w-game-icon" :class="$style.ic" alt="">
         <i v-else :class="[item.icon, $style.ic]" />
-        <span class="w-trunc" :class="$style.label">{{ item.label }}</span>
+        <span class="w-trunc" :class="$style.label"><span :class="{ [$style.drawn]: item.labelStyle }" :style="item.labelStyle">{{ item.label }}</span></span>
         <WKbd v-if="item.keys" :keys="item.keys" :class="$style.keys" />
       </button>
     </template>
@@ -102,6 +102,10 @@ onUnmounted(() => window.removeEventListener('keydown', onKey))
 </script>
 
 <style module>
+.drawn {
+  padding: 0 6px;
+  font-family: FontinSmallCaps, FrizQuadrataC, Georgia, serif;
+}
 .backdrop { position: fixed; inset: 0; z-index: 1000; }
 .menu {
   position: fixed; z-index: 1001; min-width: 200px; max-width: 320px; padding: var(--w-s1);

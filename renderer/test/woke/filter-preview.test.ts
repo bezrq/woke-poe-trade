@@ -142,6 +142,6 @@ describe('custom sounds', () => {
     expect(soundLabel('6veryvaluable.mp3')).toBe('NeverSink: Very valuable')
     expect(soundLabel('sounds/ping.mp3')).toBe('sounds/ping')
     expect(soundLabel('6')).toBe('Game sound 6')
-    expect(soundUses(parseFilter(SOURCE)).get('6')).toEqual(['Currency'])
+    expect(soundUses(parseFilter(SOURCE)).get('6')).toEqual(['General currency'])
   })
 })

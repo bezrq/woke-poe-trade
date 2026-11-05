@@ -83,6 +83,7 @@ import type { OwnRule } from './rules'
 import { everyDrop } from './drops'
 import { matchItem } from './match'
 import { groupName } from './groups'
+import { ruleLabel } from './parse'
 
 const props = defineProps<{
   store: LootFilterStore
@@ -147,7 +148,7 @@ const copyFrom = computed(() => {
   const seen = new Set<string>()
   for (const b of doc?.blocks ?? []) {
     if (b.disabled || b.visibility === 'Hide' || !b.type || !b.tier || b.type.startsWith('woke->')) continue
-    const label = b.tier.startsWith('#') ? `${groupName(b.type)}, line ${b.line}` : `${groupName(b.type)} › ${b.tier}`
+    const label = b.tier.startsWith('#') ? `${groupName(b.type)}, line ${b.line}` : ruleLabel(b.type, b.tier)
     if (seen.has(label)) continue
     seen.add(label)
     out.push({ tier: label, look: readStyle(b.actions) })

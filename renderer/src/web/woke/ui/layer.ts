@@ -11,6 +11,7 @@ export type MenuEntry =
     keys?: string // shown as a key cap, e.g. "Ctrl + C" (P8)
     danger?: boolean
     disabled?: boolean
+    labelStyle?: Record<string, string> // draws the label as what it stands for
   }
   | { separator: true }
 

@@ -6,24 +6,30 @@
     <WSegmented :model-value="visibility" :options="visibilityOptions" @update:model-value="emit('visibility', $event as Visibility)" />
 
     <div :class="$style.grid">
-      <span class="w-dim">Font size</span>
+      <span class="w-dim">Size</span>
       <span class="flex items-center gap-2">
         <input type="range" min="18" max="45" :value="look.fontSize ?? DEFAULT_FONT" class="grow"
           @change="emit('patch', { fontSize: Number(($event.target as HTMLInputElement).value) })">
         <span class="w-num" style="width: 2ch;">{{ look.fontSize ?? DEFAULT_FONT }}</span>
       </span>
 
-      <template v-for="c in colourRows" :key="c.key">
-        <span class="w-dim">{{ c.label }}</span>
-        <span class="flex items-center gap-2">
+      <span class="w-dim">Colours</span>
+      <span class="flex items-center flex-wrap" :class="$style.colours">
+        <span v-for="c in colourRows" :key="c.key" class="flex items-center gap-1" :title="c.value ? c.value.slice(0, 3).join(' ') : 'none'">
           <input type="color" :value="hex(c.value)" :class="$style.swatch" :aria-label="c.label"
             @change="setColour(c.key, ($event.target as HTMLInputElement).value)">
-          <span class="w-num w-faint text-xs">{{ c.value ? c.value.slice(0, 3).join(' ') : 'none' }}</span>
+          <span class="w-dim text-xs">{{ c.short }}</span>
           <button v-if="c.key === 'border' && c.value" class="w-icon-btn" title="No border" @click="emit('patch', { border: null })"><i class="fas fa-times" /></button>
         </span>
-      </template>
+      </span>
+    </div>
 
-      <span class="w-dim">Sound</span>
+    <!-- One extra line at a time keeps the rest in view. -->
+    <button type="button" class="w-focusable" :class="$style.fold" :aria-expanded="open === 'sound'" @click="toggle('sound')">
+      <i aria-hidden="true" :class="open === 'sound' ? 'fas fa-chevron-down' : 'fas fa-chevron-right'" />Sound
+      <span class="grow" /><span class="w-dim text-xs w-trunc">{{ look.sound ? `${soundLabel(look.sound.id)}, ${look.sound.volume}` : 'None' }}</span>
+    </button>
+    <div v-if="open === 'sound'" :class="$style.foldBody">
       <span class="flex flex-col gap-1" style="min-width: 0;">
         <select :value="look.sound?.id ?? ''" :class="$style.select" style="width: 100%; min-width: 0;" aria-label="Alert sound"
           @change="setSound(($event.target as HTMLSelectElement).value, look.sound?.volume ?? 300)">
@@ -50,7 +56,13 @@
         </span>
       </span>
 
-      <span class="w-dim">Beam</span>
+    </div>
+
+    <button type="button" class="w-focusable" :class="$style.fold" :aria-expanded="open === 'beam'" @click="toggle('beam')">
+      <i aria-hidden="true" :class="open === 'beam' ? 'fas fa-chevron-down' : 'fas fa-chevron-right'" />Beam
+      <span class="grow" /><span v-if="look.effect" :class="$style.beam" :style="{ background: poeColour(look.effect.color) }" /><span class="w-dim text-xs">{{ look.effect ? `${look.effect.color}${look.effect.temp ? ', on drop' : ''}` : 'None' }}</span>
+    </button>
+    <div v-if="open === 'beam'" :class="$style.foldBody">
       <span class="flex items-center gap-1 flex-wrap">
         <button type="button" :class="[$style.dot, $style.none, { [$style.picked]: !look.effect }]" title="No beam" aria-label="No beam"
           @click="setEffect('', false)"><i class="fas fa-ban" /></button>
@@ -63,7 +75,13 @@
         </label>
       </span>
 
-      <span class="w-dim">Map icon</span>
+    </div>
+
+    <button type="button" class="w-focusable" :class="$style.fold" :aria-expanded="open === 'icon'" @click="toggle('icon')">
+      <i aria-hidden="true" :class="open === 'icon' ? 'fas fa-chevron-down' : 'fas fa-chevron-right'" />Map icon
+      <span class="grow" /><span v-if="look.icon" :style="{ color: poeColour(look.icon.color) }">{{ shapeGlyph(look.icon.shape) }}</span><span class="w-dim text-xs">{{ look.icon ? `${['Large', 'Medium', 'Small'][look.icon.size] ?? ''} ${look.icon.color.toLowerCase()}` : 'None' }}</span>
+    </button>
+    <div v-if="open === 'icon'" :class="$style.foldBody">
       <span class="flex flex-col gap-1">
         <span class="flex items-center gap-1">
           <button type="button" :class="[$style.dot, $style.none, { [$style.picked]: !look.icon }]" title="No minimap icon" aria-label="No minimap icon"
@@ -88,7 +106,7 @@
       <span class="w-dim">Copy look from</span>
       <select :class="$style.select" value="" aria-label="Copy style from tier" @change="copy(($event.target as HTMLSelectElement).value)">
         <option value="" disabled>tier…</option>
-        <option v-for="t in copyFrom" :key="t.tier" :value="t.tier">{{ t.tier }}</option>
+        <option v-for="t in copyFrom" :key="t.tier" :value="t.tier">{{ tierLabel(t.tier) }}</option>
       </select>
     </div>
   </div>
@@ -99,6 +117,7 @@ import { computed, onMounted, ref } from 'vue'
 import { WSegmented, toast } from '../ui'
 import LabelPreview from './LabelPreview.vue'
 import type { Visibility } from './parse'
+import { tierLabel } from './names'
 import { DEFAULT_BG, DEFAULT_FONT, DEFAULT_TEXT } from './edits'
 import type { Colour, StylePatch } from './edits'
 import { ICON_SHAPES, ICON_SIZES, POE_COLOURS, SOUND_IDS, poeColour, shapeGlyph } from './colours'
@@ -128,10 +147,15 @@ const visibilityOptions = computed(() => [
 ])
 
 const colourRows = computed(() => [
-  { key: 'text' as const, label: 'Text', value: props.look.text ?? DEFAULT_TEXT },
-  { key: 'border' as const, label: 'Border', value: props.look.border ?? null },
-  { key: 'background' as const, label: 'Background', value: props.look.background ?? DEFAULT_BG }
+  { key: 'text' as const, label: 'Text', short: 'text', value: props.look.text ?? DEFAULT_TEXT },
+  { key: 'border' as const, label: 'Border', short: 'border', value: props.look.border ?? null },
+  { key: 'background' as const, label: 'Background', short: 'back', value: props.look.background ?? DEFAULT_BG }
 ])
+
+const open = ref<'sound' | 'beam' | 'icon' | null>(null)
+function toggle (which: 'sound' | 'beam' | 'icon') {
+  open.value = open.value === which ? null : which
+}
 
 function hex (c: Colour | null): string {
   if (!c) return '#000000'
@@ -218,11 +242,32 @@ function copy (tier: string) {
 }
 .grid {
   display: grid;
-  grid-template-columns: 6.5rem minmax(0, 1fr);
+  grid-template-columns: 3.5rem minmax(0, 1fr);
   gap: 8px 10px;
   align-items: center;
   font-size: var(--w-text-sm);
 }
+.colours { gap: 4px 10px; }
+.foldBody {
+  padding: 2px 6px 6px;
+  font-size: var(--w-text-sm);
+}
+.fold {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 3px 6px;
+  background: var(--w-panel-2);
+  border: 1px solid transparent;
+  border-radius: var(--w-r-sm);
+  color: var(--w-dim);
+  font-size: var(--w-text-sm);
+  text-align: left;
+  cursor: pointer;
+}
+.fold:hover { border-color: var(--w-line); }
+.fold i { font-size: 0.75em; width: 1em; }
 .swatch {
   width: 22px;
   height: 22px;

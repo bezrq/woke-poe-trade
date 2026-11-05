@@ -2,6 +2,7 @@
 // modified file. They are keyed by NeverSink's $type/$tier tags and base type
 // names, so the same list can be reapplied to every new NeverSink version.
 import { ruleLabel } from './parse'
+import { tierLabel } from './names'
 import type { FilterAction, FilterBlock, FilterCondition, FilterDoc, Visibility } from './parse'
 
 export type Colour = [number, number, number, number]
@@ -81,7 +82,7 @@ export function isValidEdit (e: unknown): e is FilterEdit {
   if (!x || typeof x !== 'object' || typeof x.id !== 'number' || typeof x.type !== 'string') return false
   const str = (...keys: string[]) => keys.every(k => typeof x[k] === 'string')
   switch (x.kind) {
-    case 'move': return str('base', 'from', 'to')
+    case 'move': return str('base', 'from', 'to') && Boolean(x.from || x.to)
     case 'style': return str('tier') && isPatch(x.patch)
     case 'visibility': return str('tier') && VISIBILITIES.includes(x.visibility as string)
     case 'group': return typeof x.hidden === 'boolean'
@@ -238,15 +239,27 @@ function applyOne (doc: FilterDoc, edit: FilterEdit): EditStatus {
     case 'move': {
       // Out of the tier it was moved from: stack tiers list one base many times,
       // and the others stay. If that tier no longer has it (a new version, new
-      // prices), out of wherever it is now.
+      // prices), out of wherever it is now. An empty `from` adds it from outside
+      // the group; an empty `to` takes it off the tier.
       const listed = blocksOf(doc, edit.type).filter(b => b.tier !== edit.to && blockHasBase(b, edit.base))
       const named = listed.filter(b => b.tier === edit.from)
-      const sources = named.length ? named : listed
+      const sources = edit.from === '' ? [] : (named.length || edit.to === '' ? named : listed)
+      if (edit.to === '') {
+        // Already gone (a new version took it off): that's what you wanted.
+        if (!sources.length) return { edit, ok: true, blocks: 0 }
+        for (const b of sources) {
+          const c = baseTypeCondition(b)!
+          c.values = c.values.filter(v => v !== edit.base)
+          b.dirty = true
+          if (!c.values.length) b.disabled = true
+        }
+        return { edit, ok: true, blocks: sources.length }
+      }
       const listing = blocksOf(doc, edit.type, edit.to).filter(b => baseTypeCondition(b))
       const live = listing.filter(b => !b.disabled)
       const targets = live.length ? live : listing
       if (!targets.length) return { edit, ok: false, blocks: 0, message: `Tier ${edit.to} not found` }
-      if (!sources.length && !targets.some(b => blockHasBase(b, edit.base))) {
+      if (edit.from !== '' && !sources.length && !targets.some(b => blockHasBase(b, edit.base))) {
         return { edit, ok: false, blocks: 0, message: `${edit.base} is no longer in this group` }
       }
       for (const b of sources) {
@@ -386,7 +399,10 @@ export function addEdit (list: FilterEdit[], edit: FilterEdit, opts: { separateM
 export function describeEdit (e: FilterEdit): string {
   const group = ruleLabel(e.type, null)
   switch (e.kind) {
-    case 'move': return `${e.base}: ${group} ${e.from} → ${e.to}`
+    case 'move':
+      if (e.to === '') return `${e.base}: taken off ${ruleLabel(e.type, e.from)}`
+      if (e.from === '') return `${e.base}: added to ${ruleLabel(e.type, e.to)}`
+      return `${e.base}: ${group}, ${tierLabel(e.from)} → ${tierLabel(e.to)}`
     case 'style': return `Restyled ${ruleLabel(e.type, e.tier)}`
     case 'visibility': return `${e.visibility} ${ruleLabel(e.type, e.tier)}`
     case 'group': return `Hid the whole ${group} group`

@@ -62,7 +62,7 @@ import { labelBox, layoutLabels, runDrops, soundsOf, summarize } from './shower'
 import type { ShownDrop } from './shower'
 import { poeColour, shapeGlyph } from './colours'
 import { LEVEL_NAMES } from './strictness'
-import { groupName } from './groups'
+import { ruleLabel } from './parse'
 import { isCustomSound, playSound, soundLabel } from './sounds'
 
 const props = defineProps<{
@@ -215,7 +215,7 @@ const sides = computed(() => {
 })
 
 function ruleName (d: ShownDrop): string {
-  return d.type ? `${groupName(d.type)}${d.tier && !d.tier.startsWith('#') ? ` › ${d.tier}` : ''}` : 'no rule (shows by default)'
+  return d.type ? ruleLabel(d.type, d.tier) : 'no rule (shows by default)'
 }
 
 function describe (d: ShownDrop): string {

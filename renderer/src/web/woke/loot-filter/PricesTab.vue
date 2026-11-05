@@ -30,7 +30,7 @@
         <div v-for="m in config.priceTiers.moves" :key="'d' + m.type + m.base" :class="$style.row">
           <LabelPreview :text="m.base" :actions="lookOf(m.type, m.to)" :extras="false" />
           <button type="button" :class="$style.link" class="w-focusable text-xs w-trunc" :title="`Open ${groupLabel(m.type)} ${m.to} in Rules`" @click="emit('open-rule', { type: m.type, tier: m.to, base: m.base })">{{ groupLabel(m.type) }} <i class="fas fa-external-link-alt" /></button>
-          <span class="w-num text-xs w-dim">{{ m.from }} → {{ m.to }}</span>
+          <span class="w-num text-xs w-dim">{{ tierLabel(m.from) }} → {{ tierLabel(m.to) }}</span>
           <span class="grow" />
           <WButton size="sm" variant="ghost" title="Back to NeverSink's tier, and prices leave it there" @click="putBack(m)">Put back</WButton>
         </div>
@@ -41,7 +41,7 @@
         <img v-if="icon(m)" :src="icon(m)!" :class="$style.art" alt="">
         <LabelPreview :text="m.base" :actions="lookOf(m.type, m.to)" :extras="false" />
         <button type="button" :class="$style.link" class="w-focusable text-xs w-trunc" :title="`Open ${groupLabel(m.type)} ${m.from} in Rules`" @click="emit('open-rule', { type: m.type, tier: m.from, base: m.base })">{{ groupLabel(m.type) }} <i class="fas fa-external-link-alt" /></button>
-        <span class="w-num text-xs"><span :class="rank(m.to) < rank(m.from) ? $style.up : $style.down">{{ m.from }} → {{ m.to }}</span></span>
+        <span class="w-num text-xs"><span :class="rank(m.to) < rank(m.from) ? $style.up : $style.down">{{ tierLabel(m.from) }} → {{ tierLabel(m.to) }}</span></span>
         <span class="grow" />
         <span class="w-num text-xs w-dim w-trunc" :title="m.note">{{ m.note ? `${m.note} · ` : '' }}</span>
         <WPrice :chaos="m.chaos" :divine="divine" />
@@ -51,12 +51,12 @@
         <div v-for="s in skipped" :key="'s' + s.type + s.base" :class="$style.row">
           <span :class="$style.check" />
           <LabelPreview :text="s.base" :actions="lookOf(s.type, s.tier)" :extras="false" />
-          <button type="button" :class="$style.link" class="w-focusable text-xs" :title="`Open ${groupLabel(s.type)} ${s.tier} in Rules`" @click="emit('open-rule', { type: s.type, tier: s.tier, base: s.base })">{{ groupLabel(s.type) }} {{ s.tier }} <i class="fas fa-external-link-alt" /></button>
+          <button type="button" :class="$style.link" class="w-focusable text-xs" :title="`Open ${groupLabel(s.type)} ${s.tier} in Rules`" @click="emit('open-rule', { type: s.type, tier: s.tier, base: s.base })">{{ groupLabel(s.type) }}, {{ tierLabel(s.tier) }} <i class="fas fa-external-link-alt" /></button>
           <WChip :title="s.reason === 'thin' ? 'poe.ninja had no price on 3 or more of the last 7 days, so this price is easy to fake' : 'You placed this item yourself'">
             {{ s.reason === 'thin' ? 'thin market' : 'your tier, locked' }}
           </WChip>
           <span class="grow" />
-          <span class="w-faint text-xs">price says {{ s.wanted }}</span>
+          <span class="w-faint text-xs">price says {{ tierLabel(s.wanted) }}</span>
           <WButton v-if="s.reason === 'thin'" size="sm" variant="ghost" title="Move it, though its price has gaps" @click="moveAnyway(s)">Move anyway</WButton>
           <WButton v-else size="sm" variant="ghost" title="Let prices move it again" @click="unlock(s)">Unlock</WButton>
           <WPrice :chaos="s.chaos" :divine="divine" />
@@ -138,6 +138,7 @@ import { SAFETY_LOOK } from './safety'
 import type { BaseVerdict } from './safety'
 import { groupName } from './groups'
 import type { FilterAction } from './parse'
+import { tierLabel } from './names'
 
 const props = defineProps<{
   store: LootFilterStore
@@ -254,11 +255,11 @@ function apply () {
 }
 
 function moveAnyway (s: PriceSkip) {
-  moved(`Moved ${s.base} to ${s.wanted}`, props.store.applyPrices([{ type: s.type, base: s.base, from: s.tier, to: s.wanted, chaos: s.chaos }]))
+  moved(`Moved ${s.base} to ${tierLabel(s.wanted)}`, props.store.applyPrices([{ type: s.type, base: s.base, from: s.tier, to: s.wanted, chaos: s.chaos }]))
 }
 
 function putBack (m: PriceMove) {
-  moved(`${m.base} is back in ${m.from}`, props.store.unmovePrice(m.type, m.base))
+  moved(`${m.base} is back in ${tierLabel(m.from)}`, props.store.unmovePrice(m.type, m.base))
 }
 
 function unlock (s: PriceSkip) {
@@ -284,8 +285,8 @@ function reset () {
 
 function moveMenu (e: MouseEvent, m: PriceMove) {
   openMenu(e, [
-    { label: `Move ${m.base} to ${m.to}`, icon: 'fas fa-exchange-alt', action: () => { moved(`Moved ${m.base} to ${m.to}`, props.store.applyPrices([m])) } },
-    { label: 'Keep it where it is', icon: 'fas fa-lock', action: () => { const undo = props.store.lockItem(m.type, m.base); toast(`${m.base} stays in ${m.from}`, { anchor: props.anchor, undo }) } }
+    { label: `Move ${m.base} to ${tierLabel(m.to)}`, icon: 'fas fa-exchange-alt', action: () => { moved(`Moved ${m.base} to ${tierLabel(m.to)}`, props.store.applyPrices([m])) } },
+    { label: 'Keep it where it is', icon: 'fas fa-lock', action: () => { const undo = props.store.lockItem(m.type, m.base); toast(`${m.base} stays in ${tierLabel(m.from)}`, { anchor: props.anchor, undo }) } }
   ])
 }
 

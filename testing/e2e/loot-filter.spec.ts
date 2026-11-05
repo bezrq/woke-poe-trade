@@ -59,9 +59,12 @@ test('style editor: NeverSink sound pack, beam and minimap pickers; a pack sound
   await openEditor(overlay, fakeApp)
   const page = overlay.page
   await page.getByRole('tab', { name: 'Rules' }).click()
+  await page.getByRole('button', { name: /^Beam/ }).first().click()
   await page.getByRole('button', { name: 'Red beam' }).first().click()
+  await page.getByRole('button', { name: /^Map icon/ }).first().click()
   await page.getByRole('button', { name: 'Large icon', exact: true }).first().click()
   await page.getByRole('button', { name: 'Star icon' }).first().click()
+  await page.getByRole('button', { name: /^Sound/ }).first().click()
   await page.getByLabel('Alert sound').first().selectOption('2currency.mp3')
   await overlay.snap('style editor with pack sound, beam and star icon')
   await expect.poll(() => fs.existsSync(path.join(folder, '2currency.mp3'))).toBe(true)
@@ -84,15 +87,16 @@ test('rule builder, drag and drop between tiers, and presets end up in the saved
   await addClass.fill('Rings')
   await addClass.press('Enter')
   await page.getByLabel('Add a condition').selectOption('Rarity')
+  await page.getByRole('button', { name: /^Beam/ }).last().click()
   await page.getByRole('button', { name: 'Purple beam' }).click()
   await expect(page.getByText(/Catches \d+ of \d+ test items/)).toBeVisible()
   await overlay.snap('rule builder with a rare rings rule')
 
   // Drag Chaos Orb from its tier onto another one.
-  await page.getByRole('button', { name: /^Currency\s*4$/ }).click()
-  await page.getByRole('button', { name: /t3chaos/ }).click()
-  await page.getByText('Chaos Orb', { exact: true }).last().dragTo(page.getByRole('button', { name: /t2divine/ }))
-  await expect(page.getByText('Moved Chaos Orb to t2divine')).toBeVisible()
+  await page.getByRole('button', { name: /^General currency\s*4$/ }).click()
+  await page.getByRole('button', { name: /Tier 3/ }).click()
+  await page.getByText('Chaos Orb', { exact: true }).last().dragTo(page.getByRole('button', { name: /Tier 2/ }))
+  await expect(page.getByText('Moved Chaos Orb to Tier 2')).toBeVisible()
 
   // Presets.
   await page.getByRole('tab', { name: /Presets/ }).click()
@@ -108,6 +112,56 @@ test('rule builder, drag and drop between tiers, and presets end up in the saved
   expect(text).toContain('$type->woke->preset $tier->sixsockets')
   // Chaos Orb now listed in t2divine.
   expect(text).toMatch(/\$tier->t2divine[^\n]*\n(\t[^\n]*\n)*\tBaseType == [^\n]*"Chaos Orb"/)
+})
+
+test('rules: add an item by search, move one from its menu, take one off, and the file agrees', async ({ overlay, fakeApp }) => {
+  const folder = filterFolder()
+  await overlay.boot({ widgets: [lootFilter(folder)] })
+  await openEditor(overlay, fakeApp)
+  const page = overlay.page
+  await page.getByRole('tab', { name: 'Rules' }).click()
+  await page.getByRole('button', { name: /Tier 1/ }).first().click()
+
+  const add = page.getByPlaceholder('Add an item to this tier')
+  await add.fill('chaos')
+  await expect(page.getByRole('option', { name: /Chaos Orb.*now in .*Tier 3.*Move here/ })).toBeVisible()
+  await overlay.snap('add item search')
+  await add.press('Enter')
+  await expect(page.getByText('Moved Chaos Orb to Tier 1')).toBeVisible()
+  await expect(add).toHaveValue('')
+
+  // Its menu draws each tier, and moving there works.
+  await page.getByText('Divine Orb', { exact: true }).last().click({ button: 'right' })
+  await expect(page.getByRole('menuitem', { name: 'Tier 2' })).toBeVisible()
+  await overlay.snap('move to menu')
+  await page.getByRole('menuitem', { name: 'Tier 2' }).click()
+  await expect(page.getByText('Moved Divine Orb to Tier 2')).toBeVisible()
+
+  await page.getByRole('button', { name: /Tier 1/ }).first().click()
+  await page.getByRole('button', { name: 'Take Mirror of Kalandra off this tier' }).click()
+  await expect(page.getByText('Took Mirror of Kalandra off Tier 1')).toBeVisible()
+
+  await page.getByRole('button', { name: /^Save/ }).click()
+  const out = path.join(folder, 'NeverSink (woke).filter')
+  await expect.poll(() => fs.existsSync(out) ? fs.readFileSync(out, 'utf8') : '').toMatch(/\$tier->t1exalted[^\n]*\n(\t[^\n]*\n)*\tBaseType == "Chaos Orb"\r?\n/)
+  const text = fs.readFileSync(out, 'utf8')
+  expect(text).toMatch(/\$tier->t2divine[^\n]*\n(\t[^\n]*\n)*\tBaseType == "Divine Orb"/)
+  expect(text).not.toMatch(/Mirror of Kalandra/)
+})
+
+test('pasting a copied item into the search box opens its rule card', async ({ overlay, fakeApp }) => {
+  const folder = filterFolder()
+  await overlay.boot({ widgets: [lootFilter(folder)] })
+  await openEditor(overlay, fakeApp)
+  const page = overlay.page
+  await page.getByRole('tab', { name: 'Rules' }).click()
+  const box = page.getByPlaceholder(/paste one/)
+  await box.evaluate((el, text) => {
+    const data = new DataTransfer()
+    data.setData('text', text)
+    el.dispatchEvent(new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true }))
+  }, fs.readFileSync(path.join(FIXTURES, 'items', 'currency-divine.txt'), 'utf8'))
+  await expect(page.getByText('Filter rule for this item')).toBeVisible()
 })
 
 test('Alt + F: a card alone for the hovered item, a key hides it', async ({ overlay, fakeApp }) => {
