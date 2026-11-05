@@ -6,6 +6,7 @@ import { describe, it, expect } from 'vitest'
 import { formatBlock, parseFilter, serializeFilter, ACTION_KEYS } from '@/web/woke/loot-filter/parse'
 import type { FilterBlock, FilterDoc } from '@/web/woke/loot-filter/parse'
 import { validateFilter } from '@/web/woke/loot-filter/validate'
+import { applyEdits } from '@/web/woke/loot-filter/edits'
 import { LEVELS, extraFilters, neverSink, neverSinkStyled } from '../helpers/neversink'
 
 const FILTERS = [
@@ -35,8 +36,7 @@ function rawLineTokens (line: string): string {
     if (line[i] === '"') inQuote = !inQuote
     else if (line[i] === '#' && !inQuote) { body = line.slice(0, i); break }
   }
-  // The writer may drop quotes where the game doesn't need them (SocketGroup "A").
-  return body.trim().replace(/\s+/g, ' ').replace(/"/g, '')
+  return body.trim().replace(/\s+/g, ' ')
 }
 
 function ruleLines (b: FilterBlock, lines: string[]): string[] {
@@ -137,6 +137,13 @@ describe('the save check', () => {
     expect(fix('Show\n\tBrandNewLeagueThing True\n\tSetFontSize 40\n')).toEqual([])
   })
 
+  it('an own rule copied from a block with a new keyword can still be saved', () => {
+    const doc = parseFilter('Show # $type->a $tier->b\n\tBrandNewLeagueThing True\n\tBaseType == "Chaos Orb"\n')
+    applyEdits(doc, [{ id: 1, kind: 'item', type: 'a', tier: 'b', base: 'Chaos Orb', visibility: 'Show', patch: { fontSize: 40 } }])
+    expect(doc.blocks[0].added).toBe(true)
+    expect(validateFilter(doc)).toEqual([])
+  })
+
   it('names the mistakes the game would refuse', () => {
     const bad = (line: string) => fix(`Show\n\t${line}\n`)
     expect(bad('SetFontSize 46')[0]).toMatch(/font size/)
@@ -192,7 +199,7 @@ describe('hand-written filters', () => {
       '  HasExplicitMod 2 "E" "F"',
       '  Class=="Rings" "Amulets"'
     ].join('\n'))
-    expect(b.conditions).toEqual([
+    expect(b.conditions).toMatchObject([
       { key: 'ItemLevel', op: '>=', count: null, values: ['75'] },
       { key: 'Quality', op: '>=', count: null, values: ['20'] },
       { key: 'HasExplicitMod', op: '>=', count: 2, values: ['A', 'B'] },
@@ -202,11 +209,38 @@ describe('hand-written filters', () => {
     ])
   })
 
-  it('takes bare words as values and keeps the block when rewritten', () => {
-    const [b] = one('Show\n\tClass Currency\n\tBaseType Orb "Divine Orb"\n\tRarity <= Rare\n')
-    expect(b.conditions.map(c => c.values)).toEqual([['Currency'], ['Orb', 'Divine Orb'], ['Rare']])
+  it('takes bare words as values and keeps the quoting when rewritten', () => {
+    const [b] = one('Show\n\tClass Currency\n\tBaseType Orb "Divine Orb"\n\tRarity <= Rare\n\tSocketGroup "A"\n\tNewLeagueThing Foo\n')
+    expect(b.conditions.map(c => c.values)).toEqual([['Currency'], ['Orb', 'Divine Orb'], ['Rare'], ['A'], ['Foo']])
     b.dirty = true
-    expect(formatBlock(b).slice(1)).toEqual(['\tClass "Currency"', '\tBaseType "Orb" "Divine Orb"', '\tRarity <= Rare'])
+    expect(formatBlock(b).slice(1)).toEqual(['\tClass Currency', '\tBaseType "Orb" "Divine Orb"', '\tRarity <= Rare', '\tSocketGroup "A"', '\tNewLeagueThing Foo'])
+  })
+
+  it('quotes a name with a space added to a bare list', () => {
+    const [b] = one('Show\n\tBaseType == Orb\n')
+    b.conditions[0].values.push('Divine Orb')
+    b.dirty = true
+    expect(formatBlock(b)[1]).toBe('\tBaseType == "Orb" "Divine Orb"')
+  })
+
+  it('a restyle keeps comments and commented-out rules inside the block', () => {
+    const doc = parseFilter('Show\n\tRarity Rare\n#\tClass "X"\n\t# why\n\tSetFontSize 40\nHide\n')
+    doc.blocks[0].dirty = true
+    expect(formatBlock(doc.blocks[0])).toEqual(['Show', '\tRarity Rare', '\tSetFontSize 40', '#\tClass "X"', '\t# why'])
+  })
+
+  it('a gap with a commented-out block or section title ends the block', () => {
+    const blockGap = parseFilter('Show # $type->a $tier->1\n\tRarity Rare\n\n#Hide # $type->b $tier->2\n#\tClass "X"\n\n\tSetFontSize 40\nHide\n')
+    expect(blockGap.blocks.map(b => b.type)).toEqual(['a', 'b', null])
+    const section = parseFilter('#[[1000]] Top\nShow\n\tRarity Rare\n\n#[[2000]] Next\n#[2001] Sub\n\tSetFontSize 40\n\nHide\n\tRarity Magic\n')
+    expect(section.blocks[1]).toMatchObject({ section: 'Next', subsection: 'Sub' })
+  })
+
+  it('a long run of comments takes no time', () => {
+    const text = 'Show\n' + '# comment\n'.repeat(50000) + '\tSetFontSize 40\n'
+    const at = Date.now()
+    expect(parseFilter(text).blocks[0].actions).toHaveLength(1)
+    expect(Date.now() - at).toBeLessThan(1000)
   })
 
   it('ignores comments after a rule but not a # inside quotes', () => {
@@ -233,10 +267,15 @@ describe('hand-written filters', () => {
 
   it('a header indented by mistake still starts a block', () => {
     expect(one('Show\n\tRarity Rare\n  Hide\n\tRarity Magic\n').map(b => b.visibility)).toEqual(['Show', 'Hide'])
+    expect(one('#Show\n#\tRarity Rare\n  Hide\n\tRarity Magic\n').map(b => [b.visibility, b.disabled])).toEqual([['Show', true], ['Hide', false]])
   })
 
   it('a save header goes above a byte order mark, which is then dropped', () => {
     expect(serializeFilter(parseFilter('\uFEFF# top\nShow\n'), ['# ours'])).toBe('# ours\n# top\nShow\n')
+    // Even when a rule of ours went in front of a first-line block.
+    const doc = parseFilter('\uFEFFShow # $type->a $tier->b\n\tRarity Rare\n')
+    expect(applyEdits(doc, [{ id: 1, kind: 'item', type: 'a', tier: 'b', base: 'x', visibility: 'Show', patch: {} }])[0].ok).toBe(true)
+    expect(serializeFilter(doc, ['# ours'])).not.toContain('\uFEFF')
   })
 
   it('a comment line in a block survives untouched and is not a rule', () => {

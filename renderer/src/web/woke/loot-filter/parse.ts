@@ -19,6 +19,9 @@ export interface FilterCondition {
   // Count prefix on mod conditions: `HasExplicitMod >=2 "A" "B"`.
   count: number | null
   values: string[]
+  // Read from the file without quotes. A keyword newer than this editor may
+  // not take them, so a rewrite keeps the line as it was.
+  bare?: boolean
 }
 
 export interface FilterAction {
@@ -70,6 +73,8 @@ export interface FilterDoc {
   strictness: string | null
   isNeverSink: boolean
   eol: '\r\n' | '\n'
+  // The file started with a byte order mark.
+  bom?: boolean
 }
 
 const HEADER_RE = /^(#?)\s*(Show|Hide|Minimal)\b\s*(?:#(.*))?$/
@@ -130,7 +135,7 @@ export function parseCondition (key: string, rest: string): FilterCondition {
     count = Number(countMatch[1])
     text = text.slice(countMatch[0].length)
   }
-  return { key, op, count, values: tokenize(text.trim()) }
+  return { key, op, count, values: tokenize(text.trim()), bare: !text.includes('"') }
 }
 
 function parseTags (comment: string): { type: string | null, tier: string | null } {
@@ -142,7 +147,7 @@ function parseTags (comment: string): { type: string | null, tier: string | null
 function isBlockLine (line: string, disabled: boolean): boolean {
   // `Import` is a statement of its own and ends the block, as a header does.
   if (/^\s*Import\b/.test(line)) return false
-  if (!disabled && HEADER_RE.test(line) && !line.trimStart().startsWith('#')) return false
+  if (HEADER_RE.test(line) && !line.trimStart().startsWith('#')) return false
   // Rule lines are indented; commented-out blocks keep the indent after `#`.
   if (/^\s+\S/.test(line)) return true
   // Hand-written filters often don't indent; any non-header keyword line
@@ -152,14 +157,21 @@ function isBlockLine (line: string, disabled: boolean): boolean {
 }
 
 // The game keeps reading a block past blank lines and comments, until the next
-// header: does a rule of this block still follow the gap starting at `from`?
-function ruleAfterGap (lines: string[], from: number): boolean {
+// header: where does the gap at `from` end, and is a rule of this block next?
+// A section title or a commented-out block in the gap starts something new, so
+// what follows it is left alone.
+function scanGap (lines: string[], from: number): { end: number, rule: boolean } {
   let i = from
-  while (i < lines.length && (!lines[i].trim() || lines[i].trimStart().startsWith('#'))) i++
-  return i > from && i < lines.length && isBlockLine(lines[i], false)
+  while (i < lines.length && (!lines[i].trim() || lines[i].trimStart().startsWith('#'))) {
+    if (HEADER_RE.test(lines[i]) || SECTION_RE.test(lines[i]) || SUBSECTION_RE.test(lines[i])) return { end: i, rule: false }
+    i++
+  }
+  return { end: i, rule: i > from && i < lines.length && isBlockLine(lines[i], false) }
 }
 
-export function parseFilter (text: string): FilterDoc {
+export function parseFilter (source: string): FilterDoc {
+  const bom = source.charCodeAt(0) === 0xFEFF
+  const text = bom ? source.slice(1) : source
   const eol: '\r\n' | '\n' = text.includes('\r\n') ? '\r\n' : '\n'
   const lines = text.split(/\r?\n/)
   const chunks: FilterChunk[] = []
@@ -167,6 +179,12 @@ export function parseFilter (text: string): FilterDoc {
   let raw: string[] = []
   let section = ''
   let subsection = ''
+  // The last gap scanned, so a long run of comments is only walked once.
+  let gap = { from: -1, end: -1, rule: false }
+  const ruleAfterGap = (at: number): boolean => {
+    if (at < gap.from || at >= gap.end) gap = { from: at, ...scanGap(lines, at) }
+    return gap.rule
+  }
 
   const flushRaw = () => {
     if (raw.length) chunks.push({ kind: 'raw', lines: raw })
@@ -216,7 +234,7 @@ export function parseFilter (text: string): FilterDoc {
       dirty: false
     }
     i++
-    const inBlock = (at: number) => at < lines.length && (isBlockLine(lines[at], disabled) || (!disabled && ruleAfterGap(lines, at)))
+    const inBlock = (at: number) => at < lines.length && (isBlockLine(lines[at], disabled) || (!disabled && ruleAfterGap(at)))
     while (inBlock(i)) {
       const ruleLine = disabled ? lines[i].replace(/^#/, '') : lines[i]
       block.raw.push(lines[i])
@@ -245,7 +263,8 @@ export function parseFilter (text: string): FilterDoc {
     version,
     strictness,
     isNeverSink: /NeverSink/i.test(head),
-    eol
+    eol,
+    bom
   }
 }
 
@@ -263,7 +282,10 @@ const BARE_KEYS = new Set([
 ])
 
 export function formatCondition (c: FilterCondition): string {
-  const values = BARE_KEYS.has(c.key) || c.values.every(v => /^(True|False|-?\d+)$/.test(v))
+  const looksBare = c.bare != null
+    ? c.bare && !c.values.some(v => /\s/.test(v))
+    : BARE_KEYS.has(c.key) || c.values.every(v => /^(True|False|-?\d+)$/.test(v))
+  const values = looksBare
     ? c.values.join(' ')
     : c.values.map(quote).join(' ')
   const op = c.op ? `${c.op}${c.count != null ? c.count : ''} ` : (c.count != null ? `${c.count} ` : '')
@@ -285,6 +307,8 @@ export function formatBlock (b: FilterBlock): string[] {
   for (const c of b.conditions) out.push(`${prefix}\t${formatCondition(c)}`)
   for (const a of b.actions) out.push(`${prefix}\t${formatAction(a)}`)
   if (b.continue) out.push(`${prefix}\tContinue`)
+  // Comments inside the block stay: someone may have commented out a rule.
+  if (!b.disabled) out.push(...b.raw.slice(1).filter(l => l.trimStart().startsWith('#')))
   return out
 }
 
@@ -299,8 +323,9 @@ export function serializeFilter (doc: FilterDoc, header?: string[]): string {
     }
   }
   const body = out.join(doc.eol)
-  // A byte order mark only belongs at the very start of the file.
-  return header?.length ? [...header, body.replace(/^\uFEFF/, '')].join(doc.eol) : body
+  // A byte order mark only belongs at the very start of the file, and ours
+  // doesn't write one.
+  return header?.length ? [...header, body].join(doc.eol) : (doc.bom ? '\uFEFF' : '') + body
 }
 
 export function blockKey (b: Pick<FilterBlock, 'type' | 'tier'>): string {
