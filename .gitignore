@@ -37,3 +37,14 @@ testing/screens-out
 
 # woke: OCR data fetched for packaging (main/build/fetch-ocr.mjs)
 main/build/cv-ocr
+
+# flux-data orphan mode
+.flux/*.md
+.flux/*.body-history.json
+.flux/config.json
+.flux/assets/
+.flux/read-state.json
+.flux/open-prompts.json
+.flux/open-prompts.json.tmp
+.flux/memory/
+.flux-store/

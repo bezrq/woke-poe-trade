@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "event-horizon": {
+      "type": "http",
+      "url": "http://127.0.0.1:3067/mcp",
+      "alwaysLoad": true
+    }
+  }
+}
