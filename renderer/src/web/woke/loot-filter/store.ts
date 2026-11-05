@@ -27,7 +27,7 @@ import { describeProblem, validateFilter } from './validate'
 import type { FilterProblem } from './validate'
 import { useFilterPrices } from './prices'
 import { publishActiveFilter } from './active-filter'
-import { LEVEL_NAMES, clampLevel, ladderTarget, ladderZone, pushArea } from './strictness'
+import { LEVEL_NAMES, clampLevel, ladderTarget, ladderZone, levelForArea, pushArea } from './strictness'
 import { toast } from '../ui'
 
 // First line of every file the editor writes; marks a filter as ours.
@@ -154,7 +154,9 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
   const RELOAD_AFTER_LOAD_MS = 4000
   let reloadTimer: ReturnType<typeof setTimeout> | undefined
   // Area levels of the last few maps (or campaign zones), for the strictness ladder.
-  let recentAreas: number[] = []
+  const recentAreas = shallowRef<number[]>([])
+  // What the ladder would pick now, whether or not it's paused.
+  const ladderPick = computed(() => recentAreas.value.length ? levelForArea(cfg().strictAuto.ladder, Math.max(...recentAreas.value)) : null)
   const stopLog = onGameLog((lines) => {
     for (const { ev } of lines) {
       if (ev?.kind !== 'area') continue
@@ -162,7 +164,7 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
       inSafeZone.value = safe
       if (!safe) {
         areaLevel.value = ev.areaLevel
-        if (ladderZone(ev.areaId)) recentAreas = pushArea(recentAreas, ev.areaLevel)
+        if (ladderZone(ev.areaId)) recentAreas.value = pushArea(recentAreas.value, ev.areaLevel)
       }
       clearTimeout(reloadTimer)
       if (safe) {
@@ -598,6 +600,16 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
     })
   }
 
+  // The dock card: a level you picked. Picking what the ladder wants isn't taking
+  // over from it. The reload waits for your click on the card: this can come from
+  // a timer (scrolling), and GGG's rules don't allow a chat command from one.
+  async function pickLevel (level: number) {
+    const next = clampLevel(level)
+    if (!cfg().neversink.on || next === cfg().neversink.level) return
+    if (cfg().strictAuto.on) cfg().strictAuto.paused = ladderPick.value !== next
+    await setLevel(next, { auto: true })
+  }
+
   function resumeLadder () {
     cfg().strictAuto.paused = false
     followLadder()
@@ -611,7 +623,7 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
   function followLadder (): boolean {
     const ns = cfg().neversink
     if (!ns.on || !doc.value || saving.value) return false
-    const target = ladderTarget(cfg().strictAuto, recentAreas)
+    const target = ladderTarget(cfg().strictAuto, recentAreas.value)
     if (target == null || target === ns.level) return false
     // woke: a switch saves, and you haven't said these are ready for the game.
     if (userDirty()) {
@@ -620,7 +632,7 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
       return false
     }
     ladderHeldFor = null
-    const top = Math.max(...recentAreas)
+    const top = Math.max(...recentAreas.value)
     setLevel(target, { auto: true }).then(undo => {
       if (!undo) return
       toast(`Loot filter: ${LEVEL_NAMES[target]}, for area level ${top} maps.${cfg().reloadViaChat ? ` ${reloadHint()}` : ''}`, {
@@ -1026,6 +1038,8 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
     setStyle,
     setLevel,
     stepLevel,
+    pickLevel,
+    ladderPick,
     resumeLadder,
     buildInput,
     buildBlockCount,
