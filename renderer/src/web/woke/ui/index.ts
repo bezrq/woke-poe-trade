@@ -35,6 +35,7 @@ export { gameIcon, mechanicIcon, ninjaIcon, CURRENCY_ICONS, MECHANIC_ICONS } fro
 export { ago, agoPhrase, freshness, nowMinute, formatAmount, formatChaos, formatClock, formatDuration } from './format'
 export { vItemTip } from './tooltip/item-tip'
 export type { ItemTipRef } from './tooltip/item-tip'
+export { itemRefFromText } from './tooltip/item-text-ref'
 export { useCopy, copyText } from './copy'
 export { density } from './density'
 export type { Density } from './density'

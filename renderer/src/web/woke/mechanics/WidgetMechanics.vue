@@ -98,7 +98,7 @@
             <template v-if="scarabs.length">
               <div class="w-group-label">Scarabs</div>
               <div v-for="s in scarabs" :key="s.item.name" class="w-row" :class="$style.scarabGrid">
-                <span class="w-trunc" :title="s.item.name">{{ shortScarab(s.item.name) }}</span>
+                <span v-item-tip="s.item" class="w-trunc">{{ shortScarab(s.item.name) }}</span>
                 <WPrice :chaos="s.chaos" :divine="divine" class="justify-end" />
               </div>
             </template>
@@ -160,7 +160,7 @@ export default {
 import { inject, computed, shallowRef } from 'vue'
 import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
-import { WPanel, WSegmented, WButton, WPrice, WField, WSelect, WBanner, WIcon } from '../ui'
+import { WPanel, WSegmented, WButton, WPrice, WField, WSelect, WBanner, WIcon, vItemTip } from '../ui'
 import { usePriceIndex } from '../market/price-index'
 import DockItem from '../dock/DockItem.vue'
 import { mechanicIcon } from '../ui/game-icons'

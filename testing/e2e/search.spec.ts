@@ -143,3 +143,34 @@ test('Market tracker searches every price, whatever the filters', async ({ overl
   await expect(panel.getByText('Enlighten Support')).toBeVisible()
   expect(overlay.errors).toEqual([])
 })
+
+test('hovering a result shows the item, with its price or its range', async ({ overlay }) => {
+  await overlay.boot(bootOptions())
+  await overlay.pressHotkey(SEARCH_KEY)
+  const { panel, box } = await waitForPrices(overlay)
+  const tip = overlay.page.getByRole('tooltip')
+
+  // Not yet selected, so the hover is all that shows it.
+  await box.fill('headhunter')
+  await panel.getByRole('button', { name: /Headhunter/ }).first().hover()
+  await expect(tip).toContainText('Headhunter')
+  await expect(tip).toContainText('Leather Belt')
+  await overlay.snap('search result tooltip')
+
+  // Several prices: the range, not one of them picked at random.
+  await box.fill('enlighten')
+  await panel.getByRole('button', { name: /Enlighten Support/ }).first().hover()
+  await expect(tip).toContainText(/\d+ prices/)
+  await expect(tip).toContainText(' to ')
+  await expect(tip).not.toContainText('7 days')
+
+  // An item with no price is still an item.
+  await box.fill('undying flesh talisman')
+  await panel.getByRole('button', { name: /Undying Flesh Talisman/ }).hover()
+  await expect(tip).toContainText('Undying Flesh Talisman')
+
+  // Tools aren't items.
+  await box.fill('market tracker')
+  await panel.getByRole('button', { name: /Market tracker/ }).first().hover()
+  await expect(tip).toHaveCount(0)
+})

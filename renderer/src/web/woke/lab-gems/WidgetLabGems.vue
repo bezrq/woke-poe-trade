@@ -6,7 +6,7 @@
         <div style="padding: 2px var(--w-pad) 6px;">
           <div v-for="r in rolls" :key="r.color" class="flex items-center gap-2">
             <span :class="[$style.dot, $style[r.color]]" />
-            <span class="w-trunc flex-1">{{ r.top[0]?.name ?? 'no prices yet' }}</span>
+            <span v-item-tip="r.top[0] ? gemTip(r.top[0].name) : null" class="w-trunc flex-1">{{ r.top[0]?.name ?? 'no prices yet' }}</span>
             <WPrice v-if="r.top[0]" :chaos="r.top[0].chaos ?? 0" :divine="snapshot?.divine" />
             <span class="w-faint text-xs w-num" title="Expected value of a roll of this colour">EV <WPrice :chaos="r.ev" :divine="snapshot?.divine" /></span>
           </div>
@@ -71,7 +71,7 @@
             <span class="w-faint text-xs whitespace-nowrap">{{ roll.listed }}/{{ roll.poolSize }} priced · each {{ pct(roll.chanceEach) }}</span>
             <span class="w-num text-right" :class="i === 0 ? 'w-up' : ''" title="Expected value of the best of the 3 offered gems">EV {{ fmt(roll.ev) }}</span>
           </div>
-          <div v-for="g in roll.top" :key="g.name" class="w-row" :class="$style.gemGrid" @contextmenu="gemMenu($event, g.name)">
+          <div v-for="g in roll.top" :key="g.name" v-item-tip="gemTip(g.name)" class="w-row" :class="$style.gemGrid" @contextmenu="gemMenu($event, g.name)">
             <img v-if="gemIcon(g.name)" :src="gemIcon(g.name)!" :class="$style.icon" alt="" loading="lazy" decoding="async" draggable="false"><span v-else />
             <span class="w-trunc w-rarity-gem"><i v-if="thin.has(g.name)" class="fas fa-exclamation-circle w-faint mr-1" :title="THIN_NOTE" />{{ g.name }}</span>
             <WPrice :chaos="g.chaos ?? 0" :divine="snapshot?.divine" />
@@ -91,13 +91,13 @@
             <button class="w-row w-full text-left" :class="$style.pickGrid" @click="toggle(p.baseName)"
               @contextmenu="gemMenu($event, p.baseName)">
               <span :class="[$style.dot, $style[p.color]]" />
-              <span :class="$style.named"><img v-if="gemIcon(p.baseName)" :src="gemIcon(p.baseName)!" :class="$style.icon" alt="" loading="lazy" decoding="async" draggable="false"><span v-else :class="$style.icon" /><span class="w-trunc">{{ p.baseName }} <i class="fas text-xs w-faint" :class="expanded === p.baseName ? 'fa-chevron-up' : 'fa-chevron-down'" /></span></span>
+              <span v-item-tip="gemTip(p.baseName)" :class="$style.named"><img v-if="gemIcon(p.baseName)" :src="gemIcon(p.baseName)!" :class="$style.icon" alt="" loading="lazy" decoding="async" draggable="false"><span v-else :class="$style.icon" /><span class="w-trunc">{{ p.baseName }} <i class="fas text-xs w-faint" :class="expanded === p.baseName ? 'fa-chevron-up' : 'fa-chevron-down'" /></span></span>
               <span class="text-right w-dim" title="Base gem price"><WPrice v-if="p.baseChaos != null" :chaos="p.baseChaos" :divine="snapshot?.divine" /><template v-else>?</template></span>
               <WPrice :chaos="value(p)" :divine="snapshot?.divine" />
               <span class="text-right w-up w-num" :title="config.runner ? 'Profit after the base gem and the lab entry' : 'Profit after buying the base gem'">+<WPrice :chaos="profit(p)" :divine="snapshot?.divine" /></span>
             </button>
             <template v-if="expanded === p.baseName">
-              <div v-for="v in p.variants" :key="v.name" class="w-row" :class="$style.gemGrid" @contextmenu="gemMenu($event, v.name)">
+              <div v-for="v in p.variants" :key="v.name" v-item-tip="gemTip(v.name)" class="w-row" :class="$style.gemGrid" @contextmenu="gemMenu($event, v.name)">
                 <img v-if="gemIcon(v.name)" :src="gemIcon(v.name)!" :class="$style.icon" alt="" loading="lazy" decoding="async" draggable="false"><span v-else />
                 <span class="w-trunc w-rarity-gem"><i v-if="thin.has(v.name)" class="fas fa-exclamation-circle w-faint mr-1" :title="THIN_NOTE" />{{ v.name }}</span>
                 <WPrice :chaos="v.chaos" :divine="snapshot?.divine" />
@@ -132,7 +132,7 @@ import { popupAnchor } from '../ui/window-anchor'
 import { inject, computed, shallowRef, watch } from 'vue'
 import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
-import { WPanel, WTabs, WSelect, WSegmented, WField, WPrice, WEmpty, WChip, WSkeleton, openMenu, toast } from '../ui'
+import { WPanel, WTabs, WSelect, WSegmented, WField, WPrice, WEmpty, WChip, WSkeleton, openMenu, toast, vItemTip } from '../ui'
 import { copyText } from '../ui/copy'
 import { useLeagues } from '@/web/background/Leagues'
 import { useMarketCollector } from '../market/collector'
@@ -192,6 +192,10 @@ async function load () {
 watch([league, collector.revision], load, { immediate: true })
 
 const prices = computed(() => snapshot.value ? gemPrices(snapshot.value.items, props.config.gemState) : new Map<string, number>())
+// The gem at the level and quality the prices here are for.
+function gemTip (name: string) {
+  return { name, type: 'SkillGem', variant: props.config.gemState }
+}
 const priceCount = computed(() => prices.value.size)
 const rolls = computed(() => colorRolls(prices.value, props.config.topN || 5))
 const picks = computed(() => {

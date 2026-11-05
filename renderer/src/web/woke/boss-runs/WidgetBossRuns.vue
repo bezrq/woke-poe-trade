@@ -8,7 +8,7 @@
           <div v-for="r in arenaBosses" :key="r.boss.id" class="flex flex-col gap-0.5 w-num">
             <div class="w-head-font w-accent w-trunc">{{ r.boss.name }}</div>
             <div v-for="d in cardDrops(r.drops, CARD_DROPS)" :key="d.name" :class="$style.cardDrop">
-              <span class="w-trunc" :title="d.name">{{ d.name }}</span>
+              <span v-item-tip="{ name: d.name, type: typeByName.get(d.name), variant: d.variant }" class="w-trunc">{{ d.name }}</span>
               <span class="text-right" :class="d.chance == null ? 'w-faint' : 'w-dim'">{{ d.chance == null ? '?' : pct(d.chance) }}</span>
               <span class="text-right"><WPrice :chaos="d.price" :divine="divine" /></span>
             </div>
@@ -145,12 +145,12 @@
                 <div v-if="logging" class="flex flex-col gap-2" style="padding: 8px var(--w-pad);">
                   <div class="w-dim text-sm">Tick what this kill dropped.</div>
                   <div class="flex flex-wrap gap-1">
-                    <WChip v-for="d in sel.drops" :key="d.name" clickable :active="!!logging[d.name]" @click="toggleLogged(d.name, d.variant)">{{ d.name }}</WChip>
+                    <WChip v-for="d in sel.drops" :key="d.name" v-item-tip="{ name: d.name, type: typeByName.get(d.name), variant: d.variant }" clickable :active="!!logging[d.name]" @click="toggleLogged(d.name, d.variant)">{{ d.name }}</WChip>
                   </div>
                   <div class="relative">
                     <WField v-model="logQuery" icon="fas fa-plus" placeholder="Something else… (search prices)" class="w-full" />
                     <div v-if="logResults.length" class="w-surface absolute left-0 right-0 z-10 mt-1 py-1">
-                      <button v-for="item in logResults" :key="item.type + item.name + item.variant" class="w-row w-full text-left" style="grid-template-columns: minmax(0,1fr) auto;" @click="toggleLogged(item.name, item.variant || undefined); logQuery = ''">
+                      <button v-for="item in logResults" :key="item.type + item.name + item.variant" v-item-tip="item" class="w-row w-full text-left" style="grid-template-columns: minmax(0,1fr) auto;" @click="toggleLogged(item.name, item.variant || undefined); logQuery = ''">
                         <span class="w-trunc">{{ item.name }}<span v-if="item.variant" class="w-dim ml-1">{{ item.variant }}</span></span>
                         <WPrice :chaos="item.chaos" :divine="divine" />
                       </button>
@@ -190,7 +190,7 @@
                 </div>
                 <div class="w-row w-row--head" :class="$style.rateGrid"><span>Drop</span><span>Source</span><span class="text-right">Chance %</span><span /></div>
                 <div v-for="d in sel.drops" :key="d.name" class="w-row" :class="$style.rateGrid">
-                  <span class="w-trunc">{{ d.name }}</span>
+                  <span v-item-tip="{ name: d.name, type: typeByName.get(d.name), variant: d.variant }" class="w-trunc">{{ d.name }}</span>
                   <span class="w-dim text-xs">{{ rateTitle(d.rateSource) }}</span>
                   <input type="number" min="0" max="100" step="0.01" :class="$style.input" class="text-right"
                     :value="d.chance == null ? '' : +(d.chance * 100).toFixed(3)" placeholder="?"
@@ -203,7 +203,7 @@
                 <div class="relative" style="padding: 8px var(--w-pad);">
                   <WField v-model="dropQuery" icon="fas fa-plus" placeholder="Add a drop to this boss…" class="w-full" />
                   <div v-if="dropResults.length" class="w-surface absolute left-0 right-0 z-10 mt-1 py-1" style="margin: 0 var(--w-pad);">
-                    <button v-for="item in dropResults" :key="item.type + item.name + item.variant" class="w-row w-full text-left" style="grid-template-columns: minmax(0,1fr) auto;" @click="addDrop(sel.boss.id, item.name, item.variant || undefined)">
+                    <button v-for="item in dropResults" :key="item.type + item.name + item.variant" v-item-tip="item" class="w-row w-full text-left" style="grid-template-columns: minmax(0,1fr) auto;" @click="addDrop(sel.boss.id, item.name, item.variant || undefined)">
                       <span class="w-trunc">{{ item.name }}<span v-if="item.variant" class="w-dim ml-1">{{ item.variant }}</span></span>
                       <WPrice :chaos="item.chaos" :divine="divine" />
                     </button>

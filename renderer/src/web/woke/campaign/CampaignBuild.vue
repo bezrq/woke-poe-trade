@@ -9,14 +9,14 @@
         <button v-if="tickable" class="w-icon-btn" :class="$style.tick" title="Got it: stop listing this gem" @click="markGot([b.name])">
           <i class="far fa-square text-xs" />
         </button>
-        <span class="w-rarity-gem w-trunc">{{ b.name }}</span>
+        <span v-item-tip="{ name: b.name, noPrice: true }" class="w-rarity-gem w-trunc">{{ b.name }}</span>
         <span class="ml-auto w-dim text-xs whitespace-nowrap" :title="`Unlocked by ${b.quest} (Act ${b.act})`">
           <span v-if="level != null && b.requiredLevel > level" class="w-accent">at lv {{ b.requiredLevel }} · </span>{{ b.npc }}
         </span>
       </div>
     </template>
     <div v-else-if="nextGem" class="w-trunc" :title="nextGem.source ?? undefined">
-      <span class="w-dim">Next gem</span> <span class="w-rarity-gem">{{ nextGem.name.replace(/ Support$/, '') }}</span>
+      <span class="w-dim">Next gem</span> <span v-item-tip="{ name: nextGem.name, noPrice: true }" class="w-rarity-gem">{{ nextGem.name.replace(/ Support$/, '') }}</span>
       <span class="w-num w-faint"> · lv {{ nextGem.requiredLevel }}</span>
       <div v-if="nextGem.source" class="w-dim text-xs w-trunc">{{ nextGem.source }}</div>
     </div>
@@ -26,15 +26,15 @@
         <button v-if="tickable" class="w-icon-btn" :class="$style.tick" title="Taken: stop listing these" @click="markGot(r.gems)">
           <i class="far fa-square text-xs" />
         </button>
-        <span class="w-rarity-gem w-trunc">{{ r.gems.join(' or ') }}</span>
+        <span class="w-rarity-gem w-trunc"><template v-for="(g, gi) in r.gems" :key="g"><template v-if="gi"> or </template><span v-item-tip="{ name: g, noPrice: true }">{{ g }}</span></template></span>
         <span class="ml-auto w-dim text-xs w-trunc" :class="$style.quest">{{ r.quest }}</span>
       </div>
     </template>
     <template v-if="links.length">
       <div :class="$style.k">Your links<template v-if="linkSet"> · {{ linkSet }}</template></div>
-      <div v-for="(l, i) in links" :key="i" :class="$style.row" class="items-center" :title="l.names.join(', ')">
+      <div v-for="(l, i) in links" :key="i" :class="$style.row" class="items-center">
         <SocketDots :colours="l.colours" />
-        <span class="w-rarity-gem w-trunc">{{ l.names.map(n => n.replace(/ Support$/, '')).join(' · ') }}</span>
+        <span class="w-rarity-gem"><template v-for="(n, ni) in l.names" :key="n"><template v-if="ni"> · </template><span v-item-tip="{ name: n, noPrice: true }">{{ n.replace(/ Support$/, '') }}</span></template></span>
       </div>
     </template>
   </div>
@@ -49,6 +49,7 @@ import { useActiveBuild } from '../pob-builds/active'
 import { actRewards, linkColours, linkGroups, loadoutOf, orderedGems, relevantGems, townBuys } from '../pob-builds/build-model'
 import { gemData, nextGems } from '../pob-builds/gems'
 import SocketDots from '../pob-builds/SocketDots.vue'
+import { vItemTip } from '../ui'
 import { isTown } from './log-parse'
 import type { CampaignWidget } from './widget'
 

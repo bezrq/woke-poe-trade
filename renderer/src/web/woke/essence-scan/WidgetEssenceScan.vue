@@ -48,7 +48,7 @@
             <WPrice :chaos="current.rated.totalChaos || null" :divine="divine" class="w-accent font-semibold" />
           </div>
           <div v-for="(r, i) in current.rated.rows" :key="i" :class="$style.erow">
-            <span :class="{ [$style.flagged]: r.flagged }">{{ shortEssenceName(r.essence) }}</span>
+            <span v-item-tip="{ name: r.essence.name, type: 'Essence' }" :class="{ [$style.flagged]: r.flagged }">{{ shortEssenceName(r.essence) }}</span>
             <WPrice :chaos="r.chaos" :divine="divine" :class="{ 'w-dim': !r.flagged }" />
           </div>
           <div v-if="current.rated.estimate" class="text-xs" :class="current.rated.estimate.gain > 0 ? 'w-up' : 'w-dim'"
@@ -59,7 +59,7 @@
           <template v-if="current.rated.specials.length">
             <div class="w-faint" style="font-size: var(--w-fs-xs); margin-top: 3px;">Corrupting can turn {{ current.rated.flagged.join(', ') }} into:</div>
             <div v-for="sp in current.rated.specials" :key="sp.name" :class="$style.erow" style="font-size: var(--w-fs-sm);">
-              <span :class="$style.flagged">{{ sp.name.replace('Essence of ', '') }}</span>
+              <span v-item-tip="{ name: sp.name, type: 'Essence' }" :class="$style.flagged">{{ sp.name.replace('Essence of ', '') }}</span>
               <WPrice :chaos="sp.chaos" :divine="divine" />
             </div>
           </template>
@@ -102,7 +102,7 @@ import { MainProcess } from '@/web/background/IPC'
 import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
 import { formatChaos } from '../ui/format'
-import { WPanel, WButton, WEmpty, WKbd, WPrice, toast } from '../ui'
+import { WPanel, WButton, WEmpty, WKbd, WPrice, toast, vItemTip } from '../ui'
 import { hostRequest } from '../shared/host'
 import DockItem from '../dock/DockItem.vue'
 import { hideWhilePlaying } from '../dock/dock'

@@ -5,6 +5,7 @@
         tag="div" :class="$style.selectedItems"
         :enter-active-class="$style.selectedItemEnter">
         <button v-for="item in selected" :key="item.info.refName + item.discr"
+          v-item-tip="{ name: item.info.refName }"
           :class="$style.selectedItem"
           @click="selectedItemClick($event, item)">
           <ItemQuickPrice
@@ -39,7 +40,7 @@
             :class="$style.searchItem">
             <img :src="item.icon" :class="$style.icon">
             <div class="flex flex-col">
-              <div :class="$style.name">{{ item.name }}</div>
+              <div v-item-tip="{ name: item.refName }" :class="$style.name">{{ item.name }}</div>
               <div :class="$style.selectButtons">
                 <template v-if="item.gem">
                   <button v-for="altQuality in []" :key="altQuality"
@@ -196,6 +197,7 @@ import { ItemCategory } from '@/parser'
 
 import ItemQuickPrice from '@/web/ui/ItemQuickPrice.vue'
 import Widget from '../overlay/Widget.vue'
+import { vItemTip } from '@/web/woke/ui/tooltip/item-tip'
 import UiTimeout from '@/web/ui/UiTimeout.vue'
 
 const props = defineProps<{
