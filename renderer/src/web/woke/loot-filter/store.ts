@@ -959,7 +959,8 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
     sentOver.value = gameFilter.value.name
     MainProcess.sendEvent({
       name: 'CLIENT->MAIN::user-action',
-      payload: { action: 'paste-in-chat', text: reloadCommand() }
+      // Right away: extra presses can't pile up and fire later, mid-fight.
+      payload: { action: 'paste-in-chat', text: reloadCommand(), immediate: true }
     })
   }
 

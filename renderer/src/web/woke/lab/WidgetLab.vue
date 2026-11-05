@@ -1,18 +1,18 @@
 <template>
   <Widget :config="config" move-handles="corners" :inline-edit="false">
-    <!-- In the lab: an icon (letter = difficulty) whose card shows the layout. -->
-    <DockItem ref="dockRef" id="lab" title="Labyrinth" :show="inLab" :badge="labDiff ? labLabel(labDiff)[0] : null"
-      :wm-id="config.wmId" card-width="34rem" @open-change="now = Date.now()">
+    <!-- In the lab or with a layout open: an icon (letter = difficulty) whose card shows the layout. -->
+    <DockItem :menu="dockMenu" ref="dockRef" id="lab" title="Labyrinth" :show="inLab || !!openDiff" :badge="cardDiff ? labLabel(cardDiff)[0] : null"
+      :wm-id="config.wmId" card-width="45rem" @open-change="cardShown = $event">
       <template #card>
         <div class="flex justify-between w-dim text-xs" style="padding: 4px var(--w-pad);">
-          <span>{{ labDiff ? labLabel(labDiff) + ' Labyrinth' : 'Labyrinth' }}</span>
+          <span>{{ cardDiff ? labLabel(cardDiff) + ' Labyrinth' : 'Labyrinth' }}</span>
           <span title="Labs reset at midnight UTC"><i class="far fa-clock" /> resets in {{ resetIn }}</span>
         </div>
-        <img v-if="peekImg" :src="peekImg" :class="$style.cardImg" alt="Today's layout">
+        <img v-if="cardImg" :src="cardImg" :class="$style.cardImg" alt="Today's layout">
         <WBanner v-else-if="peekError">Couldn't load the layout ({{ peekError }}). Open the overlay and click the icon for poelab's page.</WBanner>
         <div v-else-if="peekDiff" :class="$style.cardSkel" aria-busy="true" aria-label="Loading today's layout" />
         <div v-else class="w-dim text-xs" style="padding: 6px var(--w-pad);">Enter Aspirants' Plaza to load the layout.</div>
-        <WBanner v-if="peekImg && staleOf(peekImg)" tone="warn">Today's layout isn't posted yet. This one is from {{ staleOf(peekImg) }}.</WBanner>
+        <WBanner v-if="cardImg && staleOf(cardImg)" tone="warn">Today's layout isn't posted yet. This one is from {{ staleOf(cardImg) }}.</WBanner>
         <div v-if="config.notes.trim()" class="whitespace-pre-wrap w-dim text-xs" style="padding: 4px var(--w-pad);">{{ config.notes }}</div>
       </template>
     </DockItem>
@@ -40,7 +40,6 @@
         <template #actions>
           <button v-if="layoutImg" class="w-icon-btn mr-1" :class="{ 'w-icon-btn--on': config.fullPage }" @click="config.fullPage = !config.fullPage"
             :title="config.fullPage ? 'Show just the layout' : 'Show poelab\'s whole page'"><i class="fas fa-globe" /></button>
-          <span class="w-faint text-xs whitespace-nowrap mr-1">{{ overlayKey }} to interact</span>
           <button @click="open(openDiff, 'external')" class="w-icon-btn" title="Open in your browser"><i class="fas fa-external-link-alt" /></button>
           <button @click="openDiff = null" class="w-icon-btn" title="Close"><i class="fas fa-times" /></button>
         </template>
@@ -72,7 +71,6 @@ import { popupAnchor } from '../ui/window-anchor'
 import { inject, computed, shallowRef, watch, nextTick, onUnmounted } from 'vue'
 import { useVisibleClock } from '../shared/visible-clock'
 import { Host, MainProcess } from '@/web/background/IPC'
-import { AppConfig } from '@/web/Config'
 import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
 import { formatDuration } from '../ui/format'
@@ -81,7 +79,8 @@ import { DEFAULT_LAB_URLS, DIFFICULTIES, FIND_LAYOUT_JS, difficultyForAreaLevel,
 import { useZone } from '../shared/zone'
 import { hostRequest } from '../shared/host'
 import DockItem from '../dock/DockItem.vue'
-import { hideWhilePlaying } from '../dock/dock'
+import type { DockMenuAction } from '../dock/dock'
+import { dockConfig, hideWhilePlaying, tickWhile } from '../dock/dock'
 import type { LabDifficulty, OpenTarget } from './lab'
 
 const props = defineProps<{
@@ -122,7 +121,7 @@ watch(webviewEl, (el, old) => {
   el?.addEventListener('did-stop-loading', onPageLoaded)
 })
 
-// In the lab, the dock icon shows the layout; nothing opens over the game.
+// While you play, the dock icon shows the layout; nothing stays over the game.
 // Entering Aspirants' Plaza loads that difficulty's layout in the background.
 const zone = useZone()
 const inLab = computed(() => zone.kind === 'lab')
@@ -132,8 +131,12 @@ const peekImg = shallowRef<string | null>(null)
 const peekError = shallowRef<string | null>(null)
 let peekDay = ''
 const dockRef = shallowRef<InstanceType<typeof DockItem> | null>(null)
-watch(() => [zone.areaId, zone.enteredAt, labDiff.value] as const, async ([areaId, _at, d]) => {
-  if (!isPlazaArea(areaId) || !d || props.config.autoOpen === false) return
+// What the icon and its card show: the layout you opened, else the one loaded
+// for the lab you're in.
+const cardDiff = computed(() => openDiff.value ?? peekDiff.value ?? labDiff.value)
+const cardImg = computed(() => (openDiff.value ? layoutImg.value : null) ?? peekImg.value)
+
+async function loadPeek (d: LabDifficulty, announce: boolean) {
   // Reuse the layout only within the same lab day (resets at midnight UTC),
   // and retry when what we got was yesterday's because today's wasn't up.
   const day = new Date().toISOString().slice(0, 10)
@@ -147,21 +150,35 @@ watch(() => [zone.areaId, zone.enteredAt, labDiff.value] as const, async ([areaI
     if (peekDiff.value !== d) return
     if (img) {
       peekImg.value = img
-      dockRef.value?.peek(`${labLabel(d)} lab · today's layout is ready here`)
+      if (announce) dockRef.value?.peek(`${labLabel(d)} lab · today's layout is ready here`)
     } else peekError.value = 'no layout on the page'
   } catch (err) {
     if (peekDiff.value === d) peekError.value = err instanceof Error ? err.message : String(err)
   }
+}
+function clearPeek () {
+  peekDiff.value = null
+  peekImg.value = null
+  peekError.value = null
+}
+watch(() => [zone.areaId, zone.enteredAt, labDiff.value] as const, ([areaId, _at, lab]) => {
+  // A layout you picked yourself beats the guess from the area level.
+  const d = openDiff.value ?? lab
+  if (!inLab.value || !d || props.config.autoOpen === false) return
+  // Every plaza logs level 33, so the first room can correct the difficulty.
+  if (isPlazaArea(areaId) || peekDiff.value !== d) loadPeek(d, true)
 })
 // Reads the real clock too: `now` only ticks while the panel is on screen,
 // and in the lab only the dock icon is.
 function staleOf (url: string) {
   return staleLayoutDate(url, Math.max(now.value, Date.now()))
 }
-const overlayKey = computed(() => AppConfig().overlayKey)
 
 const now = shallowRef(Date.now())
 useVisibleClock(() => props.config, () => { now.value = Date.now() }, 30 * 1000)
+// A card can stay open a long time (the hotkey holds it).
+const cardShown = shallowRef(false)
+const stopCardClock = tickWhile(() => cardShown.value, () => { now.value = Date.now() }, 30 * 1000)
 const resetIn = computed(() => formatDuration(msUntilLabReset(now.value)))
 
 function urlFor (d: LabDifficulty): string {
@@ -169,14 +186,29 @@ function urlFor (d: LabDifficulty): string {
   return /^https?:\/\//i.test(url) ? url : DEFAULT_LAB_URLS[d]
 }
 
-// The window shows only with the overlay open, except a layout you opened
-// yourself (hotkey or click), which stays up until you close it.
+// The window shows only with the overlay open. A layout you opened stays as
+// the dock icon while you play, until you close it, leave the lab or the lab resets.
 hideWhilePlaying(props.config)
+watch(inLab, (on, was) => {
+  if (!was || on) return
+  openDiff.value = null
+  clearPeek()
+})
+// Closing the whole window (its X) closes the layout too.
+watch(() => props.config.wmWants, (wants) => { if (wants === 'hide') openDiff.value = null })
+let resetTimer: ReturnType<typeof setTimeout> | undefined
 watch(openDiff, (d) => {
-  wm.setFlag(props.config.wmId, 'invisible-on-blur', !d)
+  clearTimeout(resetTimer)
+  if (d) {
+    resetTimer = setTimeout(() => { if (!inLab.value) openDiff.value = null }, msUntilLabReset(Date.now()))
+    return
+  }
+  // Closed: back to the lab you're in, or nothing.
+  if (inLab.value && labDiff.value && props.config.autoOpen !== false) loadPeek(labDiff.value, false)
+  else clearPeek()
 })
 
-function open (d: LabDifficulty, where: OpenTarget) {
+function open (d: LabDifficulty, where: OpenTarget, showWindow = true) {
   const url = urlFor(d)
   if (where === 'external' || !Host.isElectron) {
     window.open(url)
@@ -184,15 +216,41 @@ function open (d: LabDifficulty, where: OpenTarget) {
   }
   if (openDiff.value !== d) layoutImg.value = null
   openDiff.value = d
-  wm.show(props.config.wmId)
+  if (showWindow) wm.show(props.config.wmId)
+  loadPeek(d, false)
   nextTick(() => {
     if (webviewEl.value) webviewEl.value.src = url
   })
 }
 
+// While you play, the hotkey holds the icon's card open, and the next press
+// lets go of it (and of the layout, outside the lab). With the icon switched
+// off it opens and closes the layout, which shows with the overlay.
+function togglePlayingCard () {
+  if (dockConfig().hidden.includes('lab')) {
+    if (openDiff.value) {
+      openDiff.value = null
+      wm.hide(props.config.wmId)
+    } else open(props.config.defaultDifficulty, 'overlay')
+    return
+  }
+  const dock = dockRef.value
+  if (dock?.pinned) {
+    dock.togglePin()
+    if (!inLab.value) openDiff.value = null
+    return
+  }
+  if (!openDiff.value && !(inLab.value && peekDiff.value)) open(props.config.defaultDifficulty, 'overlay', false)
+  nextTick(() => { dockRef.value?.togglePin() })
+}
+
 const hotkeys = MainProcess.onEvent('MAIN->CLIENT::widget-action', (e) => {
   const parsed = parseHotkeyTarget(e.target)
   if (!parsed || parsed.wmId !== props.config.wmId) return
+  if (parsed.where === 'overlay' && !wm.active.value) {
+    togglePlayingCard()
+    return
+  }
   if (parsed.where === 'overlay' && openDiff.value) {
     openDiff.value = null
     wm.hide(props.config.wmId)
@@ -200,7 +258,19 @@ const hotkeys = MainProcess.onEvent('MAIN->CLIENT::widget-action', (e) => {
   }
   open(props.config.defaultDifficulty, parsed.where)
 })
-onUnmounted(() => { hotkeys.abort() })
+onUnmounted(() => {
+  hotkeys.abort()
+  clearTimeout(resetTimer)
+  stopCardClock()
+})
+
+// The icon's right-click menu.
+const dockMenu = computed<DockMenuAction[]>(() => labDiff.value
+  ? [
+      { label: "Open today's layout", icon: 'fas fa-map', action: () => { if (labDiff.value) open(labDiff.value, 'overlay') } },
+      { label: 'Open poelab in your browser', icon: 'fas fa-external-link-alt', action: () => { if (labDiff.value) open(labDiff.value, 'external') } }
+    ]
+  : [])
 </script>
 
 <style module>

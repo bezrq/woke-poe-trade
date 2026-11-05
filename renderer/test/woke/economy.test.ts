@@ -7,7 +7,7 @@ import path from 'path'
 import { FIXTURES } from '../helpers/game-data'
 import { parseDenseChunks, findDivinePrice } from '@/web/woke/market/parse'
 import { computeMovers, trendBaseline } from '@/web/woke/market/analysis'
-import { CATEGORY_TYPES } from '@/web/woke/market/types'
+import { CATEGORY_TYPES, uniqueItems } from '@/web/woke/market/types'
 import type { PriceItem } from '@/web/woke/market/types'
 import { buildInsight } from '@/web/woke/price-insight/insight'
 import type { InsightListing } from '@/web/woke/price-insight/insight'
@@ -64,6 +64,19 @@ describe('poe.ninja', () => {
 })
 
 describe('market movers from poe.ninja trend', () => {
+  it('applies the price floor to the price now', () => {
+    const row = (name: string, chaos: number) => ({ type: 'Scarab', name, variant: '', chaos })
+    const now = [row('Stays high', 600), row('Fell below', 394), row('Cheap jump', 39)]
+    const then = [row('Stays high', 500), row('Fell below', 1115), row('Cheap jump', 6.5)]
+    expect(computeMovers(now, then, { minChaos: 500, limit: 10 }).map(m => m.name)).toEqual(['Stays high'])
+  })
+
+  it('keeps one row per item from a snapshot saved with doubled rows', () => {
+    const row = { type: 'Fragment', name: 'Fragment of the Chimera', variant: '', chaos: 39 }
+    const other = { ...row, name: 'Fragment of the Minotaur' }
+    expect(uniqueItems([row, other, { ...row }])).toEqual([row, other])
+  })
+
   it('measures moves in divines when local history does not reach back', () => {
     const item = (type: string, name: string, chaos: number, d1: number) => ({ type, name, variant: '', chaos, d1 })
     const now = [item('Currency', 'Divine Orb', 300, 150), item('Scarab', 'Flat Scarab', 200, 100)]

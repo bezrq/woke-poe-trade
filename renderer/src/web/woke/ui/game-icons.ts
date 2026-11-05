@@ -48,6 +48,8 @@ export const MECHANIC_ICONS: Record<string, { src?: string, item?: string, fa: s
   heist: { item: "Rogue's Marker", fa: 'fas fa-mask' },
   lab: { item: 'Offering to the Goddess', fa: 'fas fa-dungeon' },
   sanctum: { item: 'Forbidden Tome', fa: 'fas fa-book' },
+  ultimatum: { item: 'Ultimatum Scarab', fa: 'fas fa-dungeon' },
+  bestiary: { item: 'Bestiary Scarab', fa: 'fas fa-paw' },
   map: { src: '/images/maps/normal.png', fa: 'fas fa-map' },
   stash: { src: '/images/stash.png', fa: 'fas fa-box' }
 }

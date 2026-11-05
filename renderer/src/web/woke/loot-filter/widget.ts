@@ -140,7 +140,7 @@ export function initLootFilterWidget (w: LootFilterWidget) {
   w.anchor = popupAnchor()
   w.sampleHotkey = 'Alt + F'
   w.editorHotkey = 'Alt + Shift + F'
-  w.reloadHotkey = 'Alt + R'
+  w.reloadHotkey = 'Alt + Shift + R'
   w.folder = ''
   w.sourceName = ''
   w.sourceOnline = false
@@ -189,7 +189,8 @@ export function normalizeLootFilterWidget (w: LootFilterWidget) {
   if (!w.anchor) w.anchor = popupAnchor()
   if (w.sampleHotkey === undefined) w.sampleHotkey = null
   if (w.editorHotkey === undefined) w.editorHotkey = null
-  if (w.reloadHotkey === undefined) w.reloadHotkey = 'Alt + R'
+  // Not Alt + R: that's Map scan's rolling mode.
+  if (w.reloadHotkey === undefined) w.reloadHotkey = 'Alt + Shift + R'
   if (typeof w.folder !== 'string') w.folder = ''
   if (typeof w.sourceName !== 'string') w.sourceName = ''
   if (w.saveMode !== 'overwrite') w.saveMode = 'copy'

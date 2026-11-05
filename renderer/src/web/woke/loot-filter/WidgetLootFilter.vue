@@ -2,7 +2,7 @@
   <Widget :config="mode === 'card' ? { ...config, anchor: cardAnchor } : config"
     :move-handles="mode === 'card' ? 'none' : 'corners'" :inline-edit="false" :readonly="true">
     <!-- Strictness and anything that needs you, behind one dock icon. -->
-    <DockItem ref="dockRef" id="loot-filter" :art="dockArt" title="Loot filter" :show="dockShow"
+    <DockItem :menu="dockMenu" ref="dockRef" id="loot-filter" :art="dockArt" title="Loot filter" :show="dockShow"
       :badge="dockBadge" :tone="dockTone" :readouts="dockReadouts" :wm-id="config.wmId" card-width="22rem">
       <template #card>
         <div :class="$style.dock">
@@ -79,6 +79,8 @@ import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
 import { WPanel, WEmpty, WButton, WBanner, WSkeleton, WKbd, gameIcon, toast } from '../ui'
 import DockItem from '../dock/DockItem.vue'
+import { openOverlay } from '../dock/dock'
+import type { DockMenuAction } from '../dock/dock'
 import { LEVEL_NAMES, LEVEL_SHORT, stepLabel } from './strictness'
 import { canTurnOff, markSeen, visibleNotices } from './notices'
 import type { Notice } from './notices'
@@ -298,7 +300,7 @@ function seeNotice () {
 // GGG's rules don't allow it on a log line or a timer.
 const reloadWaiting = computed(() => props.config.reloadViaChat && (store.pendingReload.value || store.netWaitsForReload.value))
 const dockReadouts = computed(() => reloadWaiting.value ? [{ id: 'reload', text: 'Reload', tone: 'up' as const }] : undefined)
-const dockShow = computed(() => Boolean(store.doc.value) && (props.config.neversink.on || dockNotes.value.length > 0 || reloadWaiting.value))
+const dockShow = computed(() => reloadWaiting.value || (Boolean(store.doc.value) && (props.config.neversink.on || dockNotes.value.length > 0)))
 const dockBadge = computed(() => props.config.neversink.on ? LEVEL_SHORT[props.config.neversink.level] : (dockNotes.value.length || null))
 const dockTone = computed(() => dockNotes.value.some(n => n.warn) ? 'warn' : (dockNotes.value.some(n => n.id === 'update') ? 'accent' : undefined))
 
@@ -327,6 +329,24 @@ const cardAnchor = computed(() => {
       : ((width - poePanelWidth) / width) * 100
   }
 })
+
+// The icon's right-click menu.
+const dockMenu = computed<DockMenuAction[]>(() => [
+  // Each sets the filter once, from this click.
+  ...(props.config.neversink.on
+    ? [
+        { label: 'Stricter', icon: 'fas fa-filter', action: () => { store.stepLevel(1).catch(() => {}) } },
+        { label: 'Looser', icon: 'fas fa-border-none', action: () => { store.stepLevel(-1).catch(() => {}) } }
+      ]
+    : []),
+  ...(dismissable.value.length
+    ? [
+        { label: 'See the notice', icon: 'fas fa-eye', action: () => { openOverlay(); seeNotice() } },
+        { label: 'Got it', icon: 'fas fa-check', action: gotIt },
+        ...(dismissable.value.some(canTurnOff) ? [{ label: "Don't tell me about this", icon: 'fas fa-bell-slash', action: turnOff }] : [])
+      ]
+    : [])
+])
 </script>
 
 <style module>

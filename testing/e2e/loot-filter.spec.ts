@@ -328,7 +328,7 @@ test('a save nobody asked to reload waits on the dock icon, and one key sends it
   await page.waitForTimeout(100)
   expect(fakeApp.game.chat).toEqual([])
 
-  await overlay.pressHotkey('Alt + R')
+  await overlay.pressHotkey('Alt + Shift + R')
   await expect.poll(() => fakeApp.game.chat).toEqual(['/itemfilter NeverSink (woke)'])
   await expect(overlay.dockIcon('loot-filter').filter({ hasText: 'Reload' })).toHaveCount(0)
 })

@@ -1,5 +1,8 @@
 <template>
   <div v-if="!error" class="layout-column min-h-0" style="height: auto;">
+    <teleport v-if="improved && verdictSlot" :to="verdictSlot">
+      <bulk-verdict :insight="bulkInsight" :unit="selectedCurr === 'xchgChaos' ? 'c' : 'div'" :need="need" :loading="tableLoading" />
+    </teleport>
     <div :class="$style.legacyMessage">
       {{ t(':legacy_bulk_xchg_msg') }}
     </div>
@@ -97,7 +100,7 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, PropType, computed, watch, ComputedRef, Ref, shallowRef, shallowReactive, inject, readonly } from 'vue'
+import { defineComponent, PropType, computed, watch, ComputedRef, Ref, ShallowRef, shallowRef, shallowReactive, inject, readonly } from 'vue'
 import { useI18nNs } from '@/web/i18n'
 import UiErrorBox from '@/web/ui/UiErrorBox.vue'
 import { BulkSearch, execBulkSearch, createTradeRequest, PricingResult } from './pathofexile-bulk'
@@ -113,6 +116,9 @@ import { artificialSlowdown } from './artificial-slowdown'
 import { useRetryCountdown } from './retry-countdown'
 import OnlineFilter from './OnlineFilter.vue'
 import TradeLinks from './TradeLinks.vue'
+import BulkVerdict from '@/web/woke/price-insight/BulkVerdict.vue'
+import { buildBulkInsight } from '@/web/woke/price-insight/bulk-insight'
+import { priceView } from '@/web/woke/price-insight/view'
 import '@/web/woke/price-insight/price-table.css'
 
 const slowdown = artificialSlowdown(900)
@@ -270,7 +276,7 @@ function useMarketRatioFinder () {
 }
 
 export default defineComponent({
-  components: { OnlineFilter, TradeLinks, UiErrorBox },
+  components: { OnlineFilter, TradeLinks, UiErrorBox, BulkVerdict },
   emits: ['reset'],
   props: {
     filters: {
@@ -306,6 +312,14 @@ export default defineComponent({
         : listed
     })
 
+    // woke: the verdict's slot sits above the mods, as for item listings.
+    const verdictSlot = inject<ShallowRef<HTMLElement | null>>('price-verdict-slot', shallowRef(null))
+    const need = computed(() => props.item.stackSize?.value ?? 1)
+    const bulkInsight = computed(() => {
+      if (!slowdown.isReady.value || !result.value) return null
+      return buildBulkInsight(result.value[selectedCurr.value].listedLazy.value, need.value)
+    })
+
     // woke: real rows only once loaded, with placeholder rows until then.
     const tableLoading = computed(() => {
       // Read first: this is what starts the other currency's search when it is picked.
@@ -339,6 +353,10 @@ export default defineComponent({
 
     return {
       t,
+      improved: computed(() => priceView.value === 'improved'),
+      verdictSlot,
+      need,
+      bulkInsight,
       error,
       retryIn,
       rateLimited,

@@ -3,7 +3,7 @@
     <WPanel v-if="open" width="66rem" max-height="72vh" :scroll="false" :resizable="false">
       <div :class="$style.root" data-search-palette @click="keepTyping" @keydown="onHotkey">
         <div v-if="pins.length" :class="$style.pins">
-          <button v-for="(p, i) in pins" :key="key(p)" :class="[$style.pin, { [$style.pinTop]: i === 0 && pins.length > 1 }]"
+          <button v-for="(p, i) in pins" :key="key(p)" v-item-tip="p" :class="[$style.pin, { [$style.pinTop]: i === 0 && pins.length > 1 }]"
             title="Remove from the comparison" @click="togglePin(p)">
             <span class="w-trunc" :class="rarityClass(p.type)">{{ p.name }}<span v-if="p.variant" class="w-dim"> {{ p.variant }}</span></span>
             <WPrice :chaos="p.chaos" :divine="divine" />
@@ -20,7 +20,7 @@
           <div ref="listEl" :class="$style.list" class="w-scroll">
             <template v-for="section in sections" :key="section.label">
               <div :class="$style.head">{{ section.label }}<template v-if="section.capped"> · first {{ PRICE_GROUP_LIMIT }}, keep typing</template></div>
-              <button v-for="e in section.entries" :key="e.id" tabindex="-1" :class="[$style.res, { [$style.sel]: e === selected }]"
+              <button v-for="e in section.entries" :key="e.id" v-item-tip="tipOf(e)" tabindex="-1" :class="[$style.res, { [$style.sel]: e === selected }]"
                 :data-selected="e === selected || undefined" @click="selected = e" @dblclick="run(e)">
                 <WIcon v-if="e.kind === 'price'" :src="ninjaIcon(e.group.type, e.group.name) ?? undefined" size="md" />
                 <WIcon v-else-if="e.kind === 'item'" :src="e.info.icon" size="md" />
@@ -147,7 +147,7 @@ import { LOOT_FILTER_TYPE, reloadHotkeyTarget, strictnessHotkeyTarget } from '..
 import { MAP_SCAN_TYPE, scanHotkeyTarget } from '../map-mods/scan'
 import { ESSENCE_SCAN_TYPE, essenceHotkeyTarget, essenceOnceTarget } from '../essence-scan/widget'
 import { RUN_TIMER_TYPE, hotkeyTarget as timerTarget } from '../campaign/run-timer'
-import { PRICE_GROUP_LIMIT, baseUniqueName, changeSince, groupKey, rarityClass, searchNamed, searchPrices, tradeUrl, typeLabel } from './search'
+import { PRICE_GROUP_LIMIT, baseUniqueName, changeSince, groupKey, groupTip, rarityClass, searchNamed, searchPrices, tradeUrl, typeLabel } from './search'
 import type { PriceGroup } from './search'
 import { SEARCH_TARGET, searchRequest } from './widget'
 import type { SearchWidget } from './widget'
@@ -197,6 +197,13 @@ function gameItems (): BaseType[] {
     allItems = [...byName.values()]
   }
   return allItems
+}
+
+// poe.ninja's names and refName are English, as the tooltip's data is.
+function tipOf (entry: Entry) {
+  if (entry.kind === 'price') return groupTip(entry.group)
+  if (entry.kind === 'item') return { name: entry.info.refName }
+  return null
 }
 
 function priceEntry (group: PriceGroup): PriceEntry {

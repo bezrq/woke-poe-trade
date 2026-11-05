@@ -1,7 +1,7 @@
 <template>
   <Widget :config="config" move-handles="none" :inline-edit="false" :readonly="true">
     <!-- The tracker is only this icon and its card, with the overlay open too. -->
-    <DockItem ref="dockRef" id="campaign" title="Campaign" :show="dockShow"
+    <DockItem :menu="dockMenu" ref="dockRef" id="campaign" title="Campaign" :show="dockShow"
       :badge="dockBadge" :tone="dockTone" :progress="actStep ? actStep.done / actStep.total : null" :readouts="readouts"
       pinnable card-width="24rem" @open-change="cardShown = $event">
       <template #card>
@@ -72,7 +72,8 @@ import Widget from '@/web/overlay/Widget.vue'
 import { formatClock } from '../ui/format'
 import RouteParts from './RouteParts.vue'
 import DockItem from '../dock/DockItem.vue'
-import { hideWhilePlaying, tickWhile } from '../dock/dock'
+import type { DockMenuAction } from '../dock/dock'
+import { hideWhilePlaying, showWithOverlay, tickWhile } from '../dock/dock'
 import { reportProblem } from '../dock/health'
 import { pinnedReadouts, pinsTick } from './pins'
 import { actFromAreaId, actLabel } from './log-parse'
@@ -379,6 +380,25 @@ const hotkeys = MainProcess.onEvent('MAIN->CLIENT::widget-action', (e) => {
 onUnmounted(() => {
   hotkeys.abort()
 })
+
+// The icon's right-click menu.
+const dockMenu = computed<DockMenuAction[]>(() => [
+  { label: 'Next step', icon: 'fas fa-step-forward', action: () => { move(1) } },
+  { label: 'Previous step', icon: 'fas fa-step-backward', action: () => { move(-1) } },
+  ...(timerWidget.value
+    ? [{
+        label: 'Splits and past runs',
+        icon: 'far fa-clock',
+        action: () => {
+          const w = timerWidget.value
+          if (!w) return
+          w.expanded = true
+          showWithOverlay(wm, w.wmId)
+        }
+      }]
+    : []),
+  { label: 'Choose what stays on screen', icon: 'fas fa-thumbtack', action: openSettings }
+])
 </script>
 
 <style module>
