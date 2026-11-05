@@ -30,6 +30,17 @@ history:
     comment: >-
       Which layout: A (everything open), B (gem icon strip) or C (links first,
       recommended)? Mocks: https://claude.ai/artifact/6HE8EvsEftsfzPEDcUVdVC
+  - type: comment
+    user: Agent
+    comment: >-
+      Guy asked for gems shown in linked socket groupings. Added options D
+      (socket path), E (vertical chain), F (inline chain). Links are drawn per
+      PoB gem group; PoB doesn't record which socket holds which gem, so gem
+      colours can disagree with the item's socket dots (Svalinn is R-R-R with
+      three blue gems). Waiting on his pick.
+    date: '2026-11-05T11:20:31.457Z'
+    selfAttested: true
+    id: c-2026-11-05t11-20-31-457z
 swimlane: require-input
 needsAction: null
 ---
