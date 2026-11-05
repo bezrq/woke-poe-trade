@@ -118,7 +118,8 @@ test('rare: the Generic / Base switch changes the title and the search', async (
 
   await scope.getByText('Base').click()
   await expect(title).toHaveText('Two-Stone Ring')
-  await panel.getByRole('button', { name: 'Search', exact: true }).click()
+  // Moving from a filter onto Search runs the search, so a click would find it gone.
+  await panel.getByRole('button', { name: 'Search', exact: true }).hover()
   await expect.poll(() => {
     const r = fakeApp.requests.filter(r => r.url.includes('/api/trade/search/')).pop()
     return r ? JSON.parse(r.body).query.type : undefined
