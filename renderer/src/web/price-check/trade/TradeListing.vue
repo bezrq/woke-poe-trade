@@ -86,7 +86,7 @@
               <td class="px-2 w-pc-yours-tag">Yours</td>
               <td />
               <td v-if="item.stackSize" />
-              <td v-if="showItemLevel" class="px-2 text-right">{{ filters.itemLevel!.value }}</td>
+              <td v-if="showItemLevel" class="px-2 text-right">{{ item.itemLevel }}</td>
               <td v-if="item.category === 'Gem'" />
               <td v-if="filters.quality || item.category === 'Gem'" />
               <td v-for="col in shownColumns" :key="col.key" class="w-pc-stat">{{ formatStatValue(col.yours, col) }}</td>
@@ -187,6 +187,7 @@ import { buildInsight, FIX_TAG } from '@/web/woke/price-insight/insight'
 import { groupListings, rowTitle, ListingRow } from '@/web/woke/price-insight/listing-rows'
 import { pickStatColumns, listingStatValue, formatStatValue, statTone, statColumnsThatFit, StatColumn } from '@/web/woke/price-insight/stat-columns'
 import { nowMinute } from '@/web/woke/ui/format'
+import { textScale } from '@/web/woke/ui/text-scale'
 import '@/web/woke/price-insight/price-table.css'
 import { useCheckLog } from '@/web/woke/price-insight/useCheckLog'
 import { isBlankRareSearch, ninjaFitsSearch, skipsTopMods } from '@/web/woke/price-insight/search-scope'
@@ -206,7 +207,8 @@ const WIDTH_SELLER = 90
 const WIDTH_TAG = 60
 const WIDTH_STASH_ICON = 24
 
-function useTradeApi () {
+// sameStats: a seller's listings only count as one when their stat columns match.
+function useTradeApi (sameStats: (a: PricingResult, b: PricingResult) => boolean) {
   let searchId = 0
   let collapseMerchant = false
   const error = shallowRef<string | null>(null)
@@ -223,7 +225,7 @@ function useTradeApi () {
         continue
       }
       // woke: a seller's corrupted and clean copies stay apart.
-      const existingRes = out.find((added, idx) => Boolean(added.corrupted) === Boolean(result.corrupted) && (
+      const existingRes = out.find((added, idx) => Boolean(added.corrupted) === Boolean(result.corrupted) && sameStats(added, result) && (
         (
           added.accountName === result.accountName &&
           added.priceCurrency === result.priceCurrency &&
@@ -339,7 +341,12 @@ export default defineComponent({
       slowdown.reset(item)
     }, { immediate: true })
 
-    const { error, searchResult, groupedResults, fetchResults, fetching, search } = useTradeApi()
+    const allColumns = computed(() => pickStatColumns(props.stats))
+    const statValue = (listing: PricingResult, col: StatColumn) =>
+      listingStatValue(listing.listedItem, col, props.item.category)
+
+    const { error, searchResult, groupedResults, fetchResults, fetching, search } = useTradeApi((a, b) =>
+      allColumns.value.every(col => formatStatValue(statValue(a, col), col) === formatStatValue(statValue(b, col), col)))
     const { retryIn, rateLimited } = useRetryCountdown(error)
     const refreshNote = shallowRef('')
     // A tooltip must not outlive the listings it came from.
@@ -369,12 +376,8 @@ export default defineComponent({
     const improved = computed(() => priceView.value === 'improved')
 
     const showItemLevel = computed(() => Boolean(props.filters.itemLevel && !props.filters.itemLevel.disabled))
-    const allColumns = computed(() => pickStatColumns(props.stats))
     const scrollEl = shallowRef<HTMLElement | null>(null)
     const { width: tableWidth } = useElementSize(scrollEl)
-
-    const statValue = (listing: PricingResult, col: StatColumn) =>
-      listingStatValue(listing.listedItem, col, props.item.category)
 
     // A tag or stash icon in the count column leaves less room, so check every listing.
     const otherColumnsWidth = computed(() => {
@@ -389,10 +392,8 @@ export default defineComponent({
       if (listings.some(r => !r.hasFee)) width += WIDTH_STASH_ICON
       return width
     })
-    const columnCap = computed(() => {
-      const scale = scrollEl.value ? parseFloat(getComputedStyle(scrollEl.value).getPropertyValue('--w-text-scale')) : 1
-      return statColumnsThatFit(tableWidth.value, otherColumnsWidth.value, scale || 1)
-    })
+    const columnCap = computed(() =>
+      statColumnsThatFit(tableWidth.value, otherColumnsWidth.value, textScale.value / 100, allColumns.value.length))
     const shownColumns = computed(() => allColumns.value.slice(0, columnCap.value))
     const hiddenColumns = computed(() => allColumns.value.slice(columnCap.value))
 

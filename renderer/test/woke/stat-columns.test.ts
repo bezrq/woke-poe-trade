@@ -1,8 +1,16 @@
 // The results column for each ticked stat, on items captured from the real trade API.
-import { beforeAll, describe, expect, it } from 'vitest'
+import { beforeAll, describe, expect, it, vi } from 'vitest'
 import { readFileSync } from 'fs'
 import { resolve } from 'path'
-import { loadGameData } from '../helpers/game-data'
+import { fixture, loadGameData, parseItem } from '../helpers/game-data'
+
+vi.mock('@/web/background/IPC', () => ({ Host: { proxy: async () => new Response('{}') } }))
+vi.mock('@/web/Config', () => ({
+  AppConfig: () => ({ apiLatencySeconds: 2, accountName: '' }),
+  poeWebApi: () => 'www.pathofexile.com'
+}))
+
+/* eslint-disable import/first */
 import { ItemCategory } from '@/parser'
 import type { ListingItem } from '@/web/woke/price-insight/listing-tip'
 import type { FilterOrGroup, StatFilter } from '@/web/price-check/filters/interfaces'
@@ -14,6 +22,8 @@ import {
   statColumnsThatFit,
   statTone
 } from '@/web/woke/price-insight/stat-columns'
+import { createPresets } from '@/web/price-check/filters/create-presets'
+/* eslint-enable import/first */
 
 const CAPTURED: ListingItem[] = JSON.parse(readFileSync(resolve(__dirname, '../../../testing/fixtures/trade/listing-items.json'), 'utf-8'))
 const HELMET = ItemCategory.Helmet
@@ -123,6 +133,37 @@ describe('listing values', () => {
     expect(listingStatValue(item(['6% increased Attack Speed']), column, HELMET)).toBe(-6)
   })
 
+  it('flips a "reduced" total, so the same mods read the same', () => {
+    const column = onlyColumn(filter({ tradeId: ['pseudo.pseudo_increased_movement_speed'], statRef: '#% increased Movement Speed', isNegated: true, value: 10, better: -1 }))
+    expect(listingStatValue(item(['10% reduced Movement Speed']), column, ItemCategory.Boots)).toBe(10)
+  })
+
+  it('files a mod under its list, whatever mechanic its domain names', () => {
+    const column = onlyColumn(filter({ tradeId: ['implicit.stat_3299347043'], statRef: '+# to maximum Life' }))
+    const listing: ListingItem = { implicitMods: [{ description: '+7 to maximum Life', domain: 'eldritch' }] }
+    expect(listingStatValue(listing, column, HELMET)).toBe(7)
+  })
+
+  it('reads the same mods the same as the filter, rounding included', () => {
+    const armour = parseItem(fixture('items/rare-body-armour-es.txt'))
+    const { presets, active } = createPresets(armour, { league: 'x', merchantOnly: true, currency: null, collapseListings: 'api', activateStockFilter: false, searchStatRange: 10, useEn: false })
+    const stats = presets.find(p => p.id === active)!.stats
+    for (const f of stats) if (f.group == null) f.disabled = false
+    const columns = pickStatColumns(stats)
+    expect(columns.map(c => c.label)).toEqual(expect.arrayContaining(['ES', 'Res', 'Chaos', 'Life', 'Stun']))
+    const listing: ListingItem = {
+      extended: { es: 1210 },
+      explicitMods: [
+        '120% increased Energy Shield', '42% increased Energy Shield', '18% increased Stun and Block Recovery',
+        '+120 to maximum Life', '+34% to Fire Resistance', '+34% to Cold Resistance', '+31% to Chaos Resistance'
+      ]
+    }
+    for (const col of columns) {
+      const value = listingStatValue(listing, col, armour.category)
+      expect([col.label, statTone(value, col)]).toEqual([col.label, ''])
+    }
+  })
+
   it('reads dps from extended and speed from the properties', () => {
     const listing: ListingItem = {
       extended: { dps: 208, pdps: 208, edps: 0 },
@@ -169,7 +210,7 @@ describe('colours', () => {
 describe('showing them', () => {
   it('formats whole numbers, decimals and missing values', () => {
     const whole = onlyColumn(filter({}))
-    expect(formatStatValue(15.5, whole)).toBe('16')
+    expect(formatStatValue(15.5, whole)).toBe('15')
     expect(formatStatValue(null, whole)).toBe('–')
     expect(formatStatValue(1.3, { ...whole, dp: true })).toBe('1.3')
   })
@@ -188,6 +229,12 @@ describe('showing them', () => {
     expect(statColumnsThatFit(100, 200, 1)).toBe(1)
     expect(statColumnsThatFit(620, 200, 1)).toBe(8)
     expect(statColumnsThatFit(420, 200, 1.3)).toBe(2)
+  })
+
+  it('makes room for the +N column once some are hidden', () => {
+    expect(statColumnsThatFit(428, 200, 1, 4)).toBe(4)
+    expect(statColumnsThatFit(428, 200, 1, 6)).toBe(4)
+    expect(statColumnsThatFit(420, 200, 1, 6)).toBe(3)
   })
 
   it('assumes the default before the table is measured', () => {

@@ -176,10 +176,16 @@
 .w-pc-table td.w-pc-stat-yours { color: var(--w-up); }
 
 /* The checked item's own numbers stay on screen under the column labels. */
+.w-pc-table { --w-pc-head-h: calc(25px * var(--w-text-scale, 1)); }
+:root:not([data-woke-theme="classic"]) .w-pc-table { --w-pc-head-h: calc(21px * var(--w-text-scale, 1)); }
 .w-pc-table tr.w-pc-yours td {
   position: sticky;
-  top: calc(21px * var(--w-text-scale, 1));
+  top: var(--w-pc-head-h);
   z-index: 1;
+}
+/* Solid even under the hover rule: listings scroll behind this row. */
+.w-pc-table tr.w-pc-yours td,
+:root:not([data-woke-theme="classic"]) .w-pc-table tbody tr.w-pc-yours:hover td {
   background-color: var(--w-pc-window, var(--w-panel-solid));
   background-image: linear-gradient(var(--w-accent-soft), var(--w-accent-soft));
   font-weight: 600;

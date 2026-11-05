@@ -1,5 +1,6 @@
 // A column per ticked stat in the price check's listings, compared to the item
 // being checked.
+import type { Page } from '@playwright/test'
 import { test, expect } from './harness'
 
 const LIMITS = { 'x-rate-limit-rules': 'Ip', 'x-rate-limit-ip': '100:1:0', 'x-rate-limit-ip-state': '1:1:0' }
@@ -13,18 +14,18 @@ const LISTINGS: Array<[number, number, number, number, number, number]> = [
   [40, 1226, 129, 35, 31, 31]
 ]
 
-test('ticked stats get columns, coloured against the checked item', async ({ overlay }) => {
-  await overlay.page.route('**/api/trade/search/**', (route) => route.fulfill({
+async function fakeTrade (page: Page, listings: typeof LISTINGS, opts: { oneStashSeller?: boolean } = {}) {
+  await page.route('**/api/trade/search/**', (route) => route.fulfill({
     contentType: 'application/json',
     headers: LIMITS,
-    body: JSON.stringify({ id: 'q', total: LISTINGS.length, result: LISTINGS.map((_, i) => `r${i}`) })
+    body: JSON.stringify({ id: 'q', total: listings.length, result: listings.map((_, i) => `r${i}`) })
   }))
-  await overlay.page.route('**/api/trade/fetch/**', (route) => route.fulfill({
+  await page.route('**/api/trade/fetch/**', (route) => route.fulfill({
     contentType: 'application/json',
     headers: LIMITS,
     body: JSON.stringify({
       result: route.request().url().split('/fetch/')[1].split('?')[0].split(',').map(id => {
-        const [amount, es, life, fire, cold, chaos] = LISTINGS[Number(id.slice(1))]
+        const [amount, es, life, fire, cold, chaos] = listings[Number(id.slice(1))]
         return {
           id,
           item: {
@@ -43,15 +44,32 @@ test('ticked stats get columns, coloured against the checked item', async ({ ove
           },
           listing: {
             indexed: new Date().toISOString(),
-            fee: 1,
+            ...(opts.oneStashSeller ? {} : { fee: 1 }),
             price: { amount, currency: 'chaos' },
-            account: { name: `seller${id}`, lastCharacterName: `char${id}` }
+            account: opts.oneStashSeller
+              ? { name: 'seller', lastCharacterName: 'char', online: { league: 'Testleague' } }
+              : { name: `seller${id}`, lastCharacterName: `char${id}` }
           }
         }
       })
     })
   }))
+}
 
+test('a seller\'s stash listings with different stats keep their own rows', async ({ overlay }) => {
+  await fakeTrade(overlay.page, LISTINGS.slice(0, 2).map(l => [30, ...l.slice(1)] as typeof LISTINGS[number]), { oneStashSeller: true })
+  await overlay.boot()
+  await overlay.copyItem('items/rare-body-armour-es.txt')
+  const panel = overlay.widget('price-check')
+  await panel.getByRole('button', { name: 'Search' }).click()
+  await expect(panel).toContainText('Matched: 2')
+  await expect(panel.locator('tbody tr:not(.w-pc-yours)')).toHaveCount(2)
+  await expect(panel.locator('tbody')).toContainText('1192')
+  await expect(panel.locator('tbody')).toContainText('1210')
+})
+
+test('ticked stats get columns, coloured against the checked item', async ({ overlay }) => {
+  await fakeTrade(overlay.page, LISTINGS)
   await overlay.boot()
   await overlay.copyItem('items/rare-body-armour-es.txt')
   const panel = overlay.widget('price-check')

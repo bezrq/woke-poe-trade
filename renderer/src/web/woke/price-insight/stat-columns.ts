@@ -5,6 +5,7 @@ import { linesToStatStrings, tryParseTranslation } from '@/parser/stat-translati
 import type { ItemCategory } from '@/parser'
 import type { FilterOrGroup, StatFilter } from '@/web/price-check/filters/interfaces'
 import { pseudoRuleStats } from '@/web/price-check/filters/pseudo'
+import { roundRoll } from '@/web/price-check/filters/util'
 import { modDomain, modText, ListingItem, ListingMod } from './listing-tip'
 
 type Reader = (item: ListingItem) => number | undefined
@@ -89,7 +90,7 @@ export interface StatColumn {
 
 type ColumnSource =
   | { kind: 'property', read: Reader }
-  | { kind: 'total', stats: Array<{ ref: string, multiplier?: number }> }
+  | { kind: 'total', stats: Array<{ ref: string, multiplier?: number }>, negated: boolean }
   | { kind: 'mod', ref: string, domains: string[], negated: boolean }
 
 function columnSource (filter: StatFilter): ColumnSource | null {
@@ -101,7 +102,7 @@ function columnSource (filter: StatFilter): ColumnSource | null {
   if (id.startsWith('item.')) return null
   if (id.startsWith('pseudo.')) {
     const stats = pseudoRuleStats(filter.statRef)
-    return stats ? { kind: 'total', stats } : null
+    return stats ? { kind: 'total', stats, negated: filter.roll?.isNegated ?? false } : null
   }
   return {
     kind: 'mod',
@@ -114,7 +115,7 @@ function columnSource (filter: StatFilter): ColumnSource | null {
 /** Every ticked number filter that a listing can answer, in the filter list's order. */
 export function pickStatColumns (stats: readonly FilterOrGroup[]): StatColumn[] {
   const columns: StatColumn[] = []
-  for (const filter of stats) {
+  for (const [index, filter] of stats.entries()) {
     if (filter.group != null) continue
     if (filter.disabled || filter.not || filter.option || !filter.roll) continue
     // A value every listing must equal adds nothing to compare.
@@ -123,7 +124,8 @@ export function pickStatColumns (stats: readonly FilterOrGroup[]): StatColumn[] 
     if (!source) continue
     const id = filter.tradeId[0]
     columns.push({
-      key: filter.tradeId.join('|') + '|' + filter.statRef,
+      // The index: a corrupted item can have two filters on one stat.
+      key: `${index}|${filter.tradeId.join('|')}|${filter.statRef}`,
       label: PROPERTIES[id]?.label ?? statColumnLabel(filter.statRef),
       title: filter.text,
       yours: filter.roll.value,
@@ -180,7 +182,10 @@ function listingStats (item: ListingItem, category: ItemCategory | undefined): L
   for (const [list, listDomain] of LISTS) {
     for (const mod of (item[list] ?? []) as ListingMod[]) {
       const text = modText(mod)
-      if (text) parseStatLines(text, modDomain(mod) || listDomain, category, stats)
+      // Only explicitMods mixes kinds. Elsewhere a mod's own domain can be a
+      // mechanic like "eldritch", while its list says what the filters search.
+      const domain = list === 'explicitMods' ? (modDomain(mod) || listDomain) : listDomain
+      if (text) parseStatLines(text, domain, category, stats)
     }
   }
   parsed.set(item, stats)
@@ -203,25 +208,20 @@ export function listingStatValue (item: ListingItem | undefined, column: StatCol
   const { source } = column
   if (source.kind === 'property') return source.read(item) ?? null
   const stats = listingStats(item, category)
-  if (source.kind === 'total') {
-    return sum(stats.flatMap(stat => {
+  const total = source.kind === 'total'
+    ? sum(stats.flatMap(stat => {
       const info = source.stats.find(s => s.ref === stat.ref)
       return info ? [stat.value * (info.multiplier ?? 1)] : []
     }))
-  }
-  const total = sum(stats
-    .filter(stat => stat.ref === source.ref && domainMatches(source.domains, stat.domain))
-    .map(stat => stat.value))
+    : sum(stats
+      .filter(stat => stat.ref === source.ref && domainMatches(source.domains, stat.domain))
+      .map(stat => stat.value))
   // A "reduced" filter shows its number as positive, so the listing's must match.
   return (total != null && source.negated) ? -total : total
 }
 
-function rounded (value: number, dp: boolean): number {
-  return dp ? Number(value.toFixed(2)) : Math.round(value)
-}
-
 export function formatStatValue (value: number | null, column: StatColumn): string {
-  return value == null ? '–' : String(rounded(value, column.dp))
+  return value == null ? '–' : String(roundRoll(value, column.dp))
 }
 
 export type StatTone = 'theirs' | 'yours' | ''
@@ -229,18 +229,22 @@ export type StatTone = 'theirs' | 'yours' | ''
 /** Who has the better number. "theirs" shows red, "yours" shows green. */
 export function statTone (value: number | null, column: StatColumn): StatTone {
   if (value == null || !column.better) return ''
-  const diff = rounded(value, column.dp) - rounded(column.yours, column.dp)
+  // The filter's own rounding, or the same mods on a listing could look different.
+  const diff = roundRoll(value, column.dp) - roundRoll(column.yours, column.dp)
   if (diff === 0) return ''
   return (diff > 0) === (column.better === 1) ? 'theirs' : 'yours'
 }
 
-const STAT_WIDTH = 52
+const STAT_WIDTH = 50
+const MORE_WIDTH = 22
 const MIN_COLUMNS = 1
 const DEFAULT_COLUMNS = 4
 
 /** How many stat columns fit once the table's other columns have their room. */
-export function statColumnsThatFit (tableWidth: number, otherColumnsWidth: number, textScale: number): number {
+export function statColumnsThatFit (tableWidth: number, otherColumnsWidth: number, textScale: number, total = 0): number {
   if (tableWidth <= 0) return DEFAULT_COLUMNS
-  const fit = Math.floor((tableWidth - otherColumnsWidth * textScale) / (STAT_WIDTH * textScale))
-  return Math.max(MIN_COLUMNS, fit)
+  const fit = (reserved: number) => Math.floor((tableWidth - reserved * textScale) / (STAT_WIDTH * textScale))
+  const all = fit(otherColumnsWidth)
+  // Hiding any means room for the "+N" column as well.
+  return Math.max(MIN_COLUMNS, total > all ? fit(otherColumnsWidth + MORE_WIDTH) : all)
 }
