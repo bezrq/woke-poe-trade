@@ -64,7 +64,7 @@
       <template v-else-if="config.tab === 'odds'">
         <div :class="$style.note" class="w-num">
           <template v-if="odds.medianResult != null">Half of all recipes return {{ fmt(odds.medianResult) }} or less. </template>
-          The average of {{ fmt(odds.saleValue) }} comes from the rare hits.
+          Before any rerolls, a recipe sells for {{ fmt(odds.saleValue) }} on average.
         </div>
         <div :class="$style.legend">
           <span><i :class="[$style.key, $style.chance]" />Chance of this result</span>
@@ -92,7 +92,7 @@
 
       <template v-else>
         <div :class="$style.note" class="w-num">
-          These drop under {{ pct(RARE_SHARE) }} of the time but cost less than a third of a typical rare scarab ({{ fmt(model.typicalRare ?? 0) }}), so they may rise later. Hold them rather than vendoring.
+          These drop under {{ pct(RARE_SHARE) }} of the time but cost less than a third of a typical rare scarab<template v-if="model.typicalRare != null"> ({{ fmt(model.typicalRare) }})</template>, so they may rise later. Hold them rather than vendoring.
         </div>
         <WEmpty v-if="!rareCheap.length" icon="fas fa-star">No exceptionally rare scarab is cheap right now.</WEmpty>
         <template v-else>
@@ -190,6 +190,9 @@ async function load () {
   } catch {
     if (seq === loadSeq) snapshot.value = null
   }
+  // A newer load has started (league switch or revision): leave the
+  // exchange to it, or this one could wipe what it just stored.
+  if (seq !== loadSeq) return
   if (exchangeLeague === id && Date.now() - exchangeAt < EXCHANGE_MAX_AGE_MS) return
   if (exchangeLeague !== id) exchange.value = null
   try {
@@ -197,8 +200,11 @@ async function load () {
     const parsed = response.ok ? parseExchange(await response.json()) : null
     if (seq === loadSeq) {
       exchange.value = parsed
-      exchangeLeague = id
-      exchangeAt = Date.now()
+      // Only a good answer is cached; after a 429 or 5xx the next load retries.
+      if (response.ok) {
+        exchangeLeague = id
+        exchangeAt = Date.now()
+      }
     }
   } catch {
     if (seq === loadSeq) exchange.value = null
@@ -224,7 +230,10 @@ const oddsScale = computed(() => Math.max(...odds.value.buckets.flatMap(b => [b.
 const verdict = computed(() => {
   const m = model.value
   if (!m) return ''
-  return buy.value.length ? `Buy under ${fmt(m.buyUnder)} each` : 'Nothing worth buying right now'
+  // Each row's break-even leaves its own type out of the pool, so one
+  // pool-wide "buy under" price would disagree with the list below.
+  const n = buy.value.length
+  return n ? `${n} scarab${n === 1 ? '' : 's'} worth vendoring` : 'Nothing worth buying right now'
 })
 const verdictSub = computed(() => model.value ? `A recipe returns ${fmt(model.value.recipeValue)} on average` : '')
 

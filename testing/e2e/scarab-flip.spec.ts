@@ -6,7 +6,7 @@ test('scarab flip: buy list, odds and rare scarabs from recorded prices', async 
   await overlay.boot({ overlayActive: true, widgets: [{ wmType: 'woke-scarab-flip', wmWants: 'show' }] })
   const panel = overlay.widget('woke-scarab-flip')
 
-  await expect(panel.getByText(/Buy under .* each/)).toBeVisible()
+  await expect(panel.getByText(/\d+ scarabs? worth vendoring/)).toBeVisible()
   // Volume comes from the exchange feed, so the supply columns show.
   await expect(panel.getByText('Traded / day')).toBeVisible()
   await expect(panel.getByText('Breach of the Hive', { exact: true })).toBeVisible()
