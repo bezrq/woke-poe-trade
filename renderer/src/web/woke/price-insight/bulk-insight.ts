@@ -1,0 +1,92 @@
+// A verdict for bulk goods on the exchange: what sellers with enough stock ask
+// per item. Pure functions, no Vue or IO.
+
+import type { Confidence } from './insight'
+
+export interface BulkListing {
+  exchangeAmount: number
+  itemAmount: number
+  stock: number
+  accountName: string
+  isMine: boolean
+}
+
+export interface BulkInsight {
+  /** Price per item, in the listings' own currency. */
+  low: number
+  fair: number
+  high: number
+  /** Where the market really starts, past offers far under the rest. */
+  floor: number
+  confidence: Confidence
+  /** Offers left out because the seller holds fewer than the amount asked about. */
+  lowStock: number
+  /** Too few sellers hold that amount, so smaller offers count after all. */
+  fewWithStock: boolean
+  sellers: number
+}
+
+const WINDOW = 6
+const MIN_WITH_STOCK = 3
+const FAR_UNDER = 0.5
+const MAX_BELOW_FLOOR = 2
+
+function median (values: number[]): number {
+  const s = [...values].sort((a, b) => a - b)
+  const mid = Math.floor(s.length / 2)
+  return s.length % 2 ? s[mid] : (s[mid - 1] + s[mid]) / 2
+}
+
+export function buildBulkInsight (listings: readonly BulkListing[], need: number): BulkInsight | null {
+  // An offer whose stock can't fill one trade isn't really for sale.
+  const real = listings.filter(l => !l.isMine && l.itemAmount > 0 && l.exchangeAmount > 0 && l.stock >= l.itemAmount)
+  const withStock = real.filter(l => l.stock >= need)
+  const fewWithStock = withStock.length < MIN_WITH_STOCK
+  const used = fewWithStock ? real : withStock
+  if (!used.length) return null
+
+  // Each seller's best offer: more rows from one seller add no opinion.
+  const best = new Map<string, number>()
+  for (const l of used) {
+    const unit = l.exchangeAmount / l.itemAmount
+    const known = best.get(l.accountName)
+    if (known == null || unit < known) best.set(l.accountName, unit)
+  }
+  const units = Array.from(best.values()).sort((a, b) => a - b)
+
+  let floorIdx = 0
+  const maxBelow = Math.min(MAX_BELOW_FLOOR, Math.floor(units.length / 3))
+  while (floorIdx < maxBelow) {
+    if (units[floorIdx] >= median(units.slice(floorIdx + 1, floorIdx + 1 + WINDOW)) * FAR_UNDER) break
+    floorIdx++
+  }
+
+  const window = units.slice(floorIdx, floorIdx + WINDOW)
+  const low = units[0]
+  const floor = window[0]
+  const high = window[window.length - 1]
+  const spread = high / floor
+
+  let confidence: Confidence
+  if (units.length >= 5 && spread <= 1.5) confidence = 'high'
+  else if (units.length >= 3 && spread <= 3) confidence = 'medium'
+  else confidence = 'low'
+
+  return {
+    low,
+    fair: median(window),
+    high,
+    floor,
+    confidence,
+    lowStock: fewWithStock ? 0 : real.length - withStock.length,
+    fewWithStock,
+    sellers: units.length
+  }
+}
+
+/** A readable per-item amount: bulk prices are often well under one. */
+export function bulkAmount (value: number): string {
+  if (value >= 100) return String(Math.round(value))
+  if (value >= 10) return String(Number(value.toFixed(1)))
+  return String(Number(value.toPrecision(2)))
+}
