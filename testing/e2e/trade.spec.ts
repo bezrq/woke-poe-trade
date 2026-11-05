@@ -197,6 +197,35 @@ test('the skip key moves the bubble on, and reopening brings it back', async ({ 
   await expect(bubble).toContainText('Kaltenhalt')
 })
 
+test('the card hints link to Settings and close for good', async ({ overlay, fakeApp }) => {
+  clearHistory(fakeApp.opts.userData)
+  await overlay.boot({ widgets: [{ wmType: 'woke-trade', ping: false }] })
+  await overlay.log(upTo('Kaltenhalt: Hi, I would like to buy your Headhunter'))
+  await overlay.hoverDockIcon('trade')
+  const icon = overlay.dockIcon('trade')
+  const stepTip = icon.locator('[data-tip="trade-step-key"]')
+  const windowTip = icon.locator('[data-tip="full-window"]')
+  await expect(stepTip).toContainText('Set it in Settings', { timeout: 5000 })
+  await expect(windowTip).toBeVisible()
+  await overlay.snap('card hints with Settings link')
+
+  await stepTip.getByRole('button', { name: "Don't show this again" }).click()
+  await windowTip.getByRole('button', { name: "Don't show this again" }).click()
+  await expect(stepTip).toHaveCount(0)
+  await expect(windowTip).toHaveCount(0)
+  await expect.poll(() => JSON.stringify(overlay.savedWidget('woke-trade') && fakeApp.readConfig()?.woke?.dock?.closedTips)).toContain('trade-step-key')
+  await overlay.snap('card with hints closed')
+})
+
+test('the Settings link opens the Trade assistant page', async ({ overlay, fakeApp }) => {
+  clearHistory(fakeApp.opts.userData)
+  await overlay.boot({ widgets: [{ wmType: 'woke-trade', ping: false }] })
+  await overlay.log(upTo('Kaltenhalt: Hi, I would like to buy your Headhunter'))
+  await overlay.hoverDockIcon('trade')
+  await overlay.dockIcon('trade').locator('[data-open-settings]').click({ timeout: 5000 })
+  await expect(overlay.page.getByText('Track whispers I send')).toBeVisible()
+})
+
 test('the history keeps old offers across restarts and reopens them', async ({ overlay, fakeApp }) => {
   const dir = path.join(fakeApp.opts.userData, 'woke-offer-history')
   fs.mkdirSync(dir, { recursive: true })

@@ -12,9 +12,10 @@
           @expand="expand(o)" @reply="reply(o, $event)" @traded="traded(o)" @dismiss="dismissOffer(o)" @reopen="reopenOffer(o)" />
         <OfferHistory :offers="older" :open="historyOpen" :now="now" :row-style="rowStyle" :art-for="artFor"
           @toggle="toggleHistory" @reopen="reopenOffer" />
-        <div class="w-faint text-xs" style="padding: 4px var(--w-pad) 6px;">
-          <template v-if="config.stepHotkey"><WKbd :keys="config.stepHotkey" /> next step for the top offer</template>
-          <template v-else>Set a "next step" key in Settings → Trade assistant to answer without the mouse.</template>
+        <div v-if="!tipClosed('trade-step-key')" class="w-faint text-xs" :class="$style.hint" data-tip="trade-step-key">
+          <span v-if="config.stepHotkey"><WKbd :keys="config.stepHotkey" /> next step for the top offer</span>
+          <span v-else>A "next step" key answers without the mouse. <button type="button" :class="$style.hintLink" data-open-settings @click="openSettingsPage(wm, 'Trade assistant')">Set it in Settings</button></span>
+          <button type="button" :class="$style.hintClose" title="Don't show this again" aria-label="Don't show this again" @click="closeTip('trade-step-key')"><i class="fas fa-times" /></button>
         </div>
       </template>
     </DockItem>
@@ -93,7 +94,7 @@ import { WPanel, WTabs, WEmpty, WButton, WBanner, WSkeleton, WKbd, openMenu, toa
 import { gameIcon } from '../ui/game-icons'
 import DockItem from '../dock/DockItem.vue'
 import type { DockMenuAction } from '../dock/dock'
-import { dockIconEl, hideWhilePlaying, saveDock } from '../dock/dock'
+import { closeTip, dockIconEl, hideWhilePlaying, openSettingsPage, saveDock, tipClosed } from '../dock/dock'
 import { usePriceIndex } from '../market/price-index'
 import { priceResolver } from '../boss-runs/calc'
 import { useLeagues } from '@/web/background/Leagues'
@@ -561,6 +562,11 @@ const dockMenu = computed<DockMenuAction[]>(() => {
 </script>
 
 <style module>
+.hint { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; padding: 4px var(--w-pad) 6px; }
+.hintLink { background: none; border: 0; padding: 0; color: var(--w-accent); font: inherit; cursor: pointer; text-decoration: underline; }
+.hintClose { flex: none; background: none; border: 0; padding: 0 2px; color: var(--w-faint); font: inherit; cursor: pointer; }
+.hintLink:focus-visible, .hintClose:focus-visible { outline: 2px solid var(--w-accent); outline-offset: 1px; }
+.hintClose:hover { color: var(--w-fg); }
 .totals { display: flex; flex-direction: column; gap: 2px; padding: 6px var(--w-pad); border-bottom: 1px solid var(--w-line); }
 .log { display: flex; flex-direction: column; }
 .logRow { display: grid; grid-template-columns: 3.2rem minmax(0, 1fr) minmax(0, 7rem) auto; gap: 6px; align-items: center; padding: 0 var(--w-pad); }
