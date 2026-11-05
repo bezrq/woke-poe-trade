@@ -96,6 +96,7 @@ if (props.config.wmFlags[0] === 'uninitialized') {
   props.config.pinned = []
   props.config.activeBuild = null
   props.config.followChars = {}
+  props.config.loadouts = {}
   wm.show(props.config.wmId)
 }
 migratePobWidget(props.config)
