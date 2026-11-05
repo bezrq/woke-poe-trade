@@ -1,5 +1,7 @@
-# Entering the Merciless Labyrinth from the hideout: Aspirants' Plaza at
-# area level 68.
+# Entering the Merciless Labyrinth from the hideout. As in a real log, the
+# plaza is level 33 whatever the difficulty; the first room is level 68.
 2026/11/04 21:00:00 400000000 1a4f3d1 [INFO Client 21088] Connecting to instance server at 159.65.86.12:6112
-2026/11/04 21:00:01 400001000 2caa1679 [DEBUG Client 21088] Generating level 68 area "3_Labyrinth_Airlock" with seed 1
+2026/11/04 21:00:01 400001000 2caa1679 [DEBUG Client 21088] Generating level 33 area "Labyrinth_Airlock" with seed 1
 2026/11/04 21:00:03 400003000 cff94598 [INFO Client 21088] : You have entered Aspirants' Plaza.
+2026/11/04 21:01:10 400070000 2caa1679 [DEBUG Client 21088] Generating level 68 area "3_Labyrinth_OH_straight" with seed 2
+2026/11/04 21:01:12 400072000 cff94598 [INFO Client 21088] : You have entered Estate Path.

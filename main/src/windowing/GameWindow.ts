@@ -49,6 +49,10 @@ export class GameWindow extends EventEmitter {
     })
   }
 
+  onDetach (cb: () => void) {
+    OverlayController.events.on('detach', cb)
+  }
+
   screenshot () {
     return OverlayController.screenshot()
   }

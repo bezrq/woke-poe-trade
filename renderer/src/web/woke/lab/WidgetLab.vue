@@ -5,7 +5,7 @@
       :wm-id="config.wmId" card-width="45rem" @open-change="cardShown = $event">
       <template #card>
         <div class="flex justify-between w-dim text-xs" style="padding: 4px var(--w-pad);">
-          <span>{{ cardDiff ? labLabel(cardDiff) + ' Labyrinth' : 'Labyrinth' }}</span>
+          <span>{{ cardDiff ? labLabel(cardDiff) + ' Labyrinth' : 'Labyrinth' }}<template v-if="cardDiff && !labDiff && !openDiff"> · your usual, until the first room</template></span>
           <span title="Labs reset at midnight UTC"><i class="far fa-clock" /> resets in {{ resetIn }}</span>
         </div>
         <img v-if="cardImg" :src="cardImg" :class="$style.cardImg" alt="Today's layout">
@@ -75,7 +75,7 @@ import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
 import { formatDuration } from '../ui/format'
 import { WPanel, WKbd, WListItem, WBanner } from '../ui'
-import { DEFAULT_LAB_URLS, DIFFICULTIES, FIND_LAYOUT_JS, difficultyForAreaLevel, isPlazaArea, labLabel, msUntilLabReset, parseHotkeyTarget, staleLayoutDate } from './lab'
+import { DEFAULT_LAB_URLS, DIFFICULTIES, FIND_LAYOUT_JS, isPlazaArea, labDifficultyOf, labLabel, msUntilLabReset, parseHotkeyTarget, staleLayoutDate } from './lab'
 import { useZone } from '../shared/zone'
 import { hostRequest } from '../shared/host'
 import DockItem from '../dock/DockItem.vue'
@@ -125,15 +125,15 @@ watch(webviewEl, (el, old) => {
 // Entering Aspirants' Plaza loads that difficulty's layout in the background.
 const zone = useZone()
 const inLab = computed(() => zone.kind === 'lab')
-const labDiff = computed<LabDifficulty | null>(() => inLab.value && zone.areaLevel != null ? difficultyForAreaLevel(zone.areaLevel) : null)
+const labDiff = computed<LabDifficulty | null>(() => inLab.value ? labDifficultyOf(zone.areaId, zone.areaLevel) : null)
 const peekDiff = shallowRef<LabDifficulty | null>(null)
 const peekImg = shallowRef<string | null>(null)
 const peekError = shallowRef<string | null>(null)
 let peekDay = ''
 const dockRef = shallowRef<InstanceType<typeof DockItem> | null>(null)
-// What the icon and its card show: the layout you opened, else the one loaded
-// for the lab you're in.
-const cardDiff = computed(() => openDiff.value ?? peekDiff.value ?? labDiff.value)
+// What the icon and its card show: the layout you opened, else the room you're
+// in, else in the plaza the layout loaded for your usual difficulty.
+const cardDiff = computed(() => openDiff.value ?? labDiff.value ?? (inLab.value && props.config.autoOpen !== false ? peekDiff.value : null))
 const cardImg = computed(() => (openDiff.value ? layoutImg.value : null) ?? peekImg.value)
 
 async function loadPeek (d: LabDifficulty, announce: boolean) {
@@ -161,12 +161,15 @@ function clearPeek () {
   peekImg.value = null
   peekError.value = null
 }
-watch(() => [zone.areaId, zone.enteredAt, labDiff.value] as const, ([areaId, _at, lab]) => {
-  // A layout you picked yourself beats the guess from the area level.
-  const d = openDiff.value ?? lab
+watch(() => [zone.areaId, zone.enteredAt, labDiff.value] as const, ([areaId, _at, room]) => {
+  // A layout you picked yourself comes first. Otherwise the plaza can't tell
+  // the difficulty, so it starts with your usual one and the first room corrects it.
+  const plaza = isPlazaArea(areaId)
+  const d = openDiff.value ?? (plaza ? props.config.defaultDifficulty : room)
   if (!inLab.value || !d || props.config.autoOpen === false) return
-  // Every plaza logs level 33, so the first room can correct the difficulty.
-  if (isPlazaArea(areaId) || peekDiff.value !== d) loadPeek(d, true)
+  // The layout you're running stays put from room to room, whatever the clock
+  // says; a failed load is retried at the next plaza.
+  if (plaza || peekDiff.value !== d) loadPeek(d, true)
 })
 // Reads the real clock too: `now` only ticks while the panel is on screen,
 // and in the lab only the dock icon is.
