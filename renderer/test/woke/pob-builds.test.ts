@@ -1,7 +1,8 @@
 // Reading items and notes from a PoB build for the build detail panel.
 import { describe, it, expect } from 'vitest'
 import { parseItemText } from '../../../main/src/woke/pob-parse'
-import { buildFacts, loadoutOf, noteRuns, relevantGems } from '@/web/woke/pob-builds/build-model'
+import { buildFacts, loadoutOf, noteRuns, pickStage, relevantGems, stageOf } from '@/web/woke/pob-builds/build-model'
+import { nextGems } from '@/web/woke/pob-builds/gems'
 import type { PobDetails, PobItemSet, PobSkillSet } from '@/web/woke/pob-builds/widget'
 
 describe('parseItemText', () => {
@@ -132,5 +133,56 @@ describe('loadouts', () => {
   it('keeps later stages in the gem list for a staged pick', () => {
     const staged: PobDetails = { ...d, skillSets: [set('Level 12', 'Arc'), set('Level 30', 'Spark'), set('Level 50', 'Ball Lightning')] }
     expect(relevantGems(staged, 60, null, { skillSet: 'Level 30' })).toEqual(['Spark', 'Ball Lightning'])
+  })
+})
+
+describe('bug hunt: build details', () => {
+  it('keeps mods of every picked variant on an item with alt variants', () => {
+    const item = parseItemText(`
+      Rarity: UNIQUE
+      Watcher's Eye
+      Prismatic Jewel
+      Has Alt Variant: true
+      Has Alt Variant Two: true
+      Selected Variant: 1
+      Selected Alt Variant: 2
+      Selected Alt Variant Two: 3
+      Implicits: 0
+      {variant:1}First pick
+      {variant:2}Second pick
+      {variant:3}Third pick
+      {variant:4}Not picked
+      Always there
+    `)
+    expect(item.mods).toEqual(['First pick', 'Second pick', 'Third pick', 'Always there'])
+  })
+
+  it.each(['20% quality', 'Cold 100%', 'Dmg 10.5', 'Full Plate', 'Template', 'Translate'])('"%s" is not a stage', (title) => {
+    expect(stageOf(title)).toBeNull()
+  })
+
+  it('still reads real stage titles', () => {
+    expect(stageOf('Level 28')).toEqual({ kind: 'level', at: 28 })
+    expect(stageOf('Act 5')).toEqual({ kind: 'act', at: 5 })
+    expect(stageOf('Late game')).toEqual({ kind: 'level', at: 70 })
+    expect(stageOf('Endgame')).toEqual({ kind: 'level', at: 70 })
+    for (const t of ['Lategame', 'LateGame', 'Late_game', 'Latemaps', 'late90', 'Endgame2', 'Final']) {
+      expect(stageOf(t)).toEqual({ kind: 'level', at: 70 })
+    }
+    expect(stageOf('Latest')).toBeNull()
+    expect(stageOf('Maps')).toEqual({ kind: 'level', at: 70 })
+    expect(stageOf('68')).toEqual({ kind: 'level', at: 68 })
+    expect(stageOf('6L')).toBeNull()
+  })
+
+  it('in the Epilogue with no level yet, picks the furthest set rather than the first', () => {
+    const sets = ['Level 10', 'Level 40', 'Level 60'].map(title => ({ title, isActive: false }))
+    expect(pickStage(sets, null, 11)?.item.title).toBe('Level 60')
+  })
+
+  it('lists transfigured gems among the next gems, with no campaign source', () => {
+    const d = { className: 'Witch', skills: [] } as unknown as PobDetails
+    const list = nextGems(d, 10, 'Witch', ['Kinetic Blast of Clustering'])
+    expect(list).toEqual([expect.objectContaining({ name: 'Kinetic Blast of Clustering', requiredLevel: 28, source: null, when: 'later' })])
   })
 })
