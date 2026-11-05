@@ -3,36 +3,30 @@
     <div class="flex gap-2 min-h-0 items-start">
       <!-- While you play: an icon in the dock, only in a zone with a mechanic;
            resting the mouse on it shows the glance card. -->
-      <DockItem id="mechanics" :art="mechanicIcon(mech.id).src" :icon="mech.icon" :title="mech.label" :show="dockShow" :wm-id="config.wmId"
-        card-width="19rem" @activate="config.expanded = true">
+      <DockItem id="mechanics" :art="mechanicIcon(dockMech.id).src" :icon="dockMech.icon" :title="dockMech.label" :show="dockShow" :wm-id="config.wmId"
+        card-width="19rem" @activate="openFull">
         <template #card>
-          <div class="flex justify-end gap-1" style="padding: 2px 6px 0;">
-            <button class="w-icon-btn" title="Previous mechanic" @click="step(-1)"><i class="fas fa-chevron-left" /></button>
-            <button class="w-icon-btn" title="Next mechanic" @click="step(1)"><i class="fas fa-chevron-right" /></button>
-            <button v-if="wm.active.value" class="w-icon-btn" title="Expand" @click="config.expanded = true"><i class="fas fa-expand-alt" /></button>
+          <div v-if="wm.active.value" class="flex justify-end" style="padding: 2px 6px 0;">
+            <button class="w-icon-btn" title="Expand" @click="openFull"><i class="fas fa-expand-alt" /></button>
           </div>
           <WBanner v-if="!hasPrices" tone="info">Waiting for poe.ninja prices…</WBanner>
-          <template v-if="mech.id === 'betrayal' && goals.length">
+          <template v-if="dockMech.id === 'betrayal' && goals.length">
             <div class="w-group-label">Goals · {{ goalsDone }} of {{ goals.length }} in place</div>
             <div v-for="g in goalRows.filter(r => !r.done)" :key="g.member" class="w-row" :class="$style.glanceBtr">
               <span class="w-trunc"><span class="w-accent">{{ g.member }}</span> → {{ DIVISIONS[g.di] }}</span>
               <span class="w-dim text-xs">{{ g.nowLabel }}</span>
             </div>
           </template>
-          <template v-else-if="mech.id === 'betrayal'">
+          <template v-else-if="dockMech.id === 'betrayal'">
             <div class="w-group-label">{{ starredGlance.length ? 'Starred slots' : 'Most valuable slots' }}</div>
             <div v-for="row in glanceBetrayal" :key="row.key" class="w-row" :class="$style.glanceBtr">
               <span class="w-trunc"><span class="w-accent">{{ row.member }}</span> · {{ row.reward }}</span>
               <WPrice :chaos="row.chaos" :divine="divine" class="justify-end" />
             </div>
           </template>
-          <MechanicPrices v-else :mech="mech" :items="items" :divine="divine" :top="3" />
-          <div v-if="scarabs.length" :class="$style.chips">
-            <WChip v-for="s in scarabs.slice(0, 2)" :key="s.item.name" :title="s.item.name">
-              <span class="w-trunc" style="max-width: 10rem;">{{ shortScarab(s.item.name) }}</span>
-              <WPrice :chaos="s.chaos" :divine="divine" />
-            </WChip>
-          </div>
+          <ExpeditionGlance v-else-if="dockMech.id === 'expedition'" :items="items" :divine="divine" :vendor="zoneVendor" />
+          <MechanicPrices v-else-if="dockMech.groups.length" :mech="dockMech" :items="items" :divine="divine" :top="3" />
+          <div v-else class="w-dim text-xs" :class="$style.pad">{{ dockMech.tips[0] }}</div>
         </template>
       </DockItem>
 
@@ -166,12 +160,13 @@ export default {
 import { inject, computed, shallowRef } from 'vue'
 import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
-import { WPanel, WSegmented, WButton, WPrice, WChip, WField, WSelect, WBanner, WIcon } from '../ui'
+import { WPanel, WSegmented, WButton, WPrice, WField, WSelect, WBanner, WIcon } from '../ui'
 import { usePriceIndex } from '../market/price-index'
 import DockItem from '../dock/DockItem.vue'
 import { mechanicIcon } from '../ui/game-icons'
 import { hideWhilePlaying } from '../dock/dock'
 import MechanicPrices from './MechanicPrices.vue'
+import ExpeditionGlance from './ExpeditionGlance.vue'
 import { MECHANICS, mechanicById, priceScarabs } from './data'
 import { DIVISIONS, MEMBERS, REWARDS, adviceFor, goalsFromStars, priceReward, slotKey } from './betrayal'
 import type { AdviceKind } from './betrayal'
@@ -220,20 +215,22 @@ const mech = computed(() => {
   return (m && !props.config.hidden.includes(m.id)) ? m : (visible.value[0] ?? MECHANICS[0])
 })
 
-function step (dir: number) {
-  const list = visible.value
-  if (!list.length) return
-  const i = list.findIndex(m => m.id === mech.value.id)
-  props.config.tab = list[(i + dir + list.length) % list.length].id
-}
-
 const zoneMech = shallowRef<string | null>(null)
+const zoneVendor = shallowRef<string | null>(null)
 useMechanicZone((id) => {
   zoneMech.value = id
   if (id && props.config.autoSwitch && !props.config.hidden.includes(id)) props.config.tab = id
-})
+}, (vendor) => { zoneVendor.value = vendor })
 // The icon is contextual: it shows only in a zone with a mechanic.
 const dockShow = computed(() => zoneMech.value != null && !props.config.hidden.includes(zoneMech.value))
+// So it always stands for the zone, whatever the full window was last left on.
+const dockMech = computed(() => (zoneMech.value && mechanicById(zoneMech.value)) || mech.value)
+
+function openFull () {
+  props.config.tab = dockMech.value.id
+  props.config.expanded = true
+  wm.show(props.config.wmId)
+}
 
 function collapse () {
   props.config.expanded = false
@@ -327,7 +324,6 @@ function boardMatch (member: string, div: string, reward: string) {
   background: var(--w-panel-2);
 }
 .whereOn { color: var(--w-accent-fg); background: var(--w-accent); border-color: var(--w-accent); }
-.chips { display: flex; flex-wrap: wrap; gap: 4px; padding: 6px var(--w-pad) 8px; }
 .split {
   display: grid;
   grid-template-columns: 52px minmax(0, 1.3fr) minmax(0, 1fr);

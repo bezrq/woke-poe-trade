@@ -32,9 +32,13 @@ export function freshness (ts: number | null | undefined, freshMin = 15, staleMi
 
 // ---- prices ----
 
-// One rounding for every price on screen: 1 decimal under 10, whole above.
+// One rounding for every price on screen: 1 decimal under 10, whole above,
+// and under 0.1 the first digit that isn't zero, so it never reads as 0 or 0.1.
 export function formatAmount (v: number): string {
-  return Math.abs(v) >= 10 ? Math.round(v).toString() : (+v.toFixed(1)).toString()
+  const abs = Math.abs(v)
+  if (abs >= 10) return Math.round(v).toString()
+  if (abs > 0 && abs < 0.1) return (+v.toPrecision(1)).toString()
+  return (+v.toFixed(1)).toString()
 }
 
 // "45 c" or "1.5 div": divines once it's worth at least one (or when `unit`
