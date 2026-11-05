@@ -1,7 +1,7 @@
 ---
 id: WOKEPOET-73
 title: 'Settings Text size changes window size, not text'
-status: In Progress
+status: Ready
 priority: None
 effort: None
 assignee: unassigned
@@ -23,5 +23,19 @@ history:
       window size. Local checks pass, review findings fixed. Merge pending the
       cloud step.
     id: a-2026-11-05t10-01-39-986z
+  - type: comment
+    user: Agent
+    comment: >-
+      Merged as be102406 and running on the dev build. New Text size slider
+      (100-150%) changes text only; old control renamed Price check window size.
+    date: '2026-11-05T10:15:55.552Z'
+    completionComment: true
+    id: c-2026-11-05t10-15-55-552z
+  - type: status_change
+    from: In Progress
+    to: Ready
+    user: Agent
+    date: '2026-11-05T10:15:55.552Z'
+needsAction: null
 ---
 Guy: the Settings "Text size" option makes windows bigger instead of text. It sets the root font size (rem), which scales the whole APT window. Fix: real text scale for all text; old control renamed to what it does.
