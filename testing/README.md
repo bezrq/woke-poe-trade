@@ -1,7 +1,7 @@
 # Automated in-game testing
 
 The toolkit's checks, so a change is tested before anyone opens the game.
-Three layers, all run by CI on every pull request (`.github/workflows/test.yml`):
+Five layers, all run by CI on every pull request (`.github/workflows/test.yml`):
 
 | Layer | Where | What it covers |
 | --- | --- | --- |
@@ -9,6 +9,7 @@ Three layers, all run by CI on every pull request (`.github/workflows/test.yml`)
 | OCR tests | `testing/vision` (vitest) | APT's opencv + tesseract reading map tooltips and essence monoliths from screenshots |
 | Fake-game tests | `testing/e2e` (Playwright) | The real app on a fake Path of Exile: hotkeys, clipboard, Client.txt, screenshots, the overlay, settings on disk |
 | Performance checks | `testing/perf` (Playwright) | Every module on: startup, idle in a map, opening the overlay, price check, memory, against budgets (see perf/README.md) |
+| Real Electron smoke test | `testing/electron` (`npm run test:electron`, under `xvfb-run`) | The actual Electron app laid out like the installer: overlay page loads and mounts, `<webview>` loads a page, Electron process count and memory against `electron/budgets.json`. Catches Electron upgrades and Chromium switches the browser-based tests can't see |
 
 ## The fake game
 
