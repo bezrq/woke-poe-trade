@@ -34,6 +34,8 @@ export default {
         poedbKey: null,
         craftOfExileKey: null,
         stashSearchKey: null,
+        bookmarksKey: null,
+        bookmarks: [],
         maps: {
           profile: 1,
           showNewStats: false,

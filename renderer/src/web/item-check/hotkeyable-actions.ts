@@ -1,7 +1,7 @@
 import { Host } from '@/web/background/IPC'
 import { AppConfig } from '@/web/Config'
 import { ParsedItem, parseClipboard } from '@/parser'
-import { lookupRequest, lookupUrl } from '@/web/woke/item-lookup/lookup'
+import { BOOKMARKS_TARGET, lookupRequest, lookupUrl } from '@/web/woke/item-lookup/lookup'
 import type { LookupTab } from '@/web/woke/item-lookup/lookup'
 
 const LOOKUP_TARGETS: Record<string, LookupTab> = {
@@ -11,6 +11,11 @@ const LOOKUP_TARGETS: Record<string, LookupTab> = {
 }
 
 export function registerActions () {
+  Host.onEvent('MAIN->CLIENT::widget-action', (e) => {
+    if (e.target === BOOKMARKS_TARGET && Host.isElectron) {
+      lookupRequest.value = { item: null, tab: 'bookmarks' }
+    }
+  })
   Host.onEvent('MAIN->CLIENT::item-text', (e) => {
     const tab = LOOKUP_TARGETS[e.target]
     if (!tab && e.target !== 'search-similar') return

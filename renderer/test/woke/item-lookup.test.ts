@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest'
-import { canCraft, lookupKeyAction, lookupTabs, lookupUrl, popOutUrl } from '@/web/woke/item-lookup/lookup'
+import { canCraft, lookupKeyAction, lookupTabs, lookupUrl, matchBookmarks, popOutUrl, toggleBookmark } from '@/web/woke/item-lookup/lookup'
 import type { LookupKeys } from '@/web/woke/item-lookup/lookup'
 
 const item = { rawText: 'Rarity: Rare\n+1% & more', info: { refName: "Maligaro's Virtuosity" } }
-const keys: LookupKeys = { wiki: 'Alt + W', poedb: null, coe: 'Alt + C' }
+const keys: LookupKeys = { wiki: 'Alt + W', poedb: null, coe: 'Alt + C', bookmarks: null }
 const craftable = { info: { craftable: true }, isCorrupted: false, isMirrored: false }
 
 describe('lookupUrl', () => {
@@ -28,6 +28,7 @@ describe('lookupTabs', () => {
 
   it('keeps the tab you asked for by its key', () => {
     expect(lookupTabs({ ...craftable, isCorrupted: true }, 'coe')).toEqual(['wiki', 'poedb', 'coe'])
+    expect(lookupTabs(null, 'bookmarks')).toEqual([])
   })
 })
 
@@ -61,5 +62,47 @@ describe('popOutUrl', () => {
     expect(popOutUrl('not a url', fallback)).toBe(fallback)
     expect(popOutUrl('', fallback)).toBe(fallback)
     expect(popOutUrl(undefined, fallback)).toBe(fallback)
+  })
+})
+
+describe('bookmarks', () => {
+  const saved = [{ id: 3, name: 'Fossils', url: 'https://www.poewiki.net/wiki/Fossil' }]
+
+  it('saves a page under its title with a fresh id', () => {
+    expect(toggleBookmark(saved, 'https://poedb.tw/us/Ring', ' Ring ')).toEqual([
+      ...saved, { id: 4, name: 'Ring', url: 'https://poedb.tw/us/Ring' }
+    ])
+  })
+
+  it('names an untitled page after its site', () => {
+    expect(toggleBookmark([], 'https://poedb.tw/us/Ring', '')[0]).toEqual({ id: 1, name: 'poedb.tw', url: 'https://poedb.tw/us/Ring' })
+  })
+
+  it('removes a page that is already saved', () => {
+    expect(toggleBookmark(saved, saved[0].url, 'Fossils')).toEqual([])
+  })
+
+  it('never saves anything but a web page', () => {
+    expect(toggleBookmark(saved, 'file:///C:/x', 'x')).toBe(saved)
+    expect(toggleBookmark(saved, undefined, 'x')).toBe(saved)
+  })
+
+  it('filters by name or link, and hides a bad link from a hand-edited config', () => {
+    const list = [...saved, { id: 4, name: 'Bad', url: 'javascript:alert(1)' }]
+    expect(matchBookmarks(list, '')).toEqual(saved)
+    expect(matchBookmarks(list, 'FOSS')).toEqual(saved)
+    expect(matchBookmarks(list, 'poewiki')).toEqual(saved)
+    expect(matchBookmarks(list, 'nope')).toEqual([])
+  })
+
+  it('switches to bookmarks on their key, and does nothing when already there', () => {
+    const k: LookupKeys = { ...keys, bookmarks: 'Alt + B' }
+    expect(lookupKeyAction('Alt + B', 'wiki', ['wiki'], k)).toEqual({ type: 'switch', tab: 'bookmarks' })
+    expect(lookupKeyAction('Alt + B', 'bookmarks', ['wiki'], k)).toBeNull()
+  })
+
+  it('has no pop-out key on a saved page or the list', () => {
+    expect(lookupKeyAction('Alt + W', 'page', ['wiki'], keys)).toEqual({ type: 'switch', tab: 'wiki' })
+    expect(lookupKeyAction('Alt + W', 'bookmarks', [], keys)).toBeNull()
   })
 })

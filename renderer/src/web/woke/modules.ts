@@ -6,6 +6,7 @@
 // module with a placed widget needs them.
 //
 // Kept free of Vue component and widget imports: Config.ts imports this file.
+import { BOOKMARKS_TARGET } from './item-lookup/lookup'
 import type { DockConfig } from './dock/dock'
 import type { ShortcutAction } from '@ipc/types'
 
@@ -165,6 +166,7 @@ export function filterAptShortcuts (config: ConfigLike, actions: ShortcutAction[
     if (action.type === 'copy-item' && action.target === 'price-check') return priceCheck
     if (action.type === 'copy-item' && ITEM_INFO_TARGETS.includes(action.target)) return itemInfo
     if (action.type === 'ocr-text' && action.target === 'heist-gems') return heistOcr
+    if (action.type === 'trigger-event' && action.target === BOOKMARKS_TARGET) return itemInfo
     return true
   })
 }

@@ -1,5 +1,5 @@
 <template>
-  <WPanel size-key="item-lookup" :title="request.item.info.name" :scroll="false"
+  <WPanel ref="panel" size-key="item-lookup" :title="request.item?.info.name ?? 'Bookmarks'" :scroll="false"
     width="60vw" height="88vh" max-height="none">
     <template #actions>
       <span v-if="activeKey" class="flex items-center gap-1 w-dim text-xs whitespace-nowrap mr-1">
@@ -8,19 +8,47 @@
       <span class="flex items-center gap-1 w-dim text-xs whitespace-nowrap mr-1">
         <WKbd keys="Esc" /> Back to game
       </span>
-      <button class="w-icon-btn" :title="popOutTitle" :aria-label="popOutTitle" @click="popOut">
-        <i class="fas fa-external-link-alt" />
-      </button>
+      <template v-if="tab !== 'bookmarks'">
+        <button class="w-icon-btn" :class="{ 'w-icon-btn--on': starred }" :title="starTitle" :aria-label="starTitle" @click="toggleStar">
+          <i :class="starred ? 'fas fa-star' : 'far fa-star'" />
+        </button>
+        <button class="w-icon-btn" :title="popOutTitle" :aria-label="popOutTitle" @click="popOut">
+          <i class="fas fa-external-link-alt" />
+        </button>
+      </template>
       <button class="w-icon-btn" title="Back to game" aria-label="Back to game" @click="close">
         <i class="fas fa-times" />
       </button>
     </template>
     <template #tabs>
-      <WTabs :model-value="tab" :options="tabOptions" @update:model-value="selectTab($event as LookupTab)" />
+      <WTabs :model-value="tab" :options="tabOptions" @update:model-value="selectTab($event as PanelTab)" />
     </template>
     <!-- Tabs load when first opened and keep their place when you flip between them. -->
     <webview v-for="t in opened" :key="t" v-show="t === tab" :ref="(el: unknown) => setView(t, el)" :src="urls[t]"
       class="pointer-events-auto w-full h-full flex" width="100%" height="100%" />
+    <div v-show="tab === 'bookmarks'" class="pointer-events-auto w-full h-full flex flex-col min-h-0">
+      <div v-if="bookmarks.length" style="padding: 8px var(--w-pad);">
+        <WField v-model="filter" icon="fas fa-search" placeholder="Filter bookmarks" />
+      </div>
+      <div class="w-scroll flex-1 min-h-0">
+        <WListItem v-for="b in shown" :key="b.id" :active="tab === 'bookmarks' && pageId === b.id" @select="openBookmark(b)">
+          <span class="w-trunc">{{ b.name }}</span>
+          <template #sub>{{ b.url }}</template>
+          <template #actions>
+            <button class="w-icon-btn" title="Open in your browser" aria-label="Open in your browser" @click="openExternal(b.url)">
+              <i class="fas fa-external-link-alt" />
+            </button>
+            <button class="w-icon-btn" title="Remove" aria-label="Remove" @click="remove(b)">
+              <i class="fas fa-trash" />
+            </button>
+          </template>
+        </WListItem>
+        <WEmpty v-if="bookmarks.length && !shown.length" icon="fas fa-filter">Nothing matches "{{ filter }}".</WEmpty>
+        <WEmpty v-else-if="!bookmarks.length" icon="far fa-star">
+          No bookmarks yet. Press the star on a page to save it here.
+        </WEmpty>
+      </div>
+    </div>
   </WPanel>
 </template>
 
@@ -29,53 +57,119 @@ import { computed, onBeforeUnmount, onMounted, shallowRef } from 'vue'
 import { Host, MainProcess } from '@/web/background/IPC'
 import { AppConfig } from '@/web/Config'
 import type { ItemCheckWidget } from '@/web/item-check/widget'
-import { WKbd, WPanel, WTabs } from '../ui'
+import { WEmpty, WField, WKbd, WListItem, WPanel, WTabs, toast } from '../ui'
 import {
-  POP_OUT_GUARD_MS, TAB_LABELS, lookupKeyAction, lookupTabs, lookupUrl, popOutUrl
+  POP_OUT_GUARD_MS, TAB_LABELS, isWebUrl, lookupKeyAction, lookupTabs, lookupUrl, matchBookmarks, popOutUrl, toggleBookmark
 } from './lookup'
-import type { LookupKeys, LookupRequest, LookupTab } from './lookup'
+import type { Bookmark, LookupKeys, LookupRequest, PanelTab } from './lookup'
 
 const props = defineProps<{
   request: LookupRequest
 }>()
 const emit = defineEmits<{ (e: 'close'): void }>()
 
-type ViewEl = HTMLElement & { getURL?: () => string }
+type ViewEl = HTMLElement & { getURL?: () => string, getTitle?: () => string }
 
-const tab = shallowRef<LookupTab>(props.request.tab)
-const opened = shallowRef<LookupTab[]>([props.request.tab])
-const views = new Map<LookupTab, ViewEl>()
+const tab = shallowRef<PanelTab>(props.request.tab)
+const opened = shallowRef<PanelTab[]>(props.request.tab === 'bookmarks' ? [] : [props.request.tab])
+const views = new Map<PanelTab, ViewEl>()
+const wired = new WeakSet<ViewEl>()
+const currentUrls = shallowRef<Partial<Record<PanelTab, string>>>({})
 const openedAt = performance.now()
+const panel = shallowRef<InstanceType<typeof WPanel> | null>(null)
+const filter = shallowRef('')
+const page = shallowRef<Bookmark | null>(null)
+const pageId = computed(() => page.value?.id)
 
-function setView (t: LookupTab, el: unknown) {
-  if (el) views.set(t, el as ViewEl)
-  else views.delete(t)
+function setView (t: PanelTab, el: unknown) {
+  if (!el) {
+    views.delete(t)
+    return
+  }
+  const view = el as ViewEl
+  views.set(t, view)
+  // An inline ref runs again on every render.
+  if (wired.has(view)) return
+  wired.add(view)
+  const note = () => {
+    currentUrls.value = { ...currentUrls.value, [t]: view.getURL?.() }
+  }
+  view.addEventListener('did-navigate', note)
+  view.addEventListener('did-navigate-in-page', note)
 }
 
-const keys = computed<LookupKeys>(() => {
-  const w = AppConfig('item-check') as ItemCheckWidget
-  return { wiki: w.wikiKey, poedb: w.poedbKey, coe: w.craftOfExileKey }
-})
-const activeKey = computed(() => keys.value[tab.value])
+const widget = computed(() => AppConfig('item-check') as ItemCheckWidget)
+const bookmarks = computed(() => widget.value.bookmarks)
+const shown = computed(() => matchBookmarks(bookmarks.value, filter.value))
+
+const keys = computed<LookupKeys>(() => ({
+  wiki: widget.value.wikiKey,
+  poedb: widget.value.poedbKey,
+  coe: widget.value.craftOfExileKey,
+  bookmarks: widget.value.bookmarksKey
+}))
+const activeKey = computed(() => tab.value === 'bookmarks' || tab.value === 'page' ? null : keys.value[tab.value])
 const popOutTitle = computed(() => activeKey.value ? `Open in your browser (${activeKey.value})` : 'Open in your browser')
 
-const tabs = computed(() => lookupTabs(props.request.item, props.request.tab))
-const tabOptions = computed(() => tabs.value.map(t => ({ value: t, label: TAB_LABELS[t], count: keys.value[t] ?? undefined })))
+const itemTabs = computed(() => lookupTabs(props.request.item, props.request.tab))
+const tabOptions = computed(() => [
+  ...itemTabs.value.map(t => ({ value: t as PanelTab, label: TAB_LABELS[t], count: keys.value[t] ?? undefined })),
+  ...(page.value ? [{ value: 'page' as PanelTab, label: page.value.name, count: undefined }] : []),
+  { value: 'bookmarks' as PanelTab, label: 'Bookmarks', count: keys.value.bookmarks ?? (bookmarks.value.length || undefined) }
+])
 
 const urls = computed(() => {
   const language = AppConfig().language
-  return Object.fromEntries(tabs.value.map(t => [t, lookupUrl(t, props.request.item, language)])) as Record<LookupTab, string>
+  const out: Partial<Record<PanelTab, string>> = {}
+  const { item } = props.request
+  if (item) {
+    for (const t of itemTabs.value) out[t] = lookupUrl(t, item, language)
+  }
+  if (page.value) out.page = page.value.url
+  return out
 })
 
-function selectTab (t: LookupTab) {
-  if (!opened.value.includes(t)) opened.value = [...opened.value, t]
+const liveUrl = computed(() => currentUrls.value[tab.value] ?? urls.value[tab.value])
+const starred = computed(() => bookmarks.value.some(b => b.url === liveUrl.value))
+const starTitle = computed(() => starred.value ? 'Remove from bookmarks' : 'Save to bookmarks')
+
+function selectTab (t: PanelTab) {
+  if (t !== 'bookmarks' && !opened.value.includes(t)) opened.value = [...opened.value, t]
   tab.value = t
 }
 
-function popOut () {
-  const url = popOutUrl(views.get(tab.value)?.getURL?.(), urls.value[tab.value])
+function toggleStar () {
+  const view = views.get(tab.value)
+  const url = view?.getURL?.() || urls.value[tab.value]
+  widget.value.bookmarks = toggleBookmark(bookmarks.value, url, view?.getTitle?.())
+  currentUrls.value = { ...currentUrls.value, [tab.value]: url }
+}
+
+function openBookmark (b: Bookmark) {
+  page.value = b
+  currentUrls.value = { ...currentUrls.value, page: undefined }
+  selectTab('page')
+}
+
+// No "are you sure": remove now, offer Undo.
+function remove (b: Bookmark) {
+  const before = bookmarks.value
+  widget.value.bookmarks = before.filter(o => o.id !== b.id)
+  toast(`Removed "${b.name}"`, {
+    anchor: panel.value?.el,
+    undo: () => { widget.value.bookmarks = before }
+  })
+}
+
+function openExternal (url: string) {
+  if (!isWebUrl(url)) return
   window.open(url)
   emit('close')
+}
+
+function popOut () {
+  const fallback = urls.value[tab.value]
+  if (fallback) openExternal(popOutUrl(views.get(tab.value)?.getURL?.(), fallback))
 }
 
 function close () {
@@ -85,7 +179,7 @@ function close () {
 
 // With the overlay focused the game's hotkeys are off, so main passes these on.
 const keyController = MainProcess.onEvent('MAIN->OVERLAY::woke-panel-key', ({ key }) => {
-  const action = lookupKeyAction(key, tab.value, tabs.value, keys.value)
+  const action = lookupKeyAction(key, tab.value, itemTabs.value, keys.value)
   if (!action) return
   if (action.type === 'switch') selectTab(action.tab)
   else if (performance.now() - openedAt >= POP_OUT_GUARD_MS) popOut()

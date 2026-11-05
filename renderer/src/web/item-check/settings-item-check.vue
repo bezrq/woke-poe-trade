@@ -42,6 +42,10 @@ const hotkeys = computed(() => {
     translationKey: 'item.find_in_stash',
     config: _configModelValue(widget, 'stashSearchKey')
   })
+  out.push({
+    translationKey: 'item.open_bookmarks',
+    config: _configModelValue(widget, 'bookmarksKey')
+  })
   return out
 })
 </script>
