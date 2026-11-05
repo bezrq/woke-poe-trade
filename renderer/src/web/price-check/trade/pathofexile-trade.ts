@@ -3,7 +3,7 @@ import { ItemFilters, StatFilter, FilterOrGroup, INTERNAL_TRADE_IDS, InternalTra
 import { setProperty as propSet } from 'dot-prop'
 import { DateTime } from 'luxon'
 import { Host } from '@/web/background/IPC'
-import { TradeResponse, Account, getTradeEndpoint, adjustRateLimits, RATE_LIMIT_RULES, preventQueueCreation } from './common'
+import { TradeResponse, Account, getTradeEndpoint, adjustRateLimits, RATE_LIMIT_RULES, preventQueueCreation, throwIfRateLimited, throwIfRestricted } from './common'
 import { stat, STAT_BY_REF_V2, pseudoStatByRef } from '@/assets/data'
 import { decodeFamilyFromSource as decodeMercenarySupports, SearchMode as MercSearchMode } from '../filters/pseudo/mercenary'
 import { RateLimiter } from './RateLimiter'
@@ -771,6 +771,8 @@ export async function requestTradeResultList (body: TradeRequest, leagueId: stri
     ])
 
     await RateLimiter.waitMulti(RATE_LIMIT_RULES.SEARCH)
+    // A penalty can start while this request waits for its slot.
+    throwIfRestricted(RATE_LIMIT_RULES.SEARCH)
 
     const response = await Host.proxy(`${getTradeEndpoint()}/api/trade/search/${leagueId}`, {
       method: 'POST',
@@ -781,6 +783,7 @@ export async function requestTradeResultList (body: TradeRequest, leagueId: stri
       body: JSON.stringify(body)
     })
     adjustRateLimits(RATE_LIMIT_RULES.SEARCH, response.headers)
+    throwIfRateLimited(RATE_LIMIT_RULES.SEARCH, response)
 
     const _data = await response.json() as TradeResponse<SearchResult>
     if (_data.error) {
@@ -803,10 +806,14 @@ export async function requestResults (
   let data = cache.get<FetchResult[]>(resultIds)
 
   if (!data) {
+    throwIfRestricted(RATE_LIMIT_RULES.FETCH)
     await RateLimiter.waitMulti(RATE_LIMIT_RULES.FETCH)
+    // A penalty can start while this request waits for its slot.
+    throwIfRestricted(RATE_LIMIT_RULES.FETCH)
 
     const response = await Host.proxy(`${getTradeEndpoint()}/api/trade/fetch/${resultIds.join(',')}?query=${queryId}`)
     adjustRateLimits(RATE_LIMIT_RULES.FETCH, response.headers)
+    throwIfRateLimited(RATE_LIMIT_RULES.FETCH, response)
 
     const _data = await response.json() as TradeResponse<{ result: Array<FetchResult | null> }>
     if (_data.error) {
