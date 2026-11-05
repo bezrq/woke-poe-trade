@@ -11,7 +11,7 @@ import { computed } from 'vue'
 import WIcon from '../ui/WIcon.vue'
 import { gemData } from './gems'
 import { gemArt } from './item-art'
-import { hideTip, showTip } from './tooltip'
+import { hideTip, showTip } from '../ui/tooltip/tooltip'
 
 const props = withDefaults(defineProps<{
   name: string

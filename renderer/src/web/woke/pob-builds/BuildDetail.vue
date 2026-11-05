@@ -162,7 +162,6 @@
         <WEmpty v-else icon="fas fa-sticky-note">No notes in this build.</WEmpty>
       </template>
     </div>
-    <GameTooltip />
   </WPanel>
 </template>
 
@@ -178,7 +177,6 @@ import type { CampaignWidget } from '../campaign/widget'
 import { LOOT_FILTER_TYPE } from '../loot-filter/widget'
 import type { LootFilterWidget } from '../loot-filter/widget'
 import type { BuildRuleSwitches } from '../loot-filter/build-rules'
-import GameTooltip from './GameTooltip.vue'
 import GemName from './GemName.vue'
 import SocketDots from './SocketDots.vue'
 import { nextGems } from './gems'
@@ -188,7 +186,7 @@ import {
   relevantGems, skillSetsOf, slotLabel, socketGroups, socketRegex
 } from './build-model'
 import { itemArt } from './item-art'
-import { hideTip, showTip } from './tooltip'
+import { hideTip, showTip } from '../ui/tooltip/tooltip'
 import { pobApi } from './widget'
 import type { LoadoutPick, PobBuildEntry, PobBuildsWidget, PobDetails, PobItem } from './widget'
 import { useActiveBuild } from './active'

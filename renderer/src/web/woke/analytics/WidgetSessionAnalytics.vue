@@ -156,7 +156,7 @@
                   <div v-if="r.loot.length" class="flex flex-wrap gap-1">
                     <button v-for="(l, j) in r.loot" :key="j" :style="{ color: lootColour(l.type) }" :class="[$style.loot, moving && moving.run === i && moving.line === j ? $style.moving : '']"
                       :title="`${l.chaos != null ? num(l.chaos * l.qty / (rate(openSession) ?? 1)) + ' ' + unitLabel : 'no price'}. Click to move to another map.`"
-                      @click="pickLoot(i, j)"><WIcon :src="lootArt(l.type, l.name)" fallback="fas fa-coins" class="mr-1" />{{ l.name }}<template v-if="l.qty > 1"> ×{{ l.qty }}</template></button>
+                      v-item-tip="l" @click="pickLoot(i, j)"><WIcon :src="lootArt(l.type, l.name)" fallback="fas fa-coins" class="mr-1" />{{ l.name }}<template v-if="l.qty > 1"> ×{{ l.qty }}</template></button>
                   </div>
                 </div>
                 <div class="flex flex-col items-end gap-1">
@@ -228,7 +228,7 @@ import Widget from '@/web/overlay/Widget.vue'
 import { formatDuration } from '../ui/format'
 import { AppConfig } from '@/web/Config'
 import { useLeagues } from '@/web/background/Leagues'
-import { WPanel, WTabs, WSegmented, WButton, WEmpty, WChip, WSpark, WIcon, WBanner, WSkeleton, openMenu, toast } from '../ui'
+import { WPanel, WTabs, WSegmented, WButton, WEmpty, WChip, WSpark, WIcon, WBanner, WSkeleton, openMenu, toast, vItemTip } from '../ui'
 import { copyText } from '../ui/copy'
 import { ninjaIcon } from '../ui/game-icons'
 import { usePriceIndex } from '../market/price-index'

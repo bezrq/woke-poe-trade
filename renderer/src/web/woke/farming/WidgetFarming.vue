@@ -91,7 +91,7 @@
             <div class="relative">
               <WField v-model="lootQuery" icon="fas fa-plus" placeholder="Add loot… (e.g. Divine Orb)" class="w-full" />
               <div v-if="lootResults.length" class="w-surface absolute left-0 right-0 z-10 mt-1 py-1">
-                <button v-for="item in lootResults" :key="key(item)" @click="addLoot(item)" class="w-row w-full text-left" style="grid-template-columns: minmax(0,1fr) auto;">
+                <button v-for="item in lootResults" :key="key(item)" v-item-tip="item" @click="addLoot(item)" class="w-row w-full text-left" style="grid-template-columns: minmax(0,1fr) auto;">
                   <span class="w-trunc flex items-center gap-1"><WIcon :src="art(item)" fallback="fas fa-coins" />{{ item.name }}<span v-if="item.variant" class="w-dim ml-1">{{ item.variant }}</span></span>
                   <span class="w-dim w-num text-xs">{{ fmt(item.chaos) }}</span>
                 </button>
@@ -99,7 +99,7 @@
             </div>
             <div>
               <div v-for="line in s.loot" :key="key(line)" class="w-row px-0" :class="$style.lineGrid">
-                <span class="w-trunc flex items-center gap-1"><WIcon :src="art(line)" fallback="fas fa-coins" />{{ line.name }}<span v-if="line.variant" class="w-dim ml-1">{{ line.variant }}</span></span>
+                <span v-item-tip="line" class="w-trunc flex items-center gap-1"><WIcon :src="art(line)" fallback="fas fa-coins" />{{ line.name }}<span v-if="line.variant" class="w-dim ml-1">{{ line.variant }}</span></span>
                 <button class="w-icon-btn" @click="changeQty(line, -1)"><i class="fas fa-minus text-xs" /></button>
                 <span class="text-center w-num">{{ line.qty }}</span>
                 <button class="w-icon-btn" @click="changeQty(line, 1)"><i class="fas fa-plus text-xs" /></button>
@@ -119,7 +119,7 @@
           <div class="relative">
             <WField v-model="costQuery" icon="fas fa-plus" placeholder="Add an input…" class="w-full" />
             <div v-if="costResults.length" class="w-surface absolute left-0 right-0 z-10 mt-1 py-1">
-              <button v-for="item in costResults" :key="key(item)" @click="addCost(item)" class="w-row w-full text-left" style="grid-template-columns: minmax(0,1fr) auto;">
+              <button v-for="item in costResults" :key="key(item)" v-item-tip="item" @click="addCost(item)" class="w-row w-full text-left" style="grid-template-columns: minmax(0,1fr) auto;">
                 <span class="w-trunc flex items-center gap-1"><WIcon :src="art(item)" fallback="fas fa-coins" />{{ item.name }}<span v-if="item.variant" class="w-dim ml-1">{{ item.variant }}</span></span>
                 <span class="w-dim w-num text-xs">{{ fmt(item.chaos) }}</span>
               </button>
@@ -127,7 +127,7 @@
           </div>
           <div>
             <div v-for="line in config.costs" :key="key(line)" class="w-row px-0" :class="$style.costGrid">
-              <span class="w-trunc flex items-center gap-1"><WIcon :src="art(line)" fallback="fas fa-coins" />{{ line.name }}<span v-if="line.variant" class="w-dim ml-1">{{ line.variant }}</span></span>
+              <span v-item-tip="line" class="w-trunc flex items-center gap-1"><WIcon :src="art(line)" fallback="fas fa-coins" />{{ line.name }}<span v-if="line.variant" class="w-dim ml-1">{{ line.variant }}</span></span>
               <input v-model.number="line.qty" type="number" min="0" step="1" :class="$style.input" class="w-full">
               <span class="text-right w-dim w-num">{{ linePrice(line) }}</span>
               <button class="w-icon-btn" @click="removeCost(line)" title="Remove (Undo in the note)"><i class="fas fa-times" /></button>
@@ -180,7 +180,7 @@ import { useVisibleClock } from '../shared/visible-clock'
 import { AppConfig, saveConfig } from '@/web/Config'
 import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
-import { WPanel, WTabs, WField, WButton, WEmpty, WKbd, WIcon, WBanner, toast } from '../ui'
+import { WPanel, WTabs, WField, WButton, WEmpty, WKbd, WIcon, WBanner, toast, vItemTip } from '../ui'
 import { ninjaIcon } from '../ui/game-icons'
 import { MainProcess } from '@/web/background/IPC'
 import { parseClipboard } from '@/parser'

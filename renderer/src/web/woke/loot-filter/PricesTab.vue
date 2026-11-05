@@ -36,7 +36,7 @@
         </div>
       </template>
       <div v-if="moves.length" class="w-group-label" :class="$style.label">Would move</div>
-      <div v-for="m in moves" :key="m.type + m.base" :class="$style.row" @contextmenu="moveMenu($event, m)">
+      <div v-for="m in moves" :key="m.type + m.base" v-item-tip="{ name: m.base }" :class="$style.row" @contextmenu="moveMenu($event, m)">
         <input :id="`pm-${m.type}-${m.base}`" v-model="picked[m.type + '|' + m.base]" type="checkbox" :class="$style.check" :aria-label="`Move ${m.base}`">
         <img v-if="icon(m)" :src="icon(m)!" :class="$style.art" alt="">
         <LabelPreview :text="m.base" :actions="lookOf(m.type, m.to)" :extras="false" />
@@ -80,7 +80,7 @@
       {{ hiddenCount }} hidden<template v-if="caughtCount">; your {{ config.safetyNet.minChaos }}c safety net still shows {{ caughtCount }}</template>. Click one to see what you'd get.
     </div>
     <template v-for="r in rows" :key="r.key">
-      <button type="button" class="w-focusable" :class="[$style.row, $style.healthRow, { [$style.open]: openRow === r.key }]" :aria-expanded="openRow === r.key" @click="openRow = openRow === r.key ? null : r.key">
+      <button v-item-tip="{ name: r.v.base }" type="button" class="w-focusable" :class="[$style.row, $style.healthRow, { [$style.open]: openRow === r.key }]" :aria-expanded="openRow === r.key" @click="openRow = openRow === r.key ? null : r.key">
         <img v-if="r.icon" :src="r.icon" :class="$style.art" alt="">
         <LabelPreview :text="r.v.base" :actions="r.v.block?.actions ?? []" :visibility="r.v.state === 'hidden' ? 'Hide' : 'Show'" :extras="false" />
         <span class="w-trunc text-xs" :class="$style.who">
@@ -100,7 +100,7 @@
           <div v-for="i in r.items" :key="i.name" :class="$style.priceRow">
             <img v-if="itemIcon(r.v, i.name)" :src="itemIcon(r.v, i.name)!" :class="$style.bigArt" alt="">
             <span v-else :class="$style.bigArt" />
-            <span class="w-trunc text-sm" :title="i.name">{{ i.name }}</span>
+            <span v-item-tip="{ name: i.name }" class="w-trunc text-sm">{{ i.name }}</span>
             <span :class="$style.bar"><i :class="$style[`g_${i.grade}`]" :style="{ width: `${priceBar(i.chaos, r.most)}%` }" /></span>
             <span class="w-num text-xs" :class="$style[`${i.grade}Text`]">{{ i.chaos != null ? `${Math.round(i.chaos)}c` : 'no price' }}</span>
             <span class="text-xs" :class="$style[`${i.grade}Text`]">{{ GRADE_LABEL[i.grade] }}{{ i.thin ? ', thin market' : '' }}</span>
@@ -123,7 +123,7 @@
 
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
-import { WButton, WChip, WEmpty, WField, WPrice, WSegmented, WToggle, agoPhrase, gameIcon, ninjaIcon, openMenu, toast } from '../ui'
+import { WButton, WChip, WEmpty, WField, WPrice, WSegmented, WToggle, agoPhrase, gameIcon, ninjaIcon, openMenu, toast, vItemTip } from '../ui'
 import { TURN_OFF_IDS } from './notices'
 import { gradeItems, healthKey, isDismissed, priceBar, showEffect, trashCount } from './health'
 import type { PriceGrade } from './health'

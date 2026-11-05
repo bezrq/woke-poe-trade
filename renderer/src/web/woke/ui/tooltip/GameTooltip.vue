@@ -49,6 +49,21 @@
           <div :class="$style.note">{{ gem.note }}</div>
         </section>
       </template>
+
+      <template v-else-if="lookup">
+        <section v-for="(lines, s) in lookup.model.sections" :key="s" :class="$style.block">
+          <div v-for="(line, l) in lines" :key="l">
+            <span v-for="(p, i) in line" :key="i" :class="$style[`t-${p.tone}`]">{{ p.text }}</span>
+          </div>
+        </section>
+        <footer v-if="lookup.market" :class="$style.strip">
+          <WPrice :chaos="lookup.market.chaos" :divine="lookup.market.divine" />
+          <span v-if="lookup.market.variant" class="w-dim">{{ lookup.market.variant }}</span>
+          <WDelta :value="lookup.market.change" title="Change over 7 days" />
+          <WSpark :values="lookup.market.graph" :width="88" :height="20" />
+          <span class="w-faint" :class="$style.span">7 days</span>
+        </footer>
+      </template>
     </div>
   </Teleport>
 </template>
@@ -56,15 +71,19 @@
 <script setup lang="ts">
 // Item and gem tooltips in the game's style, beside what's hovered. Sits on
 // the page rather than in the panel, so the panel's edges don't clip it.
+// Mounted once in the overlay.
 import { computed, inject, nextTick, onMounted, onUnmounted, ref, shallowRef, useCssModule, watch } from 'vue'
 import type { WidgetManager } from '@/web/overlay/interfaces'
-import SocketDots from './SocketDots.vue'
-import { socketGroups } from './build-model'
-import { gemData } from './gems'
-import type { GemColour } from './gems'
+import SocketDots from '../../pob-builds/SocketDots.vue'
+import { socketGroups } from '../../pob-builds/build-model'
+import { gemData } from '../../pob-builds/gems'
+import type { GemColour } from '../../pob-builds/gems'
+import type { PobItem } from '../../pob-builds/widget'
+import WDelta from '../WDelta.vue'
+import WPrice from '../WPrice.vue'
+import WSpark from '../WSpark.vue'
 import { hideTip, tip } from './tooltip'
-import type { GemTip } from './tooltip'
-import type { PobItem } from './widget'
+import type { GemTip, LookupTip } from './tooltip'
 
 const $style = useCssModule()
 const el = ref<HTMLElement | null>(null)
@@ -72,12 +91,14 @@ const placed = shallowRef<{ left: number, top: number } | null>(null)
 
 const item = computed<PobItem | null>(() => tip.value?.content.kind === 'item' ? tip.value.content.item : null)
 const gem = computed<GemTip | null>(() => tip.value?.content.kind === 'gem' ? tip.value.content : null)
+const lookup = computed<LookupTip | null>(() => tip.value?.content.kind === 'lookup' ? tip.value.content : null)
 const data = computed(() => gem.value ? gemData(gem.value.name) : null)
 
 const FRAMES: Record<string, string> = { UNIQUE: 'unique', RELIC: 'unique', RARE: 'rare', MAGIC: 'magic' }
-const frame = computed(() => $style[gem.value ? `gem-${data.value?.colour ?? 'w'}` : FRAMES[item.value?.rarity ?? ''] ?? 'normal'])
+const frame = computed(() => lookup.value ? $style[lookup.value.model.frame] : $style[gem.value ? `gem-${data.value?.colour ?? 'w'}` : FRAMES[item.value?.rarity ?? ''] ?? 'normal'])
 
 const lines = computed<string[]>(() => {
+  if (lookup.value) return [lookup.value.model.name, lookup.value.model.base ?? ''].filter(Boolean)
   if (gem.value) return [data.value?.name ?? gem.value.name]
   if (!item.value) return []
   return [item.value.name, item.value.base].filter(Boolean)
@@ -151,7 +172,7 @@ watch(tip, async (t) => {
   if (!el.value) return
   const r = el.value.getBoundingClientRect()
   const s = scale()
-  const p = place(t.anchor, r.width, r.height, t.content.kind === 'item')
+  const p = place(t.anchor, r.width, r.height, t.content.kind !== 'gem')
   placed.value = { left: p.left / s, top: p.top / s }
 })
 
@@ -200,6 +221,8 @@ onUnmounted(() => {
 .magic { --tip: var(--w-r-magic); --tip-rgb: 136, 136, 255; }
 .rare { --tip: var(--w-r-rare); --tip-rgb: 255, 255, 119; }
 .unique { --tip: var(--w-r-unique); --tip-rgb: 175, 96, 37; }
+.currency { --tip: var(--w-r-currency); --tip-rgb: 170, 158, 130; }
+.card { --tip: var(--w-r-divination); --tip-rgb: 127, 181, 214; }
 .gem-r { --tip: var(--w-gem-r); --tip-rgb: 234, 111, 95; }
 .gem-g { --tip: var(--w-gem-g); --tip-rgb: 114, 207, 100; }
 .gem-b { --tip: var(--w-gem-b); --tip-rgb: 127, 168, 242; }
@@ -231,4 +254,32 @@ onUnmounted(() => {
 .corrupted { color: var(--w-down); }
 .note { color: var(--w-dim); font-family: var(--w-body); font-size: var(--w-fs-sm); white-space: pre-line; }
 .sockets { display: flex; align-items: center; justify-content: center; gap: 8px; }
+
+.t-label { color: var(--w-faint); }
+.t-value { color: #fff; }
+.t-text { color: var(--w-r-normal); }
+.t-mod { color: var(--w-r-magic); }
+.t-dim { color: var(--w-dim); }
+.t-gem { color: var(--w-r-gem); }
+.t-flavour { color: var(--w-r-unique); font-style: italic; }
+.t-corrupted { color: var(--w-down); }
+.t-mutated { color: var(--w-corrupt); }
+.t-unique { color: var(--w-r-unique); }
+.t-rare { color: var(--w-r-rare); }
+.t-currency { color: var(--w-r-currency); }
+.t-card { color: var(--w-r-divination); }
+
+/* The price at the foot of a looked-up item. */
+.strip {
+  display: flex;
+  align-items: center;
+  gap: var(--w-s2);
+  padding: 6px 12px;
+  font-family: var(--w-body);
+  font-size: var(--w-fs-sm);
+  text-align: left;
+  background: rgba(255, 255, 255, 0.03);
+  border-top: 1px solid rgba(var(--tip-rgb), 0.4);
+}
+.span { margin-left: auto; }
 </style>
