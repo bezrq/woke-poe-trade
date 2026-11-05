@@ -1,7 +1,7 @@
 ---
 id: WOKEPOET-12
 title: Make dock icons snappy and their cards clickable
-status: Ready
+status: Done
 priority: Medium
 effort: S
 assignee: unassigned
@@ -59,6 +59,19 @@ history:
     to: Ready
     user: Agent
     date: '2026-11-05T02:54:06.677Z'
+  - type: comment
+    user: Agent
+    comment: >-
+      PR squash-merged for branch
+      `flux/WOKEPOET-12-make-dock-icons-snappy-and-their-cards-clickable` —
+      advanced to Done.
+    date: '2026-11-05T03:15:55.928Z'
+    id: c-2026-11-05t03-15-55-928z
+  - type: status_change
+    from: Ready
+    to: Done
+    user: Agent
+    date: '2026-11-05T03:15:55.928Z'
 branch: flux/WOKEPOET-12-make-dock-icons-snappy-and-their-cards-clickable
 baselineCommit: 95cbada0b56969b164437487851fe1db57556125
 needsAction: null

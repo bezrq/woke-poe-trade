@@ -1,7 +1,7 @@
 ---
 id: WOKEPOET-11
 title: 'Window controls on panel top bars, minimize and right-click menu'
-status: In Progress
+status: Done
 priority: Medium
 effort: M
 assignee: unassigned
@@ -81,6 +81,19 @@ history:
     to: In Progress
     user: Agent
     date: '2026-11-05T02:57:12.776Z'
+  - type: comment
+    user: Agent
+    comment: >-
+      PR squash-merged for branch
+      `flux/WOKEPOET-11-window-controls-on-panel-top-bars-minimize-and-right-click-m`
+      — advanced to Done.
+    date: '2026-11-05T03:15:52.224Z'
+    id: c-2026-11-05t03-15-52-224z
+  - type: status_change
+    from: In Progress
+    to: Done
+    user: Agent
+    date: '2026-11-05T03:15:52.224Z'
 needsAction: null
 branch: flux/WOKEPOET-11-window-controls-on-panel-top-bars-minimize-and-right-click-m
 baselineCommit: 95cbada0b56969b164437487851fe1db57556125
