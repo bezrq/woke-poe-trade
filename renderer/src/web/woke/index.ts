@@ -22,6 +22,7 @@ import WidgetCampaign from './campaign/WidgetCampaign.vue'
 import WidgetRunTimer from './campaign/WidgetRunTimer.vue'
 import WidgetAtlas from './atlas/WidgetAtlas.vue'
 import WidgetLab from './lab/WidgetLab.vue'
+import WidgetChallenges from './challenges/WidgetChallenges.vue'
 import WidgetFarming from './farming/WidgetFarming.vue'
 import WidgetMechanics from './mechanics/WidgetMechanics.vue'
 import WidgetMapMods from './map-mods/WidgetMapMods.vue'
@@ -46,6 +47,7 @@ export const wokeWidgets: WidgetComponent[] = [
   WidgetRunTimer as unknown as WidgetComponent,
   WidgetAtlas as unknown as WidgetComponent,
   WidgetLab as unknown as WidgetComponent,
+  WidgetChallenges as unknown as WidgetComponent,
   WidgetFarming as unknown as WidgetComponent,
   WidgetMechanics as unknown as WidgetComponent,
   WidgetMapMods as unknown as WidgetComponent,
