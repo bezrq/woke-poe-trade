@@ -1,0 +1,30 @@
+Item Class: Chart
+Rarity: Rare
+Nautical Travail
+Sandy Seabed Chart
+--------
+Abyssal Plain
+Area Level: 83
+Item Rarity: +60% (augmented)
+Monster Pack Size: +36% (augmented)
+--------
+Requirements:
+Level: 66
+--------
+Item Level: 83
+--------
+{ Implicit Modifier }
+Voyage Modifier will be revealed once Charted
+--------
+Chart Shape: Junction
+--------
+{ Prefix Modifier "Splitting" (Tier: 1) }
+Monsters fire 2 additional Projectiles
+{ Prefix Modifier "Freezing" (Tier: 1) — Damage, Physical, Elemental, Cold }
+Monsters deal 28(21-35)% extra Physical Damage as Cold
+{ Suffix Modifier "of Lightning" (Tier: 1) — Elemental, Lightning }
+Area has patches of Shocked Ground which increase Damage taken by 10%
+{ Suffix Modifier "of Giants" (Tier: 1) }
+Monsters have 53(46-60)% increased Area of Effect
+--------
+Take this item to Valerie aboard the Sovereign to Chart this area.

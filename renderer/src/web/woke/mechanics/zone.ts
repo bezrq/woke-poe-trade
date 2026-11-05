@@ -8,7 +8,7 @@ import { mechanicForZone } from './data'
 // Player chat has a channel prefix (#, $, &, %, @) or a different name, and
 // these speaker names are exact, so they don't clash with chat in practice.
 // Names are as the game logs them, title included ("Alva, Master Explorer").
-const NPC_MECHANIC: Record<string, string> = {
+export const NPC_MECHANIC: Record<string, string> = {
   'Einhar, Beastmaster': 'bestiary',
   'Alva, Master Explorer': 'incursion',
   'Niko, Master of the Depths': 'delve',

@@ -266,13 +266,25 @@ const present = (sections: TipLine[][]) => sections.filter(s => s.length)
 
 // ---- one builder per kind ----
 
+// The data lists every mod a unique can roll, so a synthesised or random one has
+// dozens that never appear together. No real item has this many of either kind.
+const MOST_IMPLICITS = 4
+const MOST_EXPLICITS = 12
+// The data doesn't say which are fixed, so this is only the start of the list.
+const EXPLICITS_SHOWN = 6
+
 export function uniqueTip (name: string, unique: TipUnique, base: TipBase | undefined, variant?: string): TipModel {
   const row = unique.v.find(r => r.n === variant) ?? unique.v[0]
-  const implicits = row?.i ?? []
-  const explicits = row?.e ?? []
+  const allImplicits = row?.i ?? []
+  const allExplicits = row?.e ?? []
+  const implicits = allImplicits.length > MOST_IMPLICITS ? [] : allImplicits
+  const explicits = allExplicits.length > MOST_EXPLICITS ? allExplicits.slice(0, EXPLICITS_SHOWN) : allExplicits
   const mutated = row?.m ?? []
-  const stats = base ? gearStats(base, [...implicits, ...explicits, ...mutated]) : []
-  const need = requirements(row?.l ?? base?.l, attributeNeeds(base, [...implicits, ...explicits, ...mutated]))
+  // Every explicit counts, since a fixed one can be past the cut. An implicit
+  // pool doesn't: none of it is sure, and it would inflate the item's stats.
+  const stats = base ? gearStats(base, [...implicits, ...allExplicits, ...mutated]) : []
+  const need = requirements(row?.l ?? base?.l, attributeNeeds(base, [...implicits, ...allExplicits, ...mutated]))
+  const moreExplicits = allExplicits.length - explicits.length
   return {
     name,
     base: unique.b || undefined,
@@ -280,8 +292,14 @@ export function uniqueTip (name: string, unique: TipUnique, base: TipBase | unde
     sections: present([
       stats,
       need ? [need] : [],
-      implicits.map(m => plain(unwrap(m), 'mod')),
-      [...mutated.map(m => plain(unwrap(m), 'mutated')), ...explicits.map(m => plain(unwrap(m), 'mod'))],
+      implicits.length < allImplicits.length
+        ? [plain(`${allImplicits.length} possible implicit mods`, 'dim')]
+        : implicits.map(m => plain(unwrap(m), 'mod')),
+      [
+        ...mutated.map(m => plain(unwrap(m), 'mutated')),
+        ...explicits.map(m => plain(unwrap(m), 'mod')),
+        ...(moreExplicits ? [plain(`and ${moreExplicits} more mods`, 'dim')] : [])
+      ],
       unique.f ? unique.f.split('\n').map(l => plain(l, 'flavour')) : []
     ])
   }

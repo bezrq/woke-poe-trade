@@ -1,6 +1,6 @@
 <template>
   <Widget :config="config" move-handles="corners" :inline-edit="false">
-    <DockItem id="essence-scan" title="Essence scan" :show="running || paused || !!message"
+    <DockItem :menu="dockMenu" :wake="unseenCorrupt" id="essence-scan" title="Essence scan" :show="running || paused || !!message"
       :led="message ? 'error' : paused ? 'warn' : running ? 'on' : null" :badge="unseenCorrupt || null"
       :wm-id="config.wmId" card-width="18rem" @open-change="onCard">
       <template #card>
@@ -48,7 +48,7 @@
             <WPrice :chaos="current.rated.totalChaos || null" :divine="divine" class="w-accent font-semibold" />
           </div>
           <div v-for="(r, i) in current.rated.rows" :key="i" :class="$style.erow">
-            <span :class="{ [$style.flagged]: r.flagged }">{{ shortEssenceName(r.essence) }}</span>
+            <span v-item-tip="{ name: r.essence.name, type: 'Essence' }" :class="{ [$style.flagged]: r.flagged }">{{ shortEssenceName(r.essence) }}</span>
             <WPrice :chaos="r.chaos" :divine="divine" :class="{ 'w-dim': !r.flagged }" />
           </div>
           <div v-if="current.rated.estimate" class="text-xs" :class="current.rated.estimate.gain > 0 ? 'w-up' : 'w-dim'"
@@ -59,7 +59,7 @@
           <template v-if="current.rated.specials.length">
             <div class="w-faint" style="font-size: var(--w-fs-xs); margin-top: 3px;">Corrupting can turn {{ current.rated.flagged.join(', ') }} into:</div>
             <div v-for="sp in current.rated.specials" :key="sp.name" :class="$style.erow" style="font-size: var(--w-fs-sm);">
-              <span :class="$style.flagged">{{ sp.name.replace('Essence of ', '') }}</span>
+              <span v-item-tip="{ name: sp.name, type: 'Essence' }" :class="$style.flagged">{{ sp.name.replace('Essence of ', '') }}</span>
               <WPrice :chaos="sp.chaos" :divine="divine" />
             </div>
           </template>
@@ -102,10 +102,11 @@ import { MainProcess } from '@/web/background/IPC'
 import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
 import { formatChaos } from '../ui/format'
-import { WPanel, WButton, WEmpty, WKbd, WPrice, toast } from '../ui'
+import { WPanel, WButton, WEmpty, WKbd, WPrice, toast, vItemTip } from '../ui'
 import { hostRequest } from '../shared/host'
 import DockItem from '../dock/DockItem.vue'
-import { hideWhilePlaying } from '../dock/dock'
+import type { DockMenuAction } from '../dock/dock'
+import { dockIconEl, hideWhilePlaying } from '../dock/dock'
 import { usePriceIndex } from '../market/price-index'
 import { parseMonolith, rateMonolith, shortEssenceName } from './essences'
 import type { EssenceVerdict, PricedMonolith } from './essences'
@@ -289,13 +290,13 @@ async function toggle () {
 }
 
 const panel = shallowRef<InstanceType<typeof WPanel> | null>(null)
-function clear () {
+function clear (from?: Event | 'icon') {
   const before = { entries: entries.value, seen: seenCorrupt.value }
   entries.value = []
   seenCorrupt.value = new Set()
   current.value = null
   hostRequest('essence-scan-reread', null).catch(() => {})
-  toast('Scan list cleared', { anchor: panel.value?.el, undo: () => { entries.value = before.entries; seenCorrupt.value = before.seen } })
+  toast('Scan list cleared', { anchor: from === 'icon' ? dockIconEl('essence-scan') : panel.value?.el, dock: from === 'icon', undo: () => { entries.value = before.entries; seenCorrupt.value = before.seen } })
 }
 
 const hotkeys = MainProcess.onEvent('MAIN->CLIENT::widget-action', (e) => {
@@ -317,6 +318,13 @@ onUnmounted(() => {
   if (running.value) hostRequest('essence-scan-stop', null).catch(() => {})
   clearTimeout(onceTimer)
 })
+
+// The icon's right-click menu.
+const dockMenu = computed<DockMenuAction[]>(() => [
+  { label: 'Read the screen once', icon: 'fas fa-eye', action: () => { readOnce().catch(() => {}) } },
+  { label: running.value && !paused.value ? 'Stop scanning' : 'Start scanning', icon: running.value && !paused.value ? 'fas fa-stop' : 'fas fa-play', action: () => { toggle().catch(() => {}) } },
+  { label: 'Clear the list', icon: 'fas fa-broom', disabled: !entries.value.length, action: () => { clear('icon') } }
+])
 </script>
 
 <style module>

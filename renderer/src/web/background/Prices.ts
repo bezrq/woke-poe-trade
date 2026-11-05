@@ -15,6 +15,9 @@ type PriceDatabase = Array<{ ns: string, url: string, lines: string }>
 const RETRY_INTERVAL_MS = 4 * 60 * 1000
 const UPDATE_INTERVAL_MS = 31 * 60 * 1000
 const INTEREST_SPAN_MS = 20 * 60 * 1000
+// woke: after a failure, price checks don't each download 1.7 MB again.
+const FAILED_RETRY_MS = 60 * 1000
+const STUCK_DOWNLOAD_MS = 2 * 60 * 1000
 
 interface DbQuery {
   ns: string
@@ -32,40 +35,69 @@ export const usePoeninja = createGlobalState(() => {
   const leagues = useLeagues()
 
   const xchgRate = shallowRef<number | undefined>(undefined)
+  // woke: when prices last loaded, so the verdict can say how old they are.
+  const updatedAt = shallowRef<number | null>(null)
 
   const isLoading = shallowRef(false)
   let PRICES_DB: PriceDatabase = []
   let lastUpdateTime = 0
+  let lastFailureTime = 0
   let downloadController: AbortController | undefined
+  let downloadStartTime = 0
   let lastInterestTime = 0
 
   async function load (force: boolean = false) {
     const league = leagues.selected.value
-    if (!league || !league.isPopular || league.realm !== 'pc-ggg') return
+    if (!league || !league.isPopular || league.realm !== 'pc-ggg') {
+      // woke: a download for the previous league must not keep the spinner up.
+      downloadController?.abort()
+      downloadController = undefined
+      isLoading.value = false
+      return
+    }
 
     if (!force && (
       (Date.now() - lastUpdateTime) < UPDATE_INTERVAL_MS ||
-      (Date.now() - lastInterestTime) > INTEREST_SPAN_MS
+      (Date.now() - lastInterestTime) > INTEREST_SPAN_MS ||
+      (Date.now() - lastFailureTime) < FAILED_RETRY_MS ||
+      // woke: asking for prices joins a running download. Only a league change
+      // or a stuck download starts over.
+      (downloadController && (Date.now() - downloadStartTime) < STUCK_DOWNLOAD_MS)
     )) return
     if (downloadController) downloadController.abort()
 
+    const controller = new AbortController()
+    downloadController = controller
+    downloadStartTime = Date.now()
     try {
       isLoading.value = true
-      downloadController = new AbortController()
       const response = await Host.proxy(`poe.ninja/poe1/api/economy/current/dense/overviews?league=${league.id}&language=en`, {
-        signal: downloadController.signal
+        signal: controller.signal
       })
+      if (!response.ok) throw new Error(`HTTP ${response.status}`)
       const jsonBlob = await response.text()
+      // Replaced by a newer download, or the league changed to one without prices.
+      if (downloadController !== controller || leagues.selected.value?.id !== league.id) return
 
-      PRICES_DB = splitJsonBlob(jsonBlob)
+      PRICES_DB = readOverviews(jsonBlob)
       emitWokePricesLoaded(league.id, PRICES_DB)
       const divine = findPriceByQuery({ ns: 'ITEM', name: 'Divine Orb', variant: undefined })
+      lastUpdateTime = Date.now()
       if (divine && divine.chaos >= 30) {
         xchgRate.value = divine.chaos
+        updatedAt.value = lastUpdateTime
       }
-      lastUpdateTime = Date.now()
+      lastFailureTime = 0
+    } catch (err) {
+      if (downloadController !== controller) return
+      // woke: the last good prices stay; the retry timer tries again.
+      lastFailureTime = Date.now()
+      console.warn('[Prices] poe.ninja:', err)
     } finally {
-      isLoading.value = false
+      if (downloadController === controller) {
+        downloadController = undefined
+        isLoading.value = false
+      }
     }
   }
 
@@ -155,13 +187,21 @@ export const usePoeninja = createGlobalState(() => {
   }, RETRY_INTERVAL_MS)
 
   watch(leagues.selectedId, () => {
+    // woke: a load still running is for the old league.
+    downloadController?.abort()
     xchgRate.value = undefined
+    updatedAt.value = null
     PRICES_DB = []
+    // woke: the old league's update time mustn't delay the new league's retry.
+    lastUpdateTime = 0
+    lastFailureTime = 0
     load(true)
   })
 
   return {
     xchgRate: readonly(xchgRate),
+    updatedAt: readonly(updatedAt),
+    isLoading: readonly(isLoading),
     findPriceByQuery,
     findPriceByName,
     autoCurrency,
@@ -176,6 +216,17 @@ function denseInfoToDetailsId (info: NinjaDenseInfo): string {
     .replace(/[^a-zA-Z0-9:\- ]/g, '')
     .toLowerCase()
     .replace(/ /g, '-')
+}
+
+// woke: a cut-off body, an error page or a feed with no prices must not replace
+// good prices. JSON.parse is only the check; lookups keep searching the text.
+function readOverviews (jsonBlob: string): PriceDatabase {
+  JSON.parse(jsonBlob)
+  const database = splitJsonBlob(jsonBlob)
+  if (!database.some(({ lines }) => lines.includes('{"name":'))) {
+    throw new Error('No prices in the reply')
+  }
+  return database
 }
 
 function splitJsonBlob (jsonBlob: string): PriceDatabase {
@@ -221,6 +272,7 @@ function splitJsonBlob (jsonBlob: string): PriceDatabase {
   ]
 
   const database: PriceDatabase = []
+  const seenBlocks = new Set<string>()
   let startPos = jsonBlob.indexOf(NINJA_OVERVIEW)
   if (startPos === -1) return []
 
@@ -234,7 +286,12 @@ function splitJsonBlob (jsonBlob: string): PriceDatabase {
     const lines = jsonBlob.slice(startPos, (endPos === -1) ? jsonBlob.length : endPos)
 
     const isSupported = NAMESPACE_MAP.find(entry => entry.type === type)
-    if (isSupported) {
+    // woke: poe.ninja sends Currency and Fragment twice, in currencyOverviews
+    // and in itemOverviews, so skip a copy of a block already kept. What follows
+    // the block's last bracket differs, so it isn't part of the comparison.
+    const block = lines.slice(0, lines.lastIndexOf(']}'))
+    if (isSupported && !seenBlocks.has(block)) {
+      seenBlocks.add(block)
       database.push({ ns: isSupported.ns, url: isSupported.url, lines })
     }
 

@@ -1,6 +1,10 @@
 <template>
   <div class="flex flex-col gap-4 p-2 max-w-md">
     <HotkeysGeneric :hotkeys="hotkeys" />
+    <div class="flex items-center gap-3 text-sm">
+      <span class="flex-1">Map, heist and chart mod ratings are in Map mods now.</span>
+      <button type="button" class="w-accent" @click="emit('open', 'map-mods')">Open Map mods</button>
+    </div>
   </div>
 </template>
 
@@ -18,6 +22,7 @@ import type { ItemCheckWidget } from './widget.js'
 import HotkeysGeneric, { HotkeySchema } from '../settings/HotkeysGeneric.vue'
 
 const props = defineProps(configProp())
+const emit = defineEmits<{ (e: 'open', page: string): void }>()
 
 const hotkeys = computed(() => {
   const out: HotkeySchema[] = []

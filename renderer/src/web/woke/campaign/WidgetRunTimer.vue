@@ -1,7 +1,7 @@
 <template>
   <Widget :config="config" move-handles="corners" :inline-edit="false" :readonly="true">
     <!-- With the campaign tracker placed, the run time is in its icon. -->
-    <DockItem id="run-timer" title="Run timer" :show="!docked && !!run && !run.finished"
+    <DockItem :menu="dockMenu" id="run-timer" title="Run timer" :show="!docked && !!run && !run.finished"
       :badge="delta != null ? formatDelta(delta) : null" :tone="delta == null ? 'accent' : delta <= 0 ? 'up' : 'down'"
       :wm-id="config.wmId" card-width="17rem" @open-change="cardShown = $event">
       <template #card>
@@ -175,6 +175,7 @@ import { formatClock } from '../ui/format'
 import { useVisibleClock } from '../shared/visible-clock'
 import { WPanel, WTabs, WChip, WEmpty, toast } from '../ui'
 import DockItem from '../dock/DockItem.vue'
+import type { DockMenuAction } from '../dock/dock'
 import { dockIconShowing, hideWhilePlaying, tickWhile } from '../dock/dock'
 import { actLabel } from './log-parse'
 import {
@@ -306,6 +307,14 @@ const hotkeys = MainProcess.onEvent('MAIN->CLIENT::widget-action', (e) => {
 onUnmounted(() => {
   hotkeys.abort()
 })
+
+// The icon's right-click menu.
+const dockMenu = computed<DockMenuAction[]>(() => run.value
+  ? [
+      { label: run.value.runningSince != null ? 'Pause run' : 'Resume run', icon: run.value.runningSince != null ? 'fas fa-pause' : 'fas fa-play', action: togglePause },
+      { label: 'End run', icon: 'fas fa-flag-checkered', action: end }
+    ]
+  : [])
 </script>
 
 <style module>

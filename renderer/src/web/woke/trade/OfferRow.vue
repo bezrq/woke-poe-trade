@@ -12,7 +12,7 @@
     </button>
     <div :class="$style.item">
       <img v-if="art && !artFailed" :src="art" alt="" :class="$style.art" @error="artFailed = true">
-      <span class="w-trunc">{{ label }}</span>
+      <span v-item-tip="tip" class="w-trunc">{{ label }}</span>
       <span class="ml-auto w-num whitespace-nowrap" :class="offer.dir === 'sell' ? 'w-accent' : ''">{{ price }}</span>
       <span v-if="delta != null && Math.abs(delta) >= 0.03" class="w-num text-xs whitespace-nowrap" :class="delta < 0 ? 'w-down' : 'w-up'"
         :title="`${delta < 0 ? 'Under' : 'Over'} poe.ninja's value for the same items`">{{ delta > 0 ? '+' : '−' }}{{ Math.round(Math.abs(delta) * 100) }}%</span>
@@ -44,7 +44,7 @@
 
 <script setup lang="ts">
 import { computed, shallowRef } from 'vue'
-import { WKbd } from '../ui'
+import { WKbd, itemRefFromText, vItemTip } from '../ui'
 import { nextStep, stepsOf } from './book'
 import type { Offer, StepId } from './book'
 import type { ReplyId } from './widget'
@@ -76,6 +76,7 @@ const STEP_LABELS: Record<StepId, string> = {
 
 const artFailed = shallowRef(false)
 const label = computed(() => offerLabel(props.offer))
+const tip = computed(() => props.offer.bulk ? { name: props.offer.item } : itemRefFromText(props.offer.item))
 const price = computed(() => priceLabel(props.offer.price))
 
 const age = computed(() => {
