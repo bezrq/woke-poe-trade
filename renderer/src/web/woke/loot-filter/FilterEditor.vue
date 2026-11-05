@@ -141,7 +141,7 @@
                 <WChip clickable :active="picked.includes(b)" draggable="true"
                   title="Right-click to move it. Drag onto a tier, or shift-click to pick several."
                   @click="pickBase(b, $event)" @contextmenu="baseMenu($event, b)" @dragstart="onDragStart(b, $event)" @dragend="dragOver = null">
-                  <span class="flex items-center gap-1">
+                  <span v-item-tip="{ name: b }" class="flex items-center gap-1">
                     <img v-if="baseIcon(b)" :src="baseIcon(b)!" :class="$style.chipArt" alt="">
                     <span>{{ b }}</span>
                     <i v-if="movedHere(b)" class="fas fa-lock w-faint" style="font-size: 0.75em;" title="You put it here, so prices won't move it" />
@@ -289,7 +289,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
-import { WPanel, WButton, WSelect, WField, WTabs, WListItem, WChip, WEmpty, WKbd, WBanner, WSkeleton, agoPhrase, openMenu, toast, useCopy } from '../ui'
+import { WPanel, WButton, WSelect, WField, WTabs, WListItem, WChip, WEmpty, WKbd, WBanner, WSkeleton, agoPhrase, openMenu, toast, useCopy, vItemTip } from '../ui'
 import { copyText } from '../ui/copy'
 import { hasUndoToast } from '../ui/layer'
 import LabelPreview from './LabelPreview.vue'
