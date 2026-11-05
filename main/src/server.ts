@@ -1,36 +1,45 @@
 import { WebSocketServer, type WebSocket } from 'ws'
 import { type AddressInfo } from 'net'
-import { createServer } from 'http'
+import { createServer, type IncomingMessage, type ServerResponse } from 'http'
 import { EventEmitter } from 'events'
-import * as fs from 'fs'
 import * as path from 'path'
 import { app } from 'electron'
 import { IpcEvent, IpcEventPayload, HostState } from '../../ipc/types'
 import { ConfigStore } from './host-files/ConfigStore'
 import { addFileUploadRoutes } from './host-files/file-uploads'
+import { isOwnPageRequest, sendFile } from './host-files/request-guard'
 import type { AppUpdater } from './AppUpdater'
 import type { Logger } from './RemoteLogger'
 
-export const server = createServer()
+// woke: every route hangs off this, so none can be reached without the check.
+export const httpRoutes = new EventEmitter()
+const anyHost = process.argv.some(arg => arg.startsWith('--listen'))
+export const server = createServer((req, res) => {
+  if (!isOwnPageRequest(req.headers, anyHost)) {
+    res.statusCode = 403
+    res.end()
+    return
+  }
+  httpRoutes.emit('request', req, res)
+})
 const websocketServer = new WebSocketServer({ noServer: true })
-let lastActiveClient: WebSocket
+let lastActiveClient: WebSocket | undefined
 
-addFileUploadRoutes(server)
+addFileUploadRoutes(httpRoutes)
 
 if (!process.env.VITE_DEV_SERVER_URL) {
-  server.addListener('request', (req, res) => {
+  httpRoutes.addListener('request', (req: IncomingMessage, res: ServerResponse) => {
     if (req.url?.startsWith('/config') || req.url?.startsWith('/uploads') || req.url?.startsWith('/proxy')) return
 
     const filePath = (req.url === '/') ? '/index.html' : req.url!
-    switch (path.extname(filePath)) {
+    switch (path.extname(filePath.split(/[?#]/, 1)[0])) {
       case '.html': res.setHeader('content-type', 'text/html'); break;
       case '.js': res.setHeader('content-type', 'text/javascript'); break;
       case '.json': res.setHeader('content-type', 'application/json'); break;
       case '.svg': res.setHeader('content-type', 'image/svg+xml'); break;
     }
 
-    fs.createReadStream(path.join(__dirname, filePath))
-      .pipe(res)
+    sendFile(__dirname, filePath, res)
   })
 }
 
@@ -53,7 +62,8 @@ export function sendEventTo (
       client.send(msg)
     }
   } else {
-    lastActiveClient.send(msg)
+    // woke: a hotkey can fire before the page has connected.
+    lastActiveClient?.send(msg)
   }
 }
 
@@ -67,7 +77,7 @@ export const eventPipe = {
 }
 
 server.on('upgrade', (req, socket, head) => {
-  if (req.url !== '/events' && req.url !== '/events?role=setup') {
+  if ((req.url !== '/events' && req.url !== '/events?role=setup') || !isOwnPageRequest(req.headers, anyHost)) {
     return req.destroy()
   }
   websocketServer.handleUpgrade(req, socket, head, (ws) => {
@@ -86,7 +96,13 @@ export async function startServer (
     const isSetupWindow = Boolean((req as { url?: string } | undefined)?.url?.includes('role=setup'))
     if (!isSetupWindow || !lastActiveClient) lastActiveClient = socket
     socket.on('message', (bytes) => {
-      const event = JSON.parse(bytes.toString('utf-8')) as IpcEvent
+      let event: IpcEvent
+      try {
+        event = JSON.parse(bytes.toString('utf-8')) as IpcEvent
+      } catch {
+        logger.write('warn [server] Ignored a message that isn\'t JSON.')
+        return
+      }
       if (event.name === 'CLIENT->MAIN::used-recently') {
         lastActiveClient = socket
       }
@@ -105,7 +121,7 @@ export async function startServer (
     } satisfies IpcEvent))
   })
 
-  server.addListener('request', async (req, res) => {
+  httpRoutes.addListener('request', async (req: IncomingMessage, res: ServerResponse) => {
     if (req.url === '/config') {
       res.setHeader('content-type', 'application/json')
       const resBody: HostState = {

@@ -1,4 +1,5 @@
-import type { Server } from 'http'
+import type { EventEmitter } from 'events'
+import type { IncomingMessage, ServerResponse } from 'http'
 import { app, net, session } from 'electron'
 import type { Logger } from './RemoteLogger'
 
@@ -13,10 +14,10 @@ const PROXY_HOSTS = [
 
 export class HttpProxy {
   constructor (
-    server: Server,
+    routes: EventEmitter,
     logger: Logger
   ) {
-    server.addListener('request', (req, res) => {
+    routes.addListener('request', (req: IncomingMessage, res: ServerResponse) => {
       if (!req.url?.startsWith('/proxy/')) return
       const host = req.url.split('/', 3)[2]
 
