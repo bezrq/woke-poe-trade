@@ -359,6 +359,8 @@ const query = ref('')
 const searchInput = ref<HTMLInputElement>()
 const addable = computed(() => registry.widgets
   .filter(({ widget }) => widget.instances === 'multi' && widget.type !== 'stash-search' && isWidgetTypeOn(AppConfig(), widget.type))
+  // Placed but kept out of the bar (the campaign icon): another copy can't be removed here.
+  .filter(({ widget }) => !wm.widgets.value.some(w => w.wmType === widget.type && w.wmFlags.includes('menu::skip')))
   .map(({ widget }) => ({ type: widget.type, name: typeName(widget.type) })))
 const addGroups = computed(() => {
   const q = query.value.trim().toLowerCase()

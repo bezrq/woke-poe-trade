@@ -57,6 +57,10 @@ export class WokeHoverTracker {
       // A zone can appear or vanish under a mouse that isn't moving.
       if (this.listening && this.mouseX != null) this.update(this.mouseX, this.mouseY)
     })
+    // A button on a card opened something that needs the real overlay (settings).
+    this.server.onEventAnyClient('OVERLAY->MAIN::woke-open-overlay', () => {
+      this.overlay.assertOverlayActive()
+    })
   }
 
   private updateListening () {

@@ -30,8 +30,12 @@ export interface DockItemProps {
   // Widget to open when the icon is clicked with the overlay open.
   wmId?: number
   cardWidth?: string
-  // The card has buttons: resting on it makes the overlay clickable (and
-  // hands focus back to the game when the mouse leaves).
+  // Values kept on screen beside the icon.
+  readouts?: Array<{ id: string, text: string, tone: 'up' | 'down' | 'dim' | null }>
+  // A ring around the icon, 0 to 1.
+  progress?: number | null
+  // With the overlay open, a click keeps the card open until the next click.
+  pinnable?: boolean
 }
 
 export interface DockEntry {
@@ -41,6 +45,8 @@ export interface DockEntry {
   onOpen: (open: boolean) => void
   onClick: () => void
   peek: { text: string, until: number } | null
+  // The card stays open: by a click with the overlay open, or by a hotkey.
+  pinned: 'click' | 'key' | null
 }
 
 // Fixed order, so icons don't jump around as they come and go.
@@ -136,10 +142,16 @@ export function registerDockEntry (props: DockItemProps, slots: Slots, onOpen: (
     slots: markRaw(slots),
     onOpen,
     onClick,
-    peek: null
+    peek: null,
+    pinned: null
   })
   dockEntries.value = [...dockEntries.value, entry]
   return entry
+}
+
+// Whether a module's icon is actually in the row right now.
+export function dockIconShowing (id: string): boolean {
+  return !dockConfig().hidden.includes(id) && dockEntries.value.some(e => e.props.id === id && e.props.show)
 }
 
 export function unregisterDockEntry (entry: DockEntry) {
