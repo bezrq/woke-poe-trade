@@ -1,7 +1,7 @@
 ---
 id: WOKEPOET-92
 title: 'Generalize the flip screen: catalysts, delirium orbs, Harvest rerolls and more'
-status: Grooming
+status: In Progress
 priority: None
 effort: L
 assignee: Agent
@@ -41,7 +41,23 @@ history:
     date: '2026-11-05T11:01:32.847Z'
     selfAttested: true
     id: c-2026-11-05t11-01-32-847z
-swimlane: require-input
+  - type: comment
+    user: Agent
+    comment: 'Guy picked "tabbed": layout B, no extra Best tab.'
+    date: '2026-11-05T11:15:05.498Z'
+    id: c-2026-11-05t11-15-05-498z
+  - type: swimlane_change
+    swimlane: require-input
+    action: cleared
+    user: Agent
+    date: '2026-11-05T11:15:05.498Z'
+    comment: 'Guy picked "tabbed": layout B, no extra Best tab.'
+  - type: status_change
+    from: Grooming
+    to: In Progress
+    user: Agent
+    date: '2026-11-05T11:15:05.553Z'
+swimlane: null
 needsAction: null
 ---
 > **TL;DR:** Turn the scarab flip panel into one Flips screen covering every recipe and Harvest reroll that can be priced, once Guy picks a layout.
