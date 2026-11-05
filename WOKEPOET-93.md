@@ -3,7 +3,7 @@ id: WOKEPOET-93
 title: >-
   Boss runs: price jewels unidentified from trade, refresh rates, fill missing
   prices
-status: Ready
+status: Done
 priority: High
 effort: M
 assignee: unassigned
@@ -41,7 +41,87 @@ history:
     to: Ready
     user: Agent
     date: '2026-11-05T11:37:21.455Z'
+  - type: comment
+    user: Agent
+    comment: >-
+      Merged as bca53f2 and live on the dev copy. Verified through the real
+      trade API: The Light of Meaning prices at 786c from 466 unidentified
+      instant buyouts, with a ~20% estimated chance. No docs needed: in-panel
+      behaviour only. Known limit: rare cards with no listings stay unpriced,
+      and a few drops have no estimate.
+    completionComment: true
+    date: '2026-11-05T11:48:17.574Z'
+    id: c-2026-11-05t11-48-17-574z
+  - type: status_change
+    from: Ready
+    to: Done
+    user: Agent
+    date: '2026-11-05T11:48:17.908Z'
 needsAction: null
+baselineCommit: ae9d149f9c555d42e467c95e82514624d060baa7
+implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/166'
+swimlane: null
+diffSummary:
+  - file: docs/.vitepress/theme/landing/Landing.vue
+    additions: 363
+    deletions: 131
+  - file: docs/.vitepress/theme/landing/content.js
+    additions: 65
+    deletions: 23
+  - file: docs/public/shots/hero.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/readme-banner.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/story-essence.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/story-loot.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/story-maps.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/story-price.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/tour-boss-runs.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/tour-boss.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/tour-campaign-chip.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/tour-campaign.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/tour-filter-prices.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/tour-filter-rules.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/tour-map-mods.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/tour-market.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/tour-pob.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/tour-regex.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/tour-trade.webp
+    additions: 0
+    deletions: 0
+  - file: testing/e2e/landing-shots.spec.ts
+    additions: 211
+    deletions: 4
 ---
 > **TL;DR:** Boss jewels drop unidentified, but Boss runs prices them from poe.ninja's single row, which is far below what unidentified copies sell for. Price them from unidentified instant-buyout trade listings instead, refresh stale drop rates, and fill drops poe.ninja doesn't list.
 
