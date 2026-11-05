@@ -53,7 +53,51 @@ history:
     date: '2026-11-05T10:22:23.835Z'
     selfAttested: true
     id: c-2026-11-05t10-22-23-835z
-swimlane: require-input
+  - type: comment
+    user: Agent
+    comment: >-
+      Guy: drop the picked-chips block in Map mods, since it duplicates the
+      list. Instead sort picked mods to the top of each category, grouped Avoid,
+      Careful, Want, then Not rated. Mock updated. The order refreshes on mode,
+      filter or T17 change rather than on each click, so rows don't jump while
+      rating.
+    date: '2026-11-05T10:30:06.705Z'
+    selfAttested: true
+    id: c-2026-11-05t10-30-06-705z
+  - type: comment
+    user: Agent
+    comment: >-
+      Test fixture from Guy, a real chart. Sandy Seabed Chart "Nautical
+      Travail", area Abyssal Plain, Area Level 83, Item Rarity +60%, Pack Size
+      +36%, Chart Shape: Junction, implicit "Voyage Modifier will be revealed
+      once Charted". Explicits: "Monsters fire 2 additional Projectiles",
+      "Monsters deal 28(21-35)% extra Physical Damage as Cold", "Area has
+      patches of Shocked Ground which increase Damage taken by 10%", "Monsters
+      have 53(46-60)% increased Area of Effect". All 4 explicit matchers and the
+      implicit exist in stats.ndjson with fromAreaMods: yes (checked against
+      strings only, not run through the parser). No adjacent-area lines on this
+      chart. Plan: Charts tab is a curated list from the shared pool, and the
+      card keeps the juice score since charts show rarity and pack size. Still
+      waiting on A or B.
+    date: '2026-11-05T10:30:31.850Z'
+    selfAttested: true
+    id: c-2026-11-05t10-30-31-850z
+  - type: comment
+    user: Agent
+    comment: >-
+      Guy picked A: tabs on top, T17 switch beside them, picked mods sorted to
+      the top, chips block removed.
+    date: '2026-11-05T10:30:53.295Z'
+    id: c-2026-11-05t10-30-53-295z
+  - type: swimlane_change
+    swimlane: require-input
+    action: cleared
+    user: Agent
+    date: '2026-11-05T10:30:53.295Z'
+    comment: >-
+      Guy picked A: tabs on top, T17 switch beside them, picked mods sorted to
+      the top, chips block removed.
+swimlane: null
 needsAction: null
 ---
 Settings > Item info & map check still shows APT's map stat list (343 stats with warning, danger and ok marks).
