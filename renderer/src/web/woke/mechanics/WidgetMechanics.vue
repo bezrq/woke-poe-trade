@@ -182,7 +182,11 @@ hideWhilePlaying(props.config)
 // Open means the panel is showing, so the launcher opens it. The dock icon
 // doesn't depend on this: it stays while the widget is hidden.
 if (!props.config.expanded && props.config.wmWants === 'show') wm.hide(props.config.wmId)
-watch(() => props.config.wmWants, (wants) => { if (wants === 'show') props.config.expanded = true })
+watch(() => [props.config.wmWants, props.config.expanded] as const, ([wants, expanded], [wantsBefore]) => {
+  if (wants !== 'show') return
+  if (wantsBefore !== 'show') props.config.expanded = true
+  else if (!expanded) wm.hide(props.config.wmId)
+})
 
 // Icons placed before: the old default spot (left edge, 30% down) is inside
 // the stash grid. Move it above, once.

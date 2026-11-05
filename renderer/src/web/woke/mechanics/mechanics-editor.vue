@@ -123,10 +123,11 @@ function setShown (id: string, shown: boolean) {
   props.configWidget.hidden = shown ? hidden : [...hidden, id]
 }
 function setOverride (member: string, di: number, e: Event) {
-  const value = (e.target as HTMLInputElement).value.trim()
+  // Kept as typed: trimming here would eat the space between two words.
+  const value = (e.target as HTMLInputElement).value
   const key = slotKey(member, di)
   const next = Object.fromEntries(Object.entries(props.configWidget.betrayalOverrides).filter(([k]) => k !== key))
-  if (value) next[key] = value
+  if (value.trim()) next[key] = value
   props.configWidget.betrayalOverrides = next
 }
 </script>

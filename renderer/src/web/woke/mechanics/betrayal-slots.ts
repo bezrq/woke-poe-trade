@@ -8,7 +8,7 @@ import type { MechanicsWidget } from './widget'
 
 export function useBetrayalSlots (config: () => MechanicsWidget, items: Ref<PriceItem[]>) {
   function rewardText (member: string, di: number) {
-    return config().betrayalOverrides[slotKey(member, di)] || REWARDS[member][di]
+    return config().betrayalOverrides[slotKey(member, di)]?.trim() || REWARDS[member][di]
   }
 
   const slots = computed(() => MEMBERS.flatMap(member => DIVISIONS.map((_, di) => {

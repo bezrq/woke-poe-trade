@@ -49,6 +49,9 @@ test('settings explain each mechanic; the Betrayal editor stays under Betrayal',
   await edit.click()
   await expect(settings.getByRole('textbox', { name: 'Vorici, Intervention' })).toBeVisible()
   await overlay.snap('mechanics-settings-betrayal')
+  // Typed key by key, a space between two words stays.
+  await settings.getByRole('textbox', { name: 'Vorici, Intervention' }).pressSequentially('Foo Bar')
+  await expect(settings.getByRole('textbox', { name: 'Vorici, Intervention' })).toHaveValue('Foo Bar')
 
   // Hiding a mechanic saves, and takes it off the panel's rail.
   await tab('Ritual').click()
