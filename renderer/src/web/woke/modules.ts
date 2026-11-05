@@ -14,7 +14,8 @@ export type ModuleGroup = 'economy' | 'mapping' | 'campaign' | 'builds' | 'apt'
 // prices: reads the latest saved prices, no extra network.
 // log: needs Client.txt lines.
 // ocr: reads the screen with the OCR worker.
-export type ModuleNeed = 'poll' | 'prices' | 'log' | 'ocr' | 'hotkeys' | 'network'
+// account: the account name in Settings, shown as a prompt while it's blank.
+export type ModuleNeed = 'poll' | 'prices' | 'log' | 'ocr' | 'hotkeys' | 'network' | 'account'
 
 export interface ModuleDef {
   id: string
@@ -63,6 +64,7 @@ export const MODULES: ModuleDef[] = [
   { id: 'campaign', name: 'Campaign tracker', description: 'Next steps for the act you are in', group: 'campaign', widgetTypes: ['woke-campaign'], icon: { fa: 'fas fa-route', currency: 'wisdom' }, needs: ['log'] },
   { id: 'run-timer', name: 'Run timer', description: 'Act splits and personal bests', group: 'campaign', widgetTypes: ['woke-run-timer'], icon: { fa: 'fas fa-stopwatch' }, needs: ['log'] },
   { id: 'lab', name: 'Lab layouts', description: "Today's poelab layout and reset countdown", group: 'campaign', widgetTypes: ['woke-lab'], icon: { fa: 'fas fa-dungeon', mechanic: 'lab' }, needs: ['hotkeys'] },
+  { id: 'challenges', name: 'Challenge guide', description: 'League challenge guide with your progress', group: 'campaign', widgetTypes: ['woke-challenges'], icon: { fa: 'fas fa-trophy' }, needs: ['hotkeys', 'network', 'account'] },
 
   { id: 'pob-builds', name: 'PoB builds', description: 'Your Path of Building folder', group: 'builds', widgetTypes: ['woke-pob-builds'], icon: { fa: 'fas fa-diagram-project', item: 'Enlighten Support' }, needs: [] },
   { id: 'trade-searches', name: 'Trade searches', description: 'Saved trade site searches', group: 'builds', widgetTypes: ['woke-trade-searches'], icon: { fa: 'fas fa-search-dollar', currency: 'exalted' }, needs: ['hotkeys'] },
@@ -85,7 +87,7 @@ export interface Preset {
 export const PRESETS: Preset[] = [
   { id: 'everything', label: 'Everything', on: 'all' },
   { id: 'mapper', label: 'Mapper', on: ['market', 'farming', 'session-analytics', 'boss-runs', 'map-mods', 'map-scan', 'essence-scan', 'loot-filter', 'atlas', 'mechanics', 'trade-searches', 'trade', 'regex-library'] },
-  { id: 'leveling', label: 'Leveling', on: ['campaign', 'run-timer', 'lab', 'pob-builds', 'regex-library'] },
+  { id: 'leveling', label: 'Leveling', on: ['campaign', 'run-timer', 'lab', 'challenges', 'pob-builds', 'regex-library'] },
   { id: 'trader', label: 'Trader', on: ['market', 'league-invest', 'lab-gems', 'scarab-flip', 'trade-searches', 'trade', 'regex-library'] },
   { id: 'price-check-only', label: 'Price check only', on: [] }
 ]

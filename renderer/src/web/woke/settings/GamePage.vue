@@ -52,7 +52,7 @@
         hint="The campaign guide and run timer follow this character's level-ups. Empty: whoever you played last.">
         <w-field :model-value="character" placeholder="Latest from Client.txt" @update:model-value="setCharacter(String($event))" />
       </w-setting-row>
-      <w-setting-row label="Account name" hint="Highlights your own listings in price check.">
+      <w-setting-row label="Account name" hint="Highlights your own listings in price check, and syncs the challenge guide from your public profile.">
         <w-field v-model="config.accountName" placeholder="Account name" />
       </w-setting-row>
     </w-setting-section>
