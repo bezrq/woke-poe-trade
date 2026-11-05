@@ -20,7 +20,7 @@ import { buildRuleBlocks, insertBuildBlocks } from './build-rules'
 import { useBuildRuleInput } from './build-input'
 import { applyPriceMoves, lockKey, lockedByEdits, mergeMoves, planRetier } from './economy'
 import type { PriceMove, RetierPlan } from './economy'
-import { SAFETY_RULE_TYPE, auditBases, lastLookup, netFromAudit, safetyBlocks, valuableFromAudit } from './safety'
+import { SAFETY_RULE_TYPE, auditBases, lastLookup, netFromAudit, safetyBlocks, stackNet, valuableFromAudit, withLast } from './safety'
 import { isDismissed } from './health'
 import type { BaseVerdict, NetList } from './safety'
 import { describeProblem, validateFilter } from './validate'
@@ -116,6 +116,8 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
   const safetyCount = ref(0)
   // The file has a newer net list than the game has loaded.
   const netWaitsForReload = ref(false)
+  // The source filter is not what the last save was made from.
+  const sourceChanged = ref(false)
   // No prices to judge by: the net is on its last list, or empty.
   const netWithoutPrices = computed(() => cfg().safetyNet.on && !prices.safety.value && doc.value != null)
   const lastSaved = ref<number | null>(null)
@@ -145,6 +147,9 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
       }
       clearTimeout(reloadTimer)
       if (safe) {
+        // The game rewrites its config now and then, so this is when a filter
+        // it couldn't load shows up.
+        readGameFilter().catch(() => {})
         reloadTimer = setTimeout(() => {
           if (inSafeZone.value !== true) return
           // The ladder switches only here, in town or hideout, never mid-map.
@@ -211,13 +216,21 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
       // out of the file: the last list stays until there are prices again.
       const lookup = prices.safety.value
       const line = cfg().safetyNet.minChaos
-      const verdicts = auditBases(next, lookup ?? lastLookup(cfg().safetyNet.last, line), line)
+      const types = prices.pricedTypes?.value
+      const known = lookup
+        ? (types ? withLast(lookup, cfg().safetyNet.last, line, t => types.has(t)) : lookup)
+        : lastLookup(cfg().safetyNet.last, line)
+      const verdicts = auditBases(next, known, line)
       const bases = netFromAudit(verdicts, v => heldBack(v))
+      if (lookup) {
+        const stacks = stackNet(next, lookup, line, (type, base) => cfg().netDismissed[`${type}|${base}`] != null)
+        if (Object.keys(stacks).length) bases.stacks = stacks
+      }
       if (lookup) netFresh = valuableFromAudit(verdicts)
       const netBlocks = safetyBlocks(bases)
       if (cfg().presets.colourBlind.on) netBlocks.forEach(colourBlindActions)
       insertBuildBlocks(next, netBlocks)
-      netCount = bases.plain.length + bases.unique.length
+      netCount = bases.plain.length + bases.unique.length + Object.values(bases.stacks ?? {}).reduce((n, l) => n + l.length, 0)
       if (lookup || netCount) netList = JSON.stringify(bases)
     }
     for (const r of applyEdits(next, cfg().edits.filter(isNetEdit))) results.set(r.edit.id, r)
@@ -694,6 +707,11 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
       baseText.value = text
       rebuild()
       baseVersion.value = doc.value?.version ?? null
+      // woke: the filter you made this from changed (FilterBlade, an online
+      // filter the game updated): bring the copy along unless you're mid-change.
+      const savedHash = cfg().savedSourceHash
+      sourceChanged.value = savedHash != null && savedHash !== hash(text)
+      if (sourceChanged.value && outputSaved.value && !userDirty() && !failed.value.length) save({ noReload: true }).catch(() => {})
     } catch (e) {
       if (seq !== loadSeq) return
       error.value = `Can't open ${cfg().sourceName}: ${(e as Error).message}`
@@ -864,7 +882,9 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
         netWaitsForReload.value = false
         if (cfg().reloadViaChat) reloadInGame(opts.reloadNow === true)
       }
-      setTimeout(() => { readGameFilter().catch(() => {}) }, 8000)
+      for (const wait of [8000, 60000]) setTimeout(() => { readGameFilter().catch(() => {}) }, wait)
+      cfg().savedSourceHash = hash(baseText.value)
+      sourceChanged.value = false
       return true
     } catch (e) {
       error.value = `Couldn't save: ${(e as Error).message}`
@@ -916,6 +936,7 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
     safetyCount,
     netWithoutPrices,
     netWaitsForReload,
+    sourceChanged,
     pricesStale,
     pricesTooOld,
     priceAgeHours,

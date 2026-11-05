@@ -58,7 +58,7 @@ const SOURCE = [
 ].join('\n')
 
 const prices = (list: Record<string, number>): PriceLookup => (_, base) => list[base] != null ? { chaos: list[base], thin: false } : null
-const VALUABLE = prices({ 'Top One': 1000, 'Top Two': 900, 'Mid One': 50, 'Mid Two': 40, 'Low One': 300, 'Low Two': 1 })
+const VALUABLE = prices({ 'Top One': 1000, 'Top Two': 900, 'Mid One': 50, 'Mid Two': 40, 'Low One': 300, 'Low Two': 0.01 })
 
 let host: FakeHost
 beforeAll(loadGameData)
@@ -212,6 +212,41 @@ describe('moves belong to a league', () => {
     await store.save()
     expect(config.priceTiers.league).toBe('Allflame')
     expect(inTier('t1')).toContain('Mid One')
+  })
+})
+
+describe('the filter you started from changes', () => {
+  const changed = SOURCE.replace('"Mid Two"', '"Mid Two" "Mid Three"')
+
+  it('brings the copy along by itself, with nothing typed into the game', async () => {
+    const { config } = await opened()
+    const first = useLootFilter(() => config)
+    await first.load()
+    await first.save()
+    const chat = sent.chat.length
+    host.files.set('NeverSink.filter', changed)
+    const again = useLootFilter(() => config)
+    await again.listFiles()
+    await again.load()
+    await settled()
+    expect(inTier('t2')).toContain('Mid Three')
+    expect(sent.chat.length).toBe(chat)
+    expect(again.sourceChanged.value).toBe(false)
+  })
+
+  it('leaves it to you while you have unsaved changes', async () => {
+    const { config } = await opened()
+    const first = useLootFilter(() => config)
+    await first.load()
+    await first.save()
+    first.edit({ kind: 'visibility', type: 'divination', tier: 't2', visibility: 'Hide' })
+    host.files.set('NeverSink.filter', changed)
+    const again = useLootFilter(() => config)
+    await again.listFiles()
+    await again.load()
+    await settled()
+    expect(inTier('t2')).not.toContain('Mid Three')
+    expect(again.sourceChanged.value).toBe(true)
   })
 })
 

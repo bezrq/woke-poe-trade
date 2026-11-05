@@ -4,7 +4,7 @@ import { describe, it, expect } from 'vitest'
 import { parseFilter } from '@/web/woke/loot-filter/parse'
 import { ECONOMY_GROUPS, planRetier, priceBreakdown, priceLookup, safetyLookup } from '@/web/woke/loot-filter/economy'
 import type { PriceLookup } from '@/web/woke/loot-filter/economy'
-import { auditBases, lastLookup, netFromAudit, safetyBases, safetyBlocks, valuableFromAudit, SAFETY_RULE_TYPE } from '@/web/woke/loot-filter/safety'
+import { auditBases, lastLookup, netFromAudit, safetyBases, safetyBlocks, stackNet, valuableFromAudit, withLast, SAFETY_RULE_TYPE } from '@/web/woke/loot-filter/safety'
 import { insertBuildBlocks } from '@/web/woke/loot-filter/build-rules'
 import { applyEdits } from '@/web/woke/loot-filter/edits'
 import { matchItem } from '@/web/woke/loot-filter/match'
@@ -107,6 +107,38 @@ describe('who gets the net', () => {
     applyEdits(doc, [{ id: 1, kind: 'item', type: 'divination', tier: 't5', base: 'Low Card', visibility: 'Hide', patch: {}, pin: true }])
     expect(netFromAudit(auditBases(doc, look, 20)).plain).toEqual(['Hidden Gem'])
     expect(lastLookup(undefined, 20)(ECONOMY_GROUPS[0], 'Hidden Gem')).toBeNull()
+  })
+
+  it('catches a stack worth the line, from the size that gets there', () => {
+    const doc = parseFilter(FILTER)
+    const look: PriceLookup = (_, base) => base === 'Low Card' ? { chaos: 5, thin: false } : null
+    expect(stackNet(doc, look, 20)).toEqual({ 5: ['Low Card'] })
+    insertBuildBlocks(doc, safetyBlocks({ plain: [], unique: [], stacks: { 5: ['Low Card'] } }))
+    const card = (stackSize: number) => matchItem(doc, { name: 'Low Card', baseType: 'Low Card', itemClass: 'Divination Cards', stackSize, influences: [] } as unknown as ItemFacts)
+    expect(card(1).visibility).toBe('Hide')
+    expect(card(5).final?.block.type).toBe(SAFETY_RULE_TYPE)
+  })
+
+  it('a stack the filter already shows, or too cheap to matter, gets no rule', () => {
+    const doc = parseFilter([
+      'Show # $type->divination $tier->stack',
+      '\tClass == "Divination Cards"',
+      '\tStackSize >= 3',
+      '\tBaseType == "Low Card"',
+      '',
+      FILTER
+    ].join('\n'))
+    const look: PriceLookup = (_, base) => base === 'Low Card' ? { chaos: 5, thin: false } : base === 'Hidden Gem' ? { chaos: 0.01, thin: false } : null
+    expect(stackNet(doc, look, 20)).toEqual({})
+  })
+
+  it('a category missing from the feed keeps what was valuable there', () => {
+    const doc = parseFilter(FILTER)
+    const empty: PriceLookup = () => null
+    const last = { plain: ['Hidden Gem'], unique: [] }
+    expect(safetyBases(doc, withLast(empty, last, 20, () => false), 20).plain).toEqual(['Hidden Gem'])
+    // The category is there and doesn't list it: that's news, it isn't priced.
+    expect(safetyBases(doc, withLast(empty, last, 20, t => t === 'DivinationCard'), 20).plain).toEqual([])
   })
 
   it('looks at items with an exact price but no price tiers', () => {

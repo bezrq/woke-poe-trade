@@ -27,6 +27,8 @@ export interface SafetyNet {
 export interface NetList {
   plain: string[]
   unique: string[]
+  // Items too cheap alone, by the stack size from which they're over the line.
+  stacks?: Record<string, string[]>
 }
 
 export const DEFAULT_SAFETY_NET: SafetyNet = { on: true, minChaos: 20 }
@@ -233,6 +235,48 @@ function block (tier: string, conditions: FilterBlock['conditions']): FilterBloc
   }
 }
 
+const STACK_SIZES = [5, 10, 20, 40]
+const STACKS = /Currency|Divination|Fragment/
+
+// A strict filter can hide a stack worth more than the line, item by item too
+// cheap to count. Each item goes in at the smallest stack that's over the line
+// and hidden.
+export function stackNet (doc: FilterDoc, lookup: PriceLookup, minChaos: number, skip?: (type: string, base: string) => boolean): Record<string, string[]> {
+  const out: Record<string, string[]> = {}
+  const walked: FilterDoc = { ...doc, blocks: doc.blocks.filter(b => b.type !== SAFETY_RULE_TYPE) }
+  for (const group of NET_GROUPS) {
+    if (group.unique) continue
+    const seen = new Set<string>()
+    for (const b of walked.blocks) {
+      if (b.type !== group.type && !b.type?.startsWith(group.type + '->')) continue
+      const itemClass = b.conditions.find(c => c.key === 'Class' && ['', '=', '=='].includes(c.op))?.values[0]
+      if (!itemClass || !STACKS.test(itemClass)) continue
+      for (const c of b.conditions) {
+        if (c.key !== 'BaseType' || c.op !== '==') continue
+        for (const base of c.values) {
+          if (seen.has(base)) continue
+          seen.add(base)
+          const price = lookup(group, base)
+          if (!price || price.chaos >= minChaos || skip?.(group.type, base)) continue
+          const size = STACK_SIZES.find(n => price.chaos * n >= minChaos)
+          if (size == null) continue
+          const v = verdictOf(walked, { ...plainDrop(group, base, itemClass), stackSize: size })
+          if (v.state === 'hidden' && !v.mine) (out[size] ??= []).push(base)
+        }
+      }
+    }
+  }
+  for (const list of Object.values(out)) list.sort()
+  return out
+}
+
+// Prices with holes: a category missing from the feed isn't worthless, so what
+// was valuable there last time still counts.
+export function withLast (lookup: PriceLookup, last: NetList | undefined, minChaos: number, hasType: (type: string) => boolean): PriceLookup {
+  const memory = lastLookup(last, minChaos)
+  return (group, base) => lookup(group, base) ?? (group.ninja.some(hasType) ? null : memory(group, base))
+}
+
 // A stand-in for prices when there are none: what was valuable last time still
 // is. Only names this filter lists can come back, so the game knows them all.
 export function lastLookup (last: NetList | undefined, minChaos: number): PriceLookup {
@@ -255,6 +299,13 @@ export function safetyBlocks (bases: NetList): FilterBlock[] {
     out.push(block('uniques', [
       { key: 'Rarity', op: '==', count: null, values: ['Unique'] },
       { key: 'BaseType', op: '==', count: null, values: bases.unique }
+    ]))
+  }
+  for (const [size, list] of Object.entries(bases.stacks ?? {})) {
+    if (!list.length) continue
+    out.push(block(`stacks${size}`, [
+      { key: 'StackSize', op: '>=', count: null, values: [size] },
+      { key: 'BaseType', op: '==', count: null, values: list }
     ]))
   }
   return out

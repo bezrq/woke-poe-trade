@@ -33,6 +33,8 @@ export function useFilterPrices (rule: () => UniqueRule) {
     if (!snap?.items.length) return null
     return priceLookup(snap.items, uniquesOnBase, rule())
   })
+  // What this snapshot has at all: a type it lacks isn't priced at zero.
+  const pricedTypes = computed(() => new Set((index.snapshot.value?.items ?? []).map(i => i.type)))
   // Never follows the "cheapest unique" setting: see safetyLookup.
   const safety = computed<PriceLookup | null>(() => {
     const snap = index.snapshot.value
@@ -46,5 +48,5 @@ export function useFilterPrices (rule: () => UniqueRule) {
   function wantPrices () {
     try { ninja.queuePricesFetch() } catch {}
   }
-  return { lookup, safety, currentLeague, breakdown, updatedAt, league, wantPrices }
+  return { lookup, safety, pricedTypes, currentLeague, breakdown, updatedAt, league, wantPrices }
 }

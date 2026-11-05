@@ -105,6 +105,8 @@ export interface LootFilterWidget extends Widget {
   savedExtraSig?: string
   // The same without the net's list: your changes, as last saved.
   savedUserSig?: string
+  // The source text the last save was made from.
+  savedSourceHash?: string
   priceTiers: PriceTiers
   safetyNet: SafetyNet
   // Changes as they were at each of the last saves, newest first.
