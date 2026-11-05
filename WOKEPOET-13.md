@@ -1,7 +1,7 @@
 ---
 id: WOKEPOET-13
 title: Make the PoB builds panel look like Path of Exile
-status: Grooming
+status: In Progress
 priority: Medium
 effort: M
 assignee: unassigned
@@ -23,8 +23,14 @@ history:
       flux/WOKEPOET-13-make-the-pob-builds-panel-look-like-path-of-exile
     event: worktree-created
     id: a-2026-11-05t02-50-03-218z
+  - type: status_change
+    from: Grooming
+    to: In Progress
+    user: Agent
+    date: '2026-11-05T02:51:15.558Z'
 branch: flux/WOKEPOET-13-make-the-pob-builds-panel-look-like-path-of-exile
 baselineCommit: a58632b0379617cbbaaebd67ac298914035552dd
+needsAction: null
 ---
 > **TL;DR:** The build detail view gets game-style visuals: gem names coloured by attribute, real item icons on Gear, and an in-game-style item tooltip on hover, across Leveling, Gear, Setups and the rest.
 
