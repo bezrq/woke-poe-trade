@@ -83,7 +83,7 @@ import DockItem from '../dock/DockItem.vue'
 import { hideWhilePlaying, tickWhile } from '../dock/dock'
 import {
   READ_GUIDE_JS, READ_PROFILE_JS, guideSkinCss, guideUrl, matchesFilter, mergeProgress, parseHotkeyTarget,
-  profileUrl, readProfile, scrollToJs, summarize, toggleTickJs
+  profileUrl, readProfile, scrollToJs, summarize, tickJs, toggleTickJs
 } from './widget'
 import type { GuideRow, ProfilePage, ProfileRow } from './widget'
 
@@ -172,7 +172,7 @@ function applyTicks () {
     problem.value = "Your profile's challenges don't match this guide. It may be for another league."
     return
   }
-  for (const n of merged.value.toTick) el.executeJavaScript(toggleTickJs(n)).catch(() => {})
+  for (const n of merged.value.toTick) el.executeJavaScript(tickJs(n)).catch(() => {})
 }
 
 watch(summary, (s) => {

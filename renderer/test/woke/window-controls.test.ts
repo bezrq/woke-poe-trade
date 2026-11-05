@@ -7,6 +7,7 @@ import { describe, expect, it } from 'vitest'
 import { minimizeAnchor, restoreAnchor } from '@/web/woke/ui/window-anchor'
 import WPanel from '@/web/woke/ui/WPanel.vue'
 import Widget from '@/web/overlay/Widget.vue'
+import type { Anchor, Widget as WidgetConfig } from '@/web/overlay/interfaces'
 
 const W = 1920
 const H = 1080
@@ -47,7 +48,7 @@ describe('minimizeAnchor / restoreAnchor', () => {
 
 describe('Widget title bar', () => {
   it('has no move button', async () => {
-    const config = { wmId: 1, wmType: 'test', wmTitle: '', wmWants: 'show', wmZorder: 1, wmFlags: [], anchor: { pos: 'tl', x: 0, y: 0 } }
+    const config: WidgetConfig & { anchor: Anchor } = { wmId: 1, wmType: 'test', wmTitle: '', wmWants: 'show', wmZorder: 1, wmFlags: [], anchor: { pos: 'tl', x: 0, y: 0 } }
     const app = createSSRApp({
       render: () => h(Widget, { config, moveHandles: 'corners' }, {
         default: () => h(WPanel, { title: 'Panel' }, { default: () => 'BODY' })
