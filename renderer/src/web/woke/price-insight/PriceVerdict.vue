@@ -1,5 +1,13 @@
 <template>
   <div :class="[$style.card, $style[insight.confidence]]">
+    <div v-if="blankSearch" :class="$style.main">
+      <div :class="$style.eyebrow">
+        <span :class="$style.badge">NO MODS</span>
+        <span>This search has no mods ticked, so it can't price this rare</span>
+      </div>
+      <p :class="$style.note">Tick the mods that matter, then search.</p>
+    </div>
+    <template v-else>
     <div :class="$style.hero">
       <div :class="$style.main">
         <template v-if="!insight.range">
@@ -84,6 +92,7 @@
       <span>Ask poeprices.info about rares</span>
       <span v-if="ppStatus" class="w-faint">· {{ ppStatus }}</span>
     </label>
+    </template>
   </div>
 </template>
 
@@ -111,6 +120,10 @@ const props = defineProps<{
   /** Identifies this search in the price log, or null before it runs. */
   logKey: string | null
   league: string
+  /** A rare searched with no mods: any rare would match, so there's no price to give. */
+  blankSearch?: boolean
+  /** A rare searched without one of its top mods: the price may still be right, "worthless" isn't. */
+  skipsTopMods?: boolean
 }>()
 
 const LOW_VALUE = 3
@@ -130,7 +143,7 @@ const smart = useSmartPrice(toRef(props, 'item'), toRef(props, 'insight'), toRef
 onUnmounted(smart.stop)
 const { ninjaInfo, blend, headline, ranges, series, leagueLoading } = smart
 
-const lowValue = computed(() => (headline.value?.chaos ?? props.insight.range?.fair ?? 0) < LOW_VALUE)
+const lowValue = computed(() => !props.skipsTopMods && (headline.value?.chaos ?? props.insight.range?.fair ?? 0) < LOW_VALUE)
 
 const railInput = computed(() => ({
   low: props.insight.range?.low ?? 0,

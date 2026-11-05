@@ -23,7 +23,9 @@
         :loading="!list || !slowdownReady"
         :total="list ? list.total : null"
         :log-key="logKey"
-        :league="filters.trade.league" />
+        :league="filters.trade.league"
+        :blank-search="blankSearch"
+        :skips-top-mods="skipsTop" />
       <price-drivers v-if="list"
         :key="list.id"
         :item="item"
@@ -154,6 +156,7 @@ import { groupListings, rowTitle, ListingRow } from '@/web/woke/price-insight/li
 import { nowMinute } from '@/web/woke/ui/format'
 import '@/web/woke/price-insight/price-table.css'
 import { useCheckLog } from '@/web/woke/price-insight/useCheckLog'
+import { isBlankRareSearch, skipsTopMods } from '@/web/woke/price-insight/search-scope'
 
 const slowdown = artificialSlowdown(900)
 
@@ -341,6 +344,8 @@ export default defineComponent({
       t,
       list: searchResult,
       improved,
+      blankSearch: computed(() => isBlankRareSearch(props.item, props.filters, props.stats)),
+      skipsTop: computed(() => skipsTopMods(props.item, props.stats)),
       verdictSlot,
       insight,
       insightOptions,

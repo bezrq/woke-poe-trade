@@ -497,6 +497,8 @@ function finalFilterTweaks (ctx: FiltersCreationContext) {
     }
   }
 
+  tickTopTierMods(ctx.filters, item)
+
   const basePercentile = ctx.filters.find(fitler => fitler.tradeId[0] === 'item.base_percentile')
   if (basePercentile && item.rarity === ItemRarity.Unique) {
     const hasVisibleArmourProp = ctx.filters.some(filter =>
@@ -514,6 +516,33 @@ function finalFilterTweaks (ctx: FiltersCreationContext) {
       enableAllFilters(ctx.filters)
     }
   }
+}
+
+// woke: a rare's best mods are what sets its price, so they start ticked.
+const MAX_TICKED_ON_RARE = 4
+
+function isTopTierSource (source: StatFilter['sources'][number]) {
+  const { type, tier } = source.modifier.info
+  return (type === ModifierType.Explicit || type === ModifierType.Fractured) && tier != null && tier <= 2
+}
+
+export function hasTopTierMod (filter: Pick<StatFilter, 'sources'>): boolean {
+  return filter.sources.some(isTopTierSource)
+}
+
+function bestTier (filter: StatFilter): number {
+  return Math.min(...filter.sources.filter(isTopTierSource).map(s => s.modifier.info.tier!))
+}
+
+function tickTopTierMods (filters: StatFilter[], item: ParsedItem) {
+  if (item.rarity !== ItemRarity.Rare || item.isVeiled) return
+
+  const ticked = filters.filter(f => !f.disabled && !f.hidden).length
+  filters
+    .filter(f => f.disabled && !f.hidden && hasTopTierMod(f))
+    .sort((a, b) => (bestTier(a) - bestTier(b)) || ((b.roll?.goodness ?? 0) - (a.roll?.goodness ?? 0)))
+    .slice(0, Math.max(MAX_TICKED_ON_RARE - ticked, 0))
+    .forEach(f => { f.disabled = false })
 }
 
 function applyClusterJewelRules (filters: StatFilter[], exact: boolean) {
