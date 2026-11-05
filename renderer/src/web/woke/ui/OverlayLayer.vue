@@ -121,7 +121,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKey))
 }
 .item:disabled { opacity: 0.45; }
 .hl { background: var(--w-accent-soft); }
-.ic { width: var(--w-icon-sm); height: var(--w-icon-sm); flex: none; display: inline-grid; place-items: center; font-size: 12px; color: var(--w-dim); }
+.ic { width: var(--w-icon-sm); height: var(--w-icon-sm); flex: none; display: inline-grid; place-items: center; font-size: calc(12px * var(--w-text-scale, 1)); color: var(--w-dim); }
 .label { flex: 1; }
 .keys { margin-left: var(--w-s3); }
 .danger, .danger .ic { color: var(--w-down); }

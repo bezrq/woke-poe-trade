@@ -86,7 +86,7 @@ function onKeyup (e: KeyboardEvent) {
 .wrap { display: inline-flex; align-items: center; gap: var(--w-s2); min-width: 0; }
 .cell {
   display: inline-flex; align-items: center; justify-content: center; gap: 4px;
-  min-width: 110px; height: 24px; padding: 0 8px;
+  min-width: 110px; height: calc(24px * var(--w-text-scale, 1)); padding: 0 8px;
   background: var(--w-panel-2); border: 1px solid var(--w-line); border-radius: var(--w-r-sm);
   font-size: var(--w-fs-sm); color: var(--w-fg); cursor: pointer;
 }

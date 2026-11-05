@@ -108,7 +108,7 @@ function statusLine (m: ModuleDef) {
 .switch:focus-visible { outline: 2px solid var(--w-accent); outline-offset: 2px; }
 .need {
   font-size: var(--w-fs-xs);
-  line-height: 15px;
+  line-height: calc(15px * var(--w-text-scale, 1));
   padding: 0 6px;
   border-radius: var(--w-r-pill);
   border: 1px solid var(--w-line-strong);

@@ -263,7 +263,7 @@ const ScarabName = defineComponent({
         icon ? h('img', { src: icon, style: 'width: 20px; height: 20px; object-fit: contain; flex: none;', alt: '', loading: 'lazy', decoding: 'async', draggable: 'false' }) : null,
         h('span', { class: 'w-trunc' }, shortScarab(p.row.name)),
         p.row.rareCheap
-          ? h('i', { class: 'fas fa-star w-warn', style: 'flex: none; font-size: 11px;', title: 'Exceptionally rare and cheap: it may rise later, so think before vendoring it' })
+          ? h('i', { class: 'fas fa-star w-warn', style: 'flex: none; font-size: calc(11px * var(--w-text-scale, 1));', title: 'Exceptionally rare and cheap: it may rise later, so think before vendoring it' })
           : null
       ])
     }

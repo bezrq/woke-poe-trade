@@ -41,7 +41,7 @@ function toggle () {
   background: var(--w-pc-well, theme('colors.gray.900'));
   @apply border border-transparent;
   @apply pl-1 pr-2;
-  line-height: 1.25rem;
+  line-height: calc(1.25rem * var(--w-text-scale, 1));
   display: flex;
   align-items: center;
 

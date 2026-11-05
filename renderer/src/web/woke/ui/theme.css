@@ -70,16 +70,17 @@
    * numbers use the same family with even-width digits (.w-num). Fontin small
    * caps is for titles of 15px and up only. Nothing goes below --w-fs-xs. */
   --w-head: FontinSmallCaps, FrizQuadrataC, Georgia, serif;
-  --w-head-size: 15px;
+  --w-head-size: calc(15px * var(--w-text-scale, 1));
   --w-head-track: 0.03em;
   --w-body: Inter, system-ui, sans-serif;
   --w-num: Inter, system-ui, sans-serif;
   --w-mono: "JetBrains Mono", ui-monospace, monospace;
-  --w-fs-xs: 11px;    /* column labels, key caps */
-  --w-fs-sm: 11.5px;  /* meta, ages, hints */
-  --w-fs-md: 13px;    /* rows, body, buttons */
-  --w-fs-lg: 15px;    /* titles, key values */
-  --w-fs-xl: 18px;    /* the verdict (P7) */
+  /* All times the Text size setting (ui/text-scale.ts). */
+  --w-fs-xs: calc(11px * var(--w-text-scale, 1));    /* column labels, key caps */
+  --w-fs-sm: calc(11.5px * var(--w-text-scale, 1));  /* meta, ages, hints */
+  --w-fs-md: calc(13px * var(--w-text-scale, 1));    /* rows, body, buttons */
+  --w-fs-lg: calc(15px * var(--w-text-scale, 1));    /* titles, key values */
+  --w-fs-xl: calc(18px * var(--w-text-scale, 1));    /* the verdict (P7) */
   --w-text: var(--w-fs-md);
   --w-text-sm: var(--w-fs-sm);
 
@@ -99,7 +100,7 @@
   --w-radius-sm: var(--w-r-sm);
 
   /* Density (P16): comfortable by default, compact via data-woke-density */
-  --w-row-h: 28px;
+  --w-row-h: calc(28px * var(--w-text-scale, 1));
   --w-pad: 12px;
 
   /* Motion (P15): quick fade + short rise in, faster out */
@@ -114,7 +115,7 @@
   --w-icon-lg: 24px;
 }
 
-:root[data-woke-density="compact"] { --w-row-h: 24px; }
+:root[data-woke-density="compact"] { --w-row-h: calc(24px * var(--w-text-scale, 1)); }
 @media (prefers-reduced-motion: reduce) {
   :root { --w-dur-in: 0ms; --w-dur-out: 0ms; --w-rise: 0px; }
 }
@@ -141,7 +142,7 @@
   --w-num: Fontin, FrizQuadrataC, Georgia, serif;
   --w-r-sm: 1px;
   --w-r-md: 1px;
-  --w-row-h: 30px;
+  --w-row-h: calc(30px * var(--w-text-scale, 1));
 }
 
 :root[data-woke-theme="modern"] {
@@ -169,6 +170,9 @@
 }
 
 /* ---------- Base classes (used by the W* components, usable directly too) ---------- */
+
+/* Text with no size of its own. */
+body { font-size: calc(1rem * var(--w-text-scale, 1)); }
 
 .w-surface {
   background: var(--w-panel);

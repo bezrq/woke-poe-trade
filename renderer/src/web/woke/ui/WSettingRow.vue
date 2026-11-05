@@ -39,6 +39,6 @@ withDefaults(defineProps<{
 .off { opacity: 0.55; }
 .restart {
   font-size: var(--w-fs-xs); color: var(--w-warn); border: 1px solid currentColor;
-  border-radius: var(--w-r-pill); padding: 0 6px; line-height: 16px;
+  border-radius: var(--w-r-pill); padding: 0 6px; line-height: calc(16px * var(--w-text-scale, 1));
 }
 </style>

@@ -53,7 +53,7 @@ function handleOptionClick (e: MouseEvent, value: number) {
   min-width: theme('width.10');
   text-align: center;
   white-space: nowrap;
-  line-height: 1.125rem;
+  line-height: calc(1.125rem * var(--w-text-scale, 1));
   border-radius: theme('borderRadius.DEFAULT');
 
   .alwaysChecked > &.checked {

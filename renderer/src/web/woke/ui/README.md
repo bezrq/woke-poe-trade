@@ -25,7 +25,7 @@ art wherever the game has it, readable fonts (nothing under 11px).
 
 | Group | Tokens |
 | --- | --- |
-| Text size | `--w-fs-xs` 11, `--w-fs-sm` 11.5, `--w-fs-md` 13, `--w-fs-lg` 15, `--w-fs-xl` 18. No other sizes. |
+| Text size | `--w-fs-xs` 11, `--w-fs-sm` 11.5, `--w-fs-md` 13, `--w-fs-lg` 15, `--w-fs-xl` 18, all times `--w-text-scale` (the Text size setting, `text-scale.ts`). No other sizes; a literal size must be `calc(12px * var(--w-text-scale, 1))`. One-line controls with a fixed height multiply it too. |
 | Fonts | `--w-body` Inter (bundled), `--w-num` same family with tabular digits (use `.w-num`), `--w-mono` JetBrains Mono for regex/code, `--w-head` Fontin small caps for titles ≥15px only. |
 | Spacing | `--w-s1`…`--w-s6` = 4, 8, 12, 16, 20, 24 px. `--w-pad` 12 is the panel's side padding. |
 | Radius | `--w-r-sm` 4, `--w-r-md` 6, `--w-r-pill`. (`--w-radius`/`--w-radius-sm` are aliases.) |

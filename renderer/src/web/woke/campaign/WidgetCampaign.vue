@@ -387,7 +387,7 @@ onUnmounted(() => {
   font-size: var(--w-fs-xs);
   padding: 0 7px;
   border-radius: var(--w-r-pill);
-  line-height: 17px;
+  line-height: calc(17px * var(--w-text-scale, 1));
 }
 .pill--safe { color: var(--w-up); background: color-mix(in srgb, var(--w-up) 15%, transparent); }
 .pill--edge { color: var(--w-warn); background: color-mix(in srgb, var(--w-warn) 15%, transparent); }

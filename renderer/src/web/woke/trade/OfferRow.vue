@@ -118,17 +118,17 @@ const buttons = computed(() => {
 .line { display: flex; align-items: center; gap: 6px; min-width: 0; text-align: left; background: none; border: 0; padding: 0; color: inherit; font: inherit; cursor: pointer; }
 .line:focus-visible { outline: 2px solid var(--w-accent); outline-offset: 1px; }
 .who { font-weight: 600; }
-.chip { font-size: 10.5px; line-height: 14px; border-radius: 999px; padding: 0 6px; border: 1px solid var(--w-line-strong, var(--w-line)); color: var(--w-dim); white-space: nowrap; }
+.chip { font-size: calc(10.5px * var(--w-text-scale, 1)); line-height: calc(14px * var(--w-text-scale, 1)); border-radius: 999px; padding: 0 6px; border: 1px solid var(--w-line-strong, var(--w-line)); color: var(--w-dim); white-space: nowrap; }
 .up { color: var(--w-up); border-color: color-mix(in srgb, var(--w-up) 45%, transparent); }
 .down { color: var(--w-down); border-color: color-mix(in srgb, var(--w-down) 45%, transparent); }
 .item { display: flex; align-items: center; gap: 6px; min-width: 0; }
 .art { width: 18px; height: 18px; object-fit: contain; flex: none; }
-.tab { display: flex; align-items: center; gap: 8px; font-size: 11.5px; line-height: 1.35; padding-top: 2px; }
+.tab { display: flex; align-items: center; gap: 8px; font-size: calc(11.5px * var(--w-text-scale, 1)); line-height: 1.35; padding-top: 2px; }
 .grid { --n: 12; display: grid; grid-template-columns: repeat(var(--n), 1fr); gap: 1px; width: 49px; height: 49px; flex: none; }
 .grid i { background: color-mix(in srgb, var(--w-fg) 9%, transparent); border-radius: 0.5px; }
 .grid i.on { background: var(--w-accent); box-shadow: 0 0 4px var(--w-accent); }
 .btns { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; padding-top: 4px; }
-.btn { display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; line-height: 20px; padding: 0 8px; border-radius: var(--w-r-sm, 3px);
+.btn { display: inline-flex; align-items: center; gap: 4px; font-size: calc(11.5px * var(--w-text-scale, 1)); line-height: calc(20px * var(--w-text-scale, 1)); padding: 0 8px; border-radius: var(--w-r-sm, 3px);
   border: 1px solid var(--w-line-strong, var(--w-line)); background: color-mix(in srgb, var(--w-fg) 5%, transparent); color: var(--w-fg); cursor: pointer; white-space: nowrap; }
 .btn:hover { background: color-mix(in srgb, var(--w-fg) 12%, transparent); }
 .btn:focus-visible { outline: 2px solid var(--w-accent); outline-offset: 1px; }

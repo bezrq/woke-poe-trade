@@ -20,7 +20,7 @@
           <div>{{ s.name }}</div>
           <div class="w-dim w-trunc" style="font-size: var(--w-text-sm)">{{ s.detail }}</div>
         </div>
-        <span class="w-dim" style="font-size: 11px">{{ s.on ? 'On' : 'Off' }}</span>
+        <span class="w-dim" style="font-size: calc(11px * var(--w-text-scale, 1))">{{ s.on ? 'On' : 'Off' }}</span>
       </div>
     </div>
     <div class="flex items-center gap-3">

@@ -93,7 +93,7 @@ export default defineComponent({
   background: var(--w-pc-well, theme('colors.gray.900'));
   @apply border border-transparent;
   @apply pr-1;
-  line-height: 1.25rem;
+  line-height: calc(1.25rem * var(--w-text-scale, 1));
 
   &.active {
     @apply border-gray-500;

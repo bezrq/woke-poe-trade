@@ -83,7 +83,7 @@ onUnmounted(() => { window.removeEventListener('pointermove', onMove) })
 .vertical .grip i { transform: rotate(90deg); }
 .empty {
   padding: 3px 10px;
-  font-size: 11px;
+  font-size: calc(11px * var(--w-text-scale, 1));
   color: var(--w-faint);
   background: var(--w-panel);
   border: 1px dashed var(--w-line);

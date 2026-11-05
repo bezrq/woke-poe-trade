@@ -15,10 +15,10 @@ function onChange (e: Event) { emit('update:modelValue', (e.target as HTMLSelect
 
 <style module>
 .select {
-  height: 26px;
+  height: calc(26px * var(--w-text-scale, 1));
   min-width: 0;
   padding: 0 6px;
-  font-size: 12.5px;
+  font-size: calc(12.5px * var(--w-text-scale, 1));
   color: var(--w-fg);
   background: var(--w-panel-2);
   border: 1px solid var(--w-line);

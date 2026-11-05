@@ -13,7 +13,9 @@ test('Eternal Orb by default; a picked icon reaches the tab bar and the host', a
   await expect(overlay.widget('settings').getByRole('radio', { name: 'Eternal Orb' })).toBeChecked()
   await overlay.snap('app icon picker')
 
-  await picker.check({ force: true })
+  // The label: the radio itself is visually hidden, so it can't scroll into view.
+  await overlay.widget('settings').getByText('Goldrim').click()
+  await expect(picker).toBeChecked()
   await expect(mark).toHaveAttribute('src', '/images/app-icons/goldrim.png')
   await fakeApp.waitForReceived('CLIENT->MAIN::update-host-config',
     (cfg: { appIcon?: string }) => cfg.appIcon === 'goldrim', 10_000)

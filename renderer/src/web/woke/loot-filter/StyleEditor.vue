@@ -351,7 +351,7 @@ function copy (tier: string) {
   border-radius: 50%;
 }
 .shape {
-  font-size: 13px;
+  font-size: calc(13px * var(--w-text-scale, 1));
   line-height: 1;
 }
 .select {

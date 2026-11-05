@@ -125,13 +125,13 @@ export default defineComponent({
   gap: 2px 8px;
   min-height: 20px;
   font-family: var(--w-body);
-  font-size: 12px;
+  font-size: calc(12px * var(--w-text-scale, 1));
   color: var(--w-dim);
 }
 .filter-name-sub button:hover { color: var(--w-fg); }
 .filter-name-label {
-  font-size: 18px;
-  line-height: 24px;
+  font-size: calc(18px * var(--w-text-scale, 1));
+  line-height: calc(24px * var(--w-text-scale, 1));
   padding: 0 4px;
   margin-left: -5px;
   white-space: nowrap;
