@@ -1,7 +1,7 @@
 ---
 id: WOKEPOET-13
 title: Make the PoB builds panel look like Path of Exile
-status: In Progress
+status: Ready
 priority: Medium
 effort: M
 assignee: unassigned
@@ -28,9 +28,48 @@ history:
     to: In Progress
     user: Agent
     date: '2026-11-05T02:51:15.558Z'
+  - type: comment
+    user: Agent
+    comment: >-
+      **The build panel now looks like the game.** Gem names take their
+      attribute colour with art on Leveling, Gear and Setups. Gear shows real
+      item icons in inventory order. Hovering an item or gem shows a game-style
+      tooltip. Notes keep PoB's colour codes. Filter tab unchanged.
+
+
+      Key files: `renderer/src/web/woke/pob-builds/` (`GameTooltip.vue`,
+      `GemName.vue`, `item-art.ts`, `tooltip.ts`, `BuildDetail.vue`),
+      `main/src/woke/pob-parse.ts`.
+
+
+      Validated: vue-tsc and eslint clean, 166 renderer tests pass, new
+      `testing/e2e/pob-builds.spec.ts` passes on the fixture and on Guy's real
+      builds at 1080p and 1440p. Not run against latest master: local `git
+      fetch` fails on a crash-corrupted ref (`refs/heads/flux/WOKEPOET-11-...`,
+      all NUL bytes, its PR #83 is merged). CI needs to cover the merged result.
+
+
+      Known gap: 10 of the 278 gems in Guy's builds have no colour data, mostly
+      item-granted skills, and show white. Docs: UI README updated with the
+      `w-gem-*` classes.
+    date: '2026-11-05T03:28:52.594Z'
+    completionComment: true
+    id: c-2026-11-05t03-28-52-594z
+  - type: activity
+    user: Agent
+    comment: 'PR created: https://github.com/guybnd/woke-poe-trade/pull/86'
+    date: '2026-11-05T03:28:59.884Z'
+    id: a-2026-11-05t03-28-59-884z
+  - type: status_change
+    from: In Progress
+    to: Ready
+    user: Agent
+    date: '2026-11-05T03:28:59.884Z'
 branch: flux/WOKEPOET-13-make-the-pob-builds-panel-look-like-path-of-exile
 baselineCommit: a58632b0379617cbbaaebd67ac298914035552dd
 needsAction: null
+implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/86'
+swimlane: null
 ---
 > **TL;DR:** The build detail view gets game-style visuals: gem names coloured by attribute, real item icons on Gear, and an in-game-style item tooltip on hover, across Leveling, Gear, Setups and the rest.
 
