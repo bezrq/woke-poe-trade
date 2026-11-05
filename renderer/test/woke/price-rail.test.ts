@@ -6,14 +6,14 @@ describe('railMarks', () => {
     const marks = railMarks({ low: 20, likely: 85, high: 25, ninja: 146 })
     expect(marks.map(m => [m.label, m.kind, m.align])).toEqual([
       ['Cheapest', 'plain', 'start'],
-      ['Likely', 'likely', 'center'],
+      ['Typical', 'likely', 'center'],
       ['poe.ninja', 'ninja', 'end']
     ])
     expect(marks[1].x).toBeCloseTo(72.8, 0)
   })
 
   it('uses the top of the range when poe.ninja has no price', () => {
-    expect(railMarks({ low: 38, likely: 42, high: 55 }).map(m => m.label)).toEqual(['Cheapest', 'Likely', 'Top of range'])
+    expect(railMarks({ low: 38, likely: 42, high: 55 }).map(m => m.label)).toEqual(['Cheapest', 'Typical', 'Top of range'])
   })
 
   it('keeps ends on the ends when poe.ninja is the cheapest', () => {
@@ -27,7 +27,7 @@ describe('railMarks', () => {
     const marks = railMarks({ low: 20, likely: 20, high: 25 })
     expect(marks).toHaveLength(2)
     expect(marks[0].kind).toBe('likely')
-    expect(marks[0].label).toBe('Cheapest, likely')
+    expect(marks[0].label).toBe('Cheapest, typical')
   })
 
   it('has nothing to draw when every price is the same', () => {
