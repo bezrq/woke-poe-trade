@@ -15,14 +15,19 @@ const ARTIFACTS = JSON.stringify({
     { name: 'Scrap Metal', chaos: 2.94, graph: [...FLAT, 1018] }
   ]
 })
-const area = (id: string) => `2026/11/05 20:49:09 18884906 1186a8a3 [DEBUG Client 34092] Generating level 83 area "${id}" with seed 666232010`
+// Its name is in the feed, so the chips would be drawn if they were still there.
+const SCARAB = JSON.stringify({
+  type: 'Scarab',
+  lines: [{ name: 'Expedition Scarab of Archaeology', chaos: 0.93, graph: [...FLAT, 1] }]
+})
+const area = (id: string, seed = '666232010') => `2026/11/05 20:49:09 18884906 1186a8a3 [DEBUG Client 34092] Generating level 83 area "${id}" with seed ${seed}`
 const TUJEN = '2026/11/05 20:49:11 18887484 cffb065b [INFO Client 34092] Tujen, the Haggler: Oi! Over here!'
 
 test('Expedition card: prices, vendor here on top, no scarab chips or arrows', async ({ overlay }) => {
   const recorded = fs.readFileSync(DENSE, 'utf8')
   await overlay.page.route('**/dense/overviews*', (route) => route.fulfill({
     contentType: 'application/json',
-    body: recorded.replace(/\[\s*\{"type":"/, () => `[${ARTIFACTS},{"type":"`)
+    body: recorded.replace(/\[\s*\{"type":"/, () => `[${ARTIFACTS},${SCARAB},{"type":"`)
   }))
   await overlay.boot({ widgets: [{ wmType: 'woke-mechanics' }] })
   const icon = overlay.dockIcon('mechanics')
@@ -45,8 +50,19 @@ test('Expedition card: prices, vendor here on top, no scarab chips or arrows', a
   // Tujen speaks: their currency moves to the top.
   await overlay.log([TUJEN])
   await expect(overlay.page.getByText('Tujen is here')).toBeVisible({ timeout: 5000 })
+  await expect(overlay.page.getByText('Tujen is here').locator('..')).toContainText('Exotic Coinage')
   await expect(overlay.page.getByText('Others, each · week')).toBeVisible()
+  await expect(body).toContainText('0.07')
   await overlay.snap('expedition card, Tujen here')
+
+  // Through a portal to the hideout and back: still them.
+  await overlay.moveMouse(1000, 900)
+  await overlay.log([area('HideoutFelled', '1')])
+  await expect(icon).toHaveCount(0)
+  await overlay.log([area('ExpeditionBattlegroundGraves')])
+  await expect(icon).toBeVisible()
+  await overlay.hoverDockIcon('mechanics')
+  await expect(overlay.page.getByText('Tujen is here')).toBeVisible({ timeout: 5000 })
 
   // A new instance forgets them.
   await overlay.log([area('ExpeditionKaruiWargraves')])

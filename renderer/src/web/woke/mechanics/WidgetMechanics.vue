@@ -229,6 +229,7 @@ const dockMech = computed(() => (zoneMech.value && mechanicById(zoneMech.value))
 function openFull () {
   props.config.tab = dockMech.value.id
   props.config.expanded = true
+  wm.show(props.config.wmId)
 }
 
 function collapse () {

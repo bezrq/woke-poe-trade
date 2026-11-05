@@ -11,7 +11,7 @@ import { actProgress, advanceOnEnter, resyncTo, DEFAULT_ROUTE_OPTIONS, xpMultipl
 import { routeAsleepAfter } from '@/web/woke/campaign/widget'
 import type { RouteOptions } from '@/web/woke/campaign/route-parse'
 import { countNewMap, isMapArea, isMapSideArea, newSession, onZoneChange, maybeAutoPause, AUTO_PAUSE_MS } from '@/web/woke/farming/farming'
-import { expeditionVendorForSpeaker, mechanicForSpeaker } from '@/web/woke/mechanics/zone'
+import { expeditionVendorForSpeaker, mechanicForSpeaker, zoneTracker } from '@/web/woke/mechanics/zone'
 import { BOSS_AREAS, bossAreaIds } from '@/web/woke/shared/boss-areas'
 import { BOSS_ARENAS, arenaBosses, zoneKind } from '@/web/woke/shared/zone'
 import { BOSSES } from '@/web/woke/boss-runs/bosses'
@@ -225,6 +225,50 @@ describe('league mechanics', () => {
     expect(say('Gwennen, the Gambler: Exile!')).toBe('Gwennen')
     expect(say('Einhar, Beastmaster: Exile!')).toBeUndefined()
     expect(say('@From Tujen, the Haggler: wtb')).toBeUndefined()
+  })
+
+  describe('coming back to an instance through a portal', () => {
+    function track () {
+      const state = { mechanic: null as string | null, vendor: null as string | null }
+      const feed = zoneTracker(id => { state.mechanic = id }, v => { state.vendor = v })
+      const area = (id: string, seed: string) => feed('', { kind: 'area', areaId: id, areaLevel: 83, seed })
+      const say = (who: string) => feed(`2026/11/05 20:49:11 1 2 [INFO Client 1] ${who}: Exile!`, null)
+      return { state, area, say }
+    }
+
+    it('remembers who spoke there, and forgets them in a new instance', () => {
+      const { state, area, say } = track()
+      area('ExpeditionKaruiWargraves', '111')
+      expect(state).toEqual({ mechanic: 'expedition', vendor: null })
+      say('Tujen, the Haggler')
+      expect(state.vendor).toBe('Tujen')
+      area('HideoutFelled', '1')
+      expect(state).toEqual({ mechanic: null, vendor: null })
+      area('ExpeditionKaruiWargraves', '111')
+      expect(state).toEqual({ mechanic: 'expedition', vendor: 'Tujen' })
+      area('ExpeditionKaruiWargraves', '222')
+      expect(state).toEqual({ mechanic: 'expedition', vendor: null })
+    })
+
+    it('brings back the mechanic of a map that only showed it by speech', () => {
+      const { state, area, say } = track()
+      area('MapStrand', '333')
+      expect(state.mechanic).toBeNull()
+      say('Rog')
+      area('HideoutFelled', '1')
+      area('MapStrand', '333')
+      expect(state).toEqual({ mechanic: 'expedition', vendor: 'Rog' })
+    })
+
+    it('does not carry a hideout vendor to the next visit: hideouts all log seed 1', () => {
+      const { state, area, say } = track()
+      area('HideoutFelled', '1')
+      say('Rog')
+      expect(state.vendor).toBe('Rog')
+      area('MapStrand', '333')
+      area('HideoutFelled', '1')
+      expect(state).toEqual({ mechanic: null, vendor: null })
+    })
   })
 
   it('player chat is never an NPC', () => {

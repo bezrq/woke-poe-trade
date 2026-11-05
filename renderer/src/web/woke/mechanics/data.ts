@@ -80,7 +80,7 @@ export const MECHANICS: Mechanic[] = [
     groups: [EXPEDITION_GROUP],
     scarabs: /Expedition/,
     tips: [
-      'Run logbooks for the faction whose vendor currency is worth most per unit.',
+      'Prices are per unit and drop amounts differ, so the dearest currency is not always the best faction to run.',
       'Place explosives on remnants that add vendor currency quantity or rarity first.',
       'Skip remnants your build cannot handle; one bad remnant can brick the run.'
     ],

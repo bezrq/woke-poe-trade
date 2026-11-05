@@ -202,7 +202,7 @@ describe('league mechanics', () => {
   })
 
   it('prices the Betrayal Expedition reward from the same list', () => {
-    expect(priceReward('Expedition currency', artifacts).chaos).not.toBe(999)
+    expect(priceReward('Expedition currency', artifacts).chaos).toBeCloseTo(1.97)
     expect(priceReward('Expedition currency', artifacts).count).toBe(4)
   })
 
