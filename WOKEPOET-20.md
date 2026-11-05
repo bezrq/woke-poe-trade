@@ -56,7 +56,7 @@ branch: flux/WOKEPOET-20-open-dynamic-popups-in-the-empty-left-area-by-default
 baselineCommit: 7896e164a82865073f89df1ab235131664e8c4a4
 needsAction: null
 implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/93'
-swimlane: open-pr
+swimlane: null
 ---
 > **TL;DR:** Panels opened from the dock or tab bar (PoB builds and friends) open at one spot on the left, below the top bar. Panels the user already moved stay put.
 
