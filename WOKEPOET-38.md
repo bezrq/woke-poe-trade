@@ -1,7 +1,7 @@
 ---
 id: WOKEPOET-38
 title: Reusable item tooltip across the app
-status: Ready
+status: Done
 priority: Medium
 effort: None
 assignee: unassigned
@@ -45,8 +45,42 @@ history:
     to: Ready
     user: Agent
     date: '2026-11-05T08:34:17.151Z'
+  - type: comment
+    user: Agent
+    comment: >-
+      Merged as 00a2a53e and live on the dev copy. Shared v-item-tip tooltip
+      (look C, placement P1) on market, loot filter, boss drops, investing,
+      farming, atlas, mechanics, analytics and price check. Data pack in
+      public/data/tips, rebuilt with npm run tip-data. Gaps: 54 older uniques
+      have no text, cards have no flavour text.
+    completionComment: true
+    date: '2026-11-05T08:41:17.964Z'
+    id: c-2026-11-05t08-41-17-964z
+  - type: status_change
+    from: Ready
+    to: Done
+    user: Agent
+    date: '2026-11-05T08:41:18.410Z'
 needsAction: null
 implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/132'
+baselineCommit: d3529ea34cc3eb9250af781a7d862751daf8ef90
+swimlane: null
+diffSummary:
+  - file: renderer/src/web/woke/boss-runs/bosses.ts
+    additions: 75
+    deletions: 0
+  - file: renderer/src/web/woke/shared/boss-areas.ts
+    additions: 8
+    deletions: 5
+  - file: renderer/test/woke/boss-runs-card.test.ts
+    additions: 2
+    deletions: 2
+  - file: renderer/test/woke/economy.test.ts
+    additions: 2
+    deletions: 1
+  - file: renderer/test/woke/game-log.test.ts
+    additions: 8
+    deletions: 2
 ---
 Hovering an item in the Market tracker shows nothing. Promote pob-builds/GameTooltip.vue to a shared component usable from a plain item name, for market, loot filter, boss drops, league investing, farming and price check.
 

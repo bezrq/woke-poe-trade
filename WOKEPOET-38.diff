@@ -1,0 +1,167 @@
+diff --git a/renderer/src/web/woke/boss-runs/bosses.ts b/renderer/src/web/woke/boss-runs/bosses.ts
+index c3db9152..ee98e7e8 100644
+--- a/renderer/src/web/woke/boss-runs/bosses.ts
++++ b/renderer/src/web/woke/boss-runs/bosses.ts
+@@ -418,6 +418,81 @@ export const BOSSES: Boss[] = ([
+       { name: 'Greater Kinetic Instability Support', chance: null, variant: '1' }
+     ]
+   },
++  {
++    id: 'infinite-hunger',
++    name: 'The Infinite Hunger',
++    tier: 'pinnacle',
++    entry: [{ name: 'Writhing Invitation', qty: 1 }],
++    runSeconds: 180,
++    source: { label: 'poedb drop list, no rates yet', url: POEDB + 'The_Infinite_Hunger', kills: null },
++    drops: [
++      { name: 'Ceaseless Feast', chance: null },
++      { name: 'Black Zenith', chance: null }
++    ]
++  },
++  {
++    id: 'black-star',
++    name: 'The Black Star',
++    tier: 'pinnacle',
++    entry: [{ name: 'Polaric Invitation', qty: 1 }],
++    runSeconds: 180,
++    source: { label: 'poedb drop list, no rates yet', url: POEDB + 'The_Black_Star', kills: null },
++    drops: [
++      { name: 'Polaric Devastation', chance: null },
++      { name: 'Sudden Dawn', chance: null },
++      { name: 'The Eternal Struggle', chance: null }
++    ]
++  },
++  {
++    id: 'saresh',
++    name: 'Saresh, of the Weeping Black',
++    tier: 'pinnacle',
++    entry: [{ name: 'The Black Barya', qty: 1 }],
++    runSeconds: 180,
++    source: { label: 'community wiki via poedb', url: POEDB + 'Saresh%2C_of_the_Weeping_Black', kills: null, note: 'Wiki figures with no stated sample.' },
++    drops: [
++      { name: 'Screams of the Desiccated', chance: 0.50 },
++      { name: 'The Broken Elegy', chance: 0.40 },
++      { name: 'The Sands of Time', chance: 0.10 },
++      { name: 'Transfusion Support', chance: 0.10, variant: '1' }
++    ]
++  },
++  {
++    id: 'king-in-the-mists',
++    name: 'The King in the Mists',
++    tier: 'pinnacle',
++    entry: [{ name: 'An Audience With The King', qty: 1 }],
++    runSeconds: 180,
++    source: { label: 'poedb drop list, no rates yet', url: POEDB + 'The_King_in_the_Mists', kills: null },
++    drops: [{ name: 'The Light of Meaning', chance: null }]
++  },
++  {
++    id: 'sasan',
++    name: 'Sasan, the Bandit Lord',
++    tier: 'pinnacle',
++    entry: [],
++    runSeconds: 180,
++    source: { label: 'poedb drop list, no rates yet', url: POEDB + 'Sasan%2C_the_Bandit_Lord', kills: null },
++    drops: [{ name: 'The Living Blade', chance: null }]
++  },
++  {
++    id: 'black-knight',
++    name: 'The Black Knight',
++    tier: 'pinnacle',
++    entry: [],
++    runSeconds: 180,
++    source: { label: 'poedb drop list, no rates yet', url: POEDB + 'The_Black_Knight', kills: null },
++    drops: [{ name: 'Svalinn', chance: null }]
++  },
++  {
++    id: 'lazeth',
++    name: 'Lazeth, the Cyaxan Assassin',
++    tier: 'pinnacle',
++    entry: [],
++    runSeconds: 180,
++    source: null,
++    drops: []
++  },
+   {
+     id: 'feared',
+     name: 'The Feared',
+diff --git a/renderer/src/web/woke/shared/boss-areas.ts b/renderer/src/web/woke/shared/boss-areas.ts
+index f6c33a1f..a7eeae70 100644
+--- a/renderer/src/web/woke/shared/boss-areas.ts
++++ b/renderer/src/web/woke/shared/boss-areas.ts
+@@ -18,8 +18,13 @@ const ARENAS: Arena[] = [
+   { areaIds: ['MapWorldsShapersRealm'], names: ["The Shaper's Realm"], bosses: ['shaper', 'uber-shaper'] },
+   { areaIds: ['MapWorldsElderArena'], names: [], bosses: [] },
+   { areaIds: ['MapWorldsElderArenaUber'], names: ['Absence of Value and Meaning'], bosses: ['uber-elder', 'uber-uber-elder'] },
+-  { areaIds: ['MapWorldsPrimordialBoss1'], names: [], bosses: [] },
+-  { areaIds: ['MapWorldsPrimordialBoss2'], names: [], bosses: [] },
++  { areaIds: ['MapWorldsPrimordialBoss1'], names: ['Seething Chyme'], bosses: ['infinite-hunger'] },
++  { areaIds: ['MapWorldsPrimordialBoss2'], names: ['Polaric Void'], bosses: ['black-star'] },
++  { areaIds: ['SettlersBossAlleyway'], names: ['Abandoned Port'], bosses: ['sasan'] },
++  { areaIds: ['SettlersBossPirateCove'], names: ["Sailor's Folly"], bosses: ['lazeth'] },
++  { areaIds: ['SettlersBossFallenStar'], names: ['Starfall Crater'], bosses: ['black-knight'] },
++  { areaIds: ['FaridunLeagueBoss'], names: ['The Black Barya'], bosses: ['saresh'] },
++  { areaIds: ['AzmeriLeagueBoss'], names: ['Crux of Nothingness'], bosses: ['king-in-the-mists'] },
+   { areaIds: ['MapWorldsPrimordialBoss3'], names: ['Absence of Patience and Wisdom'], bosses: ['exarch', 'uber-exarch'] },
+   { areaIds: ['MapWorldsPrimordialBoss4'], names: ['Absence of Symmetry and Harmony'], bosses: ['eater', 'uber-eater'] },
+   // The Maven's own fight.
+@@ -28,9 +33,7 @@ const ARENAS: Arena[] = [
+   { areaIds: ['MavenHub'], names: ["The Maven's Crucible"], bosses: ['feared'] },
+   { areaIds: ['AtlasExilesBoss5'], names: ['Eye of the Storm'], bosses: ['sirus', 'uber-sirus'] },
+   { areaIds: ['Synthesis_MapBoss'], names: ['Cortex'], bosses: ['venarius', 'uber-cortex'] },
+-  { areaIds: [], names: ['The Feared'], bosses: ['feared'] },
+-  // The Infinite Hunger and The Black Star.
+-  { areaIds: [], names: ['Seething Chyme', 'Polaric Void'], bosses: [] }
++  { areaIds: [], names: ['The Feared'], bosses: ['feared'] }
+ ]
+ 
+ // By lower-cased area id.
+diff --git a/renderer/test/woke/boss-runs-card.test.ts b/renderer/test/woke/boss-runs-card.test.ts
+index 74ee3249..a8a30cdf 100644
+--- a/renderer/test/woke/boss-runs-card.test.ts
++++ b/renderer/test/woke/boss-runs-card.test.ts
+@@ -25,8 +25,8 @@ describe('boss runs card', () => {
+     expect(ids('MapAtziri2', 80)).toEqual(['uber-atziri'])
+   })
+ 
+-  it('every arena boss but The Feared has a drop list', () => {
+-    expect(BOSSES.filter(b => !b.drops.length).map(b => b.id)).toEqual(['feared'])
++  it('only bosses with no known source lack a drop list', () => {
++    expect(BOSSES.filter(b => !b.drops.length).map(b => b.id)).toEqual(['lazeth', 'feared'])
+   })
+ 
+   it('leads with the most valuable drops, known chance or not', () => {
+diff --git a/renderer/test/woke/economy.test.ts b/renderer/test/woke/economy.test.ts
+index cb88571d..8fb7799a 100644
+--- a/renderer/test/woke/economy.test.ts
++++ b/renderer/test/woke/economy.test.ts
+@@ -197,7 +197,8 @@ describe('boss runs', () => {
+   it('boss data is sane', () => {
+     expect(BOSSES.length).toBeGreaterThan(5)
+     for (const b of BOSSES) {
+-      expect(b.entry.length, b.id).toBeGreaterThan(0)
++      // Settlers bosses: no entry item known.
++      if (!['sasan', 'lazeth', 'black-knight'].includes(b.id)) expect(b.entry.length, b.id).toBeGreaterThan(0)
+       expect(b.runSeconds, b.id).toBeGreaterThan(0)
+       for (const d of b.drops) if (d.chance != null) expect(d.chance, `${b.id} ${d.name}`).toBeGreaterThan(0)
+       for (const d of b.drops) if (d.chance != null) expect(d.chance, `${b.id} ${d.name}`).toBeLessThanOrEqual(1)
+diff --git a/renderer/test/woke/game-log.test.ts b/renderer/test/woke/game-log.test.ts
+index 0b089731..425bf41e 100644
+--- a/renderer/test/woke/game-log.test.ts
++++ b/renderer/test/woke/game-log.test.ts
+@@ -146,8 +146,14 @@ describe('farming', () => {
+     // Area id and name pairs from real Client.txt logs.
+     expect(arenaBosses('MapWorldsPrimordialBoss3', 'Absence of Patience and Wisdom')).toEqual(['exarch', 'uber-exarch'])
+     expect(arenaBosses('MapWorldsPrimordialBoss4', 'Absence of Symmetry and Harmony')).toEqual(['eater', 'uber-eater'])
+-    expect(arenaBosses('MapWorldsPrimordialBoss1', 'Seething Chyme')).toEqual([])
+-    expect(arenaBosses('MapWorldsPrimordialBoss2', 'Polaric Void')).toEqual([])
++    expect(arenaBosses('MapWorldsPrimordialBoss1', 'Seething Chyme')).toEqual(['infinite-hunger'])
++    expect(arenaBosses('MapWorldsPrimordialBoss2', 'Polaric Void')).toEqual(['black-star'])
++    expect(arenaBosses('SettlersBossPirateCove', "Sailor's Folly")).toEqual(['lazeth'])
++    expect(arenaBosses('SettlersBossAlleyway', 'Abandoned Port')).toEqual(['sasan'])
++    expect(arenaBosses('SettlersBossFallenStar', 'Starfall Crater')).toEqual(['black-knight'])
++    expect(arenaBosses('FaridunLeagueBoss', 'The Black Barya')).toEqual(['saresh'])
++    expect(arenaBosses('AzmeriLeagueBoss', 'Crux of Nothingness')).toEqual(['king-in-the-mists'])
++    expect(zoneKind('SettlersBossPirateCove', '')).toBe('boss')
+     expect(zoneKind('MapWorldsPrimordialBoss2', 'Polaric Void')).toBe('boss')
+     expect(arenaBosses('MavenHub', "The Maven's Crucible")).toEqual(['feared'])
+     expect(Object.values(BOSS_ARENAS).flat().filter(id => !BOSSES.some(b => b.id === id))).toEqual([])
