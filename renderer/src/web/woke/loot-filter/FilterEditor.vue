@@ -377,15 +377,15 @@ function priceOf (base: string): number | null {
 }
 const priceText = (chaos: number) => chaos >= 10 ? `${Math.round(chaos)}c` : `${Math.round(chaos * 10) / 10}c`
 const tierItems = computed(() => byPrice(tier.value?.bases ?? [], priceOf))
-// An undo can take a picked item off the tier.
-watch(tierItems, (list) => {
-  if (picked.value.some(b => !list.includes(b))) picked.value = picked.value.filter(b => list.includes(b))
-})
 
 const tree = computed(() => props.store.doc.value ? buildTree(props.store.doc.value) : [])
 const allGroups = computed(() => tree.value.flatMap(s => s.groups))
 const group = computed<GroupNode | null>(() => allGroups.value.find(g => g.type === selType.value) ?? null)
 const tier = computed<TierNode | null>(() => group.value?.tiers.find(t => t.tier === selTier.value) ?? null)
+// An undo can take a picked item off the tier.
+watch(tierItems, (list) => {
+  if (picked.value.some(b => !list.includes(b))) picked.value = picked.value.filter(b => list.includes(b))
+})
 const isOwnGroup = computed(() => selType.value === OWN_RULE_TYPE)
 const results = computed(() => props.store.doc.value ? findBase(props.store.doc.value, search.value) : [])
 const targets = computed(() => props.store.doc.value && selType.value ? moveTargets(props.store.doc.value, selType.value) : [])
