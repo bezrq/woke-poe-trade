@@ -22,7 +22,7 @@ function priced (name: string, chaos: number, type = 'UniqueWeapon', variant = '
 const SOURCE = 'Hide # $type->uniques $tier->hideable\n\tRarity Unique\n\tBaseType == "Despot Axe"\n\nShow # $type->gear $tier->all\n\tBaseType == "Despot Axe"\n'
 
 function verdict (over: Partial<BaseVerdict> = {}): BaseVerdict {
-  return { group: uniques, base: 'Despot Axe', chaos: 91, thin: false, block: parseFilter(SOURCE).blocks[0], state: 'hidden', ...over }
+  return { group: uniques, base: 'Despot Axe', chaos: 91, thin: false, block: parseFilter(SOURCE).blocks[0], state: 'hidden', mine: false, ...over }
 }
 
 describe('price grades', () => {
