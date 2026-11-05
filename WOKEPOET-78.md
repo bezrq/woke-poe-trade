@@ -1,7 +1,7 @@
 ---
 id: WOKEPOET-78
 title: Item tooltip wherever an item name appears
-status: Grooming
+status: In Progress
 priority: Medium
 effort: None
 assignee: unassigned
@@ -39,7 +39,23 @@ history:
       Pick for search: A hover only (recommended) or B hover plus a card in the
       right pane? Also confirm the module list on the mock's Where it goes
       board. https://claude.ai/artifact/RkNAKrzGgZqAEKv7bXMmSz
-swimlane: require-input
+  - type: comment
+    user: Agent
+    comment: Guy picked A (hover only) and all 13 modules.
+    date: '2026-11-05T10:41:30.598Z'
+    id: c-2026-11-05t10-41-30-598z
+  - type: swimlane_change
+    swimlane: require-input
+    action: cleared
+    user: Agent
+    date: '2026-11-05T10:41:30.598Z'
+    comment: Guy picked A (hover only) and all 13 modules.
+  - type: status_change
+    from: Grooming
+    to: In Progress
+    user: Agent
+    date: '2026-11-05T10:41:30.652Z'
+swimlane: null
 needsAction: null
 ---
 Guy's report: hovering results in universal search (Alt+P), such as Dying Sun, shows no item tooltip. He wants the shared v-item-tip on item names across modules.
