@@ -1,7 +1,7 @@
 ---
 id: WOKEPOET-99
 title: Fix dock-menu e2e test failing since the Trades bubble stays
-status: Grooming
+status: Ready
 priority: None
 effort: None
 assignee: unassigned
@@ -20,7 +20,21 @@ history:
     date: '2026-11-05T12:19:42.059Z'
     comment: Updated implementation link.
     id: a-2026-11-05t12-19-42-059z
+  - type: comment
+    user: Agent
+    comment: >-
+      PR #177 merged. The dock-menu test now checks for offer rows instead of
+      the buyer's name. Test-only change.
+    date: '2026-11-05T12:28:53.964Z'
+    completionComment: true
+    id: c-2026-11-05t12-28-53-964z
+  - type: status_change
+    from: Grooming
+    to: Ready
+    user: Agent
+    date: '2026-11-05T12:28:53.964Z'
 implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/177'
+needsAction: null
 ---
 e2e/dock-menu.spec.ts:113 "a click on a menu row leaves no card behind" fails every run on master.
 

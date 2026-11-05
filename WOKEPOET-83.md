@@ -3,7 +3,7 @@ id: WOKEPOET-83
 title: >-
   Map verdicts: catch Thorns reflect, warn on dead ratings, stop calling unknown
   maps safe
-status: Grooming
+status: Done
 priority: High
 effort: None
 assignee: unassigned
@@ -23,6 +23,24 @@ history:
     date: '2026-11-05T12:02:38.469Z'
     selfAttested: true
     id: c-2026-11-05t12-02-38-469z
+  - type: activity
+    user: Agent
+    date: '2026-11-05T12:29:14.725Z'
+    comment: Updated implementation link.
+    id: a-2026-11-05t12-29-14-725z
+  - type: comment
+    user: Agent
+    comment: 'Merged in PR #172.'
+    date: '2026-11-05T12:29:15.526Z'
+    completionComment: true
+    id: c-2026-11-05t12-29-15-526z
+  - type: status_change
+    from: Grooming
+    to: Done
+    user: Agent
+    date: '2026-11-05T12:29:15.526Z'
+implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/172'
+needsAction: null
 ---
 Step 1 of the [gameplay helpers critique](https://claude.ai/artifact/NjdEZhrQZBmKwRB56yTsoj). No new UI.
 

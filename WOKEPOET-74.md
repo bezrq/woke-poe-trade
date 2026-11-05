@@ -73,6 +73,14 @@ history:
     to: Ready
     user: Agent
     date: '2026-11-05T12:03:01.266Z'
+  - type: activity
+    user: Agent
+    date: '2026-11-05T12:28:46.380Z'
+    comment: >-
+      Live on dev 9a3784a1 (#147 code served, checked read-only over CDP).
+      Follow-up PR #179: the bubble now shows for offers read back after a
+      restart and moves on with the skip key. Under adversarial review.
+    id: a-2026-11-05t12-28-46-380z
 swimlane: null
 needsAction: null
 implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/147'
