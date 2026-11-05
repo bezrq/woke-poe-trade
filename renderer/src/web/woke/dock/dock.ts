@@ -96,7 +96,7 @@ export const DOCK_NAMES: Record<string, string> = {
   'regex-library': 'Regex library',
   'market': 'Market movers',
   'league-invest': 'Investments',
-  'scarab-flip': 'Scarab flip',
+  'scarab-flip': 'Flips',
   'loot-filter': 'Loot filter'
 }
 
