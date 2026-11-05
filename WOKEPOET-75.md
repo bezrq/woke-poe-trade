@@ -34,7 +34,18 @@ history:
       only, B highlights the vendor in this encounter plus week change
       (recommended), C no hover card. Also: remove scarab chips and arrows from
       every mechanic's card (recommended). Data fixes ship with any pick.
-swimlane: require-input
+  - type: comment
+    user: Agent
+    comment: 'Guy picked B, with icons.'
+    date: '2026-11-05T10:05:25.425Z'
+    id: c-2026-11-05t10-05-25-425z
+  - type: swimlane_change
+    swimlane: require-input
+    action: cleared
+    user: Agent
+    date: '2026-11-05T10:05:25.425Z'
+    comment: 'Guy picked B, with icons.'
+swimlane: null
 needsAction: null
 ---
 Dock hover card for Expedition shows "poe.ninja has no prices for these" plus two scarab chips.
