@@ -126,7 +126,7 @@
                     <span class="w-accent">{{ editingRow.name }}</span>
                     <span v-if="editingRow.listings != null" class="w-dim">{{ editingRow.listings.toLocaleString() }} unidentified instant buyouts.</span>
                     <span class="flex items-center gap-1 w-dim">poe.ninja <WPrice :chaos="editingRow.spread?.median" :divine="divine" /></span>
-                    <WSegmented :model-value="editingRow.priceMode ?? 'median'" :options="modeOptions" @update:model-value="setMode(editingRow.name, $event)" />
+                    <WSegmented :model-value="editingRow.priceMode === 'min' ? 'median' : editingRow.priceMode ?? 'median'" :options="modeOptions" @update:model-value="setMode(editingRow.name, $event)" />
                     <label v-if="editingRow.priceMode === 'custom'" class="flex items-center gap-1 w-dim">Price
                       <input type="number" min="0" :class="$style.input" style="width: 5rem;" :value="config.customPrices[editingRow.name] ?? ''" placeholder="chaos"
                         @change="setCustomPrice(editingRow.name, ($event.target as HTMLInputElement).value)">c
@@ -280,6 +280,7 @@ import { WPanel, WTabs, WSegmented, WField, WButton, WEmpty, WPrice, WChip, WLis
 import { ninjaIcon } from '../ui/game-icons'
 import { usePriceIndex } from '../market/price-index'
 import { useLeagues } from '@/web/background/Leagues'
+import { poeWebApi } from '@/web/Config'
 import { BOSSES } from './bosses'
 import DockItem from '../dock/DockItem.vue'
 import { showWithOverlay } from '../dock/dock'
@@ -336,7 +337,8 @@ const px = computed(() => {
 const onScreen = computed(() => props.config.wmWants === 'show' && wm.active.value)
 const wantedKey = computed(() => tradeWanted(BOSSES, props.config.selected, props.config, px.value).join('\n'))
 watch([onScreen, () => prices.snapshot.value?.league, divine, wantedKey], ([show, league, rate, key]) => {
-  if (!show || !league || !rate) {
+  // The queries use English names, which the regional trade sites won't match.
+  if (!show || !league || !rate || poeWebApi() !== 'www.pathofexile.com') {
     tradePrices.stop()
     return
   }

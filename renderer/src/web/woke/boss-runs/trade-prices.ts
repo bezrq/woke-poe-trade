@@ -13,6 +13,9 @@ export const SHOW_MS = 24 * 60 * 60 * 1000
 const RETRY_MS = 5 * 60 * 1000
 // At most 6 searches a minute, against the site's limit of 15.
 const GAP_MS = 10_000
+// Longer after a failure, so a rate limit penalty doesn't drain the whole queue.
+const FAILED_GAP_MS = 60_000
+const TIMEOUT_MS = 30_000
 
 export interface StoredQuote {
   // null = looked and found no listings.
@@ -24,13 +27,15 @@ export type Stored = Record<string, Record<string, StoredQuote>>
 
 export function quoteFromListings (
   listings: Array<{ priceAmount: number, priceCurrency: string }>,
-  divine: number
+  divine: number,
+  // Needed before the price counts; a thin market shouldn't beat poe.ninja.
+  minListings = 1
 ): number | null {
   const chaos = listings
     .map(l => l.priceCurrency === 'chaos' ? l.priceAmount : l.priceCurrency === 'divine' ? l.priceAmount * divine : null)
     .filter((n): n is number => n != null && n > 0)
     .sort((a, b) => a - b)
-  if (!chaos.length) return null
+  if (!chaos.length || chaos.length < minListings) return null
   // The middle of the cheapest few, so a bait listing doesn't set the price.
   const mid = Math.floor(chaos.length / 2)
   return chaos.length % 2 ? chaos[mid] : (chaos[mid - 1] + chaos[mid]) / 2
@@ -53,6 +58,8 @@ export function createTradePrices (deps: TradePriceDeps) {
   let divine = 0
   let busy = false
   let timer: ReturnType<typeof setTimeout> | null = null
+  // Survives the panel closing, so reopening it can't skip the gap.
+  let nextAt = 0
 
   function setPending () {
     inFlight.value = new Set(queue)
@@ -78,26 +85,45 @@ export function createTradePrices (deps: TradePriceDeps) {
     deps.write(next)
   }
 
+  // A request that never answers mustn't stop every later lookup.
+  async function withTimeout<T> (work: Promise<T>): Promise<T> {
+    let timeout: ReturnType<typeof setTimeout> | undefined
+    const expired = new Promise<never>((_resolve, reject) => {
+      timeout = setTimeout(() => { reject(new Error('Timed out')) }, TIMEOUT_MS)
+    })
+    try {
+      return await Promise.race([work, expired])
+    } finally {
+      clearTimeout(timeout)
+    }
+  }
+
   async function step () {
     if (busy || timer != null || !queue.length) return
-    busy = true
-    const name = queue[0]
-    const forLeague = league
-    try {
-      save(forLeague, name, await deps.lookup(forLeague, name, divine))
-    } catch {
-      failedAt.set(`${forLeague}|${name}`, now())
-    }
-    busy = false
-    // A new request can have replaced the queue during the lookup.
-    if (queue[0] === name) queue = queue.slice(1)
-    setPending()
-    if (queue.length) {
+    const wait = nextAt - now()
+    if (wait > 0) {
       timer = setTimeout(() => {
         timer = null
         step().catch(() => {})
-      }, GAP_MS)
+      }, wait)
+      return
     }
+    busy = true
+    const name = queue[0]
+    const forLeague = league
+    nextAt = now() + GAP_MS
+    try {
+      save(forLeague, name, await withTimeout(deps.lookup(forLeague, name, divine)))
+    } catch {
+      failedAt.set(`${forLeague}|${name}`, now())
+      nextAt = now() + FAILED_GAP_MS
+    }
+    busy = false
+    // A new request can have replaced the queue during the lookup. If it's for
+    // another league, the same name there still needs its own lookup.
+    if (league === forLeague) queue = queue.filter(n => n !== name)
+    setPending()
+    await step()
   }
 
   // Replaces what's queued; the opened boss goes first each time it changes.

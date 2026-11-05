@@ -394,7 +394,8 @@ const UNIQUE_BASES: Record<string, string> = {
   'Rational Doctrine': 'Cobalt Jewel',
   'Beauty': 'Vaal Aspect',
   'Melding of the Flesh': 'Cobalt Jewel',
-  'Dissolution of the Flesh': 'Crimson Jewel'
+  'Dissolution of the Flesh': 'Crimson Jewel',
+  'The Broken Elegy': 'Foul Staff'
 }
 
 // Instant buyout is the live market now: plain 'online' finds next to nothing

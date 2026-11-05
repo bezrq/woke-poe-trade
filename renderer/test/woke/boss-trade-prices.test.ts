@@ -94,6 +94,12 @@ describe('quoteFromListings', () => {
     ], 390)).toBe(780)
     expect(quoteFromListings([{ priceAmount: 0, priceCurrency: 'no price' }], 390)).toBeNull()
   })
+
+  it('won\'t set a price from too few usable listings', () => {
+    const two = [{ priceAmount: 90, priceCurrency: 'divine' }, { priceAmount: 1, priceCurrency: 'exalted' }, { priceAmount: 95, priceCurrency: 'divine' }]
+    expect(quoteFromListings(two, 390, 3)).toBeNull()
+    expect(quoteFromListings(two, 390)).toBe(92.5 * 390)
+  })
 })
 
 describe('trade price store', () => {
@@ -152,6 +158,9 @@ describe('trade price store', () => {
     const { prices } = store(lookup)
     prices.request('Allflame', 400, ['A', 'B'])
     await vi.advanceTimersByTimeAsync(10_000)
+    // A failure backs off rather than running through the queue.
+    expect(prices.get('Allflame', 'B')).toBeNull()
+    await vi.advanceTimersByTimeAsync(50_000)
     expect(prices.get('Allflame', 'A')).toBeNull()
     expect(prices.get('Allflame', 'B')?.chaos).toBe(10)
     prices.request('Allflame', 400, ['A'])
@@ -173,8 +182,62 @@ describe('trade price store', () => {
     await vi.advanceTimersByTimeAsync(0)
     expect(lookup).toHaveBeenCalledTimes(1)
     prices.request('Standard', 400, ['A'])
-    await vi.advanceTimersByTimeAsync(0)
+    await vi.advanceTimersByTimeAsync(10_000)
     expect(lookup).toHaveBeenCalledTimes(2)
+  })
+
+  it('keeps the gap when the panel is closed and reopened', async () => {
+    const { prices, lookup } = store()
+    prices.request('Allflame', 400, ['A', 'B'])
+    await vi.advanceTimersByTimeAsync(0)
+    prices.stop()
+    prices.request('Allflame', 400, ['B'])
+    await vi.advanceTimersByTimeAsync(9_000)
+    expect(lookup).toHaveBeenCalledTimes(1)
+    await vi.advanceTimersByTimeAsync(1_000)
+    expect(lookup).toHaveBeenCalledTimes(2)
+  })
+
+  it('still looks a name up in the new league when the league changes mid-lookup', async () => {
+    const seen: string[] = []
+    const { prices } = store(vi.fn<Lookup>(async (league) => {
+      seen.push(league)
+      await new Promise(resolve => setTimeout(resolve, 1_000))
+      return { chaos: 5, listings: 5 }
+    }))
+    prices.request('Allflame', 400, ['A'])
+    await vi.advanceTimersByTimeAsync(0)
+    prices.request('Standard', 400, ['A'])
+    await vi.advanceTimersByTimeAsync(11_000)
+    expect(seen).toEqual(['Allflame', 'Standard'])
+    expect(prices.pending('A')).toBe(false)
+  })
+
+  it('doesn\'t search a finished name again when the queue was replaced mid-lookup', async () => {
+    const seen: string[] = []
+    const { prices } = store(vi.fn<Lookup>(async (_league, name) => {
+      seen.push(name)
+      await new Promise(resolve => setTimeout(resolve, 1_000))
+      return { chaos: 5, listings: 5 }
+    }))
+    prices.request('Allflame', 400, ['A', 'B'])
+    await vi.advanceTimersByTimeAsync(0)
+    prices.request('Allflame', 400, ['B', 'A'])
+    await vi.advanceTimersByTimeAsync(40_000)
+    expect(seen).toEqual(['A', 'B'])
+  })
+
+  it('moves on from a lookup that never answers', async () => {
+    const lookup = vi.fn<Lookup>(async (_league, name) => {
+      if (name === 'A') await new Promise(() => {})
+      return { chaos: 5, listings: 5 }
+    })
+    const { prices } = store(lookup)
+    prices.request('Allflame', 400, ['A', 'B'])
+    await vi.advanceTimersByTimeAsync(30_000)
+    expect(prices.pending('A')).toBe(false)
+    await vi.advanceTimersByTimeAsync(60_000)
+    expect(prices.get('Allflame', 'B')?.chaos).toBe(5)
   })
 
   it('stops showing a price after a day', () => {

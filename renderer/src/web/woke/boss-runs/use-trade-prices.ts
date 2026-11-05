@@ -10,13 +10,16 @@ import type { Stored } from './trade-prices'
 
 const STORAGE_KEY = 'woke-boss-trade-prices'
 const SAMPLE = 10
+// An unidentified price replaces poe.ninja's, so it needs a few real listings.
+const MIN_UNIDENTIFIED = 3
 
 async function lookup (league: string, name: string, divine: number) {
-  const body = tradeQuery(name, VARIABLE_ITEMS.has(name)) as unknown as TradeRequest
+  const unidentified = VARIABLE_ITEMS.has(name)
+  const body = tradeQuery(name, unidentified) as unknown as TradeRequest
   const search = await requestTradeResultList(body, league)
   if (!search.result.length) return { chaos: null, listings: 0 }
   const listings = await requestResults(search.id, search.result.slice(0, SAMPLE), { accountName: '' })
-  return { chaos: quoteFromListings(listings, divine), listings: search.total }
+  return { chaos: quoteFromListings(listings, divine, unidentified ? MIN_UNIDENTIFIED : 1), listings: search.total }
 }
 
 function pruned (data: Stored): Stored {

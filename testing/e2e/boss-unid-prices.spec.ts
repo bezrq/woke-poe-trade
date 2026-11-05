@@ -36,22 +36,22 @@ test('Boss runs: unidentified jewel prices and estimated chances', async ({ over
     await route.fulfill({
       contentType: 'application/json',
       headers: { 'x-rate-limit-rules': 'Ip', 'x-rate-limit-ip': '100:1:0', 'x-rate-limit-ip-state': '1:1:0' },
-      body: JSON.stringify({ id: known ? `q-${searches.length}` : 'none', total: known ? 12 : 0, result: known ? [`r${searches.length}`] : [] })
+      body: JSON.stringify({ id: known ? `q-${searches.length}` : 'none', total: known ? 12 : 0, result: known ? [1, 2, 3].map(n => `r${searches.length}-${n}`) : [] })
     })
   })
   await overlay.page.route('**/api/trade/fetch/**', (route) => route.fulfill({
     contentType: 'application/json',
     headers: { 'x-rate-limit-rules': 'Ip', 'x-rate-limit-ip': '100:1:0', 'x-rate-limit-ip-state': '1:1:0' },
     body: JSON.stringify({
-      result: [{
-        id: route.request().url().split('/fetch/')[1].split('?')[0],
+      result: route.request().url().split('/fetch/')[1].split('?')[0].split(',').map(id => ({
+        id,
         item: { ilvl: 86, properties: [] },
         listing: {
           indexed: '2026-11-05T00:00:00Z',
           price: { amount: 80, currency: 'divine' },
           account: { name: 'seller', lastCharacterName: 'seller_char', online: { league: 'Allflame' } }
         }
-      }]
+      }))
     })
   }))
 
