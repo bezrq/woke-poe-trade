@@ -10,7 +10,12 @@
         </span>
       </label>
     </div>
-    <w-setting-row label="Panel size" hint="Sizes the toolkit's panels; APT's windows follow Text size.">
+    <w-setting-row label="Text size" hint="Makes text bigger or smaller everywhere. Windows keep their size.">
+      <span class="w-num w-dim">{{ textScale }}%</span>
+      <input id="woke-text-scale" type="range" :min="MIN_TEXT_SCALE" :max="MAX_TEXT_SCALE" step="5" :class="$style.range"
+        :value="textScale" @input="textScale = Number(($event.target as HTMLInputElement).value)">
+    </w-setting-row>
+    <w-setting-row label="Panel size" hint="Sizes the toolkit's panels, text included.">
       <span class="w-num w-dim">{{ isAuto ? 'Auto' : `${scaleValue}%` }}</span>
       <input id="woke-ui-scale" type="range" :min="MIN_SCALE" :max="MAX_SCALE" step="5" :class="$style.range"
         :value="scaleValue" :disabled="isAuto" @input="setScale(($event.target as HTMLInputElement).value)">
@@ -34,6 +39,7 @@ export default {
 import { computed } from 'vue'
 import { wokeTheme, WOKE_THEMES } from './theme'
 import { MAX_SCALE, MIN_SCALE, uiScale } from './scale'
+import { MAX_TEXT_SCALE, MIN_TEXT_SCALE, textScale } from './text-scale'
 import WSettingRow from './WSettingRow.vue'
 import WSettingSection from './WSettingSection.vue'
 import WToggle from './WToggle.vue'

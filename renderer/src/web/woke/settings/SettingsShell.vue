@@ -455,7 +455,7 @@ function startResize (e: PointerEvent, edge: 'e' | 's' | 'se') {
 .dim .name { color: var(--w-faint); }
 .icon { width: var(--w-icon-md); height: var(--w-icon-md); flex: none; display: grid; place-items: center; }
 .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.badge { font-size: var(--w-fs-xs); font-weight: 600; color: #fff; background: var(--w-down); border-radius: var(--w-r-pill); padding: 0 6px; line-height: 16px; }
+.badge { font-size: var(--w-fs-xs); font-weight: 600; color: #fff; background: var(--w-down); border-radius: var(--w-r-pill); padding: 0 6px; line-height: calc(16px * var(--w-text-scale, 1)); }
 .quit {
   margin-top: var(--w-s4); padding: var(--w-s1) var(--w-s2); text-align: left; color: var(--w-faint); font-size: var(--w-fs-sm);
   border-radius: var(--w-r-sm);

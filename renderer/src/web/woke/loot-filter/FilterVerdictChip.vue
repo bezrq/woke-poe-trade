@@ -95,7 +95,7 @@ const verdict = computed<Verdict | null>(() => {
   margin-left: 0.5rem;
   padding: 0 4px 0 8px;
   border-radius: var(--w-r-pill);
-  line-height: 18px;
+  line-height: calc(18px * var(--w-text-scale, 1));
   font-size: var(--w-fs-sm);
   white-space: nowrap;
   border: 1px solid var(--w-line-strong);

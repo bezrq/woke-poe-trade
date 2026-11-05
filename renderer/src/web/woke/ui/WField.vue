@@ -33,7 +33,7 @@ function onInput (e: Event) {
   min-width: 0;
   height: 26px;
   padding: 0 8px;
-  font-size: 12.5px;
+  font-size: calc(12.5px * var(--w-text-scale, 1));
   color: var(--w-fg);
   background: var(--w-panel-2);
   border: 1px solid var(--w-line);
@@ -42,6 +42,6 @@ function onInput (e: Event) {
 .field::placeholder { color: var(--w-faint); }
 .field:focus { outline: none; border-color: var(--w-accent); }
 .withIcon { padding-left: 26px; }
-.icon { position: absolute; left: 9px; font-size: 11px; color: var(--w-faint); pointer-events: none; }
-.suffix { margin-left: 5px; font-size: 12px; color: var(--w-dim); white-space: nowrap; }
+.icon { position: absolute; left: 9px; font-size: calc(11px * var(--w-text-scale, 1)); color: var(--w-faint); pointer-events: none; }
+.suffix { margin-left: 5px; font-size: calc(12px * var(--w-text-scale, 1)); color: var(--w-dim); white-space: nowrap; }
 </style>

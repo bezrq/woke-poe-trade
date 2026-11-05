@@ -33,7 +33,7 @@
               <div class="px-2">{{ t(':price') }}</div>
             </th>
             <th :class="$style.tableHeading">
-              <div class="w-pc-ratio-head pl-1 pr-2 flex text-xs" style="line-height: 1.3125rem;"><span class="w-8 inline-block text-right -ml-px mr-px">{{ (selectedCurr === 'xchgChaos') ? 'chaos' : 'div' }}</span><span>{{ '\u2009' }}/{{ '\u2009' }}</span><span class="w-8 inline-block">{{ t(':bulk') }}</span></div>
+              <div class="w-pc-ratio-head pl-1 pr-2 flex text-xs" style="line-height: calc(1.3125rem * var(--w-text-scale, 1));"><span class="min-w-[2rem] inline-block text-right -ml-px mr-px">{{ (selectedCurr === 'xchgChaos') ? 'chaos' : 'div' }}</span><span>{{ '\u2009' }}/{{ '\u2009' }}</span><span class="min-w-[2rem] inline-block">{{ t(':bulk') }}</span></div>
             </th>
             <th :class="$style.tableHeading">
               <div class="px-1">{{ t(':stock') }}</div>
@@ -385,7 +385,7 @@ export default defineComponent({
 
 .currencyIcon {
   width: 1.75rem;
-  height: 1.75rem;
+  height: calc(1.75rem * var(--w-text-grow, 1));
   margin: -0.4375rem;
   margin-right: 0.125rem;
   filter: grayscale(1);
@@ -394,7 +394,7 @@ export default defineComponent({
 .legacyMessage {
   @apply mb-2;
   font-family: var(--w-body);
-  font-size: 12px;
+  font-size: calc(12px * var(--w-text-scale, 1));
   color: var(--w-dim);
 }
 

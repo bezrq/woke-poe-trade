@@ -12,10 +12,12 @@
       </div>
     </w-setting-section>
 
-    <w-setting-section title="Text and overlay">
-      <w-setting-row label="Text size" hint="Sizes APT's windows and this one. The toolkit's panels follow Panel size above.">
-        <w-field :model-value="config.fontSize" type="number" suffix="px" :class="$style.num"
-          @update:model-value="setFontSize(Number($event))" />
+    <w-setting-section title="Overlay">
+      <w-setting-row label="Price check window size" hint="Sizes price check, map check and this settings window, text included.">
+        <span class="w-num w-dim">{{ windowPct }}%</span>
+        <input id="woke-window-size" type="range" min="10" max="32" step="1" :class="$style.range"
+          :value="windowPx" @input="draftPx = Number(($event.target as HTMLInputElement).value)"
+          @change="setFontSize(Number(($event.target as HTMLInputElement).value))">
       </w-setting-row>
       <w-setting-row label="Darken the game while the overlay is open">
         <w-toggle :model-value="hasBackdrop" @update:model-value="setBackdrop($event)" />
@@ -39,7 +41,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, shallowRef } from 'vue'
 import type { Config } from '@/web/Config'
 import { WField, WSettingRow, WSettingSection, WToggle } from '../ui'
 import AppearanceSettings from '../ui/AppearanceSettings.vue'
@@ -52,14 +54,20 @@ const NO_BACKDROP = 'rgba(255, 255, 255, 0)'
 const DEFAULT_BACKDROP = 'rgba(129, 139, 149, 0.15)'
 const hasBackdrop = computed(() => props.config.overlayBackground !== NO_BACKDROP)
 function setBackdrop (on: boolean) { props.config.overlayBackground = on ? DEFAULT_BACKDROP : NO_BACKDROP }
+// Stored as the root font size in px (16 = 100%). Applied on release: this
+// window resizes with it, so the slider would move under the mouse mid-drag.
+const draftPx = shallowRef<number | null>(null)
+const windowPx = computed(() => draftPx.value ?? props.config.fontSize)
+const windowPct = computed(() => Math.round(windowPx.value / 16 * 100))
 function setFontSize (v: number) {
+  draftPx.value = null
   if (Number.isFinite(v) && v >= 10 && v <= 32) props.config.fontSize = v
 }
 </script>
 
 <style module>
 .page { display: flex; flex-direction: column; gap: var(--w-s5); }
-.num { width: 5.5rem; }
+.range { width: 12rem; accent-color: var(--w-accent); }
 .icons { display: grid; grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr)); gap: var(--w-s2); padding: var(--w-s2) 0; }
 .icon {
   display: flex; align-items: center; gap: var(--w-s2); padding: var(--w-s2); cursor: pointer; min-width: 0;

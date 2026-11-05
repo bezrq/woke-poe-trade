@@ -24,7 +24,7 @@ const emit = defineEmits<{
   justify-content: space-between;
   align-items: center;
   height: 1.5rem;
-  line-height: 1.5rem;
+  line-height: calc(1.5rem * var(--w-text-scale, 1));
 
   button {
     @apply px-2 pt-px;

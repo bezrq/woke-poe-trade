@@ -183,8 +183,8 @@ function deltaFromGraph (graphPoints: Array<number | null>) {
   font-variant-numeric: tabular-nums;
 }
 .main { flex: 1 1 auto; min-width: 0; }
-.source { font-size: 12px; color: var(--w-ninja); }
-.value { display: flex; align-items: center; gap: 6px; font-size: 24px; line-height: 30px; font-weight: 600; color: var(--w-fg); }
+.source { font-size: calc(12px * var(--w-text-scale, 1)); color: var(--w-ninja); }
+.value { display: flex; align-items: center; gap: 6px; font-size: calc(24px * var(--w-text-scale, 1)); line-height: calc(30px * var(--w-text-scale, 1)); font-weight: 600; color: var(--w-fg); }
 .coin { width: 22px; height: 22px; object-fit: contain; }
 .trend-btn {
   display: flex;

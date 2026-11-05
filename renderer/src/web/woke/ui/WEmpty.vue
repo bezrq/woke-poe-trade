@@ -26,7 +26,7 @@ defineProps<{ icon?: string, art?: { currency?: string, item?: string, mechanic?
   color: var(--w-dim);
   font-size: var(--w-fs-md);
 }
-.icon { font-size: 18px; color: var(--w-faint); }
+.icon { font-size: calc(18px * var(--w-text-scale, 1)); color: var(--w-faint); }
 .text { max-width: 36ch; text-wrap: balance; }
 .actions { display: flex; gap: var(--w-s2); }
 </style>

@@ -20,7 +20,7 @@ const emit = defineEmits<{ (e: 'update:modelValue', v: string): void }>()
 <style module>
 .tabs { display: flex; gap: 2px; }
 .tab {
-  font-size: 12.5px;
+  font-size: calc(12.5px * var(--w-text-scale, 1));
   font-weight: 500;
   color: var(--w-dim);
   padding: 5px 10px 6px;

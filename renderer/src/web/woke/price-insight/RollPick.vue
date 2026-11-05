@@ -33,7 +33,7 @@ function choose (preset: RollPreset) {
 
 <style module>
 .pick { display: flex; width: calc(2 * 3rem + 1px); border: 1px solid var(--w-line); border-radius: var(--w-r-sm); overflow: hidden; flex: none; font-family: var(--w-body); }
-.pick button { flex: 1 1 0; font-size: var(--w-fs-xs); line-height: 16px; color: var(--w-dim); text-align: center; }
+.pick button { flex: 1 1 0; font-size: var(--w-fs-xs); line-height: calc(16px * var(--w-text-scale, 1)); color: var(--w-dim); text-align: center; }
 .pick button + button { border-left: 1px solid var(--w-line-soft); }
 .pick button:hover { color: var(--w-fg); }
 .pick button.on { background: var(--w-accent-soft); color: var(--w-accent); }

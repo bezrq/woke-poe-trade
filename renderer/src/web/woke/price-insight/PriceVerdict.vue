@@ -269,16 +269,16 @@ async function copy (n: { key: string, text: string }) {
 .main { display: flex; flex-direction: column; gap: 2px; flex: 1 1 auto; min-width: 0; }
 .side { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex: none; }
 .sideRow { display: flex; align-items: center; gap: 2px; }
-.eyebrow { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; min-width: 0; color: var(--w-dim); font-size: 12px; line-height: 16px; }
+.eyebrow { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; min-width: 0; color: var(--w-dim); font-size: calc(12px * var(--w-text-scale, 1)); line-height: calc(16px * var(--w-text-scale, 1)); }
 .value { display: flex; align-items: center; gap: 8px; min-width: 0; overflow: hidden; }
 .count { color: var(--w-dim); font-size: var(--w-fs-xs); white-space: nowrap; padding-right: 2px; }
-.note { margin: 0; color: var(--w-dim); font-size: 12px; line-height: 17px; }
+.note { margin: 0; color: var(--w-dim); font-size: calc(12px * var(--w-text-scale, 1)); line-height: calc(17px * var(--w-text-scale, 1)); }
 .badge {
   flex: none;
   font-size: var(--w-fs-xs);
   font-weight: 600;
   letter-spacing: .05em;
-  line-height: 14px;
+  line-height: calc(14px * var(--w-text-scale, 1));
   padding: 0 5px;
   border-radius: 3px;
   border: 1px solid var(--w-line);
@@ -289,15 +289,15 @@ async function copy (n: { key: string, text: string }) {
 .low .badge { color: var(--w-warn); border-color: currentColor; }
 .headline {
   font-family: var(--w-head);
-  font-size: 22px;
-  line-height: 32px;
+  font-size: calc(22px * var(--w-text-scale, 1));
+  line-height: calc(32px * var(--w-text-scale, 1));
   color: var(--w-accent);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 /* Fontin's old-style digits dip and rise: a price wants even figures. */
-.headlinePrice { font-family: var(--w-num); font-size: 28px; font-weight: 600; letter-spacing: 0; }
+.headlinePrice { font-family: var(--w-num); font-size: calc(28px * var(--w-text-scale, 1)); font-weight: 600; letter-spacing: 0; }
 .headlinePrice img { width: 24px; height: 24px; }
 .risk {
   flex: none;
@@ -321,12 +321,12 @@ async function copy (n: { key: string, text: string }) {
   border-radius: var(--w-r-sm);
   border: 1px solid var(--w-line-soft);
   font-size: var(--w-fs-xs);
-  line-height: 14px;
+  line-height: calc(14px * var(--w-text-scale, 1));
 }
 .sparkBtn:hover, .sparkBtn.on { border-color: var(--w-line-strong); background: var(--w-panel-3); }
 .sparkSource { color: var(--w-dim); }
 .signals { display: flex; flex-direction: column; gap: 2px; color: var(--w-dim); }
-.signal { font-size: 12px; line-height: 17px; }
+.signal { font-size: calc(12px * var(--w-text-scale, 1)); line-height: calc(17px * var(--w-text-scale, 1)); }
 .flag { color: var(--w-down); }
 .actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .note2 {
@@ -339,11 +339,11 @@ async function copy (n: { key: string, text: string }) {
   border-radius: var(--w-r-sm);
   border: 1px solid var(--w-line);
   background: var(--w-panel-3);
-  font-size: 12px;
+  font-size: calc(12px * var(--w-text-scale, 1));
   white-space: nowrap;
 }
 .note2:hover { border-color: var(--w-accent); }
-.sources { display: flex; flex-direction: column; gap: 2px; padding-top: 6px; border-top: 1px solid var(--w-line-soft); font-size: 12px; color: var(--w-dim); }
+.sources { display: flex; flex-direction: column; gap: 2px; padding-top: 6px; border-top: 1px solid var(--w-line-soft); font-size: calc(12px * var(--w-text-scale, 1)); color: var(--w-dim); }
 .agree { color: var(--w-dim); margin-bottom: 2px; }
 .source { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 12px; align-items: center; }
 .source.off { opacity: .6; }
@@ -352,5 +352,5 @@ async function copy (n: { key: string, text: string }) {
 .ninjaName { color: var(--w-ninja); }
 .ninjaLink { color: var(--w-ninja); justify-self: start; }
 .ninjaLink:hover { text-decoration: underline; }
-.ppToggle { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--w-dim); }
+.ppToggle { display: flex; align-items: center; gap: 6px; font-size: calc(12px * var(--w-text-scale, 1)); color: var(--w-dim); }
 </style>

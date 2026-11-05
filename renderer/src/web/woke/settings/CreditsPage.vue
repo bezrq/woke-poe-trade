@@ -49,7 +49,7 @@ defineProps<{ config: Config }>()
 .text { flex: 1; min-width: 0; }
 .use { font-size: var(--w-fs-sm); line-height: 1.4; padding-top: 2px; }
 .license {
-  flex: none; font-size: var(--w-fs-xs); line-height: 18px; padding: 0 var(--w-s2); color: var(--w-dim);
+  flex: none; font-size: var(--w-fs-xs); line-height: calc(18px * var(--w-text-scale, 1)); padding: 0 var(--w-s2); color: var(--w-dim);
   border: 1px solid var(--w-line); border-radius: var(--w-r-pill);
 }
 .note { font-size: var(--w-fs-sm); line-height: 1.5; }

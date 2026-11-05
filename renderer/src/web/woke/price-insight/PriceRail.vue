@@ -33,10 +33,10 @@ function labelStyle (m: RailMark) {
 .mark { position: absolute; top: 0; width: 12px; height: 12px; border-radius: 50%; background: var(--w-dim); border: 2px solid var(--w-pc-well, var(--w-panel-solid)); }
 .mark.likely { background: var(--w-accent); }
 .mark.ninja { background: var(--w-ninja); }
-.lab { position: absolute; top: 15px; display: flex; flex-direction: column; font-size: var(--w-fs-xs); line-height: 15px; color: var(--w-dim); white-space: nowrap; }
+.lab { position: absolute; top: 15px; display: flex; flex-direction: column; font-size: var(--w-fs-xs); line-height: calc(15px * var(--w-text-scale, 1)); color: var(--w-dim); white-space: nowrap; }
 .lab.center { transform: translateX(-50%); align-items: center; }
 .lab.end { align-items: flex-end; }
 .lab.start { align-items: flex-start; }
-.num { font-size: var(--w-fs-md); font-weight: 600; line-height: 16px; color: var(--w-fg); }
+.num { font-size: var(--w-fs-md); font-weight: 600; line-height: calc(16px * var(--w-text-scale, 1)); color: var(--w-fg); }
 .lab.likely .num { color: var(--w-accent); }
 </style>

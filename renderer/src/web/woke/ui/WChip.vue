@@ -14,8 +14,8 @@ withDefaults(defineProps<{ active?: boolean, clickable?: boolean }>(), { active:
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 11px;
-  line-height: 16px;
+  font-size: calc(11px * var(--w-text-scale, 1));
+  line-height: calc(16px * var(--w-text-scale, 1));
   padding: 1px 7px;
   border-radius: 999px;
   border: 1px solid var(--w-line-strong);

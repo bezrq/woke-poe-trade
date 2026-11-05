@@ -439,7 +439,7 @@ export default defineComponent({
 .legacyMessage {
   @apply mb-2;
   font-family: var(--w-body);
-  font-size: 12px;
+  font-size: calc(12px * var(--w-text-scale, 1));
   color: var(--w-dim);
 }
 </style>

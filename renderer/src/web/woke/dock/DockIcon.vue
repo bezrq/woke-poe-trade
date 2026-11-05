@@ -180,16 +180,16 @@ const styles = useCssModule()
 .ring { position: absolute; left: -4px; top: -4px; pointer-events: none; }
 .ringTrack { fill: none; stroke: var(--w-line); stroke-width: 2.5; }
 .ringFill { fill: none; stroke: var(--w-accent); stroke-width: 2.5; }
-.glyph { width: 28px; display: grid; place-items: center; font-size: 13px; }
+.glyph { width: 28px; display: grid; place-items: center; font-size: calc(13px * var(--w-text-scale, 1)); }
 .art { width: 20px; height: 20px; object-fit: contain; }
 .icon.withRead { opacity: 0.85; }
 .icon.withRead:hover, .icon.withRead.hot, .icon.withRead.peek { opacity: 1; }
 .withRead { gap: 8px; padding-right: 12px; background: var(--w-panel); }
-.read { font-size: 12px; color: var(--w-fg); white-space: nowrap; max-width: 18rem; overflow: hidden; text-overflow: ellipsis; }
+.read { font-size: calc(12px * var(--w-text-scale, 1)); color: var(--w-fg); white-space: nowrap; max-width: 18rem; overflow: hidden; text-overflow: ellipsis; }
 .read-up { color: var(--w-up); }
 .read-down { color: var(--w-down); }
 .read-dim { color: var(--w-dim); }
-.peekText { font-size: 12px; color: var(--w-fg); white-space: nowrap; max-width: 30rem; overflow: hidden; text-overflow: ellipsis; }
+.peekText { font-size: calc(12px * var(--w-text-scale, 1)); color: var(--w-fg); white-space: nowrap; max-width: 30rem; overflow: hidden; text-overflow: ellipsis; }
 .badge {
   position: absolute;
   top: -6px;
@@ -230,7 +230,7 @@ const styles = useCssModule()
   border-radius: var(--w-radius);
   box-shadow: var(--w-shadow);
   color: var(--w-fg);
-  font-size: 12.5px;
+  font-size: calc(12.5px * var(--w-text-scale, 1));
 }
 .below { top: calc(100% + 6px); left: 0; }
 .above { bottom: calc(100% + 6px); left: 0; }
@@ -245,16 +245,16 @@ const styles = useCssModule()
   padding: 4px var(--w-pad);
   background: var(--w-header-bg);
   border-bottom: 1px solid var(--w-line);
-  font-size: 13px;
+  font-size: calc(13px * var(--w-text-scale, 1));
 }
 .extraHead {
   padding: 4px var(--w-pad) 2px;
   border-top: 1px solid var(--w-line);
-  font-size: 10.5px;
+  font-size: calc(10.5px * var(--w-text-scale, 1));
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--w-faint);
 }
-.foot { padding: 3px var(--w-pad) 5px; font-size: 10.5px; color: var(--w-faint); border-top: 1px solid var(--w-line); }
+.foot { padding: 3px var(--w-pad) 5px; font-size: calc(10.5px * var(--w-text-scale, 1)); color: var(--w-faint); border-top: 1px solid var(--w-line); }
 @media (prefers-reduced-motion: reduce) { .icon { transition: none; } }
 </style>

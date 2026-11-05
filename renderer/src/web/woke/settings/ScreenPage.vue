@@ -46,7 +46,7 @@ hostRequest<{ ok: boolean, message: string | null }>('ocr-check', null)
 
 <style module>
 .page { display: flex; flex-direction: column; gap: var(--w-s5); }
-.chip { font-size: var(--w-fs-xs); border: 1px solid currentColor; border-radius: var(--w-r-pill); padding: 0 8px; line-height: 18px; }
+.chip { font-size: var(--w-fs-xs); border: 1px solid currentColor; border-radius: var(--w-r-pill); padding: 0 8px; line-height: calc(18px * var(--w-text-scale, 1)); }
 .ok { color: var(--w-up); }
 .bad { color: var(--w-down); }
 </style>
