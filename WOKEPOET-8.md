@@ -51,6 +51,29 @@ history:
       2. Should the hotkey let you click right away (scroll and tick, then
       hotkey or Esc back to the game), or open click-through like the lab page?
       Proposed default: click right away.
+  - type: comment
+    user: Agent
+    comment: >-
+      Guy picked B and asked how to jump to a specific challenge from the game's
+      window and sync progress. Findings: Client.txt (245 MB on Guy's PC) has no
+      challenge completion lines. The official page
+      https://www.pathofexile.com/account/view-profile/<account with # as
+      ->/challenges loads with no login in a webview (curl gets a 403): 40
+      `.achievement` rows, `h2` name, `.completion-detail` N/M, class
+      `incomplete` on unfinished rows. Tested on one public ladder account with
+      0 of 40, so a finished row and a private profile are unverified. Guy's
+      accountName is blank in config. Guide anchors are in league-toc.txt, such
+      as #3peddlersproducei; tick via the site's `.complete[data-challenge=N]`
+      click. Proposed: list with filter, one-way sync on open or Sync button,
+      read-from-screen hotkey as a follow-up.
+    date: '2026-11-05T02:55:33.000Z'
+    selfAttested: true
+    summary: >-
+      Guy picked B. Sync source found: official profile challenges page readable
+      in a webview; log has nothing. Finished rows and private profiles
+      unverified; account name blank. Proposed list, one-way sync, OCR hotkey
+      later.
+    id: c-2026-11-05t02-55-33-000z
 swimlane: require-input
 needsAction: null
 ---
