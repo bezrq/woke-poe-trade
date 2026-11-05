@@ -34,7 +34,22 @@ history:
       columns, B columns against your item (recommended), or C stats on a second
       line. Which extras: click-to-sort, best-value highlight, mod tier letter.
       Nothing built yet.
-swimlane: require-input
+  - type: comment
+    user: Agent
+    comment: >-
+      Guy picked B, with higher-than-yours in red and lower in green (flipped
+      where lower is better).
+    date: '2026-11-05T12:26:31.301Z'
+    id: c-2026-11-05t12-26-31-301z
+  - type: swimlane_change
+    swimlane: require-input
+    action: cleared
+    user: Agent
+    date: '2026-11-05T12:26:31.301Z'
+    comment: >-
+      Guy picked B, with higher-than-yours in red and lower in green (flipped
+      where lower is better).
+swimlane: null
 needsAction: null
 ---
 Guy wants the price check results list to show a column for each stat he ticked as a filter (pdps, resistances, evasion...). Price stays visible, columns are capped at what's readable.
