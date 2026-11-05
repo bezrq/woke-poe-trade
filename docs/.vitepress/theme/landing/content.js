@@ -41,7 +41,7 @@ export const TOUR = [
         label: 'Campaign',
         hover: true,
         frames: [
-          { label: 'The chip', title: 'Run time, level and next step, in one chip', text: 'Pin what you want on the campaign icon: run time, ahead or behind your best, level and XP penalty. Hover the picture to open it.', shot: 'tour-campaign-chip', alt: 'The campaign chip in the icon row: run time, level and the next zone' },
+          { label: 'The chip', title: 'Run time, level and next step, in one chip', text: 'Pin what you want on the campaign icon: run time, ahead or behind your best, level and XP penalty. Hover or tap the picture to open it.', shot: 'tour-campaign-chip', alt: 'The campaign chip in the icon row: run time, level and the next zone' },
           { label: 'On hover', title: 'Act 2, Southern Forest: what next', text: 'Hovering opens the card: the zone, your level against it, the next steps and the run timer.', shot: 'tour-campaign', alt: 'Campaign card: the current zone, level and the next steps' }
         ]
       },

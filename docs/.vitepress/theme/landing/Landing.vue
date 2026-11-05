@@ -31,18 +31,31 @@ const isShown = (sc) => sc.si === current.value && sc.fi === shown.value
 const loaded = ref(new Set([0, 1]))
 const railEl = ref(null)
 let timer = null
+// Stepping by itself: the caption isn't read out then (it isn't news).
+const auto = ref(false)
+// The mouse rests on the picture (a hover stop reached by the tour opens).
+let mouseOnStage = false
 
 function go (i, user = true, f = 0) {
   const n = (i + stops.length) % stops.length
   current.value = n
   frame.value = f
-  hovering.value = false
+  hovering.value = Boolean(stops[n].hover && mouseOnStage)
+  if (hovering.value) stopAuto()
   loaded.value = new Set([...loaded.value, n, (n + 1) % stops.length])
   if (user) stopAuto()
-  // Keep the picked tool in view in the rail (it scrolls sideways on a phone).
-  const btn = railEl.value?.querySelector(`[data-stop="${stops[n].id}"]`)
-  btn?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
-  if (user) btn?.focus({ preventScroll: true })
+  // Keep the picked tool in view in the rail (it scrolls sideways on a
+  // phone). Only the rail scrolls: the page stays where the reader is.
+  const rail = railEl.value
+  const btn = rail?.querySelector(`[data-stop="${stops[n].id}"]`)
+  if (rail && btn) {
+    const pad = 8
+    if (btn.offsetTop < rail.scrollTop) rail.scrollTop = btn.offsetTop - pad
+    else if (btn.offsetTop + btn.offsetHeight > rail.scrollTop + rail.clientHeight) rail.scrollTop = btn.offsetTop + btn.offsetHeight - rail.clientHeight + pad
+    if (btn.offsetLeft < rail.scrollLeft) rail.scrollLeft = btn.offsetLeft - pad
+    else if (btn.offsetLeft + btn.offsetWidth > rail.scrollLeft + rail.clientWidth) rail.scrollLeft = btn.offsetLeft + btn.offsetWidth - rail.clientWidth + pad
+    if (user) btn.focus({ preventScroll: true })
+  }
 }
 function pickFrame (f) {
   stopAuto()
@@ -54,7 +67,21 @@ function advance () {
   if (!stop.value.hover && frame.value + 1 < frames.value.length) frame.value++
   else go(current.value + 1, false)
 }
-function stopAuto () { clearInterval(timer); timer = null }
+function stopAuto () { clearInterval(timer); timer = null; auto.value = false }
+function onStageEnter (e) {
+  if (e.pointerType !== 'mouse') return
+  mouseOnStage = true
+  if (stop.value.hover) { stopAuto(); hovering.value = true }
+}
+function onStageLeave (e) {
+  if (e.pointerType !== 'mouse') return
+  mouseOnStage = false
+  hovering.value = false
+}
+// No hover on a touch screen: a tap opens and closes it.
+function onStageTap (e) {
+  if (stop.value.hover && e.pointerType !== 'mouse') hovering.value = !hovering.value
+}
 function onRailKey (e) {
   const next = { ArrowDown: 1, ArrowRight: 1, ArrowUp: -1, ArrowLeft: -1 }[e.key]
   if (next == null) return
@@ -65,6 +92,7 @@ onMounted(() => {
   // Steps by itself until the visitor picks a tool; never with reduced motion.
   if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
     timer = setInterval(advance, 6500)
+    auto.value = true
   }
 })
 onBeforeUnmount(stopAuto)
@@ -109,7 +137,7 @@ const isOn = (id) => presetOn.value == null || presetOn.value.has(id)
       </section>
 
       <section id="tour" class="wrap tour-wrap" aria-label="Tool tour">
-        <div class="tour" @pointerdown="stopAuto">
+        <div class="tour" @pointerdown="stopAuto" @focusin="stopAuto">
           <nav ref="railEl" class="rail" aria-label="Tools" @keydown="onRailKey">
             <template v-for="g in TOUR" :key="g.group">
               <span class="rail-group">{{ g.group }}</span>
@@ -121,13 +149,11 @@ const isOn = (id) => presetOn.value == null || presetOn.value.has(id)
             </template>
           </nav>
           <figure class="stage" :class="{ hoverable: stop.hover }"
-            @pointerenter="e => { if (stop.hover && e.pointerType === 'mouse') { stopAuto(); hovering = true } }"
-            @pointerleave="e => { if (e.pointerType === 'mouse') hovering = false }"
-            @click="stop.hover && (hovering = !hovering)">
+            @pointerenter="onStageEnter" @pointerleave="onStageLeave" @pointerup="onStageTap">
             <template v-for="sc in screens" :key="sc.key">
               <img v-if="loaded.has(sc.si)" :src="shot(sc.shot)" :alt="sc.alt" :class="{ on: isShown(sc) }" :aria-hidden="!isShown(sc)" width="1600" height="900">
             </template>
-            <figcaption class="cap" aria-live="polite">
+            <figcaption class="cap" :aria-live="auto ? 'off' : 'polite'">
               <div v-if="frames.length > 1" class="frames" role="group" :aria-label="`${stop.label} screens`">
                 <button v-for="(f, i) in frames" :key="f.label" type="button" :aria-pressed="shown === i" @click.stop="pickFrame(i)">{{ f.label }}</button>
               </div>
@@ -368,6 +394,7 @@ const isOn = (id) => presetOn.value == null || presetOn.value.has(id)
   border-right: 1px solid var(--line);
   overflow-y: auto;
   scrollbar-width: thin;
+  position: relative;
   /* No height of its own: the picture sets the row, and the rail scrolls. */
   contain: size;
 }
@@ -410,8 +437,10 @@ const isOn = (id) => presetOn.value == null || presetOn.value.has(id)
 }
 .rail button[aria-current='true'] .ic { border-color: var(--gold); color: var(--gold-hi); }
 .stage { position: relative; aspect-ratio: 16 / 9; min-width: 0; background: #0a0907; }
-.stage img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity 350ms ease; }
-.stage img.on { opacity: 1; }
+.stage img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity 350ms ease; pointer-events: none; }
+/* On top, so saving or long-pressing the picture gets the one you see. */
+.stage img.on { opacity: 1; pointer-events: auto; z-index: 1; }
+.stage .cap, .stage .arrows { z-index: 2; }
 .cap {
   position: absolute;
   left: 18px;

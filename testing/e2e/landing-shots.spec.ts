@@ -248,12 +248,12 @@ test('tour: market movers, with the item under the cursor', async ({ overlay }) 
   await expect(scarabs.getByText(/\d+ scarabs? worth vendoring/)).toBeVisible()
   // Side by side: drag the scarab window off the tracker by its title.
   const title = await scarabs.getByText('Scarab flip', { exact: true }).first().boundingBox()
-  if (title) {
-    await overlay.page.mouse.move(title.x + 10, title.y + title.height / 2)
-    await overlay.page.mouse.down()
-    await overlay.page.mouse.move(title.x + 560, title.y + title.height / 2, { steps: 12 })
-    await overlay.page.mouse.up()
-  }
+  if (!title) throw new Error('No scarab flip title to drag')
+  await overlay.page.mouse.move(title.x + 10, title.y + title.height / 2)
+  await overlay.page.mouse.down()
+  await overlay.page.mouse.move(title.x + 560, title.y + title.height / 2, { steps: 12 })
+  await overlay.page.mouse.up()
+  await expect.poll(async () => (await scarabs.getByText('Scarab flip', { exact: true }).first().boundingBox())?.x ?? 0).toBeGreaterThan(title.x + 400)
   await panel.locator('.w-row', { hasText: 'Pact of Lycia' }).hover()
   await expect(overlay.page.getByRole('tooltip')).toContainText('Pact of Lycia')
   await save(overlay, 'tour-market')
@@ -357,7 +357,8 @@ test('tour: boss runs, every boss priced by its drops', async ({ overlay }) => {
   // You own the fragments and plan 20 runs: the estimator fills in.
   await panel.getByText('I own the entry items').click()
   await panel.locator('input[type="number"]').first().fill('20')
-  await expect(panel.getByText('The Vertex').first()).toBeVisible()
+  await expect(panel.getByText(/rarer than 1 in 20 runs/)).toBeVisible()
+  await expect(panel.getByText('Counted as free (you own them).')).toBeVisible()
   await overlay.page.mouse.move(1800, 1000)
   await save(overlay, 'tour-boss-runs', { x: 0, y: 0 })
 })
