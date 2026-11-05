@@ -32,6 +32,16 @@ export function runningGameLog (): Promise<string | null> {
   })
 }
 
+// A log the game just started is tiny. A big "new" file is the old one seen
+// wrongly (a volatile file id, say) or a restored copy, and replaying it would
+// feed the run timer, farming and trade months of old events as if live.
+const NEW_LOG_MAX_BYTES = 1024 * 1024
+
+export function startOffset (now: { ino: number, size: number }, lastIno: number, lastOffset: number): number {
+  if (now.ino === lastIno && now.size >= lastOffset) return lastOffset
+  return now.size > NEW_LOG_MAX_BYTES ? now.size : 0
+}
+
 export class GameLogWatcher {
   private _wantedPath: string | null = null
   get actualPath () { return this._state?.path ?? null }
@@ -132,12 +142,14 @@ export class GameLogWatcher {
     if (!state) return
 
     // woke: a stale handle reads nothing forever, so the log appeared to stop
-    // until a restart. Deleted: let go of it so the game can make a new one.
-    // Cleared or swapped: start from the top of what's there now.
+    // until a restart. Deleted (or a failed stat, which looks the same): let go
+    // of it so the game can make a new one. Looks cleared or swapped: reopen,
+    // and reopen decides where to read from.
     if (curr.nlink === 0) {
       if (state.file) this.reopen(state, false)
       return
     }
+    if (!state.file && state.isReading) return // A reopen is under way.
     const swapped = state.ino !== 0 && curr.ino !== 0 && curr.ino !== state.ino
     if (!state.file || curr.size < state.offset || swapped) {
       this.reopen(state, true)
@@ -152,21 +164,28 @@ export class GameLogWatcher {
 
   // A read still going on the old state notices it's been replaced and stops.
   private reopen (state: NonNullable<GameLogWatcher['_state']>, openAgain: boolean) {
-    const next: typeof state = { ...state, file: null, offset: 0, ino: 0, isReading: openAgain }
+    // Its own buffer: a read still going on the old state writes into the old one.
+    const next: typeof state = { ...state, file: null, isReading: openAgain, readBuff: Buffer.allocUnsafe(state.readBuff.length) }
     this._state = next
     state.file?.close().catch(() => {})
     if (!openAgain) return
-    this.logger.write(`info [GameLogWatcher] ${state.path} changed, following the new file.`)
+    let opened: fs.FileHandle | undefined
     fs.open(state.path, 'r').then(async (file) => {
+      opened = file
       const stats = await file.stat()
       if (this._state !== next) {
         await file.close()
         return
       }
+      next.offset = startOffset(stats, next.ino, next.offset)
+      if (next.ino !== stats.ino || stats.size < state.offset) {
+        this.logger.write(`info [GameLogWatcher] ${state.path} changed, following the new file.`)
+      }
       next.file = file
       next.ino = stats.ino
       this.readToEOF()
     }).catch(() => {
+      opened?.close().catch(() => {})
       // Gone again already. The next change tries again.
       if (this._state === next) next.isReading = false
     })

@@ -4,7 +4,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import fs from 'fs'
 import os from 'os'
 import path from 'path'
-import { GameLogWatcher } from '../../main/src/host-files/GameLogWatcher'
+import { GameLogWatcher, startOffset } from '../../main/src/host-files/GameLogWatcher'
 
 let dir: string
 let file: string
@@ -36,6 +36,23 @@ afterEach(async () => {
   fs.rmSync(dir, { recursive: true, force: true })
 })
 
+describe('startOffset', () => {
+  it('the same file that only looked changed carries on where it was', () => {
+    expect(startOffset({ ino: 7, size: 5000 }, 7, 4000)).toBe(4000)
+    expect(startOffset({ ino: 7, size: 4000 }, 7, 4000)).toBe(4000)
+  })
+
+  it('a small new or cleared file is read from the top', () => {
+    expect(startOffset({ ino: 8, size: 100 }, 7, 4000)).toBe(0)
+    expect(startOffset({ ino: 7, size: 100 }, 7, 4000)).toBe(0)
+  })
+
+  it('a big file never replays', () => {
+    expect(startOffset({ ino: 8, size: 2_000_000_000 }, 7, 4000)).toBe(2_000_000_000)
+    expect(startOffset({ ino: 7, size: 2_000_000 }, 7, 3_000_000)).toBe(2_000_000)
+  })
+})
+
 describe('GameLogWatcher', () => {
   it('follows new lines and skips what was already there', async () => {
     fs.appendFileSync(file, 'first\n')
@@ -61,6 +78,17 @@ describe('GameLogWatcher', () => {
     await until(() => lines.includes('new file'))
     fs.appendFileSync(file, 'more\n')
     await until(() => lines.includes('more'))
+  })
+
+  it('a big file swapped in isn\'t replayed, and new lines still arrive', async () => {
+    const swap = path.join(dir, 'swap.txt')
+    fs.writeFileSync(swap, 'months of old lines\n'.repeat(100_000))
+    fs.renameSync(file, path.join(dir, 'old.txt'))
+    fs.renameSync(swap, file)
+    await new Promise(resolve => setTimeout(resolve, 1000))
+    fs.appendFileSync(file, 'fresh\n')
+    await until(() => lines.includes('fresh'))
+    expect(lines).not.toContain('months of old lines')
   })
 
   it('switches to a file swapped in under the same name', async () => {
