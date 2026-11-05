@@ -1,13 +1,14 @@
 import { ITEMS_ITERATOR, STATS_ITERATOR } from '@/assets/data'
 import { buildMapRegex, buildTrimmedMapRegex } from './regex'
 import type { MapRegexResult } from './regex'
-import { modPriority, modRatings } from './rules'
+import { modPriority, modRatings, searchOptions } from './rules'
 import type { MapModProfile, ModMode } from './rules'
 
 let areaMods: string[] | null = null
 let t17Mods: Set<string> | null = null
 let mapNames: string[] | null = null
 let heist: string[] | null = null
+let heistRows: Map<string, string> | null = null
 let charts: string[] | null = null
 
 // Chart mods (poedb's Deep Water chart table) that the stat data can read, by
@@ -109,6 +110,8 @@ const CHART_LINES = [
   'Monsters in Area have increased Toughness and Reward'
 ]
 
+const LONG_TOKEN = 5
+
 // Non-mod text on those tooltips; search tokens mustn't match it.
 const MODE_TOOLTIP_LINES: Record<ModMode, string[]> = {
   maps: [],
@@ -168,17 +171,30 @@ export function tier17Mods (): Set<string> {
 }
 
 // Mods that only roll on heist contracts and blueprints, minus any wording a
-// map mod also uses.
+// map mod also uses. One row per mod: its opposite wording ("reduced" for
+// "increased") shares the rating, as a stash search can't tell them apart when
+// the only text between them is the roll's direction.
 export function heistMods (): string[] {
   if (heist) return heist
   const maps = new Set(allAreaMods())
   const out = new Set<string>()
+  heistRows = new Map()
   for (const stat of STATS_ITERATOR('AreaMods')) {
     if (stat.fromAreaMods !== 'heist_exclusive') continue
-    for (const m of stat.matchers) if (!maps.has(m.string)) out.add(m.string)
+    const wordings = stat.matchers.filter(m => !maps.has(m.string))
+    const row = (wordings.find(m => !m.negate) ?? wordings[0])?.string
+    if (!row) continue
+    out.add(row)
+    for (const m of wordings) heistRows.set(m.string, row)
   }
   heist = [...out].sort((a, b) => a.localeCompare(b))
   return heist
+}
+
+// The Heist tab row a wording belongs to, if it's a heist mod.
+export function heistRowOf (matcher: string): string | undefined {
+  heistMods()
+  return heistRows!.get(matcher)
 }
 
 export function chartMods (): string[] {
@@ -186,7 +202,9 @@ export function chartMods (): string[] {
   const out = new Set<string>()
   for (const stat of STATS_ITERATOR('AreaMods')) {
     if (!stat.fromAreaMods || !CHART_MOD_REFS.has(stat.ref)) continue
-    for (const m of stat.matchers) if (!m.negate) out.add(m.string)
+    // Some refs are the negated wording ("less effect of Curses"): that's the one
+    // that rolls, so it needs a row too.
+    for (const m of stat.matchers) if (!m.negate || m.string === stat.ref) out.add(m.string)
   }
   charts = [...out].sort((a, b) => a.localeCompare(b))
   return charts
@@ -203,18 +221,10 @@ export function modsForMode (mode: ModMode, profile: MapModProfile): string[] {
   return all.filter(m => !t17.has(m))
 }
 
-// Every line a tab's search could meet, so its tokens stay unique. Heist leaves
-// out each mod's opposite wording ("reduced" for "increased"), the only other
-// line holding its text, so "guards deal" can stand for the mod either way.
+// Every line a tab's search could meet, so its tokens stay unique. Heist rows
+// stand for both wordings of a mod, so "guards deal" matches either.
 function searchUniverse (mode: ModMode): string[] {
-  if (mode === 'heist') {
-    const lines: string[] = []
-    for (const stat of STATS_ITERATOR('AreaMods')) {
-      if (stat.fromAreaMods !== 'heist_exclusive') continue
-      for (const m of stat.matchers) if (!m.negate) lines.push(m.string)
-    }
-    return lines
-  }
+  if (mode === 'heist') return heistMods()
   if (mode === 'charts') return [...chartMods(), ...CHART_LINES]
   return allAreaMods()
 }
@@ -244,10 +254,14 @@ export function profileRegex (profile: MapModProfile, mode: ModMode = 'maps'): M
   }
   // The minimums are about map properties.
   const mins = mode === 'maps' ? profile.mins : {}
-  const input = { avoid, want, mins, highlight: profile.highlight, minsAny: profile.minsAny }
+  const { highlight, autoTrim } = searchOptions(profile, mode)
+  const input = { avoid, want, mins, highlight, minsAny: profile.minsAny }
   const universe = searchUniverse(mode)
   const extra = [...allMapNames(), ...MODE_TOOLTIP_LINES[mode]]
-  return profile.autoTrim
-    ? buildTrimmedMapRegex(input, universe, extra, modPriority)
-    : buildMapRegex(input, universe, extra)
+  // Rare names and heist targets on these items can't be listed, so a short
+  // token could hit one: "ail" for Ailments is in the chart "Nautical Travail".
+  const minToken = mode === 'maps' ? 3 : LONG_TOKEN
+  return autoTrim
+    ? buildTrimmedMapRegex(input, universe, extra, modPriority, minToken)
+    : buildMapRegex(input, universe, extra, minToken)
 }

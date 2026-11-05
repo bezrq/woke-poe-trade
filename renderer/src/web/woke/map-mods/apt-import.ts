@@ -10,12 +10,12 @@ const DECISION: Record<string, ModRating | undefined> = { d: 'deadly', w: 'warn'
 
 // Adds APT's ratings to `profiles` (in place). APT profile N fills our profile
 // with id N, made when missing; a mod already rated here keeps its rating. Its
-// list held every kind of mod: `isHeist` sends heist mods to the heist ratings.
+// list held every kind of mod: `heistRow` sends heist mods to their Heist tab row.
 // Returns how many ratings were added.
 export function importAptMapRatings (
   profiles: MapModProfile[],
   apt: MapCheckConfig | undefined,
-  isHeist: (matcher: string) => boolean = () => false,
+  heistRow: (matcher: string) => string | undefined = () => undefined,
   makeProfiles = true
 ): number {
   if (!apt || !Array.isArray(apt.selectedStats)) return 0
@@ -36,9 +36,11 @@ export function importAptMapRatings (
     const ratings = { ...profile.ratings }
     const heistRatings = { ...profile.heistRatings }
     for (const [matcher, r] of rated) {
-      const list = isHeist(matcher) ? heistRatings : ratings
-      if (list[matcher]) continue
-      list[matcher] = r
+      const row = heistRow(matcher)
+      const list = row ? heistRatings : ratings
+      const key = row ?? matcher
+      if (list[key]) continue
+      list[key] = r
       added++
     }
     profile.ratings = ratings
@@ -50,11 +52,11 @@ export function importAptMapRatings (
 
 // The first import put heist marks with the map ratings: moves them to their own
 // list, where one already there wins.
-export function moveHeistRatings (profiles: MapModProfile[], isHeist: (matcher: string) => boolean) {
+export function moveHeistRatings (profiles: MapModProfile[], heistRow: (matcher: string) => string | undefined) {
   for (const profile of profiles) {
-    const moved = Object.entries(profile.ratings).filter(([m]) => isHeist(m))
+    const moved = Object.entries(profile.ratings).filter(([m]) => heistRow(m))
     if (!moved.length) continue
-    profile.heistRatings = { ...Object.fromEntries(moved), ...profile.heistRatings }
-    profile.ratings = Object.fromEntries(Object.entries(profile.ratings).filter(([m]) => !isHeist(m)))
+    profile.heistRatings = { ...Object.fromEntries(moved.map(([m, r]) => [heistRow(m)!, r])), ...profile.heistRatings }
+    profile.ratings = Object.fromEntries(Object.entries(profile.ratings).filter(([m]) => !heistRow(m)))
   }
 }

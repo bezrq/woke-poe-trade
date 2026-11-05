@@ -47,6 +47,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { WPanel } from '../ui'
+import { heistRowOf } from './data'
 import { modRatings, nextModRating, setModRatings, withRating } from './rules'
 import type { ModRating, Verdict } from './rules'
 import { activeProfile } from './widget'
@@ -75,7 +76,8 @@ function cycle (matcher: string, current: ModRating) {
   const profile = activeProfile(props.config)
   const next = nextModRating(current)
   const mode = props.result.mode
-  setModRatings(profile, mode, withRating(modRatings(profile, mode), [matcher], next))
+  const key = mode === 'heist' ? heistRowOf(matcher) ?? matcher : matcher
+  setModRatings(profile, mode, withRating(modRatings(profile, mode), [key], next))
 }
 </script>
 

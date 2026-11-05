@@ -8,6 +8,11 @@ export type ModRating = 'deadly' | 'warn' | 'good' | 'ok'
 // one never reaches another, even for a mod that rolls on both.
 export type ModMode = 'maps' | 'heist' | 'charts'
 
+export interface ModSearchOptions {
+  highlight: 'good' | 'bad'
+  autoTrim: boolean
+}
+
 export interface MapModProfile {
   id: number
   name: string
@@ -24,6 +29,8 @@ export interface MapModProfile {
   minsAny?: boolean
   // When the search is over 250 characters, leave out the least important mods.
   autoTrim?: boolean
+  // Highlight and auto-trim for the Heist and Charts searches.
+  tabSearch?: Partial<Record<ModMode, ModSearchOptions>>
   // The T17 switch is off: T17 mods leave the Maps list and the stash regex.
   // Their ratings stay, and a check of a T17 map still flags them.
   hideT17?: boolean
@@ -197,6 +204,21 @@ export function setModRatings (profile: MapModProfile, mode: ModMode, ratings: R
   else profile.ratings = ratings
 }
 
+export function searchOptions (profile: MapModProfile, mode: ModMode): ModSearchOptions {
+  if (mode === 'maps') return { highlight: profile.highlight, autoTrim: !!profile.autoTrim }
+  return { highlight: 'good', autoTrim: false, ...profile.tabSearch?.[mode] }
+}
+
+export function setSearchOption (profile: MapModProfile, mode: ModMode, patch: Partial<ModSearchOptions>) {
+  const next = { ...searchOptions(profile, mode), ...patch }
+  if (mode === 'maps') {
+    profile.highlight = next.highlight
+    profile.autoTrim = next.autoTrim
+  } else {
+    profile.tabSearch = { ...profile.tabSearch, [mode]: next }
+  }
+}
+
 export type ModListRow =
   | { kind: 'head', rating: ModRating, count: number }
   | { kind: 'mod', matcher: string }
@@ -334,6 +356,7 @@ export function copyOfProfile (profile: MapModProfile, id: number): MapModProfil
     ratings: { ...profile.ratings },
     heistRatings: { ...profile.heistRatings },
     chartRatings: { ...profile.chartRatings },
+    tabSearch: { ...profile.tabSearch },
     mins: { ...profile.mins }
   }
 }

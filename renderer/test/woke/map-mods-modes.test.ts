@@ -4,7 +4,7 @@ import { describe, it, expect, beforeAll, vi } from 'vitest'
 import { fixture, loadGameData, parseItem } from '../helpers/game-data'
 import { allAreaMods, chartMods, heistMods, modsForMode, profileRegex, tier17Mods } from '@/web/woke/map-mods/data'
 import { MAX_SEARCH_LENGTH } from '@/web/woke/map-mods/regex'
-import { defaultProfile, modListRows } from '@/web/woke/map-mods/rules'
+import { defaultProfile, modListRows, setSearchOption } from '@/web/woke/map-mods/rules'
 import type { MapModProfile } from '@/web/woke/map-mods/rules'
 import { DEFAULT_JUICE_WEIGHTS } from '@/web/woke/map-mods/rules'
 import { checkMap, isMapLike } from '@/web/woke/map-mods/check'
@@ -97,7 +97,39 @@ describe('map search', () => {
       return !profileRegex(p, mode).tokens[m]
     })
     expect(untokened('charts', chartMods())).toEqual([])
-    expect(untokened('heist', heistMods().filter(m => !/reduced|less /.test(m)))).toEqual([])
+    expect(untokened('heist', heistMods())).toEqual([])
+  })
+
+  it('heist has one row per mod, and its search token covers both wordings', () => {
+    expect(heistMods()).toContain(GUARDS)
+    expect(heistMods()).not.toContain('Guards deal #% reduced Damage')
+    const token = profileRegex(profile({}, { heistRatings: { [GUARDS]: 'deadly' } }), 'heist').tokens[GUARDS]
+    expect('guards deal 30% increased damage').toContain(token)
+    expect('guards deal 30% reduced damage').toContain(token)
+    expect('reinforcements have 30% reduced movement speed').not.toContain(token)
+  })
+
+  it('chart and heist tokens are long enough to miss random names', () => {
+    const token = profileRegex(profile({}, { chartRatings: { 'Monsters have #% chance to Avoid Elemental Ailments': 'deadly' } }), 'charts')
+      .tokens['Monsters have #% chance to Avoid Elemental Ailments']
+    expect(token.length).toBeGreaterThanOrEqual(5)
+    expect(fixture('items/chart-sandy-seabed.txt').toLowerCase()).not.toContain(token)
+  })
+
+  it('lists the wording of a chart mod that rolls as its negated one', () => {
+    expect(chartMods()).toContain('#% less effect of Curses on Monsters')
+  })
+
+  it('highlight and auto-trim on one tab leave the others alone', () => {
+    const p = profile(
+      { 'Monsters reflect #% of Physical Damage': 'deadly' },
+      { chartRatings: { 'Monsters are Hexproof': 'deadly' } }
+    )
+    const mapText = profileRegex(p, 'maps').text
+    setSearchOption(p, 'charts', { highlight: 'bad', autoTrim: true })
+    expect(profileRegex(p, 'maps').text).toBe(mapText)
+    expect(p.highlight).toBe('good')
+    expect(profileRegex(p, 'charts').text.startsWith('"!')).toBe(false)
   })
 
   it('minimums only go in the map search', () => {
@@ -218,6 +250,30 @@ describe('checking a heist contract', () => {
     expect(res.verdict.verdict).toBe('skip')
     expect(res.verdict.deadly[0].text).toBe('Guards deal 30% increased Damage')
     expect(res.juice).toBeNull()
+  })
+})
+
+describe('checking a contract with the opposite wording', () => {
+  it('uses the rating of its row', () => {
+    const item = parseItem([
+      'Item Class: Contracts',
+      'Rarity: Rare',
+      'Silent Deal',
+      'Contract: Bunker',
+      '--------',
+      'Client: Example',
+      'Heist Target: Enchanted Armaments (Moderate Value)',
+      'Area Level: 81',
+      'Requires Lockpicking (Level 4)',
+      '--------',
+      'Item Level: 83',
+      '--------',
+      '{ Prefix Modifier "Example" (Tier: 1) }',
+      'Guards deal 30% reduced Damage'
+    ].join('\n'))
+    const res = checkMap(item, widget(profile({}, { heistRatings: { [GUARDS]: 'warn' } })))
+    expect(res.verdict.verdict).toBe('careful')
+    expect(res.verdict.warn[0].text).toBe('Guards deal 30% reduced Damage')
   })
 })
 

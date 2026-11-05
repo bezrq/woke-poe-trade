@@ -5,6 +5,7 @@ import { ItemCategory, ItemRarity } from '@/parser'
 import type { ParsedItem } from '@/parser'
 import { ModifierType } from '@/parser/modifiers'
 import { prepareMapStat } from '@/web/map-check/prepare-map-stats'
+import { heistRowOf } from './data'
 import { juiceScore, modRatings, rateMods } from './rules'
 import type { JuiceResult, MapVerdict, ModMode } from './rules'
 import { MAP_MODS_TYPE, activeProfile, importAptOnce, initMapModsWidget } from './widget'
@@ -55,7 +56,15 @@ export function checkMap (item: ParsedItem, config: MapModsWidget): MapCheckResu
     .filter(calc => rated(calc.type) && calc.stat.ref !== VOYAGE_UNREVEALED)
     .map(calc => prepareMapStat(calc))
   const mode = modeOfItem(item)
-  const verdict = rateMods(stats, { ...profile, ratings: modRatings(profile, mode) })
+  const ratings = { ...modRatings(profile, mode) }
+  if (mode === 'heist') {
+    // A row rates both wordings of its mod.
+    for (const { matcher } of stats) {
+      const rating = ratings[heistRowOf(matcher) ?? matcher]
+      if (rating) ratings[matcher] = rating
+    }
+  }
+  const verdict = rateMods(stats, { ...profile, ratings })
 
   const juice = isHeistItem(item) ? null : juiceScore({
     quantity: item.areaItemQuantity,

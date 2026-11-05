@@ -2,7 +2,7 @@ import type { Widget, Anchor } from '@/web/overlay/widgets'
 import { AppConfig } from '@/web/Config'
 import type { MapCheckConfig } from '@/web/map-check/common'
 import { importAptMapRatings, moveHeistRatings } from './apt-import'
-import { heistMods } from './data'
+import { heistRowOf } from './data'
 import { DEFAULT_JUICE_WEIGHTS, defaultProfile } from './rules'
 import type { JuiceWeights, MapModProfile } from './rules'
 
@@ -53,12 +53,10 @@ export function importAptOnce (w: MapModsWidget) {
   w.aptImportedFinal = true
   try {
     const itemCheck = AppConfig().widgets.find(_ => _.wmType === 'item-check') as { maps?: MapCheckConfig } | undefined
-    const heist = new Set(heistMods())
-    const isHeist = (m: string) => heist.has(m)
-    moveHeistRatings(w.profiles, isHeist)
+    moveHeistRatings(w.profiles, heistRowOf)
     const maps = itemCheck?.maps
-    if (firstImport || !maps) importAptMapRatings(w.profiles, maps, isHeist)
-    else importAptMapRatings(w.profiles, { ...maps, selectedStats: maps.selectedStats.filter(s => isHeist(s.matcher)) }, isHeist, false)
+    if (firstImport || !maps) importAptMapRatings(w.profiles, maps, heistRowOf)
+    else importAptMapRatings(w.profiles, { ...maps, selectedStats: maps.selectedStats.filter(s => heistRowOf(s.matcher)) }, heistRowOf, false)
   } catch {}
 }
 

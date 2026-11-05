@@ -3,8 +3,8 @@
     <template #actions>
       <WSelect :model-value="String(config.activeProfile)" :options="profileOptions"
         @update:model-value="config.activeProfile = Number($event)" title="Build profile" />
-      <WSegmented :model-value="profile.highlight" :options="HIGHLIGHT_OPTIONS"
-        @update:model-value="profile.highlight = $event as 'good' | 'bad'" />
+      <WSegmented :model-value="tabOptions.highlight" :options="HIGHLIGHT_OPTIONS"
+        @update:model-value="setSearchOption(profile, mode, { highlight: $event as 'good' | 'bad' })" />
       <slot name="actions" />
     </template>
     <template #toolbar>
@@ -22,7 +22,7 @@
       </div>
       <div v-if="mode !== 'maps'" class="w-dim text-xs w-full">{{ MODE_HINT[mode] }}</div>
       <div class="flex items-center gap-2 w-full text-xs">
-        <WChip clickable :active="!!profile.autoTrim" @click="profile.autoTrim = !profile.autoTrim"
+        <WChip clickable :active="tabOptions.autoTrim" @click="setSearchOption(profile, mode, { autoTrim: !tabOptions.autoTrim })"
           title="When the search is too long, leave out wanted mods first, then avoided mods that aren't in a Quick preset, longest first">
           <i class="fas fa-cut" /> Auto-trim to fit
         </WChip>
@@ -88,7 +88,7 @@ import { pushHostConfig } from '@/web/Config'
 import { WPanel, WButton, WChip, WField, WSegmented, WSelect, WTabs, WToggle, WEmpty, toast } from '../ui'
 import { useCopy } from '../ui/copy'
 import { SAVE_MESSAGE, saveToRegexLibrary } from '../regex-library/save'
-import { PRESETS, applyPreset, modListRows, modRatings, nextPresetRating, presetRating, setModRatings, withRating } from './rules'
+import { PRESETS, applyPreset, modListRows, modRatings, nextPresetRating, presetRating, searchOptions, setModRatings, setSearchOption, withRating } from './rules'
 import type { MapModPreset, ModMode, ModRating } from './rules'
 import { MAX_SEARCH_LENGTH, MIN_LABELS, tokenCost } from './regex'
 import type { MinStat } from './regex'
@@ -140,6 +140,7 @@ function isDanger (m: string) {
 
 const t17 = computed(() => tier17Mods())
 const ratings = computed(() => modRatings(profile.value, mode.value))
+const tabOptions = computed(() => searchOptions(profile.value, mode.value))
 const modeMods = computed(() => modsForMode(mode.value, profile.value))
 const searchHint = computed(() => `Search ${modeMods.value.length} ${MODE_NOUN[mode.value]} mods`)
 
