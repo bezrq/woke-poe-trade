@@ -35,6 +35,8 @@ export const usePoeninja = createGlobalState(() => {
   const leagues = useLeagues()
 
   const xchgRate = shallowRef<number | undefined>(undefined)
+  // woke: when prices last loaded, so the verdict can say how old they are.
+  const updatedAt = shallowRef<number | null>(null)
 
   const isLoading = shallowRef(false)
   let PRICES_DB: PriceDatabase = []
@@ -80,10 +82,11 @@ export const usePoeninja = createGlobalState(() => {
       PRICES_DB = readOverviews(jsonBlob)
       emitWokePricesLoaded(league.id, PRICES_DB)
       const divine = findPriceByQuery({ ns: 'ITEM', name: 'Divine Orb', variant: undefined })
+      lastUpdateTime = Date.now()
       if (divine && divine.chaos >= 30) {
         xchgRate.value = divine.chaos
+        updatedAt.value = lastUpdateTime
       }
-      lastUpdateTime = Date.now()
       lastFailureTime = 0
     } catch (err) {
       if (downloadController !== controller) return
@@ -184,7 +187,10 @@ export const usePoeninja = createGlobalState(() => {
   }, RETRY_INTERVAL_MS)
 
   watch(leagues.selectedId, () => {
+    // woke: a load still running is for the old league.
+    downloadController?.abort()
     xchgRate.value = undefined
+    updatedAt.value = null
     PRICES_DB = []
     // woke: the old league's update time mustn't delay the new league's retry.
     lastUpdateTime = 0
@@ -194,6 +200,8 @@ export const usePoeninja = createGlobalState(() => {
 
   return {
     xchgRate: readonly(xchgRate),
+    updatedAt: readonly(updatedAt),
+    isLoading: readonly(isLoading),
     findPriceByQuery,
     findPriceByName,
     autoCurrency,

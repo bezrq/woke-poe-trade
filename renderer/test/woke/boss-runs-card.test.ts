@@ -40,9 +40,10 @@ describe('boss runs card', () => {
     const kills = (n: number) => Array.from({ length: n }, (_, i) => ({ ts: i, drops: [{ name: 'Forbidden Flame', qty: 1 }] }))
     const flame = (n: number) => evaluateBoss(boss('exarch'), prefs({ kills: { exarch: kills(n) } }), noPrices)
       .drops.find(d => d.name === 'Forbidden Flame')!
-    expect(flame(1).chance).toBeNull()
-    expect(flame(4).chance).toBeNull()
-    expect(flame(5).chance).toBe(1)
+    // The estimate holds until the log means something.
+    expect(flame(1)).toMatchObject({ chance: 0.05, rateSource: 'estimate' })
+    expect(flame(4)).toMatchObject({ chance: 0.05, rateSource: 'estimate' })
+    expect(flame(5)).toMatchObject({ chance: 1, rateSource: 'mine' })
   })
 
   it('prices a logged drop like its row', () => {
