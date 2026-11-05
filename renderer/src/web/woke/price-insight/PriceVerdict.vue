@@ -17,7 +17,7 @@
         <template v-else>
           <div :class="$style.eyebrow">
             <span :class="$style.badge" :title="CONFIDENCE_HINT[insight.confidence]">{{ CONFIDENCE_LABEL[insight.confidence] }}</span>
-            <span class="whitespace-nowrap" :title="blendTitle">{{ lowValue ? `Under ${LOW_VALUE}c` : 'Likely sells for' }}</span>
+            <span class="whitespace-nowrap" :title="blendTitle">{{ lowValue ? `Under ${LOW_VALUE}c` : 'Asking around' }}</span>
             <span v-if="insight.risk !== 'none'" :class="[$style.risk, $style['risk-' + insight.risk]]" :title="riskTitle"
               @click="verdictExpanded = true">⚑ {{ RISK_LABEL[insight.risk] }}</span>
           </div>
@@ -56,6 +56,7 @@
       <div v-if="showSignals" :class="$style.signals">
         <div v-for="s in insight.signals" :key="s.kind" :class="$style.signal"><span :class="$style.flag">⚑</span> {{ s.text }}</div>
       </div>
+      <p v-if="accountMissing" :class="$style.note">Your own listings may be counted here. Add your account name in settings to leave them out.</p>
       <div v-if="!lowValue && notes.length" :class="$style.actions">
         <button v-for="n in notes" :key="n.key" type="button" :class="$style.note2"
           :title="'Copy the listing note: ' + n.text" @click="copy(n)">
@@ -90,6 +91,7 @@
 <script setup lang="ts">
 import { computed, onUnmounted, toRef, watch } from 'vue'
 import { ParsedItem } from '@/parser'
+import { AppConfig } from '@/web/Config'
 import { WPrice, WSpark } from '../ui'
 import { useCopy } from '../ui/copy'
 import NinjaLine from './NinjaLine.vue'
@@ -136,7 +138,10 @@ const smart = useSmartPrice(toRef(props, 'item'), toRef(props, 'insight'), toRef
 onUnmounted(smart.stop)
 const { ninjaInfo, blend, headline, ranges, series, leagueLoading } = smart
 
-const lowValue = computed(() => !props.skipsTopMods && (headline.value?.chaos ?? props.insight.range?.fair ?? 0) < LOW_VALUE)
+// With divine listings left out, what's left may not be the real price: no advice on it.
+const missingDivines = computed(() => props.insight.signals.some(s => s.kind === 'norate'))
+
+const lowValue = computed(() => !props.skipsTopMods && !missingDivines.value && (headline.value?.chaos ?? props.insight.range?.fair ?? 0) < LOW_VALUE)
 
 const railInput = computed(() => ({
   low: props.insight.range?.low ?? 0,
@@ -149,8 +154,10 @@ const railInput = computed(() => ({
 // Warnings stay out of the way unless they change what the price means.
 const showSignals = computed(() => props.insight.signals.length > 0 && (
   expanded.value || props.insight.risk === 'medium' || props.insight.risk === 'high' ||
-  props.insight.signals.some(s => s.kind === 'old')
+  props.insight.signals.some(s => s.kind === 'old' || s.kind === 'norate' || s.kind === 'snipe' || s.kind === 'oneseller')
 ))
+
+const accountMissing = computed(() => !AppConfig().accountName?.trim())
 
 const SPARK_LABEL: Record<HistoryRange, string> = { week: 'poe.ninja 7d', league: 'poe.ninja', mine: 'My checks' }
 
@@ -199,6 +206,8 @@ const rangeUnit = computed(() => {
 const emptyText = computed(() => {
   if (props.blankSearch) return 'No mods are ticked, so these listings can\'t price this rare. Tick the mods that matter, then search.'
   if (props.total === 0) return 'Nobody is selling this with these filters'
+  const noRate = props.insight.signals.find(s => s.kind === 'norate')
+  if (noRate) return noRate.text
   if (props.insight.dropped.size) return 'All listings looked unreliable'
   return 'No listings yet'
 })
@@ -224,14 +233,14 @@ const blendTitle = computed(() => {
   const lines = blend.value.points.map(p =>
     `${p.label}: ${Math.round(p.low)}${p.high > p.low ? '–' + Math.round(p.high) : ''}c${p.weight === 0 ? ' (not counted)' : ''}. ${p.note}`)
   if (headline.value?.from === 'blend') lines.unshift('Blend of every source, listings count most:')
-  else if (headline.value?.chaos === props.insight.range?.low) lines.unshift('What it is likely to sell for: the cheapest trusted listing.')
-  else lines.unshift('What it is likely to sell for: the middle of the cheapest trusted listings, counting online and recent sellers more.')
+  else if (headline.value?.chaos === props.insight.range?.low) lines.unshift('What sellers ask, since the trade site shows no sales: the cheapest trusted listing.')
+  else lines.unshift('What sellers ask, since the trade site shows no sales: the middle of the cheapest trusted listings, counting online and recent sellers more.')
   return lines.join('\n')
 })
 
 const notes = computed(() => {
   const s = props.insight.suggest
-  if (!s) return []
+  if (!s || missingDivines.value) return []
   const fast = noteText(notePrice(s.fast, props.divine))
   // Listings nobody has bought say little: being patient means asking the blended price.
   const oldOnly = props.insight.signals.some(sig => sig.kind === 'old')

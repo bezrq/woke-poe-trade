@@ -73,16 +73,19 @@
           <div v-for="(col, i) in launcherColumns" :key="i">
             <template v-for="group in col" :key="group.label">
               <div v-if="group.items.length" :class="$style.head">{{ group.label }}</div>
-              <div v-for="tab in group.items" :key="tab.wmId" :class="[$style.row, { [$style.rowOpen]: tab.open }]"
-                @contextmenu.prevent.stop="openMenu(tab, $event)">
-                <button :class="$style.rowMain" :aria-label="tab.name" @click="onRowClick(tab)">
-                  <tool-icon :art="tab.art" :icon="tab.icon" />
-                  <span :class="$style.rowName">{{ tab.name }}</span>
-                  <span v-if="tab.copies > 1" :class="$style.dup" title="Several copies of this tool">×{{ tab.copies }}</span>
+              <div v-for="entry in group.items" :key="entry.key"
+                :class="[$style.row, { [$style.rowOpen]: entry.tab?.open, [$style.rowOff]: entry.state === 'off' }]"
+                @contextmenu.prevent.stop="entry.tab && openMenu(entry.tab, $event)">
+                <button :class="$style.rowMain" :aria-label="entry.name" :title="ENTRY_HINT[entry.state]" @click="activate(entry)">
+                  <tool-icon :art="entry.art" :icon="entry.icon" />
+                  <span :class="$style.rowName">{{ entry.name }}</span>
+                  <span v-if="entry.tab && entry.tab.copies > 1" :class="$style.dup" title="Several copies of this tool">×{{ entry.tab.copies }}</span>
                 </button>
-                <button :class="[$style.pin, { [$style.pinOn]: tab.pinned }]"
-                  :aria-label="tab.pinned ? `Unpin ${tab.name} from the rail` : `Pin ${tab.name} to the rail`"
-                  :title="tab.pinned ? 'Unpin from the rail' : 'Pin to the rail'" @click="togglePin(tab)">
+                <span v-if="entry.state === 'off'" :class="$style.rowTag">Off</span>
+                <span v-else-if="entry.state === 'dock'" :class="$style.rowTag">Icon row</span>
+                <button v-else-if="entry.tab" :class="[$style.pin, { [$style.pinOn]: entry.tab.pinned }]"
+                  :aria-label="entry.tab.pinned ? `Unpin ${entry.name} from the rail` : `Pin ${entry.name} to the rail`"
+                  :title="entry.tab.pinned ? 'Unpin from the rail' : 'Pin to the rail'" @click="togglePin(entry.tab)">
                   <i class="fas fa-thumbtack" />
                 </button>
               </div>
@@ -91,8 +94,7 @@
         </div>
         <div v-if="!launcherHasMatch && !priceGroups.length" :class="$style.none">Nothing matches "{{ launcherQuery }}"</div>
         <div :class="$style.foot">
-          <span>Gold means open. Pin a tool to keep it on the rail.</span>
-          <button :class="$style.footBtn" @click="openAdd"><i class="fas fa-plus" /> Add another tool</button>
+          <span>Gold means open. Pin a tool to keep it on the rail. Right-click a tool for more.</span>
         </div>
       </div>
 
@@ -119,6 +121,9 @@
           <button :class="$style.iconBtn" title="Save" @click="commitRename"><i class="fas fa-check" /></button>
         </div>
         <button v-else-if="!menuTab.iconOnly" :class="$style.item" @click="startRename"><i class="fas fa-pen" />Rename</button>
+        <button v-if="canAddCopy(menuTab.wmType)" :class="$style.item" @click="placeNew(menuTab.wmType); closePopup()">
+          <i class="fas fa-plus" />Add another copy
+        </button>
         <template v-if="menuTab.removable">
           <hr :class="$style.rule">
           <button v-if="menuTab.copies > 1" :class="[$style.item, $style.danger]" @click="removeCopies(menuTab)">
@@ -130,24 +135,6 @@
         </template>
       </div>
 
-      <!-- Add a tool -->
-      <div v-if="popup?.kind === 'add'" ref="popupEl" :class="[$style.menu, $style.addList]" :style="popupStyle" @contextmenu.prevent>
-        <div :class="$style.search">
-          <i class="fas fa-search" />
-          <input ref="searchInput" v-model="query" :class="$style.searchInput" placeholder="Find a tool"
-            @keydown.esc="closePopup" @keydown.enter="addFirstMatch">
-        </div>
-        <div :class="$style.scroll">
-          <template v-for="group in addGroups" :key="group.label">
-            <div :class="$style.head">{{ group.label }}</div>
-            <button v-for="spec in group.types" :key="spec.type" :class="$style.item" @click="add(spec.type)">
-              <i class="fas" :class="iconFor(spec.type)" />{{ spec.name }}
-              <span :class="[$style.state, { [$style.stateOn]: stateOf(spec.type) === 'Open it' }]">{{ stateOf(spec.type) }}</span>
-            </button>
-          </template>
-          <div v-if="!addGroups.length" :class="$style.foot">No tool matches "{{ query }}"</div>
-        </div>
-      </div>
     </Teleport>
   </div>
 </template>
@@ -158,14 +145,14 @@ import { computed, inject, nextTick, onBeforeUnmount, onMounted, ref, watch } fr
 import type { WidgetManager } from '@/web/overlay/interfaces'
 import type { Widget, Anchor } from '@/web/overlay/widgets'
 import { registry } from '@/web/overlay/widget-registry'
-import { AppConfig } from '@/web/Config'
+import { AppConfig, pushHostConfig } from '@/web/Config'
 import { appIconUrl } from '../ui/app-icon'
-import { isWidgetTypeOn } from '@/web/woke/modules'
+import { MODULES, ensureWokeConfig, isWidgetTypeOn, setModuleOn } from '@/web/woke/modules'
 import { useI18n } from 'vue-i18n'
 import { useHotkeyHealth } from '../switchboard/hotkey-health'
 import ToolIcon from './ToolIcon.vue'
-import { ICON_TOOL_NAMES, artFor, iconFor, allowsCopies, groupByModule, groupTypes, looksLikeItem, migrateToRail, parseWidgetTitle } from './tools'
-import type { TabBarConfig } from './tools'
+import { ICON_TOOL_NAMES, artFor, iconFor, allowsCopies, groupByModule, launcherEntries, looksLikeItem, migrateToRail, parseWidgetTitle } from './tools'
+import type { LauncherEntry, LauncherState, TabBarConfig } from './tools'
 import { WIcon, WPrice, ninjaIcon } from '../ui'
 import { holdPricesForSearch, useSearchSnapshot } from '../market/price-index'
 import { groupKey, rarityClass, searchPrices } from '../search/search'
@@ -361,8 +348,8 @@ function hideTip () { tip.value = null }
 // popups
 // y: where the popup's top goes when it opens downward; above: where its
 // bottom goes when there is no room below and it opens upward instead.
-type PopupKind = 'menu' | 'launcher' | 'add'
-const POPUP_WIDTH: Record<PopupKind, number> = { menu: 240, launcher: 900, add: 290 }
+type PopupKind = 'menu' | 'launcher'
+const POPUP_WIDTH: Record<PopupKind, number> = { menu: 240, launcher: 900 }
 const popup = ref<{ kind: PopupKind, x: number, y: number, above: number, up?: boolean, wmId?: number } | null>(null)
 const popupEl = ref<HTMLElement | null>(null)
 const menuTab = computed(() => tabs.value.find(tab => tab.wmId === popup.value?.wmId))
@@ -394,7 +381,7 @@ function openMenu (tab: Tab, e: MouseEvent) {
   placePopup()
 }
 // Beside the rail, on whichever side of it faces the screen.
-function openBesideRail (kind: 'launcher' | 'add') {
+function openBesideRail (kind: 'launcher') {
   hideTip()
   const r = railEl.value!.getBoundingClientRect()
   popup.value = {
@@ -411,7 +398,6 @@ function openLauncher () {
   holdPricesForSearch()
   openBesideRail('launcher')
 }
-function openAdd () { openBesideRail('add') }
 function closePopup () {
   popup.value = null
   renaming.value = false
@@ -429,12 +415,27 @@ const searchInput = ref<HTMLInputElement | HTMLTextAreaElement>()
 
 // launcher
 const launcherQuery = computed(() => query.value.trim().replace(/\s+/g, ' ').toLowerCase())
+// Every tool: what's placed, what isn't yet, and what's switched off.
+const launcherAll = computed(() => launcherEntries(
+  registry.widgets
+    .filter(({ widget }) => widget.instances === 'multi' && widget.type !== 'stash-search')
+    .map(({ widget }) => ({ type: widget.type, name: typeName(widget.type) })),
+  tabs.value,
+  wmType => !isWidgetTypeOn(AppConfig(), wmType),
+  wmType => AppConfig().widgets.some(w => w.wmType === wmType && w.wmFlags.includes('menu::skip'))
+))
+const ENTRY_HINT: Record<LauncherState, string | undefined> = {
+  placed: undefined,
+  available: undefined,
+  off: 'Switched off. Click to turn it on and open it.',
+  dock: 'Lives in the icon row. Click for its settings.'
+}
 const launcherMatches = computed(() => {
   const q = launcherQuery.value
   // Settings and search live on the rail; listed here only if taken off it,
   // so they can be put back.
-  const shown = tabs.value.filter(tab => !(tab.iconOnly && tab.pinned))
-  return q ? shown.filter(tab => tab.name.toLowerCase().includes(q)) : shown
+  const shown = launcherAll.value.filter(entry => !(entry.tab?.iconOnly && entry.tab.pinned))
+  return q ? shown.filter(entry => entry.name.toLowerCase().includes(q)) : shown
 })
 const launcherHasMatch = computed(() => launcherMatches.value.length > 0)
 // One column per group; whatever is left shares the last one.
@@ -448,15 +449,73 @@ function onRowClick (tab: Tab) {
   toggle(tab)
   if (!tab.open) closePopup()
 }
+function activate (entry: LauncherEntry<Tab>) {
+  if (entry.tab) {
+    onRowClick(entry.tab)
+    return
+  }
+  if (entry.state === 'dock') openModuleSettings(entry.wmType)
+  else {
+    if (entry.state === 'off') turnOn(entry.wmType)
+    placeAndOpen(entry.wmType)
+  }
+  closePopup()
+}
 function openFirstMatch () {
   if (!launcherQuery.value) return
-  const first = launcherColumns.value.flat().flatMap(g => g.items)[0]
+  const rows = launcherColumns.value.flat().flatMap(g => g.items)
+  // A tool that's placed beats a price. Typing "essence" to price one shouldn't
+  // switch on and place the Essence scan.
+  const first = priceGroups.value.length ? rows.find(row => row.tab) : rows[0]
   if (!first) {
     if (priceGroups.value.length) openSearch(priceGroups.value[0].name)
     return
   }
-  toggleOpen(first)
+  if (first.tab) toggleOpen(first.tab)
+  else activate(first)
   closePopup()
+}
+function turnOn (wmType: string) {
+  const config = ensureWokeConfig(AppConfig())
+  for (const m of MODULES) {
+    if (m.widgetTypes.includes(wmType)) setModuleOn(config, m.id, true)
+  }
+}
+// A dock-only tool has no window to open, so its settings are the way in.
+const DOCK_ONLY_PAGES: Record<string, string> = { 'woke-campaign': 'Campaign & run timer' }
+function openModuleSettings (wmType: string) {
+  const settings = wm.widgets.value.find(w => w.wmType === 'settings')
+  if (!settings) return
+  wm.setFlag(settings.wmId, `settings::page=${DOCK_ONLY_PAGES[wmType] ?? typeName(wmType)}`, true)
+  wm.show(settings.wmId)
+}
+// Once it's mounted: its default hotkeys are set then, and whether a running
+// module needs the game log depends on it being placed.
+function afterMount (fn: () => void) {
+  nextTick(() => nextTick(() => {
+    fn()
+    pushHostConfig()
+  }))
+}
+// One that's already placed (a module just turned back on) comes back as it was.
+function placeAndOpen (wmType: string) {
+  const placed = AppConfig().widgets.find(w => w.wmType === wmType)
+  if (!placed) placeNew(wmType)
+  else if (placed.wmFlags.includes('menu::skip')) afterMount(() => openModuleSettings(wmType))
+  else afterMount(() => wm.show(placed.wmId))
+}
+function placeNew (wmType: string) {
+  wm.create(wmType)
+  const created = wm.widgets.value.reduce((a, b) => (a.wmId > b.wmId ? a : b))
+  // A window's own remove button leaves its id behind, and ids get reused.
+  props.config.pinned = (props.config.pinned ?? []).filter(id => id !== created.wmId)
+  setLabel(created.wmId, '')
+  afterMount(() => wm.show(created.wmId))
+}
+// Only tools that can hold different content: a second Settings can't work.
+function canAddCopy (wmType: string) {
+  if (!allowsCopies(wmType) || wmType === 'stash-search') return false
+  return registry.widgets.some(({ widget }) => widget.type === wmType && widget.instances === 'multi')
 }
 
 // Prices for what's typed. Clicking one opens the full search on it.
@@ -500,41 +559,6 @@ function onOverlayPaste (e: ClipboardEvent) {
 onMounted(() => document.addEventListener('paste', onOverlayPaste))
 onBeforeUnmount(() => document.removeEventListener('paste', onOverlayPaste))
 
-// add list
-const addable = computed(() => registry.widgets
-  .filter(({ widget }) => widget.instances === 'multi' && widget.type !== 'stash-search' && isWidgetTypeOn(AppConfig(), widget.type))
-  // Placed but kept out of the launcher (the campaign icon): another copy can't be removed here.
-  .filter(({ widget }) => !wm.widgets.value.some(w => w.wmType === widget.type && w.wmFlags.includes('menu::skip')))
-  .map(({ widget }) => ({ type: widget.type, name: typeName(widget.type) })))
-const addGroups = computed(() => {
-  const q = query.value.trim().toLowerCase()
-  return groupTypes(q ? addable.value.filter(s => s.name.toLowerCase().includes(q)) : addable.value)
-})
-function stateOf (wmType: string): string {
-  const mine = tabs.value.filter(tab => tab.wmType === wmType)
-  if (allowsCopies(wmType)) return mine.length ? `${mine.length} placed · Add another` : 'Add'
-  return mine.length ? 'Open it' : 'Add'
-}
-function add (wmType: string) {
-  const existing = tabs.value.find(tab => tab.wmType === wmType)
-  if (existing && !allowsCopies(wmType)) {
-    wm.show(existing.wmId)
-    closePopup()
-    return
-  }
-  wm.create(wmType)
-  const created = wm.widgets.value.reduce((a, b) => (a.wmId > b.wmId ? a : b))
-  // A window's own remove button leaves its id behind, and ids get reused.
-  props.config.pinned = [...(props.config.pinned ?? []).filter(id => id !== created.wmId), created.wmId]
-  setLabel(created.wmId, '')
-  closePopup()
-  // The widget initialises on mount; show it once that has happened.
-  nextTick(() => nextTick(() => wm.show(created.wmId)))
-}
-function addFirstMatch () {
-  const first = addGroups.value[0]?.types[0]
-  if (first) add(first.type)
-}
 </script>
 
 <style module>
@@ -725,8 +749,8 @@ function addFirstMatch () {
   padding: 8px 8px 2px;
   border-top: 1px solid var(--w-line);
 }
-.footBtn { color: var(--w-dim); padding: 2px 4px; border-radius: var(--w-r-sm); }
-.footBtn:hover { color: var(--w-fg); background: var(--w-panel-3); }
+.rowTag { flex: none; padding: 0 4px; font-size: var(--w-text-sm); color: var(--w-dim); }
+.rowOff .rowName, .rowOff .rowMain > * { opacity: 0.55; }
 
 .head {
   padding: 5px 8px 3px;
@@ -750,11 +774,9 @@ function addFirstMatch () {
 .item:hover:not(:disabled) { background: var(--w-accent-soft); }
 .item:disabled { color: var(--w-faint); }
 .danger, .danger > i { color: var(--w-down); }
-.state { margin-left: auto; padding-left: 16px; font-size: var(--w-text-sm); color: var(--w-faint); }
-.stateOn { color: var(--w-accent); }
 .rule { border: 0; border-top: 1px solid var(--w-line); margin: 4px 2px; }
 .renameRow { display: flex; gap: 4px; padding: 2px; }
-.input, .searchInput {
+.input {
   flex: 1;
   min-width: 0;
   height: 26px;
@@ -764,14 +786,4 @@ function addFirstMatch () {
   background: var(--w-panel-2);
   color: var(--w-fg);
 }
-.addList { width: 280px; }
-.search {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 2px 2px 6px 8px;
-  color: var(--w-faint);
-}
-.searchInput { border-color: var(--w-line); }
-.scroll { max-height: 60vh; overflow-y: auto; display: flex; flex-direction: column; }
 </style>

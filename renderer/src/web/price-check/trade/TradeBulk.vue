@@ -129,12 +129,11 @@ function useBulkApi () {
   const result = shallowRef<BulkSearchExtended | null>(null)
 
   async function search (item: ParsedItem, filters: ItemFilters) {
+    searchId += 1
+    const _searchId = searchId
     try {
-      searchId += 1
       error.value = null
       result.value = null
-
-      const _searchId = searchId
 
       // override, because at league start many players set wrong price, and this breaks optimistic search
       const have = (item.info.refName === 'Chaos Orb')
@@ -152,7 +151,8 @@ function useBulkApi () {
         }
       }
     } catch (err) {
-      error.value = (err as Error).message
+      // woke: a search that's been replaced has nothing to say.
+      if (_searchId === searchId) error.value = (err as Error).message
     }
   }
 
@@ -171,12 +171,15 @@ function useBulkApi () {
 
     const listedLazy = computed(() => {
       if (!requested) {
+        // woke: a newer search replaces this one's results, so this has nothing to add.
+        const _searchId = searchId
         ;(async function () {
           try {
             requested = true
-            _result.value = shallowReactive((await execBulkSearch(
+            const found = (await execBulkSearch(
               item, filters, [have], { accountName: AppConfig().accountName }))[0]!
-            )
+            if (_searchId !== searchId) return
+            _result.value = shallowReactive(found)
             items.value = _result.value.listed
             const otherHave = (have === 'divine')
               ? result.value!.xchgChaos.listed.value!
@@ -184,7 +187,7 @@ function useBulkApi () {
             // fix best guess we did while making optimistic search
             otherHave.total -= _result.value.total
           } catch (err) {
-            error.value = (err as Error).message
+            if (_searchId === searchId) error.value = (err as Error).message
           }
         })()
       }

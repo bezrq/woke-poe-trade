@@ -3,7 +3,7 @@ import { ItemFilters, StatFilter, FilterOrGroup, INTERNAL_TRADE_IDS, InternalTra
 import { setProperty as propSet } from 'dot-prop'
 import { DateTime } from 'luxon'
 import { Host } from '@/web/background/IPC'
-import { TradeResponse, Account, getTradeEndpoint, adjustRateLimits, RATE_LIMIT_RULES, preventQueueCreation, throwIfRateLimited, throwIfRestricted } from './common'
+import { TradeResponse, Account, getTradeEndpoint, adjustRateLimits, RATE_LIMIT_RULES, preventQueueCreation, throwIfRateLimited, throwIfRestricted, isOwnAccount } from './common'
 import { stat, STAT_BY_REF_V2, pseudoStatByRef } from '@/assets/data'
 import { decodeFamilyFromSource as decodeMercenarySupports, SearchMode as MercSearchMode } from '../filters/pseudo/mercenary'
 import { RateLimiter } from './RateLimiter'
@@ -761,6 +761,10 @@ export function createTradeRequest (filters: ItemFilters, stats: FilterOrGroup[]
 
 const cache = new Cache()
 
+export function clearTradeCache () {
+  cache.clear()
+}
+
 export async function requestTradeResultList (body: TradeRequest, leagueId: string): Promise<SearchResult> {
   let data = cache.get<SearchResult>([body, leagueId])
 
@@ -839,7 +843,7 @@ export async function requestResults (
       priceCurrency: result.listing.price?.currency ?? 'no price',
       hasNote: result.item.note != null,
       hasFee: result.listing.fee != null,
-      isMine: (result.listing.account.name === opts.accountName),
+      isMine: isOwnAccount(result.listing.account.name, opts.accountName),
       ign: result.listing.account.lastCharacterName,
       accountName: result.listing.account.name,
       accountStatus: (result.listing.fee != null)

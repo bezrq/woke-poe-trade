@@ -64,6 +64,7 @@ const VueApexcharts = defineAsyncComponent(() => import('vue3-apexcharts'))
 import { ParsedItem } from '@/parser'
 import { artificialSlowdown } from '../trade/artificial-slowdown'
 import { ItemFilters } from '../filters/interfaces'
+import { useLeagues } from '@/web/background/Leagues'
 
 const slowdown = artificialSlowdown(800)
 
@@ -89,7 +90,11 @@ export default defineComponent({
       slowdown.reset(item)
     }, { immediate: true })
 
+    const { selectedId } = useLeagues()
+
     const trend = computed(() => {
+      // woke: poe.ninja only holds the league picked in settings.
+      if (props.filters.trade.league !== selectedId.value) return
       const detailsId = getDetailsId(props.item)
       const trend = detailsId && findPriceByQuery(detailsId)
       if (!trend) return

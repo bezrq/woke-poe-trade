@@ -14,6 +14,7 @@
 import { defineComponent, PropType, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { usePoeninja, displayRounding } from '@/web/background/Prices'
+import { useLeagues } from '@/web/background/Leagues'
 import { getDetailsId } from '../trends/getDetailsId'
 import { ParsedItem } from '@/parser'
 import { ItemFilters } from '../filters/interfaces'
@@ -31,6 +32,7 @@ export default defineComponent({
   },
   setup (props) {
     const { findPriceByQuery, autoCurrency } = usePoeninja()
+    const { selectedId } = useLeagues()
 
     function getPriceFor (n: number) {
       const one = findPriceByQuery(getDetailsId(props.item)!)!
@@ -47,6 +49,8 @@ export default defineComponent({
     return {
       t,
       show: computed(() => {
+        // woke: poe.ninja only holds the league picked in settings.
+        if (props.filters.trade.league !== selectedId.value) return false
         const id = getDetailsId(props.item)
         return Boolean(props.filters.stackSize && id && findPriceByQuery(id))
       }),

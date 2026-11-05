@@ -10,6 +10,7 @@
 <script setup lang="ts">
 import { computed, shallowRef, watch, onUnmounted } from 'vue'
 import { ItemRarity, ParsedItem } from '@/parser'
+import { useLeagues } from '@/web/background/Leagues'
 import { WSegmented } from '../ui'
 import type { FilterOrGroup } from '@/web/price-check/filters/interfaces'
 import { applyRollPreset, activeRollPreset, canUseHighRolls, canUseRollPresets, RollPreset } from './roll-presets'
@@ -18,7 +19,8 @@ import { driverSeed } from './drivers'
 import { priceView } from './view'
 import { poepricesState, measuredDrivers, checkedFair, modWorth, loadPoeprices } from './check-state'
 
-const props = defineProps<{ stats: FilterOrGroup[], item: ParsedItem }>()
+const props = defineProps<{ stats: FilterOrGroup[], item: ParsedItem, league: string }>()
+const { selectedId } = useLeagues()
 const emit = defineEmits<{ (e: 'apply', preset: RollPreset | 'value'): void }>()
 
 const showValue = computed(() => priceView.value === 'improved' && props.item.rarity === ItemRarity.Rare)
@@ -47,7 +49,8 @@ const worth = computed(() => {
   const fair = checkedFair.value
   return estimateWorth(props.stats, {
     measured: md?.item === it ? md.list : undefined,
-    explanation: pp?.item === it && pp.price ? pp.price.explanation : undefined,
+    // poeprices answered for the league picked in settings.
+    explanation: pp?.item === it && pp.price && props.league === selectedId.value ? pp.price.explanation : undefined,
     seed: driverSeed.value,
     fair: fair?.item === it ? fair.chaos : null
   })
