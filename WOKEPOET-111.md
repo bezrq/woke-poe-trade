@@ -1,7 +1,7 @@
 ---
 id: WOKEPOET-111
 title: 'Price check: ticking mods must not move the window''s contents'
-status: In Progress
+status: Ready
 priority: None
 effort: None
 assignee: unassigned
@@ -27,7 +27,28 @@ history:
     to: In Progress
     user: Agent
     date: '2026-11-05T13:56:49.565Z'
+  - type: activity
+    user: Agent
+    date: '2026-11-05T14:22:22.830Z'
+    comment: Updated implementation link.
+    id: a-2026-11-05t14-22-22-830z
+  - type: comment
+    user: Agent
+    comment: >-
+      **PR #193 stops the price check shifting** while filters change and
+      results load, sent to the coordinator to merge. Known gaps are in the PR:
+      trend and prediction cards still jump once on first search. No docs
+      needed: no setting or API change.
+    date: '2026-11-05T14:22:24.339Z'
+    completionComment: true
+    id: c-2026-11-05t14-22-24-339z
+  - type: status_change
+    from: In Progress
+    to: Ready
+    user: Agent
+    date: '2026-11-05T14:22:24.339Z'
 needsAction: null
+implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/193'
 ---
 > Ticking a mod removes the results and price block above the mods, so the mods jump under the cursor. Keep the last results, dimmed, until the next search.
 
