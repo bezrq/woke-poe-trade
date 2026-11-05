@@ -276,3 +276,67 @@ test('a tool placed from the launcher gets its default hotkeys straight away', a
   overlay.app.focusGame(true)
   await expect.poll(() => overlay.app.registeredHotkeys()).toContain('Alt+E')
 })
+
+test('a pinned icon drags to a new place, and a plain click still opens it', async ({ overlay }) => {
+  await boot(overlay)
+  const pins = overlay.widget('menu').locator('[data-pin]')
+  const names = () => pins.evaluateAll(els => els.map(e => e.getAttribute('aria-label')))
+  const before = await names()
+  expect(before.length).toBeGreaterThan(2)
+  const first = await pins.nth(0).boundingBox()
+  const last = await pins.nth(before.length - 1).boundingBox()
+  await overlay.page.mouse.move(first!.x + 10, first!.y + 10)
+  await overlay.page.mouse.down()
+  await overlay.page.mouse.move(first!.x + 10, first!.y + 30, { steps: 3 })
+  await overlay.page.mouse.move(last!.x + 10, last!.y + last!.height, { steps: 5 })
+  await overlay.page.mouse.up()
+  await expect.poll(names).toEqual([...before.slice(1), before[0]])
+  // The drag didn't open it.
+  await expect(icon(overlay, before[0]!)).not.toHaveClass(/open/)
+  await icon(overlay, before[0]!).click()
+  await expect(icon(overlay, before[0]!)).toHaveClass(/open/)
+})
+
+test('the settings button appears on hover, and flips and resizes the rail with the mouse alone', async ({ overlay }) => {
+  const rail = await boot(overlay)
+  const cfg = overlay.widget('menu').getByRole('button', { name: 'Rail layout and size' })
+  await rail.hover()
+  await cfg.click()
+  const menu = overlay.page.locator('[data-rail-layout]')
+  await expect(menu).toBeVisible()
+  const tall = await rail.boundingBox()
+  expect(tall!.height).toBeGreaterThan(tall!.width)
+
+  await menu.getByRole('button', { name: 'Horizontal' }).click()
+  await expect.poll(async () => { const b = await rail.boundingBox(); return b!.width > b!.height }).toBe(true)
+  await expect(menu).toBeVisible()
+
+  const before = (await rail.boundingBox())!.height
+  await menu.getByRole('button', { name: 'XL' }).click()
+  await expect.poll(async () => (await rail.boundingBox())!.height).toBeGreaterThan(before * 1.3)
+
+  await menu.getByRole('button', { name: 'Reset position and size' }).click()
+  await expect.poll(async () => { const b = await rail.boundingBox(); return b!.height > b!.width }).toBe(true)
+})
+
+test('dropping the rail on the top edge lays it flat under the buffs, and on a side stands it up', async ({ overlay }) => {
+  const rail = await boot(overlay)
+  const grip = rail.locator('[title^="Drag to move the rail"]')
+  const drag = async (x: number, y: number) => {
+    const g = (await grip.boundingBox())!
+    await overlay.page.mouse.move(g.x + g.width / 2, g.y + g.height / 2)
+    await overlay.page.mouse.down()
+    await overlay.page.mouse.move(g.x + 40, g.y - 40, { steps: 3 })
+    await overlay.page.mouse.move(x, y, { steps: 5 })
+    await overlay.page.mouse.up()
+  }
+  await drag(600, 10)
+  await expect.poll(async () => { const b = await rail.boundingBox(); return b!.width > b!.height }).toBe(true)
+  const flat = (await rail.boundingBox())!
+  // Not over the buff row: 10.5% of the screen down.
+  expect(flat.y).toBeGreaterThan(overlay.page.viewportSize()!.height * 0.09)
+
+  await drag(10, 700)
+  await expect.poll(async () => { const b = await rail.boundingBox(); return b!.height > b!.width }).toBe(true)
+  expect((await rail.boundingBox())!.x).toBeLessThan(8)
+})

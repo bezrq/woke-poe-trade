@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { groupByModule, launcherEntries, looksLikeItem, migrateToRail, parseWidgetTitle } from '@/web/woke/tab-bar/tools'
+import { movePin, railDropEdge, stepRailSize, groupByModule, launcherEntries, looksLikeItem, migrateToRail, parseWidgetTitle } from '@/web/woke/tab-bar/tools'
 import type { TabBarConfig } from '@/web/woke/tab-bar/tools'
 
 function menu (extra: Partial<TabBarConfig> = {}): TabBarConfig {
@@ -136,5 +136,41 @@ describe('every tool in the launcher', () => {
 
   it('still lists a placed tool outside the specs, like settings taken off the rail', () => {
     expect(build([tab(5, 'settings', 'Settings')]).some(e => e.tab?.wmId === 5)).toBe(true)
+  })
+})
+
+describe('arranging the rail', () => {
+  it('moves a pin, in both directions and to the end', () => {
+    const shown = [1, 2, 3, 4]
+    expect(movePin(shown, shown, 4, 0)).toEqual([4, 1, 2, 3])
+    expect(movePin(shown, shown, 1, 2)).toEqual([2, 1, 3, 4])
+    expect(movePin(shown, shown, 1, 4)).toEqual([2, 3, 4, 1])
+    expect(movePin(shown, shown, 2, 3)).toEqual([1, 3, 2, 4])
+  })
+
+  it('leaves the order alone when dropped back in place', () => {
+    const shown = [1, 2, 3]
+    expect(movePin(shown, shown, 2, 1)).toEqual(shown)
+    expect(movePin(shown, shown, 2, 2)).toEqual(shown)
+  })
+
+  it('keeps pins that are not on show', () => {
+    expect(movePin([9, 1, 8, 2, 3], [1, 2, 3], 3, 0)).toEqual([9, 3, 1, 8, 2])
+    expect(movePin([1, 8, 2, 3, 7], [1, 2, 3], 1, 3)).toEqual([8, 2, 3, 1, 7])
+  })
+
+  it('reads the edge a drop is against, but not a corner', () => {
+    expect(railDropEdge(500, 10, 1920, 1080)).toBe('top')
+    expect(railDropEdge(500, 1070, 1920, 1080)).toBe('bottom')
+    expect(railDropEdge(10, 500, 1920, 1080)).toBe('left')
+    expect(railDropEdge(1910, 500, 1920, 1080)).toBe('right')
+    expect(railDropEdge(10, 10, 1920, 1080)).toBeNull()
+    expect(railDropEdge(500, 500, 1920, 1080)).toBeNull()
+  })
+
+  it('steps size and stops at the ends', () => {
+    expect(stepRailSize(undefined, 1)).toBe('l')
+    expect(stepRailSize('xl', 1)).toBe('xl')
+    expect(stepRailSize('s', -1)).toBe('s')
   })
 })
