@@ -22,7 +22,12 @@
               <WKbd v-if="config.looserHotkey" :keys="config.looserHotkey" /><WKbd v-if="config.stricterHotkey" :keys="config.stricterHotkey" /> looser / stricter
             </div>
           </template>
-          <div v-for="n in dockNotes" :key="n.text" class="text-xs" :style="n.warn ? 'color: var(--w-warn)' : ''">{{ n.text }}</div>
+          <div v-for="n in dockNotes" :key="n.id" class="text-xs" :style="n.warn ? 'color: var(--w-warn)' : ''">{{ n.text }}</div>
+          <div v-if="dismissable.length" class="flex flex-wrap items-center gap-1">
+            <WButton size="sm" variant="ghost" @click="seeNotice">See {{ dismissable.length > 1 ? 'first' : 'it' }}</WButton>
+            <WButton size="sm" variant="ghost" @click="gotIt">Got it</WButton>
+            <WButton v-if="dismissable.some(canTurnOff)" size="sm" variant="ghost" title="You can turn it back on in the Prices tab" @click="turnOff">Don't tell me about this</WButton>
+          </div>
           <div v-if="config.editorHotkey" class="w-faint text-xs">Open the editor with <WKbd :keys="config.editorHotkey" /></div>
         </div>
       </template>
@@ -42,7 +47,7 @@
         <template #footer><WButton size="sm" variant="primary" @click="mode = 'editor'">Open editor</WButton></template>
       </WPanel>
     </template>
-    <FilterEditor v-else :store="store" :config="config" :focus="focus" @close="close" />
+    <FilterEditor v-else :store="store" :config="config" :focus="focus" :open-tab="openTab" @close="close" />
   </Widget>
 </template>
 
@@ -68,6 +73,8 @@ import Widget from '@/web/overlay/Widget.vue'
 import { WPanel, WEmpty, WButton, WBanner, WSkeleton, WKbd, gameIcon, toast } from '../ui'
 import DockItem from '../dock/DockItem.vue'
 import { LEVEL_NAMES, LEVEL_SHORT, stepLabel } from './strictness'
+import { canTurnOff, markSeen, visibleNotices } from './notices'
+import type { Notice } from './notices'
 import SampleCard from './SampleCard.vue'
 import FilterEditor from './FilterEditor.vue'
 import { useLootFilter } from './store'
@@ -100,6 +107,7 @@ const mode = ref<'card' | 'editor'>('editor')
 const sample = shallowRef<ItemFacts | null>(null)
 const samplePosition = shallowRef({ x: 1, y: 1 })
 const focus = shallowRef<{ type: string, tier: string } | null>(null)
+const openTab = shallowRef<{ tab: 'prices' | 'neversink' | 'changes' } | null>(null)
 const areaOverride = ref<number | null>(null)
 
 // The card shows alone, not with every open panel, and closes when you go back
@@ -207,19 +215,47 @@ function openEditorFromCard (at?: { type: string, tier: string }) {
 const dockRef = shallowRef<InstanceType<typeof DockItem> | null>(null)
 const dockArt = computed(() => gameIcon('Orb of Scouring', 'ITEM'))
 const sortedLadder = computed(() => [...props.config.strictAuto.ladder].sort((a, b) => a.from - b.from))
-const dockNotes = computed(() => {
-  const out: Array<{ text: string, warn?: boolean }> = []
+const allNotes = computed<Notice[]>(() => {
+  const out: Notice[] = []
   const ready = store.updateReady.value
-  if (ready) out.push({ text: `NeverSink ${ready.version} is ready: ${ready.ok} of ${ready.total} changes fit. Update in the editor.` })
+  if (ready) out.push({ id: 'update', value: ready.version, tab: 'neversink', text: `NeverSink ${ready.version} is ready: ${ready.ok} of ${ready.total} changes fit. Update in the editor.` })
   const moves = store.plan.value?.moves.length ?? 0
-  if (moves) out.push({ text: `${moves} item${moves > 1 ? 's' : ''} would move to match today's prices.` })
-  if (store.safetyCount.value) out.push({ text: `Safety net shows ${store.safetyCount.value} valuable item${store.safetyCount.value > 1 ? 's' : ''} the filter hides.` })
-  if (store.gameFilter.value.loaded === false) out.push({ text: 'The game couldn\'t load your filter. Open the editor and save again.', warn: true })
-  else if (store.wrongFilterInGame.value) out.push({ text: `The game is using "${store.gameFilter.value.name}", not your saved copy.`, warn: true })
-  if (store.failed.value.length) out.push({ text: `${store.failed.value.length} change(s) need a new home after a NeverSink update.`, warn: true })
-  if (store.pendingReload.value) out.push({ text: 'Saved. Reloads when you\'re next in town or your hideout.' })
+  if (moves) out.push({ id: 'prices', value: moves, tab: 'prices', text: `${moves} item${moves > 1 ? 's' : ''} would move to match today's prices.` })
+  if (store.safetyCount.value) out.push({ id: 'safety', value: store.safetyCount.value, tab: 'prices', text: `Safety net shows ${store.safetyCount.value} valuable item${store.safetyCount.value > 1 ? 's' : ''} the filter hides.` })
+  if (store.gameFilter.value.loaded === false) out.push({ id: 'load', value: 1, warn: true, tab: 'changes', text: 'The game couldn\'t load your filter. Open the editor and save again.' })
+  else if (store.wrongFilterInGame.value) out.push({ id: 'wrong', value: store.gameFilter.value.name ?? '', warn: true, text: `The game is using "${store.gameFilter.value.name}", not your saved copy.` })
+  if (store.failed.value.length) out.push({ id: 'failed', value: store.failed.value.length, warn: true, tab: 'changes', text: `${store.failed.value.length} change(s) need a new home after a NeverSink update.` })
+  if (store.pendingReload.value) out.push({ id: 'pending', value: 1, passing: true, text: 'Saved. Reloads when you\'re next in town or your hideout.' })
   return out
 })
+// Warnings' Got it lasts until a restart, so it isn't saved.
+const sessionSeen = ref<Record<string, string | number>>({})
+const dockNotes = computed(() => visibleNotices(allNotes.value, {
+  off: props.config.noticesOff,
+  seen: { ...props.config.noticesSeen, ...sessionSeen.value }
+}))
+const dismissable = computed(() => dockNotes.value.filter(n => !n.passing))
+
+function gotIt () {
+  const next = markSeen(dismissable.value, props.config.noticesSeen, sessionSeen.value)
+  props.config.noticesSeen = next.saved
+  sessionSeen.value = next.session
+}
+
+function turnOff () {
+  const ids = dismissable.value.filter(canTurnOff).map(n => n.id)
+  props.config.noticesOff = [...new Set([...props.config.noticesOff, ...ids])]
+}
+
+function seeNotice () {
+  const n = dismissable.value[0]
+  if (!n) return
+  openTab.value = n.tab ? { tab: n.tab } : null
+  mode.value = 'editor'
+  wm.show(props.config.wmId)
+  ensureLoaded()
+}
+
 const dockShow = computed(() => Boolean(store.doc.value) && (props.config.neversink.on || dockNotes.value.length > 0))
 const dockBadge = computed(() => props.config.neversink.on ? LEVEL_SHORT[props.config.neversink.level] : (dockNotes.value.length || null))
 const dockTone = computed(() => dockNotes.value.some(n => n.warn) ? 'warn' : (store.updateReady.value ? 'accent' : undefined))

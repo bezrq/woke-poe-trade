@@ -16,40 +16,42 @@
     </WEmpty>
 
     <template v-else-if="config.priceTiers.on">
-      <div class="w-group-label" :class="$style.label">
-        {{ moves.length ? `${moves.length} item${moves.length > 1 ? 's' : ''} would move` : 'Tiers match today\'s prices' }}
-        <span v-if="config.priceTiers.moves.length" class="w-faint"> · {{ config.priceTiers.moves.length }} moved by prices so far</span>
+      <!-- Stays in view however long the lists get. -->
+      <div :class="$style.applyBar">
+        <span><b>{{ moves.length ? `${moves.length} item${moves.length > 1 ? 's' : ''}` : 'Nothing' }}</b> {{ moves.length ? 'would move' : 'to move: tiers match today\'s prices' }}</span>
+        <span v-if="config.priceTiers.moves.length" class="w-dim text-xs">{{ config.priceTiers.moves.length }} moved so far</span>
+        <span class="grow" />
+        <WButton v-if="moves.length" size="sm" variant="ghost" @click="keepAll">Keep all where they are</WButton>
+        <WButton v-if="config.priceTiers.moves.length" size="sm" variant="ghost" icon="fas fa-undo" title="Put every price group back on NeverSink's own tiers" @click="reset">Back to NeverSink's tiers</WButton>
+        <WButton v-if="moves.length" size="sm" variant="primary" :disabled="!pickedMoves.length" @click="apply">Apply {{ pickedMoves.length }} and save</WButton>
       </div>
+      <div v-if="moves.length" class="w-group-label" :class="$style.label">Would move</div>
       <div v-for="m in moves" :key="m.type + m.base" :class="$style.row" @contextmenu="moveMenu($event, m)">
         <input :id="`pm-${m.type}-${m.base}`" v-model="picked[m.type + '|' + m.base]" type="checkbox" :class="$style.check" :aria-label="`Move ${m.base}`">
         <img v-if="icon(m)" :src="icon(m)!" :class="$style.art" alt="">
         <LabelPreview :text="m.base" :actions="lookOf(m.type, m.to)" :extras="false" />
-        <span class="w-dim text-xs w-trunc">{{ groupLabel(m.type) }}</span>
+        <button type="button" :class="$style.link" class="w-focusable text-xs w-trunc" :title="`Open ${groupLabel(m.type)} ${m.from} in Rules`" @click="emit('open-rule', { type: m.type, tier: m.from, base: m.base })">{{ groupLabel(m.type) }} <i class="fas fa-external-link-alt" /></button>
         <span class="w-num text-xs"><span :class="rank(m.to) < rank(m.from) ? $style.up : $style.down">{{ m.from }} → {{ m.to }}</span></span>
         <span class="grow" />
         <span class="w-num text-xs w-dim w-trunc" :title="m.note">{{ m.note ? `${m.note} · ` : '' }}</span>
         <WPrice :chaos="m.chaos" :divine="divine" />
       </div>
       <template v-if="skipped.length">
-        <div class="w-group-label" :class="$style.label">Not moved</div>
+        <div class="w-group-label" :class="$style.label">Not moved · {{ allSkipped.length }}</div>
         <div v-for="s in skipped" :key="'s' + s.type + s.base" :class="$style.row">
           <span :class="$style.check" />
           <LabelPreview :text="s.base" :actions="lookOf(s.type, s.tier)" :extras="false" />
-          <span class="w-dim text-xs">{{ groupLabel(s.type) }} {{ s.tier }}</span>
+          <button type="button" :class="$style.link" class="w-focusable text-xs" :title="`Open ${groupLabel(s.type)} ${s.tier} in Rules`" @click="emit('open-rule', { type: s.type, tier: s.tier, base: s.base })">{{ groupLabel(s.type) }} {{ s.tier }} <i class="fas fa-external-link-alt" /></button>
           <WChip :title="s.reason === 'thin' ? 'poe.ninja had no price on 3 or more of the last 7 days, so this price is easy to fake' : 'You placed this item yourself'">
             {{ s.reason === 'thin' ? 'thin market' : 'your tier, locked' }}
           </WChip>
           <span class="grow" />
           <span class="w-faint text-xs">price says {{ s.wanted }}</span>
+          <WButton v-if="s.reason === 'thin'" size="sm" variant="ghost" title="Move it, though its price has gaps" @click="moveAnyway(s)">Move anyway</WButton>
+          <WButton v-else size="sm" variant="ghost" title="Let prices move it again" @click="unlock(s)">Unlock</WButton>
           <WPrice :chaos="s.chaos" :divine="divine" />
         </div>
       </template>
-      <div :class="$style.actions">
-        <WButton v-if="config.priceTiers.moves.length" size="sm" variant="ghost" icon="fas fa-undo" title="Put every price group back on NeverSink's own tiers" @click="reset">Back to NeverSink's tiers</WButton>
-        <span class="grow" />
-        <WButton size="sm" variant="ghost" :disabled="!moves.length" @click="keepAll">Keep all where they are</WButton>
-        <WButton size="sm" variant="primary" :disabled="!pickedMoves.length" @click="apply">Apply {{ pickedMoves.length }}</WButton>
-      </div>
     </template>
 
     <div :class="$style.net">
@@ -59,31 +61,67 @@
         <span class="w-dim text-xs">{{ config.safetyNet.on ? `${store.safetyCount.value} hidden item${store.safetyCount.value === 1 ? '' : 's'} caught right now` : 'off' }}</span>
       </div>
       <div class="w-faint text-xs">One rule at the top of your filter, white on red with a short red beam, for valuable items the rest of the filter would hide. Thin markets are left out.</div>
+      <WToggle :model-value="dockNotice" @update:model-value="setDockNotice">Tell me on the dock icon</WToggle>
     </div>
 
-    <div class="w-group-label" :class="$style.label">Filter health · valuable but hidden or small</div>
-    <WEmpty v-if="!health.length" icon="fas fa-check">Nothing worth {{ Math.min(config.safetyNet.minChaos, 10) }}c or more is hidden or shown small.</WEmpty>
-    <div v-for="v in health" :key="'h' + v.group.type + v.base" :class="$style.row">
-      <img v-if="icon({ type: v.group.type, base: v.base })" :src="icon({ type: v.group.type, base: v.base })!" :class="$style.art" alt="">
-      <LabelPreview :text="v.base" :actions="v.block?.actions ?? []" :visibility="v.state === 'hidden' ? 'Hide' : 'Show'" :extras="false" />
-      <span class="w-dim text-xs w-trunc">{{ groupLabel(v.block?.type ?? v.group.type) }} {{ v.block?.tier ?? '' }}</span>
-      <WChip :class="v.state === 'hidden' ? $style.bad : ''">{{ v.state === 'hidden' ? (caught(v) ? 'hidden, safety net shows it' : 'hidden') : 'small label' }}</WChip>
-      <span class="grow" />
-      <WPrice :chaos="v.chaos" :divine="divine" />
-      <WButton size="sm" variant="ghost" @click="showIt(v)">Show it</WButton>
+    <div class="w-group-label" :class="$style.label">Valuable items your filter hides or shows small</div>
+    <WEmpty v-if="!rows.length" icon="fas fa-check">Nothing worth {{ Math.min(config.safetyNet.minChaos, 10) }}c or more is hidden or shown small.</WEmpty>
+    <div v-if="rows.length" class="w-dim text-xs" :class="$style.summary">
+      {{ hiddenCount }} hidden<template v-if="caughtCount">; your {{ config.safetyNet.minChaos }}c safety net still shows {{ caughtCount }}</template>. Click one to see what you'd get.
     </div>
+    <template v-for="r in rows" :key="r.key">
+      <button type="button" class="w-focusable" :class="[$style.row, $style.healthRow, { [$style.open]: openRow === r.key }]" :aria-expanded="openRow === r.key" @click="openRow = openRow === r.key ? null : r.key">
+        <img v-if="r.icon" :src="r.icon" :class="$style.art" alt="">
+        <LabelPreview :text="r.v.base" :actions="r.v.block?.actions ?? []" :visibility="r.v.state === 'hidden' ? 'Hide' : 'Show'" :extras="false" />
+        <span class="w-trunc text-xs" :class="$style.who">
+          <b v-if="r.top && r.top !== r.v.base">{{ r.top }}</b>
+          <span v-else>{{ groupLabel(r.v.group.type) }}</span>
+          <span v-if="r.items.length > 1" class="w-dim"> highest priced of {{ r.items.length }}</span>
+        </span>
+        <span v-if="r.trash" :class="$style.trash" class="text-xs">{{ r.trash }} trash</span>
+        <span class="grow" />
+        <WChip :class="r.v.state === 'hidden' && !caught(r.v) ? $style.bad : ''">{{ r.v.state === 'hidden' ? (caught(r.v) ? 'safety net shows it' : 'hidden') : 'small label' }}</WChip>
+        <WPrice :chaos="r.v.chaos" :divine="divine" />
+        <i :class="openRow === r.key ? 'fas fa-chevron-down' : 'fas fa-chevron-right'" class="w-faint text-xs" />
+      </button>
+      <div v-if="openRow === r.key" :class="$style.detail">
+        <div class="min-w-0">
+          <div class="text-sm" :class="$style.detailHead">{{ r.items.length > 1 ? `What you'd get: ${r.items.length} uniques on this base` : 'What you\'d get' }}</div>
+          <div v-for="i in r.items" :key="i.name" :class="$style.priceRow">
+            <img v-if="itemIcon(r.v, i.name)" :src="itemIcon(r.v, i.name)!" :class="$style.bigArt" alt="">
+            <span v-else :class="$style.bigArt" />
+            <span class="w-trunc text-sm" :title="i.name">{{ i.name }}</span>
+            <span :class="$style.bar"><i :class="$style[`g_${i.grade}`]" :style="{ width: `${priceBar(i.chaos, r.most)}%` }" /></span>
+            <span class="w-num text-xs" :class="$style[`${i.grade}Text`]">{{ i.chaos != null ? `${Math.round(i.chaos)}c` : 'no price' }}</span>
+            <span class="text-xs" :class="$style[`${i.grade}Text`]">{{ GRADE_LABEL[i.grade] }}{{ i.thin ? ', thin market' : '' }}</span>
+          </div>
+          <div v-if="r.trash" class="w-dim text-xs" style="margin-top: 5px;">{{ r.trash }} of {{ r.items.length }} {{ r.trash === 1 ? 'is' : 'are' }} trash. A trash drop looks the same on the ground until you identify it.</div>
+        </div>
+        <div class="min-w-0">
+          <div class="text-sm" :class="$style.detailHead">"Show it" will</div>
+          <div v-for="(line, n) in r.effect" :key="n" class="w-dim text-xs">{{ line }}</div>
+          <div class="flex flex-wrap items-center gap-1" style="margin-top: 6px;">
+            <WButton size="sm" variant="primary" @click="showIt(r.v)">Show it</WButton>
+            <WButton size="sm" variant="ghost" title="Off this list until its price doubles" @click="dismiss(r.v)">Not for me</WButton>
+            <WButton v-if="r.v.block?.type && r.v.block.tier" size="sm" variant="ghost" icon="fas fa-external-link-alt" @click="emit('open-rule', { type: r.v.block!.type!, tier: r.v.block!.tier!, base: r.v.base })">Open the rule</WButton>
+          </div>
+        </div>
+      </div>
+    </template>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, watch } from 'vue'
-import { WButton, WChip, WEmpty, WField, WPrice, WSegmented, WToggle, agoPhrase, ninjaIcon, openMenu, toast } from '../ui'
+import { computed, reactive, ref, watch } from 'vue'
+import { WButton, WChip, WEmpty, WField, WPrice, WSegmented, WToggle, agoPhrase, gameIcon, ninjaIcon, openMenu, toast } from '../ui'
+import { gradeItems, healthKey, isDismissed, priceBar, showEffect, trashCount } from './health'
+import type { PriceGrade } from './health'
 import { usePoeninja } from '@/web/background/Prices'
 import LabelPreview from './LabelPreview.vue'
 import type { LootFilterStore } from './store'
 import type { LootFilterWidget } from './widget'
-import { ECONOMY_GROUPS, tierRank } from './economy'
-import type { PriceMove } from './economy'
+import { ECONOMY_GROUPS, lockKey, tierRank } from './economy'
+import type { PriceMove, PriceSkip } from './economy'
 import { conditionSignature } from './edits'
 import { SAFETY_LOOK } from './safety'
 import type { BaseVerdict } from './safety'
@@ -102,8 +140,53 @@ const updatedAt = computed(() => props.store.prices.updatedAt.value)
 const league = computed(() => props.store.prices.league.value)
 const plan = computed(() => props.store.plan.value)
 const moves = computed(() => plan.value?.moves ?? [])
-const skipped = computed(() => (plan.value?.skipped ?? []).slice(0, 20))
-const health = computed(() => props.store.health.value.slice(0, 40))
+const allSkipped = computed(() => plan.value?.skipped ?? [])
+const skipped = computed(() => allSkipped.value.slice(0, 20))
+
+const emit = defineEmits<{ (e: 'open-rule', rule: { type: string, tier: string, base: string }): void }>()
+
+const GRADE_LABEL: Record<PriceGrade, string> = { high: 'worth it', mid: 'some value', trash: 'trash', unknown: '' }
+const openRow = ref<string | null>(null)
+
+const health = computed(() => props.store.health.value.filter(v => !isDismissed(props.config.healthDismissed, v)))
+const rows = computed(() => {
+  const breakdown = props.store.prices.breakdown.value
+  const line = props.config.safetyNet.minChaos
+  return health.value.slice(0, 40).map(v => {
+    const items = gradeItems(breakdown(v.group, v.base), line)
+    return {
+      key: healthKey(v),
+      v,
+      items,
+      top: items[0]?.name,
+      trash: trashCount(items),
+      most: items[0]?.chaos ?? 0,
+      effect: showEffect(v, items),
+      icon: itemIcon(v, items[0]?.name ?? v.base)
+    }
+  })
+})
+const hiddenCount = computed(() => health.value.filter(v => v.state === 'hidden').length)
+const caughtCount = computed(() => health.value.filter(v => v.state === 'hidden' && caught(v)).length)
+
+function itemIcon (v: { group: { unique?: boolean, ninja: string[] } }, name: string): string | null {
+  return v.group.unique ? gameIcon(name, 'UNIQUE') : ninjaIcon(v.group.ninja[0], name)
+}
+
+function dismiss (v: BaseVerdict) {
+  const key = healthKey(v)
+  const before = props.config.healthDismissed
+  props.config.healthDismissed = { ...before, [key]: v.chaos }
+  toast(`${v.base} is off this list until its price doubles`, { anchor: props.anchor, undo: () => { props.config.healthDismissed = before } })
+}
+
+const NOTICE_IDS = ['safety', 'prices']
+const dockNotice = computed(() => !NOTICE_IDS.every(id => props.config.noticesOff.includes(id)))
+function setDockNotice (on: boolean) {
+  props.config.noticesOff = on
+    ? props.config.noticesOff.filter(id => !NOTICE_IDS.includes(id))
+    : [...new Set([...props.config.noticesOff, ...NOTICE_IDS])]
+}
 
 const uniqueOptions = [
   { value: 'max', label: 'Best unique' },
@@ -145,10 +228,29 @@ function caught (v: BaseVerdict): boolean {
   return props.config.safetyNet.on && v.chaos >= props.config.safetyNet.minChaos
 }
 
+// Applying saves too: moved tiers that only exist in the editor do nothing.
 function apply () {
   const list = pickedMoves.value
   const undo = props.store.applyPrices(list)
-  toast(`Moved ${list.length} item${list.length > 1 ? 's' : ''} to match today's prices`, { anchor: props.anchor, undo })
+  props.store.save({ reloadNow: true }).catch(() => {})
+  toast(`Moved ${list.length} item${list.length > 1 ? 's' : ''} to match today's prices`, {
+    anchor: props.anchor,
+    undo: () => { undo(); props.store.save({ reloadNow: true }).catch(() => {}) }
+  })
+}
+
+function moveAnyway (s: PriceSkip) {
+  const undo = props.store.applyPrices([{ type: s.type, base: s.base, from: s.tier, to: s.wanted, chaos: s.chaos }])
+  toast(`Moved ${s.base} to ${s.wanted}. Save to apply it.`, { anchor: props.anchor, undo })
+}
+
+function unlock (s: PriceSkip) {
+  const key = lockKey(s.type, s.base)
+  const undo = props.store.changeWithUndo(c => {
+    c.priceTiers.locks = c.priceTiers.locks.filter(k => k !== key)
+    c.edits = c.edits.filter(e => !(e.kind === 'move' && e.type === s.type && e.base === s.base))
+  })
+  toast(`Prices can move ${s.base} again`, { anchor: props.anchor, undo })
 }
 
 function keepAll () {
@@ -216,11 +318,68 @@ function showIt (v: BaseVerdict) {
 .up { color: var(--w-up); }
 .down { color: var(--w-down); }
 .bad { color: var(--w-down); }
-.actions {
+.applyBar {
+  position: sticky;
+  top: 0;
+  z-index: 2;
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   gap: 8px;
-  padding: 8px var(--w-pad);
+  padding: 6px var(--w-pad);
+  background: var(--w-panel-3);
+  border-bottom: 1px solid var(--w-line-strong);
 }
+.link {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: var(--w-accent);
+  cursor: pointer;
+  text-align: left;
+}
+.link:hover { text-decoration: underline; }
+.link i { font-size: 0.8em; opacity: 0.7; }
+.summary { padding: 0 var(--w-pad) 4px; }
+.healthRow {
+  width: 100%;
+  background: none;
+  border-width: 0 0 1px;
+  color: var(--w-fg);
+  text-align: left;
+  cursor: pointer;
+}
+.healthRow:hover { background: var(--w-panel-2); }
+.open { background: var(--w-accent-soft); }
+.who { min-width: 0; }
+.trash { color: var(--w-down); white-space: nowrap; }
+.detail {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 16px;
+  padding: 8px var(--w-pad) 10px;
+  border-bottom: 1px solid var(--w-line);
+  background: var(--w-panel-2);
+}
+.detailHead { font-weight: 600; margin-bottom: 3px; }
+.priceRow {
+  display: grid;
+  grid-template-columns: 26px minmax(0, 10rem) minmax(2rem, 1fr) 3rem 5.5rem;
+  align-items: center;
+  gap: 7px;
+  margin-top: 3px;
+}
+.bigArt { width: 26px; height: 26px; object-fit: contain; display: block; }
+.bar { height: 6px; background: var(--w-panel-3); border-radius: 3px; overflow: hidden; }
+.bar i { display: block; height: 100%; }
+.g_high { background: var(--w-accent); }
+.g_mid { background: var(--w-dim); }
+.g_trash { background: var(--w-down); }
+.g_unknown { background: var(--w-faint); }
+.highText { color: var(--w-accent); }
+.midText { color: var(--w-dim); }
+.trashText { color: var(--w-down); }
+.unknownText { color: var(--w-faint); }
 .net {
   display: flex;
   flex-direction: column;
