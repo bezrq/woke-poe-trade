@@ -14,6 +14,14 @@ history:
     user: Agent
     date: '2026-11-05T06:34:46.357Z'
     comment: Created ticket.
+    id: a-2026-11-05t06-34-46-357z
+  - type: activity
+    user: Agent
+    date: '2026-11-05T07:17:32.200Z'
+    comment: >-
+      PR https://github.com/guybnd/woke-poe-trade/pull/122 merged. The dev copy
+      update is held until #121 lands, so Guy gets one restart.
+    id: a-2026-11-05t07-17-32-200z
 ---
 Guy picked B + C from the mocks: https://claude.ai/artifact/KbQejf7usezNPEXfrcc35S
 
