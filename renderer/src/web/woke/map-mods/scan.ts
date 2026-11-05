@@ -44,8 +44,9 @@ export function normalizeMapScanWidget (w: MapScanWidget) {
 
 // Two readings closer than this (fraction of window height) are the same
 // stash slot, so a reroll replaces the old reading instead of adding one.
-// Half a quad tab cell, so neighbouring maps there stay separate.
-const SAME_SLOT = 0.012
+// One quad tab cell: the most that keeps neighbouring quad maps apart (hovered
+// at the same point of the cell) while still forgiving a rough return to a map.
+const SAME_SLOT = 0.024
 
 // `at` positions are fractions of the window; `aspect` is its width / height.
 export function sameSlot (a: { x: number, y: number }, b: { x: number, y: number }, aspect: number): boolean {

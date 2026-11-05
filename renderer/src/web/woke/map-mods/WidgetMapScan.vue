@@ -168,6 +168,8 @@ const paused = shallowRef(false)
 const entries = shallowRef<Entry[]>([])
 const current = shallowRef<Entry | null>(null)
 let nextId = 1
+// Where the current roll count belongs.
+let rollSlot: { x: number, y: number } | null = null
 let matcher: TooltipMatcher | null = null
 
 const recent = computed(() => entries.value.slice(-8).reverse())
@@ -229,11 +231,16 @@ function onReading (reading: Reading) {
   const idx = list.findIndex(e => sameSlot(e.at, reading.at, aspect))
   const prev = idx >= 0 ? list[idx] : null
   let rollN: number | undefined
-  if (reading.rolling) {
+  // A map's mods mean a roll; other tooltips (gear, a map hovered on the way past
+  // with none) don't. Another slot starts a new count.
+  if (reading.rolling && scanned.mods.length) {
+    if (!rollSlot || !sameSlot(rollSlot, reading.at, aspect)) rolls.value = []
+    rollSlot = reading.at
     rollN = rolls.value.length + 1
     rolls.value = [...rolls.value, { n: rollN, verdict: verdict.verdict, juice: juice.score }]
   }
-  const passes = verdict.verdict === 'run' && (rollN != null || Boolean(prev && prev.verdict !== 'run'))
+  // The first read of a map is where it starts, not a reroll that passed.
+  const passes = verdict.verdict === 'run' && (rollN != null ? rollN > 1 : Boolean(prev && prev.verdict !== 'run'))
   const entry: Entry = {
     id: nextId++,
     at: prev?.at ?? reading.at,
@@ -259,7 +266,7 @@ const events = MainProcess.onEvent('MAIN->CLIENT::woke-event', ({ topic, data })
     running.value = Boolean(d.running)
     paused.value = Boolean(d.paused)
     const nowRolling = Boolean(d.rolling)
-    if (nowRolling && !rolling.value) rolls.value = []
+    if (nowRolling && !rolling.value) { rolls.value = []; rollSlot = null }
     rolling.value = nowRolling
     locked.value = Boolean(d.locked)
     message.value = d.message ?? null

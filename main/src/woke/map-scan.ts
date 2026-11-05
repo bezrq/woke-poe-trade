@@ -17,11 +17,6 @@ import { ocrDir, USER_OCR_DIR } from './ocr-dir'
 
 // Stop after this long without the game focused, so it can't run forever.
 const IDLE_STOP_MS = 30 * 60 * 1000
-// Rolling: the cursor moved this far from where it locked (fraction of window
-// height, about one quad tab cell), so it's on something else: find the tooltip
-// again instead of watching the old box.
-const LOCK_DRIFT = 0.024
-
 // Files the OCR worker loads (the same ones APT's heist gem reader uses).
 // The worker swallows load errors, so they're checked up front instead.
 const OCR_FILES = ['tesseract-core-simd.js', 'opencv.js', 'eng.traineddata']
@@ -391,8 +386,9 @@ export class ScreenScanner {
     const moved = now.x !== this.mouse.x || now.y !== this.mouse.y
     this.mouse = now
     const cursor = { x: this.mouse.x - bounds.x, y: this.mouse.y - bounds.y }
-    if (this.lock && this.lockAt &&
-      Math.hypot(cursor.x - this.lockAt.x * bounds.width, cursor.y - this.lockAt.y * bounds.height) > bounds.height * LOCK_DRIFT) {
+    // Rolling: a lock only holds while the cursor stays put. Once it moves it may
+    // be on another item, so the tooltip is found again when it rests.
+    if (this.lock && moved) {
       this.lock = null
       this.lockAt = null
       this.emitState()

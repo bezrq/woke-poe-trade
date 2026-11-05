@@ -8,7 +8,7 @@ const at = (x: number, y: number) => ({ x: x / W, y: y / H })
 
 describe('map scan slots', () => {
   it('counts a small cursor jitter as the same slot', () => {
-    expect(sameSlot(at(600, 800), at(608, 806), W / H)).toBe(true)
+    expect(sameSlot(at(600, 800), at(620, 800), W / H)).toBe(true)
   })
 
   it('keeps neighbouring quad tab cells apart, in both directions', () => {
