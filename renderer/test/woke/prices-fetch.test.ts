@@ -88,6 +88,14 @@ describe('poe.ninja fetch', () => {
     ])
   })
 
+  it('keeps different blocks of the same type', async () => {
+    const more = '{"type":"Scarab","lines":[{"name":"Winged Scarab","chaos":9,"graph":[1,2,3,4,5,6,7]}]}'
+    proxy.mockResolvedValue(reply(FEED.replace(LINES.Scarab, `${LINES.Scarab},${more}`)))
+    const { emitted } = await setup()
+    expect(parseDenseChunks(emitted[0]).map(item => item.name)).toContain('Winged Scarab')
+    expect(parseDenseChunks(emitted[0]).map(item => item.name)).toContain('Gilded Divination Scarab')
+  })
+
   it.each([
     ['a server error', () => reply('{"title":"Internal Server Error","status":500}', 500)],
     ['an error page sent as 200', () => reply('<html>Just a moment...</html>')],

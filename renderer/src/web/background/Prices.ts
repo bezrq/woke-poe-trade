@@ -264,6 +264,7 @@ function splitJsonBlob (jsonBlob: string): PriceDatabase {
   ]
 
   const database: PriceDatabase = []
+  const seenBlocks = new Set<string>()
   let startPos = jsonBlob.indexOf(NINJA_OVERVIEW)
   if (startPos === -1) return []
 
@@ -278,8 +279,11 @@ function splitJsonBlob (jsonBlob: string): PriceDatabase {
 
     const isSupported = NAMESPACE_MAP.find(entry => entry.type === type)
     // woke: poe.ninja sends Currency and Fragment twice, in currencyOverviews
-    // and in itemOverviews, so keep the first copy of each type.
-    if (isSupported && !database.some(entry => entry.url === isSupported.url)) {
+    // and in itemOverviews, so skip a copy of a block already kept. What follows
+    // the block's last bracket differs, so it isn't part of the comparison.
+    const block = lines.slice(0, lines.lastIndexOf(']}'))
+    if (isSupported && !seenBlocks.has(block)) {
+      seenBlocks.add(block)
       database.push({ ns: isSupported.ns, url: isSupported.url, lines })
     }
 
