@@ -1,4 +1,4 @@
-import { promises as fs, watchFile, unwatchFile } from 'fs'
+import { promises as fs, watchFile, unwatchFile, type Stats } from 'fs'
 import { execFile } from 'child_process'
 import path from 'path'
 import { app } from 'electron'
@@ -32,13 +32,25 @@ export function runningGameLog (): Promise<string | null> {
   })
 }
 
+// A log the game just started is tiny. A big "new" file is the old one seen
+// wrongly (a volatile file id, say) or a restored copy, and replaying it would
+// feed the run timer, farming and trade months of old events as if live.
+const NEW_LOG_MAX_BYTES = 1024 * 1024
+
+export function startOffset (now: { ino: number, size: number }, lastIno: number, lastOffset: number): number {
+  if (now.ino === lastIno && now.size >= lastOffset) return lastOffset
+  return now.size > NEW_LOG_MAX_BYTES ? now.size : 0
+}
+
 export class GameLogWatcher {
   private _wantedPath: string | null = null
   get actualPath () { return this._state?.path ?? null }
   private _state: {
     offset: number
     path: string
-    file: fs.FileHandle
+    // null: the file was deleted, and we're waiting for a new one.
+    file: fs.FileHandle | null
+    ino: number
     isReading: boolean
     readBuff: Buffer
   } | null = null
@@ -91,7 +103,7 @@ export class GameLogWatcher {
     unwatchFile(this._state.path)
     const { file } = this._state
     this._state = null
-    await file.close()
+    await file?.close()
   }
 
   private async open (logFile: string) {
@@ -115,6 +127,7 @@ export class GameLogWatcher {
       this._state = {
         path: logFile,
         file: file,
+        ino: stats.ino,
         offset: stats.size,
         isReading: false,
         readBuff: Buffer.allocUnsafe(64 * 1024),
@@ -124,11 +137,58 @@ export class GameLogWatcher {
     }
   }
 
-  private handleFileChange () {
-    if (this._state && !this._state.isReading) {
-      this._state.isReading = true
+  private handleFileChange (curr: Stats) {
+    const state = this._state
+    if (!state) return
+
+    // woke: a stale handle reads nothing forever, so the log appeared to stop
+    // until a restart. Deleted (or a failed stat, which looks the same): let go
+    // of it so the game can make a new one. Looks cleared or swapped: reopen,
+    // and reopen decides where to read from.
+    if (curr.nlink === 0) {
+      if (state.file) this.reopen(state, false)
+      return
+    }
+    if (!state.file && state.isReading) return // A reopen is under way.
+    const swapped = state.ino !== 0 && curr.ino !== 0 && curr.ino !== state.ino
+    if (!state.file || curr.size < state.offset || swapped) {
+      this.reopen(state, true)
+      return
+    }
+
+    if (!state.isReading) {
+      state.isReading = true
       this.readToEOF()
     }
+  }
+
+  // A read still going on the old state notices it's been replaced and stops.
+  private reopen (state: NonNullable<GameLogWatcher['_state']>, openAgain: boolean) {
+    // Its own buffer: a read still going on the old state writes into the old one.
+    const next: typeof state = { ...state, file: null, isReading: openAgain, readBuff: Buffer.allocUnsafe(state.readBuff.length) }
+    this._state = next
+    state.file?.close().catch(() => {})
+    if (!openAgain) return
+    let opened: fs.FileHandle | undefined
+    fs.open(state.path, 'r').then(async (file) => {
+      opened = file
+      const stats = await file.stat()
+      if (this._state !== next) {
+        await file.close()
+        return
+      }
+      next.offset = startOffset(stats, next.ino, next.offset)
+      if (next.ino !== stats.ino || stats.size < state.offset) {
+        this.logger.write(`info [GameLogWatcher] ${state.path} changed, following the new file.`)
+      }
+      next.file = file
+      next.ino = stats.ino
+      this.readToEOF()
+    }).catch(() => {
+      opened?.close().catch(() => {})
+      // Gone again already. The next change tries again.
+      if (this._state === next) next.isReading = false
+    })
   }
 
   private async readToEOF () {
@@ -136,6 +196,10 @@ export class GameLogWatcher {
     if (!state) return
 
     const { file, readBuff, offset } = state
+    if (!file) {
+      state.isReading = false
+      return
+    }
     let bytesRead: number
     try {
       ({ bytesRead } = await file.read(readBuff, 0, readBuff.length, offset))

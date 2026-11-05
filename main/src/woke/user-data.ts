@@ -26,6 +26,10 @@ export let migration: MigrationResult = 'none'
 function migrate (newDir: string): MigrationResult {
   const newConfig = path.join(newDir, 'apt-data', 'config.json')
   if (fs.existsSync(newConfig)) return 'none'
+  // Settings of ours that are damaged or being restored: never bring old ones in.
+  try {
+    if (fs.readdirSync(path.dirname(newConfig)).some(f => f === 'config.backup.json' || f.startsWith('config.broken-'))) return 'none'
+  } catch {}
 
   const oldDir = path.join(app.getPath('appData'), OLD_FOLDER)
   const oldConfig = path.join(oldDir, 'apt-data', 'config.json')

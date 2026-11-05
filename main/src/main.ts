@@ -5,7 +5,7 @@ import './woke/user-data'
 import { app } from 'electron'
 import { uIOhook } from 'uiohook-napi'
 import os from 'node:os'
-import { startServer, eventPipe, server } from './server'
+import { startServer, eventPipe, httpRoutes, configFlushed } from './server'
 import { Logger } from './RemoteLogger'
 import { GameWindow } from './windowing/GameWindow'
 import { OverlayWindow } from './windowing/OverlayWindow'
@@ -22,6 +22,7 @@ import { perfMark } from './woke/perf'
 import { startCrashReporting, attachCrashLogger } from './woke/crash-reports'
 import { initSetup, maybeOpenSetup, openSetupWindow, refreshSetupIcon, savedAppIcon } from './woke/setup'
 import { setAppIcon } from './woke/app-icon'
+import { saveBeforeQuit } from './woke/quit-flush'
 
 if (!app.requestSingleInstanceLock()) {
   app.exit()
@@ -35,23 +36,28 @@ if (process.platform !== 'darwin') {
 }
 app.enableSandbox()
 
-let tray: AppTray
+saveBeforeQuit(eventPipe, configFlushed)
+
+let tray: AppTray | undefined
+
+app.on('second-instance', () => { tray?.notifyAlreadyRunning() })
 
 app.on('ready', async () => {
   perfMark('app ready')
   setAppIcon(savedAppIcon())
-  tray = new AppTray(eventPipe)
+  const appTray = new AppTray(eventPipe)
+  tray = appTray
   const logger = new Logger(eventPipe)
   attachCrashLogger(logger)
   const gameLogWatcher = new GameLogWatcher(eventPipe, logger)
   const gameConfig = new GameConfig(eventPipe, logger)
   const poeWindow = new GameWindow()
   const appUpdater = new AppUpdater(eventPipe)
-  const _httpProxy = new HttpProxy(server, logger)
+  const _httpProxy = new HttpProxy(httpRoutes, logger)
   initWoke(eventPipe, logger, poeWindow, gameLogWatcher)
   registerWokeHandler('game-filter', async () => await gameFilterSetting(gameConfig.actualPath))
   initSetup(appUpdater)
-  tray.onRunSetup = openSetupWindow
+  appTray.onRunSetup = openSetupWindow
 
   setTimeout(
     async () => {
@@ -68,9 +74,9 @@ app.on('ready', async () => {
         else gameLogWatcher.restart(cfg.clientLog ?? '')
         gameConfig.readConfig(cfg.gameConfig ?? '')
         appUpdater.checkAtStartup()
-        tray.overlayKey = cfg.overlayKey
+        appTray.overlayKey = cfg.overlayKey
         if (setAppIcon(cfg.appIcon)) {
-          tray.refreshIcon()
+          appTray.refreshIcon()
           overlay.refreshIcon()
           refreshSetupIcon()
         }
@@ -82,7 +88,7 @@ app.on('ready', async () => {
       logger.write(`info ${os.type()} ${os.release} / v${app.getVersion()}`)
       overlay.loadAppPage(port)
       perfMark('overlay page requested')
-      tray.serverPort = port
+      appTray.serverPort = port
       maybeOpenSetup(port)
     },
     // fixes(linux): window is black instead of transparent
