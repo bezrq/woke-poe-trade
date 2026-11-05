@@ -39,8 +39,29 @@ history:
       scope: unique art lookup keeps the comma in the name, and the ✓ ✕ buttons
       render squashed.
     id: a-2026-11-05t09-48-19-898z
-swimlane: require-input
+  - type: comment
+    user: Agent
+    comment: >-
+      Guy picked one-line rows with the next step on hover, click to expand, a
+      row style setting and a kept history. PR #147.
+    date: '2026-11-05T10:14:14.073Z'
+    id: c-2026-11-05t10-14-14-073z
+  - type: swimlane_change
+    swimlane: require-input
+    action: cleared
+    user: Agent
+    date: '2026-11-05T10:14:14.073Z'
+    comment: >-
+      Guy picked one-line rows with the next step on hover, click to expand, a
+      row style setting and a kept history. PR #147.
+  - type: activity
+    user: Agent
+    date: '2026-11-05T10:14:14.113Z'
+    comment: Updated implementation link.
+    id: a-2026-11-05t10-14-14-113z
+swimlane: null
 needsAction: null
+implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/147'
 ---
 Guy wants to click an offer to collapse it for easier browsing with several offers. Today the top offer can't be collapsed (OfferRow accordion, `expand` in WidgetTrade.vue). The ✓ and ✕ buttons also wrap onto their own line in the 23rem card.
 
