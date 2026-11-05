@@ -1,7 +1,7 @@
 ---
 id: WOKEPOET-29
 title: Pick and apply a colour scheme for the price check window
-status: In Progress
+status: Ready
 priority: Medium
 effort: S
 assignee: Agent
@@ -64,6 +64,19 @@ history:
     user: Agent
     date: '2026-11-05T06:45:40.121Z'
     comment: 'Guy signed off layout A. Built as PR #118, queued for merge.'
+  - type: comment
+    user: Agent
+    comment: >-
+      Layout A in warm stone merged as PR #118 (326fcb3) and running on the dev
+      build.
+    date: '2026-11-05T06:55:38.308Z'
+    completionComment: true
+    id: c-2026-11-05t06-55-38-308z
+  - type: status_change
+    from: In Progress
+    to: Ready
+    user: Agent
+    date: '2026-11-05T06:55:38.308Z'
 swimlane: null
 needsAction: null
 implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/118'
