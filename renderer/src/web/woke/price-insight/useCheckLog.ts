@@ -35,6 +35,8 @@ export function useCheckLog (
     const k = key.value
     const r = insight.value.range
     if (!k || !r || !ready.value) return
+    // A verdict that left out divine listings isn't worth comparing against later.
+    if (insight.value.signals.some(s => s.kind === 'norate')) return
     const league = props.filters.trade.league
     const label = itemLabel(props.item)
     const n = insight.value.kept.length

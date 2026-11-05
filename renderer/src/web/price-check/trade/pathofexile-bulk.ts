@@ -1,6 +1,6 @@
 import { DateTime } from 'luxon'
 import { Host } from '@/web/background/IPC'
-import { TradeResponse, Account, getTradeEndpoint, RATE_LIMIT_RULES, adjustRateLimits, tradeTag, preventQueueCreation, throwIfRateLimited, throwIfRestricted } from './common'
+import { TradeResponse, Account, getTradeEndpoint, RATE_LIMIT_RULES, adjustRateLimits, tradeTag, preventQueueCreation, throwIfRateLimited, throwIfRestricted, isOwnAccount } from './common'
 import { RateLimiter } from './RateLimiter'
 import { ItemFilters } from '../filters/interfaces'
 import { ParsedItem } from '@/parser'
@@ -103,7 +103,7 @@ function toPricingResult (
     exchangeAmount: result.listing.offers[offer].exchange.amount,
     itemAmount: result.listing.offers[offer].item.amount,
     stock: result.listing.offers[offer].item.stock,
-    isMine: (result.listing.account.name === opts.accountName),
+    isMine: isOwnAccount(result.listing.account.name, opts.accountName),
     ign: result.listing.account.lastCharacterName,
     accountName: result.listing.account.name,
     accountStatus: result.listing.account.online
