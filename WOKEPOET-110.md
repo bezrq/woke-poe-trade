@@ -81,6 +81,22 @@ history:
       Guy: please open a stash tab with scarabs (and a catalyst or delirium tab
       if you have one) and press PrintScreen in game. I need it to test on real
       flippable items and to make the mockups.
+  - type: comment
+    user: Agent
+    comment: >-
+      Retested on Guy's new screenshots 0027-0034. Scarab sub-tab (0028): icons
+      render at exactly 48px at 1440p. Family per row plus unique names assigned
+      113 of 115 lit slots; ghost (empty) slots separate by brightness.
+      Spot-checked by eye, no ground truth. Conclusion: ship a fixed slot table
+      per tab rather than matching at runtime. Quick oil test on Blight (0034)
+      matched only 4, so other tabs are unproven. Mockups: outline styles 1-3
+      under "Stash outlines" at
+      https://claude.ai/artifact/HZ3QdC95eYt4ZZY6CPyygs. Waiting on Guy's pick
+      (recommended 2). Prototype scripts are in the session scratchpad only.
+    date: '2026-11-05T14:23:54.146Z'
+    selfAttested: true
+    pin: true
+    id: c-2026-11-05t14-23-54-146z
 swimlane: require-input
 needsAction: null
 ---
