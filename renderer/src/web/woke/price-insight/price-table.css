@@ -119,8 +119,7 @@
 /* The verdict can grow (details, chart, drivers). It scrolls by itself, so the
  * toolbar and listings under it stay on screen. Bleeds to the window's edges. */
 .w-pc-verdict-slot {
-  flex: 0 1 auto;
-  min-height: 0;
+  flex: none;
   max-height: 50vh;
   overflow: hidden auto;
 }

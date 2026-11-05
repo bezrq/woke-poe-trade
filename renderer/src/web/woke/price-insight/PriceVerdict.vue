@@ -40,15 +40,16 @@
 
     <div :class="$style.line">
       <template v-if="insight.range">
-        <span class="w-num" :class="$style.fact">Cheapest <w-price :class="$style.factPrice" :chaos="insight.range.low" :divine="divine" :unit="rangeUnit" /></span>
+        <span class="w-num" :class="$style.fact">Cheapest <w-price :class="$style.factPrice" :chaos="insight.range.low" :divine="divine" :unit="ninjaInfo ? 'auto' : rangeUnit" /></span>
         <span v-if="!ninjaInfo && insight.range.high > insight.range.low" class="w-num" :class="$style.fact">up to <w-price :class="$style.factPrice" :chaos="insight.range.high" :divine="divine" :unit="rangeUnit" /></span>
       </template>
       <button v-if="ranges.length" type="button" :class="[$style.sparkBtn, { [$style.on]: historyOpen }]"
-        :title="(historyOpen ? 'Hide price history' : 'Show price history') + (blend.ninjaSuspect ? '. poe.ninja looks faked here, so it isn\'t counted' : '')" @click="historyOpen = !historyOpen">
+        :title="(historyOpen ? 'Hide price history' : 'Show price history') + (ninjaNotCounted ? '. poe.ninja isn\'t counted in this price' : '')" @click="historyOpen = !historyOpen">
         <w-spark :values="sparkValues" :width="40" :height="14" />
         <span class="w-num" :class="$style.fact">
-          <span :class="{ [$style.ninjaName]: ninjaInfo }">{{ ninjaInfo ? 'poe.ninja' : SPARK_LABEL[ranges[0]] }}</span>
-          <w-price v-if="ninjaInfo" :class="$style.ninjaPrice" :chaos="ninjaInfo.chaos" :divine="divine" />
+          <span :class="{ [$style.ninjaName]: ninjaInfo }">{{ ninjaInfo ? 'poe.ninja' : 'My checks' }}</span>
+          <w-price v-if="ninjaInfo" :class="[$style.ninjaPrice, { [$style.notCounted]: ninjaNotCounted }]" :chaos="ninjaInfo.chaos" :divine="divine" />
+          <span v-if="ninjaInfo && ninjaNotCounted">not counted</span>
           <span v-if="sparkChange != null" :class="sparkChange >= 0 ? 'w-up' : 'w-down'">{{ sparkChange >= 0 ? '+' : '' }}{{ Math.round(sparkChange * 100) }}%</span>
         </span>
       </button>
@@ -74,7 +75,7 @@
       </div>
       <a v-if="ninjaInfo" :class="$style.ninjaLink" :href="ninjaInfo.url" target="_blank">Open on poe.ninja ↗</a>
     </div>
-    <p v-if="expanded && accountMissing" :class="$style.note">Your own listings may be counted here. Add your account name in settings to leave them out.</p>
+    <p v-if="expanded && insight.range && accountMissing" :class="$style.note">Your own listings may be counted here. Add your account name in settings to leave them out.</p>
     <label v-if="expanded && canAsk" :class="$style.ppToggle">
       <input type="checkbox" v-model="usePoeprices">
       <span>Ask poeprices.info about rares</span>
@@ -144,7 +145,7 @@ const showSignals = computed(() => props.insight.signals.length > 0 && (
 
 const accountMissing = computed(() => !AppConfig().accountName?.trim())
 
-const SPARK_LABEL: Record<HistoryRange, string> = { week: 'poe.ninja 7d', league: 'poe.ninja', mine: 'My checks' }
+const ninjaNotCounted = computed(() => blend.value.points.some(p => p.key === 'ninja' && p.weight === 0))
 
 // Only worth mentioning when listings and poe.ninja are a quarter or more apart.
 const ninjaGapText = computed(() => {
@@ -255,17 +256,19 @@ async function copy (n: { key: string, text: string }) {
   font-variant-numeric: tabular-nums;
 }
 /* The answer and what to do with it: the first thing in the window. */
-.band { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 10px 1rem; }
-.answer { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+/* The buttons drop under the price when the window is too narrow for both. */
+.band { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; padding: 10px 1rem; }
+.answer { display: flex; flex-direction: column; gap: 2px; flex: 1 1 calc(150px * var(--w-text-scale, 1)); min-width: 0; }
 .trust { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; min-width: 0; color: var(--w-dim); font-size: calc(12px * var(--w-text-scale, 1)); line-height: calc(16px * var(--w-text-scale, 1)); }
 .value { display: flex; align-items: center; gap: 8px; min-width: 0; overflow: hidden; }
 .count { color: var(--w-dim); font-size: var(--w-fs-xs); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .note { margin: 0; padding: 0 1rem 8px; color: var(--w-dim); font-size: calc(12px * var(--w-text-scale, 1)); line-height: calc(17px * var(--w-text-scale, 1)); }
 /* One line of facts, for whoever wants them. */
-.line { display: flex; align-items: center; gap: 10px; min-height: 28px; padding: 2px calc(1rem - 4px) 2px 1rem; border-top: 1px solid var(--w-line-soft); font-size: calc(12px * var(--w-text-scale, 1)); color: var(--w-dim); white-space: nowrap; }
+.line { display: flex; flex-wrap: wrap; align-items: center; gap: 0 10px; min-height: 28px; padding: 2px calc(1rem - 4px) 2px 1rem; border-top: 1px solid var(--w-line-soft); font-size: calc(12px * var(--w-text-scale, 1)); color: var(--w-dim); white-space: nowrap; }
 .fact { display: inline-flex; align-items: center; gap: 4px; }
 .factPrice { color: var(--w-fg); font-weight: 600; }
 .ninjaPrice { color: var(--w-ninja); font-weight: 600; }
+.notCounted { opacity: .6; }
 .badge {
   flex: none;
   font-size: var(--w-fs-xs);
@@ -290,7 +293,7 @@ async function copy (n: { key: string, text: string }) {
   text-overflow: ellipsis;
 }
 /* Fontin's old-style digits dip and rise: a price wants even figures. */
-.headlinePrice { font-family: var(--w-num); font-size: calc(28px * var(--w-text-scale, 1)); font-weight: 600; letter-spacing: 0; }
+.headlinePrice { justify-content: flex-start; font-family: var(--w-num); font-size: calc(28px * var(--w-text-scale, 1)); font-weight: 600; letter-spacing: 0; }
 .headlinePrice img { width: 24px; height: 24px; }
 .risk {
   flex: none;
@@ -310,7 +313,7 @@ async function copy (n: { key: string, text: string }) {
 .signals { display: flex; flex-direction: column; gap: 2px; padding: 6px 1rem; color: var(--w-fg); background: color-mix(in srgb, var(--w-down) 10%, transparent); border-top: 1px solid color-mix(in srgb, var(--w-down) 35%, transparent); }
 .signal { font-size: calc(12px * var(--w-text-scale, 1)); line-height: calc(17px * var(--w-text-scale, 1)); }
 .flag { color: var(--w-down); }
-.actions { display: grid; gap: 4px; width: 212px; min-width: 0; }
+.actions { display: grid; gap: 4px; flex: 1 1 calc(212px * var(--w-text-scale, 1)); max-width: 100%; min-width: 0; }
 .note2 {
   display: flex;
   align-items: center;
