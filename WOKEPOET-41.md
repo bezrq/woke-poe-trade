@@ -1,7 +1,7 @@
 ---
 id: WOKEPOET-41
 title: Lock the local server against other web pages
-status: Grooming
+status: Done
 priority: Critical
 effort: M
 assignee: unassigned
@@ -27,7 +27,19 @@ history:
     date: '2026-11-05T08:51:16.042Z'
     comment: Updated implementation link.
     id: a-2026-11-05t08-51-16-042z
+  - type: comment
+    user: Agent
+    comment: 'Merged in #128.'
+    date: '2026-11-05T10:00:53.795Z'
+    completionComment: true
+    id: c-2026-11-05t10-00-53-795z
+  - type: status_change
+    from: Grooming
+    to: Done
+    user: Agent
+    date: '2026-11-05T10:00:53.795Z'
 implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/128'
+needsAction: null
 ---
 > **TL;DR** F2. The websocket and HTTP server on fixed port 8585 check no Origin or Host, so any page in the player's browser can act as the overlay: type chat, overwrite settings, call handlers, and start a program through pob-open.
 

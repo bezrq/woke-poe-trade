@@ -1,7 +1,7 @@
 ---
 id: WOKEPOET-55
 title: Stop harmless errors being recorded as crashes
-status: Grooming
+status: Done
 priority: Medium
 effort: S
 assignee: unassigned
@@ -27,7 +27,19 @@ history:
     date: '2026-11-05T08:51:16.074Z'
     comment: Updated implementation link.
     id: a-2026-11-05t08-51-16-074z
+  - type: comment
+    user: Agent
+    comment: 'Merged in #128.'
+    date: '2026-11-05T10:00:54.542Z'
+    completionComment: true
+    id: c-2026-11-05t10-00-54-542z
+  - type: status_change
+    from: Grooming
+    to: Done
+    user: Agent
+    date: '2026-11-05T10:00:54.542Z'
 implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/128'
+needsAction: null
 ---
 > **TL;DR** C10. Missing files throw uncaught stream errors (server.ts, file-uploads.ts), and a bad socket message throws at JSON.parse. Both are recorded as crashes.
 

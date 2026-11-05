@@ -1,7 +1,7 @@
 ---
 id: WOKEPOET-45
 title: Say so when a price check gets no item
-status: Grooming
+status: Done
 priority: High
 effort: XS
 assignee: unassigned
@@ -27,7 +27,19 @@ history:
     date: '2026-11-05T08:51:16.200Z'
     comment: Updated implementation link.
     id: a-2026-11-05t08-51-16-200z
+  - type: comment
+    user: Agent
+    comment: 'Merged in #133.'
+    date: '2026-11-05T10:00:57.542Z'
+    completionComment: true
+    id: c-2026-11-05t10-00-57-542z
+  - type: status_change
+    from: Grooming
+    to: Done
+    user: Agent
+    date: '2026-11-05T10:00:57.542Z'
 implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/133'
+needsAction: null
 ---
 > **TL;DR** F6. item-text-failed is sent by main, but only the loot filter's sample key listens. Every other copy-item hotkey does nothing visible on failure.
 

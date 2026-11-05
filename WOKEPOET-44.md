@@ -1,7 +1,7 @@
 ---
 id: WOKEPOET-44
 title: 'Survive a damaged config.json: backup, recovery, no silent reset'
-status: Grooming
+status: Done
 priority: High
 effort: M
 assignee: unassigned
@@ -27,7 +27,19 @@ history:
     date: '2026-11-05T08:51:16.133Z'
     comment: Updated implementation link.
     id: a-2026-11-05t08-51-16-133z
+  - type: comment
+    user: Agent
+    comment: 'Merged in #129.'
+    date: '2026-11-05T10:00:56.044Z'
+    completionComment: true
+    id: c-2026-11-05t10-00-56-044z
+  - type: status_change
+    from: Grooming
+    to: Done
+    user: Agent
+    date: '2026-11-05T10:00:56.044Z'
 implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/129'
+needsAction: null
 ---
 > **TL;DR** F5. A damaged or empty config loads defaults with no message; later saves go to config.json.tmp for the session, so they are lost too. There is no backup and no flush to disk, and a failed write quits the app.
 

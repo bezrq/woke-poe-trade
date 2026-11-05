@@ -1,7 +1,7 @@
 ---
 id: WOKEPOET-33
 title: Replace the overlay tab bar with a left-edge rail and launcher
-status: In Progress
+status: Ready
 priority: Medium
 effort: M
 assignee: unassigned
@@ -22,6 +22,22 @@ history:
       PR https://github.com/guybnd/woke-poe-trade/pull/122 merged. The dev copy
       update is held until #121 lands, so Guy gets one restart.
     id: a-2026-11-05t07-17-32-200z
+  - type: comment
+    user: Agent
+    comment: >-
+      Rail and launcher shipped in #122, and #144 makes the launcher list every
+      tool. Both are merged and live in the dev copy at d880d714. Confirmed
+      loaded on the overlay, but not clicked through in game. Implementation:
+      https://github.com/guybnd/woke-poe-trade/pull/144
+    date: '2026-11-05T10:00:38.504Z'
+    completionComment: true
+    id: c-2026-11-05t10-00-38-504z
+  - type: status_change
+    from: In Progress
+    to: Ready
+    user: Agent
+    date: '2026-11-05T10:00:38.504Z'
+needsAction: null
 ---
 Guy picked B + C from the mocks: https://claude.ai/artifact/KbQejf7usezNPEXfrcc35S
 
