@@ -4,7 +4,7 @@
 
 import type { Widget, Anchor } from '@/web/overlay/widgets'
 import type { LogEvent } from './log-parse'
-import { actFromAreaId } from './log-parse'
+import { actFromAreaId, speakerOf } from './log-parse'
 import { formatClock } from '../ui/format'
 
 export const RUN_TIMER_TYPE = 'woke-run-timer'
@@ -14,35 +14,43 @@ export const LAST_ACT = 10
 export const START_AREA_ID = '1_1_1' // The Twilight Strand
 export const HISTORY_LIMIT = 30
 
-// A boss or key zone inside an act, timed on the first entry into its zone.
+// A boss inside an act, timed once. Boss arenas never write a line to
+// Client.txt, so a boss that speaks is timed by its first line in its area,
+// and one that doesn't by the first entry into its area.
 export interface SubSplitDef {
   id: string
   act: number
   label: string
-  // "You have entered …" zone names that count as reaching it.
-  zones: string[]
+  // The area the boss is in ("Generating level ... area").
+  areaId: string
+  // The name the boss speaks under in Client.txt.
+  speaker?: string
 }
 
 export const SUB_SPLITS: SubSplitDef[] = [
-  { id: 'brutus', act: 1, label: 'Brutus', zones: ["The Warden's Quarters"] },
-  { id: 'merveil', act: 1, label: 'Merveil', zones: ["Merveil's Lair"] },
-  { id: 'weaver', act: 2, label: 'The Weaver', zones: ["The Weaver's Nest"] },
-  { id: 'oversoul', act: 2, label: 'Vaal Oversoul', zones: ['Pyramid Apex'] },
-  { id: 'dominus', act: 3, label: 'Dominus', zones: ['Tower Rooftop'] },
-  { id: 'kaom', act: 4, label: 'Kaom', zones: ['Caldera of the King'] },
-  { id: 'daresso', act: 4, label: 'Daresso', zones: ['The Ring of Blades'] },
-  { id: 'malachai', act: 4, label: 'Malachai', zones: ['The Black Core'] },
-  { id: 'avarius', act: 5, label: 'Avarius', zones: ['Sanctum of Innocence'] },
-  { id: 'kitava5', act: 5, label: 'Kitava', zones: ['Cathedral Apex'] },
-  { id: 'tukohama', act: 6, label: 'Tukohama', zones: ["Tukohama's Keep"] },
-  { id: 'brine-king', act: 6, label: 'Brine King', zones: ["The Brine King's Throne", "The Bring King's Throne"] },
-  { id: 'arakaali', act: 7, label: 'Arakaali', zones: ["Arakaali's Web"] },
-  { id: 'doedre8', act: 8, label: 'Doedre', zones: ['The Cauldron'] },
-  { id: 'shakari', act: 9, label: 'Shakari', zones: ['The Sand Pit'] },
-  { id: 'garukhan', act: 9, label: 'Garukhan', zones: ['Shrine of the Winds'] },
-  { id: 'trinity', act: 9, label: 'Depraved Trinity', zones: ['The Black Heart'] },
-  { id: 'kitava10', act: 10, label: 'Kitava', zones: ['Altar of Hunger'] }
+  { id: 'brutus', act: 1, label: 'Brutus', areaId: '1_1_7_2', speaker: 'Brutus, the Warden' },
+  { id: 'merveil', act: 1, label: 'Merveil', areaId: '1_1_11_2', speaker: 'Merveil' },
+  { id: 'weaver', act: 2, label: 'The Weaver', areaId: '1_2_10' },
+  { id: 'oversoul', act: 2, label: 'Vaal Oversoul', areaId: '1_2_14_3' },
+  { id: 'dominus', act: 3, label: 'Dominus', areaId: '1_3_18_2', speaker: 'Dominus' },
+  { id: 'kaom', act: 4, label: 'Kaom', areaId: '1_4_4_3', speaker: 'King Kaom' },
+  { id: 'daresso', act: 4, label: 'Daresso', areaId: '1_4_5_2', speaker: 'Daresso' },
+  { id: 'malachai', act: 4, label: 'Malachai', areaId: '1_4_6_3', speaker: 'Malachai' },
+  { id: 'avarius', act: 5, label: 'Avarius', areaId: '1_5_5', speaker: 'Avarius' },
+  { id: 'kitava5', act: 5, label: 'Kitava', areaId: '1_5_8' },
+  { id: 'tukohama', act: 6, label: 'Tukohama', areaId: '2_6_5', speaker: 'Tukohama' },
+  { id: 'brine-king', act: 6, label: 'Brine King', areaId: '2_6_15' },
+  { id: 'arakaali', act: 7, label: 'Arakaali', areaId: '2_7_12_2' },
+  { id: 'doedre8', act: 8, label: 'Doedre', areaId: '2_8_2_2' },
+  { id: 'shakari', act: 9, label: 'Shakari', areaId: '2_9_4' },
+  { id: 'garukhan', act: 9, label: 'Garukhan', areaId: '2_9_8' },
+  { id: 'trinity', act: 9, label: 'Depraved Trinity', areaId: '2_9_10_2' },
+  { id: 'kitava10', act: 10, label: 'Kitava', areaId: '2_10_6' }
 ]
+
+// No act can be finished this fast: a run with such an act had another
+// character walk into a later act.
+const MIN_ACT_MS = 30_000
 
 export interface RunMark {
   id: string
@@ -63,6 +71,8 @@ export interface CampaignRun {
   elapsedMs: number
   runningSince: number | null
   act: number
+  // The area you're in, so a boss's line only counts in the boss's area.
+  areaId?: string
   zone: string
   // Run time when the current zone was entered.
   zoneSinceMs: number
@@ -167,8 +177,13 @@ export function isComplete (run: CampaignRun): boolean {
   return runTotal(run) != null
 }
 
+// The oldest runs drop off, but never the personal best.
 function saveToHistory (w: Pick<RunTimerWidget, 'history'>, run: CampaignRun) {
-  w.history = [run, ...w.history.filter(r => r.id !== run.id)].slice(0, HISTORY_LIMIT)
+  const all = [run, ...w.history.filter(r => r.id !== run.id)]
+  const kept = all.slice(0, HISTORY_LIMIT)
+  const pb = personalBest(all)
+  if (pb && !kept.includes(pb)) kept[kept.length - 1] = pb
+  w.history = kept
 }
 
 // Ends the current run by hand. In act 10 this counts as finishing the
@@ -215,16 +230,22 @@ export function applyRunEvent (
     }
     const run = w.run
     if (!run || run.finished) return false
+    run.areaId = ev.areaId
     const act = actFromAreaId(ev.areaId)
-    if (act == null || act <= run.act) return false
-    const at = runElapsed(run, now)
-    for (let a = run.act; a < act && a <= LAST_ACT; a++) {
-      run.splits.push({ act: a, totalMs: at, level: run.level })
+    // A character can't skip an act, so a bigger jump is another character:
+    // the run stays where it is.
+    if (act === run.act + 1) {
+      run.splits.push({ act: run.act, totalMs: runElapsed(run, now), level: run.level })
+      if (act > LAST_ACT) {
+        finishRun(run, now)
+        saveToHistory(w, run)
+        return true
+      }
+      run.act = act
     }
-    run.act = Math.min(act, LAST_ACT)
-    if (act > LAST_ACT) {
-      finishRun(run, now)
-      saveToHistory(w, run)
+    if (w.subSplits !== false) {
+      const def = SUB_SPLITS.find(d => d.act === run.act && d.areaId === ev.areaId && !d.speaker)
+      if (def) addMark(run, def, now)
     }
     return true
   }
@@ -235,12 +256,6 @@ export function applyRunEvent (
   if (ev.kind === 'zone') {
     run.zone = ev.name
     run.zoneSinceMs = runElapsed(run, now)
-    if (w.subSplits !== false) {
-      const def = SUB_SPLITS.find(d => d.act === run.act && d.zones.includes(ev.name))
-      if (def && !markAt(run, def.id)) {
-        run.marks = [...(run.marks ?? []), { id: def.id, totalMs: run.zoneSinceMs }]
-      }
-    }
     return true
   }
   if (ev.kind === 'level') {
@@ -254,6 +269,24 @@ export function applyRunEvent (
     return true
   }
   return false
+}
+
+function addMark (run: CampaignRun, def: SubSplitDef, now: number) {
+  if (markAt(run, def.id)) return
+  run.marks = [...(run.marks ?? []), { id: def.id, totalMs: runElapsed(run, now) }]
+}
+
+// A boss's first line in its own area marks reaching it. Returns true when
+// that added a mark.
+export function applyBossSpeech (w: Pick<RunTimerWidget, 'run'> & { subSplits?: boolean }, line: string, now: number): boolean {
+  const run = w.run
+  if (!run || run.finished || w.subSplits === false) return false
+  const speaker = speakerOf(line)
+  if (!speaker) return false
+  const def = SUB_SPLITS.find(d => d.speaker === speaker && d.act === run.act && d.areaId === run.areaId)
+  if (!def || markAt(run, def.id)) return false
+  addMark(run, def, now)
+  return true
 }
 
 // ---- comparisons ----
@@ -275,9 +308,15 @@ export function segmentMs (run: CampaignRun, act: number): number | null {
   return prev ? s.totalMs - prev.totalMs : null
 }
 
+// False for a run saved with an impossibly short act.
+export function isCleanRun (run: CampaignRun): boolean {
+  return run.splits.every(s => (segmentMs(run, s.act) ?? MIN_ACT_MS) >= MIN_ACT_MS)
+}
+
 export function personalBest (history: CampaignRun[]): CampaignRun | null {
   let best: CampaignRun | null = null
   for (const run of history) {
+    if (!isCleanRun(run)) continue
     const total = runTotal(run)
     if (total != null && (best == null || total < runTotal(best)!)) best = run
   }
@@ -298,6 +337,7 @@ export function comparisonRun (w: Pick<RunTimerWidget, 'compareTo' | 'history' |
 export function bestSegments (runs: CampaignRun[]): Map<number, number> {
   const best = new Map<number, number>()
   for (const run of runs) {
+    if (!isCleanRun(run)) continue
     for (const s of run.splits) {
       const seg = segmentMs(run, s.act)
       if (seg == null) continue

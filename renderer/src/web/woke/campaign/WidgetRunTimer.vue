@@ -179,7 +179,7 @@ import type { DockMenuAction } from '../dock/dock'
 import { dockIconShowing, hideWhilePlaying, tickWhile } from '../dock/dock'
 import { actLabel } from './log-parse'
 import {
-  applyRunEvent, comparisonRun, endRun, formatDelta, headlineDelta, isComplete,
+  applyBossSpeech, applyRunEvent, comparisonRun, endRun, formatDelta, headlineDelta, isComplete,
   migrateRunTimer, parseHotkeyTarget, pauseRun, personalBest, resumeRun, runElapsed, runTotal, splitRows, startRun, sumOfBest
 } from './run-timer'
 import { CAMPAIGN_TYPE } from './widget'
@@ -280,8 +280,8 @@ function formatDate (ts: number) {
 
 function applyLines (lines: LogLine[]) {
   let changed = false
-  for (const { ev, at } of lines) {
-    if (ev && applyRunEvent(props.config, ev, at)) changed = true
+  for (const { ev, at, line } of lines) {
+    if (ev ? applyRunEvent(props.config, ev, at) : applyBossSpeech(props.config, line, at)) changed = true
   }
   if (lines.length) props.config.lastLogAt = lines[lines.length - 1].at
   if (changed) {

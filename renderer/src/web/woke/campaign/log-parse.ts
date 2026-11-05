@@ -22,6 +22,14 @@ export function parseLogLine (line: string): LogEvent | null {
   return null
 }
 
+// The name before the ": " on a spoken line ("... [INFO Client 1] Merveil: ...").
+// Channel prefixes (#, $, &, %, @) mark player chat.
+const SPEAKER_RE = /\] ([^:#$&%@\]][^:\]]*): /
+
+export function speakerOf (line: string): string | null {
+  return SPEAKER_RE.exec(line)?.[1] ?? null
+}
+
 // Campaign area ids look like "1_3_7" or "2_6_town": the second number is
 // the act (1-10, 11 = epilogue). Maps, hideouts etc. return null.
 export function actFromAreaId (areaId: string): number | null {
