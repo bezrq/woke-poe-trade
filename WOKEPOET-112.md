@@ -25,6 +25,18 @@ history:
       pass locally. Playwright sweep running to find what rotted while the step
       was skipped.
     id: a-2026-11-05t13-59-29-207z
+  - type: activity
+    user: Agent
+    date: '2026-11-05T14:54:01.313Z'
+    comment: >-
+      #192 merged as e6ab107. Real bugs found behind flakes: hover state not
+      told to a reloaded overlay (main/src/woke/hover.ts); apexcharts delayed
+      redraw after the chart is removed (PriceTrend.vue). Noted, not fixed:
+      after an overlay reload main keeps zones from owners the new page doesn't
+      reuse; testing/ isn't covered by any typecheck; CI retries=1 can still
+      hide flakes.
+    pin: true
+    id: a-2026-11-05t14-54-01-313z
 ---
 Master CI (Tests workflow) has been red and merges went past it. Goal: fix root causes, no skips, make real flakes deterministic, then propose CI as a required check.
 

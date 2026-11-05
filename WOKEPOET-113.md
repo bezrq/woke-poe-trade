@@ -1,7 +1,7 @@
 ---
 id: WOKEPOET-113
 title: Client.txt warning never clears when the app starts before the game
-status: Ready
+status: Done
 priority: Medium
 effort: S
 assignee: unassigned
@@ -33,8 +33,24 @@ history:
     to: Ready
     user: Agent
     date: '2026-11-05T14:33:40.070Z'
+  - type: comment
+    user: Agent
+    comment: >-
+      Merged as #195 (7ac6039) and live on the dev copy at 9ba41cad. After the
+      restart with the game already running, the overlay reads the F: log and
+      shows no health problems. Starting the app before the game hasn't been
+      watched live.
+    date: '2026-11-05T14:54:39.156Z'
+    completionComment: true
+    id: c-2026-11-05t14-54-39-156z
+  - type: status_change
+    from: Ready
+    to: Done
+    user: Agent
+    date: '2026-11-05T14:54:39.156Z'
 implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/195'
 needsAction: null
+reviewState: null
 ---
 > **TL;DR** Start the app before PoE and the health card says "Client.txt not found" for the rest of the session, even once the log is being read.
 
