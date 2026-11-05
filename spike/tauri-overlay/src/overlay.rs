@@ -33,7 +33,8 @@ use windows::Win32::UI::WindowsAndMessaging::{
     SetForegroundWindow, SetTimer, SetWindowPos, SetWindowsHookExW, ShowWindow, TranslateMessage, EVENT_OBJECT_DESTROY,
     EVENT_OBJECT_LOCATIONCHANGE, EVENT_SYSTEM_FOREGROUND, EVENT_SYSTEM_MINIMIZEEND, HHOOK, HWND_TOPMOST, MSG,
     MSLLHOOKSTRUCT, OBJID_WINDOW, SWP_NOACTIVATE, SWP_SHOWWINDOW, SW_HIDE, WH_MOUSE_LL, WINEVENT_OUTOFCONTEXT,
-    WINEVENT_SKIPOWNPROCESS, WM_APP, WM_MOUSEMOVE, WM_TIMER,
+    WINEVENT_SKIPOWNPROCESS, WM_APP, WM_MOUSEMOVE, WM_TIMER, GetWindowLongPtrW, SetWindowLongPtrW, GWL_EXSTYLE,
+    WS_EX_LAYERED, WS_EX_TRANSPARENT,
 };
 
 const MSG_ACTIVATE_OVERLAY: u32 = WM_APP + 1;
@@ -81,10 +82,22 @@ pub fn find_game_now() {
     post(MSG_FIND_GAME);
 }
 
+// Only WS_EX_TRANSPARENT changes. Tauri's set_ignore_cursor_events also
+// drops WS_EX_LAYERED, and the transparent overlay stops drawing without it
+// (it showed nothing while active, then flashed for a frame when click-through
+// came back).
 fn set_click_through(on: bool) {
-    if let Some(app) = hub().app.get() {
-        if let Some(w) = app.get_webview_window("overlay") {
-            let _ = w.set_ignore_cursor_events(on);
+    let ov = hwnd(hub().overlay_hwnd.load(Ordering::SeqCst));
+    unsafe {
+        let ex = GetWindowLongPtrW(ov, GWL_EXSTYLE);
+        let mut next = ex | WS_EX_LAYERED.0 as isize;
+        if on {
+            next |= WS_EX_TRANSPARENT.0 as isize;
+        } else {
+            next &= !(WS_EX_TRANSPARENT.0 as isize);
+        }
+        if next != ex {
+            SetWindowLongPtrW(ov, GWL_EXSTYLE, next);
         }
     }
 }
@@ -287,7 +300,7 @@ fn do_activate_overlay() {
     // to the trick Windows needs when it refuses a plain SetForegroundWindow.
     if let Some(app) = h.app.get() {
         if let Some(w) = app.get_webview_window("overlay") {
-            let _ = w.set_ignore_cursor_events(false);
+            set_click_through(false);
             if let Err(e) = w.set_focus() {
                 h.log(&format!("overlay focus failed: {e}"));
             }
