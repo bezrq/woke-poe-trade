@@ -1,7 +1,7 @@
 ---
 id: WOKEPOET-92
 title: 'Generalize the flip screen: catalysts, delirium orbs, Harvest rerolls and more'
-status: In Progress
+status: Ready
 priority: None
 effort: L
 assignee: Agent
@@ -57,8 +57,32 @@ history:
     to: In Progress
     user: Agent
     date: '2026-11-05T11:15:05.553Z'
+  - type: activity
+    user: Agent
+    date: '2026-11-05T11:29:31.686Z'
+    comment: Updated implementation link.
+    id: a-2026-11-05t11-29-31-686z
+  - type: comment
+    user: Agent
+    comment: >-
+      PR 163 is open: https://github.com/guybnd/woke-poe-trade/pull/163. Tabbed
+      Flips with scarabs, catalysts, delirium orbs, fossils, essences, oils and
+      runegrafts. 2,107 unit tests, types and lint pass; scarab-flip and
+      tab-rail fake-game specs pass (19). Rest of the fake-game suite left to
+      CI; not tried in the real app. The 30 lifeforce per item is still
+      unconfirmed in game and is editable in the panel. Branch claude/flip-tabs
+      in the clone E:\Git\woke-poe-trade-flips.
+    date: '2026-11-05T11:29:32.068Z'
+    completionComment: true
+    id: c-2026-11-05t11-29-32-068z
+  - type: status_change
+    from: In Progress
+    to: Ready
+    user: Agent
+    date: '2026-11-05T11:29:32.068Z'
 swimlane: null
 needsAction: null
+implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/163'
 ---
 > **TL;DR:** Turn the scarab flip panel into one Flips screen covering every recipe and Harvest reroll that can be priced, once Guy picks a layout.
 
