@@ -1,7 +1,7 @@
 ---
 id: WOKEPOET-95
 title: Merge the Gear and Setups tabs in the build panel
-status: In Progress
+status: Ready
 priority: None
 effort: None
 assignee: unassigned
@@ -82,8 +82,30 @@ history:
       moves both sets; picking an item set alone needs differing sets. Local
       checks pass on c98ae82d. Asked the coordinator to merge.
     id: a-2026-11-05t11-54-44-451z
+  - type: activity
+    user: Agent
+    date: '2026-11-05T12:03:08.937Z'
+    comment: Updated implementation link.
+    id: a-2026-11-05t12-03-08-937z
+  - type: comment
+    user: Agent
+    comment: >-
+      **Merged as b36264c (PR #167).** The Gear tab shows gems as linked chains
+      under each item, Guy's option E; Setups and the link colour regex are
+      gone. Local checks and adversarial review passed. Remaining: check the
+      build panel once the shared dev update lands, then finish. No docs needed:
+      no reference docs cover this panel.
+    date: '2026-11-05T12:03:10.363Z'
+    completionComment: true
+    id: c-2026-11-05t12-03-10-363z
+  - type: status_change
+    from: In Progress
+    to: Ready
+    user: Agent
+    date: '2026-11-05T12:03:10.363Z'
 swimlane: null
 needsAction: null
+implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/167'
 ---
 > **TL;DR:** Show each item's gems on its Gear row and drop the Setups tab. Mocks are up; waiting on Guy's pick. No code yet.
 

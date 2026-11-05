@@ -14,6 +14,16 @@ history:
     user: Agent
     date: '2026-11-05T10:54:28.996Z'
     comment: Created ticket.
+    id: a-2026-11-05t10-54-28-996z
+  - type: comment
+    user: Agent
+    comment: >-
+      Runner crafts and random default done in PR #171. Still open: the 6
+      missing gems. Upstream GemCheck doesn't list them either, so colours and
+      font availability are unverified.
+    date: '2026-11-05T12:02:38.415Z'
+    selfAttested: true
+    id: c-2026-11-05t12-02-38-415z
 ---
 Step 6 of the [gameplay helpers critique](https://claude.ai/artifact/NjdEZhrQZBmKwRB56yTsoj). Thin prices in EV are already covered by WOKEPOET-79 / PR #152.
 

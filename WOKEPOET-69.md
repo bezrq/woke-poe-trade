@@ -60,7 +60,24 @@ history:
     to: In Progress
     user: Agent
     date: '2026-11-05T11:03:17.267Z'
-swimlane: null
+  - type: comment
+    user: Agent
+    comment: >-
+      **Do you want weighted search and real sales built too?** Hover card
+      (#160), data age (#161) and bulk verdict (#164) are merged. Proposed
+      default: leave those two out until you've tried the rest in game.
+    date: '2026-11-05T12:03:31.316Z'
+    id: c-2026-11-05t12-03-31-316z
+  - type: swimlane_change
+    swimlane: require-input
+    action: set
+    user: Agent
+    date: '2026-11-05T12:03:31.316Z'
+    comment: >-
+      **Do you want weighted search and real sales built too?** Hover card
+      (#160), data age (#161) and bulk verdict (#164) are merged. Proposed
+      default: leave those two out until you've tried the rest in game.
+swimlane: require-input
 needsAction: null
 ---
 > TL;DR: Listing mods on hover, a corrupted column, a verdict for bulk items, price data age, weighted searches and real sales from the trade log. New UI, so mocks and Guy's pick come first.

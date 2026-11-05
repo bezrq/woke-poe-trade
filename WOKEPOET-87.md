@@ -15,6 +15,15 @@ history:
     user: Agent
     date: '2026-11-05T10:54:25.660Z'
     comment: Created ticket.
+    id: a-2026-11-05t10-54-25-660z
+  - type: comment
+    user: Agent
+    comment: >-
+      Difficulty fixed in PR #171. Still open here: poelab's 403 and bot check,
+      untested inside the app, and a difficulty pick in the plaza (mock first).
+    date: '2026-11-05T12:02:38.262Z'
+    selfAttested: true
+    id: c-2026-11-05t12-02-38-262z
 ---
 Step 5 of the [gameplay helpers critique](https://claude.ai/artifact/NjdEZhrQZBmKwRB56yTsoj). Mock first.
 

@@ -1,7 +1,7 @@
 ---
 id: WOKEPOET-74
 title: 'Trades card: collapse offers, fix wrapped button row'
-status: Grooming
+status: Ready
 priority: None
 effort: None
 assignee: unassigned
@@ -59,6 +59,20 @@ history:
     date: '2026-11-05T10:14:14.113Z'
     comment: Updated implementation link.
     id: a-2026-11-05t10-14-14-113z
+  - type: comment
+    user: Agent
+    comment: >-
+      PR #147 merged as f60def4: one-line rows, next step on hover, Offer rows
+      setting, History with Reopen, Keep the offer bubble setting. Waiting on
+      the shared dev update to confirm it on the overlay.
+    date: '2026-11-05T12:03:01.266Z'
+    completionComment: true
+    id: c-2026-11-05t12-03-01-266z
+  - type: status_change
+    from: Grooming
+    to: Ready
+    user: Agent
+    date: '2026-11-05T12:03:01.266Z'
 swimlane: null
 needsAction: null
 implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/147'

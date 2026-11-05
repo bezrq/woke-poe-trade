@@ -14,6 +14,21 @@ history:
     user: Agent
     date: '2026-11-05T10:54:19.532Z'
     comment: Created ticket.
+    id: a-2026-11-05t10-54-19-532z
+  - type: activity
+    user: Agent
+    date: '2026-11-05T12:02:38.128Z'
+    comment: Updated implementation link.
+    id: a-2026-11-05t12-02-38-128z
+  - type: comment
+    user: Agent
+    comment: >-
+      PR #170 also covers WOKEPOET-84 and WOKEPOET-86. Known limit: an alt
+      entering exactly the next act still counts; that's WOKEPOET-90.
+    date: '2026-11-05T12:02:38.185Z'
+    selfAttested: true
+    id: c-2026-11-05t12-02-38-185z
+implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/170'
 ---
 Step 3 of the [gameplay helpers critique](https://claude.ai/artifact/NjdEZhrQZBmKwRB56yTsoj). No new UI.
 
