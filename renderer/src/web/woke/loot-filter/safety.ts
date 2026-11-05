@@ -29,6 +29,8 @@ export interface NetList {
   unique: string[]
   // Items too cheap alone, by the stack size from which they're over the line.
   stacks?: Record<string, string[]>
+  // The line this was remembered at. A higher line since can't rely on it.
+  line?: number
 }
 
 export const DEFAULT_SAFETY_NET: SafetyNet = { on: true, minChaos: 20 }
@@ -241,7 +243,7 @@ const STACKS = /Currency|Divination|Fragment/
 // A strict filter can hide a stack worth more than the line, item by item too
 // cheap to count. Each item goes in at the smallest stack that's over the line
 // and hidden.
-export function stackNet (doc: FilterDoc, lookup: PriceLookup, minChaos: number, skip?: (type: string, base: string) => boolean): Record<string, string[]> {
+export function stackNet (doc: FilterDoc, lookup: PriceLookup, minChaos: number, skip?: (group: EconomyGroup, base: string) => boolean): Record<string, string[]> {
   const out: Record<string, string[]> = {}
   const walked: FilterDoc = { ...doc, blocks: doc.blocks.filter(b => b.type !== SAFETY_RULE_TYPE) }
   for (const group of NET_GROUPS) {
@@ -257,7 +259,7 @@ export function stackNet (doc: FilterDoc, lookup: PriceLookup, minChaos: number,
           if (seen.has(base)) continue
           seen.add(base)
           const price = lookup(group, base)
-          if (!price || price.chaos >= minChaos || skip?.(group.type, base)) continue
+          if (!price || price.chaos >= minChaos || skip?.(group, base)) continue
           const size = STACK_SIZES.find(n => price.chaos * n >= minChaos)
           if (size == null) continue
           const v = verdictOf(walked, { ...plainDrop(group, base, itemClass), stackSize: size })
@@ -282,6 +284,7 @@ export function withLast (lookup: PriceLookup, last: NetList | undefined, minCha
 export function lastLookup (last: NetList | undefined, minChaos: number): PriceLookup {
   const plain = new Set(last?.plain)
   const unique = new Set(last?.unique)
+  if (last?.line != null && minChaos > last.line) return () => null
   return (group, base) => (group.unique ? unique : plain).has(base) ? { chaos: minChaos, thin: false } : null
 }
 

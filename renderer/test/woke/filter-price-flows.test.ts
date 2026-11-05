@@ -1,7 +1,7 @@
 // Prices over time: the store with prices that arrive, age and change league,
 // against a fake folder. Every result is checked in what was written.
 import { describe, it, expect, vi, beforeAll, beforeEach, afterEach } from 'vitest'
-import { nextTick, reactive, ref, shallowRef } from 'vue'
+import { effectScope, nextTick, reactive, ref, shallowRef } from 'vue'
 import { parseFilter } from '@/web/woke/loot-filter/parse'
 import { useLootFilter } from '@/web/woke/loot-filter/store'
 import { initLootFilterWidget } from '@/web/woke/loot-filter/widget'
@@ -72,7 +72,18 @@ beforeEach(() => {
   P.currentLeague.value = 'Allflame'
   P.updatedAt.value = null
 })
-afterEach(() => { vi.useRealTimers() })
+afterEach(() => {
+  vi.useRealTimers()
+  scopes.splice(0).forEach(s => { s.stop() })
+})
+
+// Each test's stores stop with it: they all watch the same fake prices.
+const scopes: Array<ReturnType<typeof effectScope>> = []
+function make (config: () => LootFilterWidget) {
+  const scope = effectScope()
+  scopes.push(scope)
+  return scope.run(() => useLootFilter(config))!
+}
 
 function widget (over: Partial<LootFilterWidget> = {}): LootFilterWidget {
   const w = { wmId: 1, wmType: 'woke-loot-filter', wmTitle: '', wmWants: 'show', wmZorder: null, wmFlags: [] } as unknown as LootFilterWidget
@@ -83,7 +94,7 @@ function widget (over: Partial<LootFilterWidget> = {}): LootFilterWidget {
 async function opened (over: Partial<LootFilterWidget> = {}) {
   host.files.set('NeverSink.filter', SOURCE)
   const config = widget({ sourceName: 'NeverSink.filter', ...over })
-  const store = useLootFilter(() => config)
+  const store = make(() => config)
   await store.listFiles()
   await store.load()
   return { store, config }
@@ -230,10 +241,21 @@ describe('moves belong to a league', () => {
     expect(store.otherMovesLeague.value).toBe('Allflame')
   })
 
-  it('takes a config from before leagues as this league\'s', async () => {
+  it('applies moves from before leagues, and marks them at the next Apply', async () => {
+    P.lookup.value = VALUABLE
     const { store, config } = await opened(moved())
     await store.save()
-    expect(config.priceTiers.moves[0].league).toBe('Allflame')
+    expect(inTier('t1')).toContain('Mid One')
+    expect(config.priceTiers.moves[0].league).toBeUndefined()
+    store.applyPrices([{ ...MOVE, base: 'Mid Two' }])
+    expect(config.priceTiers.moves.map(m => m.league)).toEqual(['Allflame', 'Allflame'])
+  })
+
+  it('with no league known, a move isn\'t foreign and stays in the file', async () => {
+    P.currentLeague.value = null
+    const { store } = await opened(moved('Allflame'))
+    await store.save()
+    expect(store.movesFromOtherLeague.value).toBe(0)
     expect(inTier('t1')).toContain('Mid One')
   })
 })
@@ -243,12 +265,12 @@ describe('the filter you started from changes', () => {
 
   it('brings the copy along by itself, with nothing typed into the game', async () => {
     const { config } = await opened()
-    const first = useLootFilter(() => config)
+    const first = make(() => config)
     await first.load()
     await first.save()
     const chat = sent.chat.length
     host.files.set('NeverSink.filter', changed)
-    const again = useLootFilter(() => config)
+    const again = make(() => config)
     await again.listFiles()
     await again.load()
     await settled()
@@ -259,12 +281,12 @@ describe('the filter you started from changes', () => {
 
   it('leaves it to you while you have unsaved changes', async () => {
     const { config } = await opened()
-    const first = useLootFilter(() => config)
+    const first = make(() => config)
     await first.load()
     await first.save()
     first.edit({ kind: 'visibility', type: 'divination', tier: 't2', visibility: 'Hide' })
     host.files.set('NeverSink.filter', changed)
-    const again = useLootFilter(() => config)
+    const again = make(() => config)
     await again.listFiles()
     await again.load()
     await settled()
@@ -274,6 +296,58 @@ describe('the filter you started from changes', () => {
 })
 
 describe('auto saves stay out of your way', () => {
+  it('never overwrites a file this editor has not saved', async () => {
+    host.files.set(OUTPUT, '# made by hand')
+    await opened()
+    P.safety.value = VALUABLE
+    await settled()
+    expect(host.files.get(OUTPUT)).toBe('# made by hand')
+  })
+
+  it('waits when one of your changes no longer fits', async () => {
+    const { store } = await opened()
+    await store.save()
+    const before = host.files.get(OUTPUT)
+    store.edit({ kind: 'visibility', type: 'divination', tier: 'gone', visibility: 'Hide' })
+    await store.save()
+    expect(store.failed.value).toHaveLength(1)
+    P.safety.value = VALUABLE
+    await settled()
+    expect(netBases()).toEqual([])
+    expect(before).toBeTruthy()
+  })
+
+  it('turning price tiers off reads as a change of yours', async () => {
+    const { store, config } = await opened({ priceTiers: { on: true, moves: [MOVE], prev: null, locks: [], appliedAt: 1, uniqueRule: 'max' } })
+    await store.save()
+    config.priceTiers.on = false
+    await settled()
+    expect(store.dirty.value).toBe(true)
+    expect(inTier('t1')).toContain('Mid One')
+  })
+
+  it('your move to a tier outside the ranks holds, for one item and for its stacks', async () => {
+    const { store } = await opened()
+    await store.save()
+    store.edit({ kind: 'move', type: 'divination', base: 'Low One', from: 't3', to: 'exhide' })
+    P.safety.value = VALUABLE
+    await store.save()
+    expect(netBases()).not.toContain('Low One')
+  })
+
+  it('remembers stacks, and forgets a list made at a lower line', async () => {
+    const { store, config } = await opened()
+    await store.save()
+    P.safety.value = VALUABLE
+    await settled()
+    expect(config.safetyNet.last?.line).toBe(20)
+    P.safety.value = null
+    config.safetyNet.minChaos = 5000
+    await settled()
+    await store.save()
+    expect(netBases()).toEqual([])
+  })
+
   it('opening another filter writes nothing', async () => {
     const { store, config } = await opened()
     await store.save()
@@ -316,7 +390,7 @@ describe('updates', () => {
     for (let i = 0; i < 7; i++) host.neversink.set(`8.20.9//${i}`, neverSink(LEVELS[i]))
     host.latestVersion = '8.20.2'
     const config = widget({ neversink: { on: true, version: '8.20.9', prevVersion: null, style: '', level: 1, latest: null, latestChanges: '', checkedAt: null } })
-    const store = useLootFilter(() => config)
+    const store = make(() => config)
     await store.load()
     await store.checkForUpdate(true)
     expect(store.updateReady.value).toBeNull()
@@ -353,7 +427,7 @@ describe('auto strictness and your unsaved changes', () => {
 
   it('waits, says so, and switches once you have saved', async () => {
     const config = github()
-    const store = useLootFilter(() => config)
+    const store = make(() => config)
     await store.load()
     await store.save()
     store.edit({ kind: 'visibility', type: 'currency', tier: 't1exalted', visibility: 'Hide' })

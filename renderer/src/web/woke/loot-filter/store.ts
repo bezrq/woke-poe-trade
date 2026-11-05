@@ -19,7 +19,7 @@ import type { LootFilterWidget } from './widget'
 import { buildRuleBlocks, insertBuildBlocks } from './build-rules'
 import { useBuildRuleInput } from './build-input'
 import { applyPriceMoves, lockKey, lockedByEdits, mergeMoves, planRetier, tierRank } from './economy'
-import type { PriceMove, RetierPlan } from './economy'
+import type { EconomyGroup, PriceMove, RetierPlan } from './economy'
 import { SAFETY_RULE_TYPE, auditBases, lastLookup, netFromAudit, safetyBlocks, stackNet, valuableFromAudit, withLast } from './safety'
 import { isDismissed } from './health'
 import type { BaseVerdict, NetList } from './safety'
@@ -78,7 +78,9 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
     const ns = cfg().neversink
     return ns.on ? [ns.version, ns.style, ns.level] : []
   }
-  const inLeague = (m: PriceMove) => !m.league || m.league === prices.currentLeague.value
+  // With no league known yet (leagues still loading, or the fetch failed) a move
+  // isn't called foreign.
+  const inLeague = (m: PriceMove) => !m.league || !prices.currentLeague.value || m.league === prices.currentLeague.value
   const activeMoves = () => cfg().priceTiers.on ? cfg().priceTiers.moves.filter(inLeague) : []
   const moveKey = (m: PriceMove) => [m.type, m.base, m.from, m.to]
   const extraSig = () => {
@@ -92,7 +94,7 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
   }
   const signature = () => JSON.stringify([cfg().edits, hash(buildSig.value), extraSig()])
   // Everything you changed, leaving out what follows prices by itself.
-  const userSig = () => hash(JSON.stringify([cfg().edits, buildSig.value, cfg().priceTiers.moves.map(moveKey), cfg().rules, cfg().sourceName, cfg().sourceOnline, cfg().saveMode, presetsOn(cfg().presets) ? cfg().presets : null, sourceSig()]))
+  const userSig = () => hash(JSON.stringify([cfg().edits, buildSig.value, cfg().priceTiers.on, cfg().priceTiers.moves.map(moveKey), cfg().rules, cfg().sourceName, cfg().sourceOnline, cfg().saveMode, presetsOn(cfg().presets) ? cfg().presets : null, sourceSig()]))
   // The build part is only known once the build file is read, so start from
   // what the last save used.
   const savedEdits = ref(JSON.stringify([cfg().edits, cfg().savedBuildSig ?? hash(buildSig.value), cfg().savedExtraSig ?? extraSig()]))
@@ -103,6 +105,12 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
     if (saved != null) return saved !== userSig()
     try { return JSON.stringify(JSON.parse(savedEdits.value)[0]) !== JSON.stringify(cfg().edits) } catch { return false }
   }
+  // Writing the file with nobody asking: only over a file this editor has saved
+  // before, with nothing of yours unsaved, and with all your changes in place.
+  function mayAutoSave (): boolean {
+    return cfg().savedExtraSig != null && !userDirty() && !failed.value.length
+  }
+
   // Prices this old say little: warn, and stop offering moves from them.
   const STALE_HOURS = 24
   const TOO_OLD_HOURS = 72
@@ -177,15 +185,24 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
   const updatedSinceSave = computed(() =>
     baseVersion.value != null && cfg().lastVersion != null && baseVersion.value !== cfg().lastVersion)
 
+  // A tier outside the price ranks (exhide and the like) is a deliberate place to
+  // put something; a known rank has to be lower to count as moving it down.
+  function movedDown (group: EconomyGroup, base: string): boolean {
+    const rank = (tier: string) => tierRank(tier, [tier], group)
+    return cfg().edits.some(e => {
+      if (e.kind !== 'move' || e.base !== base || (e.type !== group.type && !e.type.startsWith(group.type + '->'))) return false
+      const to = rank(e.to)
+      const from = rank(e.from)
+      return to == null || (from != null && to > from)
+    })
+  }
+
   const sourceStamp = (text: string) => `${cfg().sourceName}|${hash(text)}`
 
   // What the net leaves hidden because you said so: "Not for me" on a hidden
   // item, or moving it down yourself.
   function heldBack (v: BaseVerdict): boolean {
-    const type = v.block?.type
-    const rank = (tier: string) => tierRank(tier, [tier], v.group) ?? 0
-    return isDismissed(cfg().netDismissed, v) ||
-      cfg().edits.some(e => e.kind === 'move' && e.base === v.base && e.type === type && rank(e.to) > rank(e.from))
+    return isDismissed(cfg().netDismissed, v) || movedDown(v.group, v.base)
   }
 
   // A filter text with everything applied: build rules, price moves, your
@@ -230,13 +247,18 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
       const verdicts = auditBases(next, known, line)
       const bases = netFromAudit(verdicts, v => heldBack(v))
       if (lookup) {
-        const stacks = stackNet(next, lookup, line, (type, base) => cfg().netDismissed[`${type}|${base}`] != null)
+        const stacks = stackNet(next, lookup, line, (group, base) => cfg().netDismissed[`${group.type}|${base}`] != null || movedDown(group, base))
         if (Object.keys(stacks).length) bases.stacks = stacks
+      } else if (cfg().safetyNet.last?.stacks) {
+        // Only names this filter lists, as with the rest of the list.
+        const listed = new Set(next.blocks.flatMap(b => b.conditions.flatMap(c => c.key === 'BaseType' ? c.values : [])))
+        const kept = Object.entries(cfg().safetyNet.last!.stacks!).map(([size, list]) => [size, list.filter(b => listed.has(b))] as const).filter(([, list]) => list.length)
+        if (kept.length) bases.stacks = Object.fromEntries(kept)
       }
-      if (lookup) netFresh = valuableFromAudit(verdicts)
       const netBlocks = safetyBlocks(bases)
       if (cfg().presets.colourBlind.on) netBlocks.forEach(colourBlindActions)
       insertBuildBlocks(next, netBlocks)
+      if (lookup) netFresh = { ...valuableFromAudit(verdicts), line, ...(bases.stacks ? { stacks: bases.stacks } : {}) }
       netCount = bases.plain.length + bases.unique.length + Object.values(bases.stacks ?? {}).reduce((n, l) => n + l.length, 0)
       if (lookup || netCount) netList = JSON.stringify(bases)
     }
@@ -251,9 +273,6 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
   function rebuild () {
     if (baseText.value == null) { doc.value = null; return }
     builtRulesSig = rulesSig()
-    // A config from before moves had a league: they're this league's.
-    const pt = cfg().priceTiers
-    if (prices.currentLeague.value && pt.moves.some(m => !m.league)) pt.moves = pt.moves.map(m => m.league ? m : { ...m, league: prices.currentLeague.value! })
     const c = compose(baseText.value)
     buildBlockCount.value = c.buildCount
     safetyCount.value = c.netCount
@@ -302,7 +321,8 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
     cfg().priceTiers.prev = before
     // Another league's moves don't build on these.
     const league = prices.currentLeague.value ?? undefined
-    cfg().priceTiers.moves = mergeMoves(activeMoves(), list.map(m => ({ ...m, league })))
+    // Moves from before leagues were kept are this league's from now on.
+    cfg().priceTiers.moves = mergeMoves(activeMoves().map(m => m.league ? m : { ...m, league }), list.map(m => ({ ...m, league })))
     cfg().priceTiers.appliedAt = Date.now()
     rebuild()
     return () => {
@@ -720,7 +740,7 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
       const savedHash = cfg().savedSourceHash
       // Only about the same source: opening another filter isn't a change to it.
       sourceChanged.value = savedHash != null && savedHash.startsWith(`${cfg().sourceName}|`) && savedHash !== sourceStamp(text)
-      if (sourceChanged.value && outputSaved.value && !userDirty() && !failed.value.length) save({ noReload: true }).catch(() => {})
+      if (sourceChanged.value && outputSaved.value && mayAutoSave()) save({ noReload: true }).catch(() => {})
     } catch (e) {
       if (seq !== loadSeq) return
       error.value = `Can't open ${cfg().sourceName}: ${(e as Error).message}`
@@ -851,7 +871,7 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
   async function saveNow (opts: { reloadNow?: boolean, noReload?: boolean }): Promise<boolean> {
     if (!doc.value || baseText.value == null) return false
     // Queued behind other saves: look again now it's this one's turn.
-    if (opts.noReload && ((!dirty.value && !sourceChanged.value) || userDirty())) return false
+    if (opts.noReload && ((!dirty.value && !sourceChanged.value) || !mayAutoSave())) return false
     problems.value = validateFilter(doc.value)
     if (problems.value.length) {
       error.value = `Not saved, the game would reject it: ${describeProblem(problems.value[0])}${problems.value.length > 1 ? ` (and ${problems.value.length - 1} more)` : ''}`
@@ -876,6 +896,7 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
         build: hash(buildSig.value),
         extra: extraSig(),
         user: userSig(),
+        source: sourceStamp(baseText.value),
         edits: cfg().edits,
         moves: cfg().priceTiers.moves,
         version: doc.value.version
@@ -894,8 +915,9 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
         if (cfg().reloadViaChat) reloadInGame(opts.reloadNow === true)
       }
       for (const wait of [8000, 60000]) setTimeout(() => { readGameFilter().catch(() => {}) }, wait)
-      cfg().savedSourceHash = sourceStamp(baseText.value)
-      sourceChanged.value = false
+      cfg().savedSourceHash = written.source
+      // A newer source may have loaded during the write.
+      sourceChanged.value = written.source !== sourceStamp(baseText.value)
       return true
     } catch (e) {
       error.value = `Couldn't save: ${(e as Error).message}`
@@ -930,7 +952,7 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
   // unsaved; the reload still waits for town.
   watch(() => [safetyList.value, activeMoves().length, prices.currentLeague.value], () => {
     if (!cfg().safetyNet.on || !prices.safety.value || baseText.value == null) return
-    if (!outputSaved.value || loading.value || !dirty.value || userDirty()) return
+    if (!outputSaved.value || !dirty.value || !mayAutoSave()) return
     // Nobody pressed anything, so nothing gets typed into chat for this.
     save({ noReload: true }).catch(() => {})
   }, { flush: 'post' })
