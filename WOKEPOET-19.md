@@ -1,7 +1,7 @@
 ---
 id: WOKEPOET-19
 title: 'Keep panel resize grips reachable: all-edge resize, clamp to screen'
-status: Ready
+status: Done
 priority: Medium
 effort: M
 assignee: unassigned
@@ -98,6 +98,19 @@ history:
     to: Ready
     user: Agent
     date: '2026-11-05T05:18:11.809Z'
+  - type: comment
+    user: Agent
+    comment: >-
+      PR squash-merged for branch
+      `flux/WOKEPOET-19-keep-panel-resize-grips-reachable-all-edge-resize-clamp-to-s`
+      — advanced to Done.
+    date: '2026-11-05T05:28:58.080Z'
+    id: c-2026-11-05t05-28-58-080z
+  - type: status_change
+    from: Ready
+    to: Done
+    user: Agent
+    date: '2026-11-05T05:28:58.080Z'
 needsAction: null
 branch: flux/WOKEPOET-19-keep-panel-resize-grips-reachable-all-edge-resize-clamp-to-s
 baselineCommit: 7896e164a82865073f89df1ab235131664e8c4a4
