@@ -55,13 +55,13 @@ async function showGame (overlay: Overlay, fixture: string, backdrop: string) {
 
 // Saves the page, or a 16:9 part of it to zoom in on, as a 1600x900 webp
 // encoded by the page's own canvas.
-async function save (overlay: Overlay, name: string, clip?: { x: number, y: number }) {
+async function save (overlay: Overlay, name: string, clip?: { x: number, y: number, width?: number, height?: number }) {
   await overlay.page.waitForTimeout(400)
   // Item art from web.poecdn that didn't load (offline) would show as broken.
   await overlay.page.evaluate(() => {
     for (const img of document.images) if (img.complete && !img.naturalWidth) img.style.visibility = 'hidden'
   })
-  const png = await overlay.page.screenshot(clip ? { clip: { ...clip, width: 1440, height: 810 } } : {})
+  const png = await overlay.page.screenshot(clip ? { clip: { width: 1440, height: 810, ...clip } } : {})
   const page = await overlay.page.context().newPage()
   const webp = await page.evaluate(async (src) => {
     const img = new Image()
@@ -188,13 +188,19 @@ test('tour: the boss arena icon prices Uber Atziri\'s drops', async ({ overlay }
   await save(overlay, 'tour-boss', { x: 120, y: 0 })
 })
 
-test('tour: the campaign icon shows the next steps', async ({ overlay }) => {
-  await bootWithRail(overlay, [{ wmType: 'woke-campaign', wmWants: 'show' }, { wmType: 'woke-run-timer', wmWants: 'show' }])
+test('tour: the campaign chip, and its card on hover', async ({ overlay }) => {
+  // The chip carries the values you pin: level and XP penalty, run and act time, the step.
+  const pins = ['level', 'run', 'delta', 'step']
+  await bootWithRail(overlay, [{ wmType: 'woke-campaign', wmWants: 'show', pins }, { wmType: 'woke-run-timer', wmWants: 'show' }])
   await showGame(overlay, 'screens/essence-real-17.png', 'screenshot-0017.jpg')
   await overlay.replayLog('client-logs/campaign-act1.txt')
+  const icon = overlay.dockIcon('campaign')
+  await expect(icon).toContainText('Lv 13')
+  await overlay.moveMouse(1800, 1000)
+  await save(overlay, 'tour-campaign-chip', { x: 640, y: 0, width: 1120, height: 630 })
   await overlay.hoverDockIcon('campaign')
-  await expect(overlay.dockIcon('campaign')).toContainText('The Southern Forest')
-  await save(overlay, 'tour-campaign', { x: 480, y: 0 })
+  await expect(icon).toContainText('The Southern Forest')
+  await save(overlay, 'tour-campaign', { x: 640, y: 0, width: 1120, height: 630 })
 })
 
 test('tour: trade offers waiting in the hideout', async ({ overlay }) => {
@@ -205,15 +211,6 @@ test('tour: trade offers waiting in the hideout', async ({ overlay }) => {
   await overlay.hoverDockIcon('trade')
   await expect(overlay.dockIcon('trade')).toContainText('xXLeagueStartXx', { timeout: 5000 })
   await save(overlay, 'tour-trade', { x: 120, y: 0 })
-})
-
-test('tour: scarab flip says what to vendor', async ({ overlay }) => {
-  await bootWithRail(overlay, [{ wmType: 'woke-scarab-flip', wmWants: 'show', anchor: { pos: 'tl', x: 4, y: 12 } }], true)
-  await closeRail(overlay)
-  await showGame(overlay, 'screens/essence-real-20.png', 'screenshot-0020.jpg')
-  await expect(overlay.widget('woke-scarab-flip').getByText(/\d+ scarabs? worth vendoring/)).toBeVisible()
-  await overlay.page.mouse.move(1800, 1000)
-  await save(overlay, 'tour-scarab', { x: 0, y: 0 })
 })
 
 test('tour: market movers, with the item under the cursor', async ({ overlay }) => {
@@ -243,13 +240,23 @@ test('tour: market movers, with the item under the cursor', async ({ overlay }) 
     minChaos: 5,
     typeFilter: '',
     watchlist: rows.map(([type, name, variant]) => ({ type, name, variant }))
-  }], true)
+  }, { wmType: 'woke-scarab-flip', wmWants: 'show' }], true)
   await closeRail(overlay, 'Market tracker')
   await showGame(overlay, 'screens/essence-real-20.png', 'screenshot-0020.jpg')
   const panel = overlay.widget('woke-market-tracker')
+  const scarabs = overlay.widget('woke-scarab-flip')
+  await expect(scarabs.getByText(/\d+ scarabs? worth vendoring/)).toBeVisible()
+  // Side by side: drag the scarab window off the tracker by its title.
+  const title = await scarabs.getByText('Scarab flip', { exact: true }).first().boundingBox()
+  if (title) {
+    await overlay.page.mouse.move(title.x + 10, title.y + title.height / 2)
+    await overlay.page.mouse.down()
+    await overlay.page.mouse.move(title.x + 560, title.y + title.height / 2, { steps: 12 })
+    await overlay.page.mouse.up()
+  }
   await panel.locator('.w-row', { hasText: 'Pact of Lycia' }).hover()
   await expect(overlay.page.getByRole('tooltip')).toContainText('Pact of Lycia')
-  await save(overlay, 'tour-market', { x: 0, y: 0 })
+  await save(overlay, 'tour-market')
 })
 
 test('tour: your Path of Building build in the game', async ({ overlay }) => {
@@ -289,30 +296,54 @@ test('tour: map mods, the strings you never want to roll', async ({ overlay }) =
   await save(overlay, 'tour-map-mods', { x: 0, y: 0 })
 })
 
-test('tour: the filter re-tiered from today\'s prices', async ({ overlay }) => {
-  const folder = fs.mkdtempSync(path.join(os.tmpdir(), 'woke-filters-'))
-  try {
-    // NeverSink's sample, after a rule that hides valuable uniques.
-    const sample = fs.readFileSync(path.join(FIXTURES, 'filters', 'neversink-sample.filter'), 'utf8')
-    fs.writeFileSync(path.join(folder, 'NeverSink.filter'), [
-      'Hide # $type->uniques $tier->hideable',
-      '\tRarity Unique',
-      '\tBaseType == "Despot Axe" "Sorcerer Boots" "Leather Belt"',
-      '',
-      sample
-    ].join('\r\n'))
-    await bootWithRail(overlay, [{ wmType: 'woke-loot-filter', wmFlags: ['invisible-on-blur'], sampleHotkey: 'Alt + F', editorHotkey: 'Alt + Shift + F', folder, sourceName: 'NeverSink.filter' }], true)
-    await closeRail(overlay, 'Loot filter')
-    const icon = overlay.widget('menu').getByRole('button', { name: 'Loot filter', exact: true })
-    if (!/open/.test(await icon.getAttribute('class') ?? '')) await icon.click()
-    await showGame(overlay, 'screens/essence-real-26.png', 'screenshot-0026.jpg')
-    await overlay.page.getByRole('tab', { name: /^Prices/ }).click()
-    await expect(overlay.page.getByText(/would move|to move/).first()).toBeVisible({ timeout: 20_000 })
-    await overlay.page.mouse.move(1800, 1000)
-    await save(overlay, 'tour-filter-prices', { x: 0, y: 0 })
-  } finally {
-    fs.rmSync(folder, { recursive: true, force: true })
-  }
+// The loot filter editor, open from the rail on NeverSink's sample, after a
+// rule that hides valuable uniques (so the safety net has something to catch).
+async function openFilter (overlay: Overlay, folder: string, hideUniques: boolean) {
+  const sample = fs.readFileSync(path.join(FIXTURES, 'filters', 'neversink-sample.filter'), 'utf8')
+  fs.writeFileSync(path.join(folder, 'NeverSink.filter'), !hideUniques ? sample : [
+    'Hide # $type->uniques $tier->hideable',
+    '\tRarity Unique',
+    '\tBaseType == "Despot Axe" "Sorcerer Boots" "Leather Belt"',
+    '',
+    sample
+  ].join('\r\n'))
+  await bootWithRail(overlay, [{ wmType: 'woke-loot-filter', wmFlags: ['invisible-on-blur'], sampleHotkey: 'Alt + F', editorHotkey: 'Alt + Shift + F', folder, sourceName: 'NeverSink.filter' }], true)
+  await closeRail(overlay, 'Loot filter')
+  const icon = overlay.widget('menu').getByRole('button', { name: 'Loot filter', exact: true })
+  if (!/open/.test(await icon.getAttribute('class') ?? '')) await icon.click()
+  await showGame(overlay, 'screens/essence-real-26.png', 'screenshot-0026.jpg')
+}
+
+for (const [tab, name, ready] of [
+  ['Rules', 'tour-filter-rules', /General currency/],
+  ['Prices', 'tour-filter-prices', /would move|to move/]
+] as const) {
+  test(`tour: the loot filter editor, ${tab} tab`, async ({ overlay }) => {
+    const folder = fs.mkdtempSync(path.join(os.tmpdir(), 'woke-filters-'))
+    try {
+      await openFilter(overlay, folder, tab === 'Prices')
+      await overlay.page.getByRole('tab', { name: new RegExp(`^${tab}`) }).click()
+      await expect(overlay.page.getByText(ready).first()).toBeVisible({ timeout: 20_000 })
+      await overlay.page.mouse.move(1800, 1000)
+      await save(overlay, name, { x: 0, y: 0 })
+    } finally {
+      fs.rmSync(folder, { recursive: true, force: true })
+    }
+  })
+}
+
+// Needs poelab.com (the layout pages), so run it with a network.
+test('tour: the labyrinth layout for today', async ({ overlay }) => {
+  await bootWithRail(overlay, [], true)
+  await closeRail(overlay, 'Labyrinth')
+  await showGame(overlay, 'screens/essence-real-17.png', 'screenshot-0017.jpg')
+  const icon = overlay.widget('menu').getByRole('button', { name: 'Labyrinth', exact: true })
+  if (!/open/.test(await icon.getAttribute('class') ?? '')) await icon.click()
+  const panel = overlay.widget('woke-lab')
+  await panel.getByText('Uber', { exact: true }).first().click()
+  await expect(panel.locator('img').first()).toBeVisible({ timeout: 30_000 })
+  await overlay.page.mouse.move(1800, 1000)
+  await save(overlay, 'tour-lab', { x: 0, y: 0 })
 })
 
 test('tour: boss runs, every boss priced by its drops', async ({ overlay }) => {
@@ -323,6 +354,9 @@ test('tour: boss runs, every boss priced by its drops', async ({ overlay }) => {
   await overlay.log(area('MapAtziri2', 80, 'The Alluring Abyss'))
   const panel = overlay.widget('woke-boss-runs')
   await panel.getByText('Uber Atziri', { exact: true }).first().click()
+  // You own the fragments and plan 20 runs: the estimator fills in.
+  await panel.getByText('I own the entry items').click()
+  await panel.locator('input[type="number"]').first().fill('20')
   await expect(panel.getByText('The Vertex').first()).toBeVisible()
   await overlay.page.mouse.move(1800, 1000)
   await save(overlay, 'tour-boss-runs', { x: 0, y: 0 })

@@ -14,23 +14,45 @@ const iconOf = (id) => MODULES.find(m => m.id === id)?.icon.fa ?? 'fas fa-circle
 const toolkit = MODULES.filter(m => m.group !== 'apt')
 
 // ---- the tour ----
+// Every screen in order: a stop with `frames` gives several.
 const stops = TOUR.flatMap(g => g.stops)
-const current = ref(0)
+const framesOf = (s) => s.frames ?? [s]
+const screens = stops.flatMap((s, si) => framesOf(s).map((f, fi) => ({ ...f, si, fi, key: `${s.id}-${fi}` })))
+const current = ref(0) // index into stops
+const frame = ref(0) // index into the stop's frames
+const hovering = ref(false)
 const stop = computed(() => stops[current.value])
-// Pictures load as they're reached (and the next one ahead), not all at once.
+const frames = computed(() => framesOf(stop.value))
+// A hover stop shows its second frame while the mouse is on the picture.
+const shown = computed(() => stop.value.hover ? (hovering.value ? 1 : 0) : frame.value)
+const screen = computed(() => frames.value[shown.value])
+const isShown = (sc) => sc.si === current.value && sc.fi === shown.value
+// Pictures load as they're reached (and the stop ahead), not all at once.
 const loaded = ref(new Set([0, 1]))
 const railEl = ref(null)
 let timer = null
 
-function go (i, user = true) {
+function go (i, user = true, f = 0) {
   const n = (i + stops.length) % stops.length
   current.value = n
+  frame.value = f
+  hovering.value = false
   loaded.value = new Set([...loaded.value, n, (n + 1) % stops.length])
   if (user) stopAuto()
   // Keep the picked tool in view in the rail (it scrolls sideways on a phone).
   const btn = railEl.value?.querySelector(`[data-stop="${stops[n].id}"]`)
   btn?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
   if (user) btn?.focus({ preventScroll: true })
+}
+function pickFrame (f) {
+  stopAuto()
+  if (stop.value.hover) hovering.value = f === 1
+  else frame.value = f
+}
+// The tour steps through a stop's frames before moving on.
+function advance () {
+  if (!stop.value.hover && frame.value + 1 < frames.value.length) frame.value++
+  else go(current.value + 1, false)
 }
 function stopAuto () { clearInterval(timer); timer = null }
 function onRailKey (e) {
@@ -42,7 +64,7 @@ function onRailKey (e) {
 onMounted(() => {
   // Steps by itself until the visitor picks a tool; never with reduced motion.
   if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-    timer = setInterval(() => go(current.value + 1, false), 6500)
+    timer = setInterval(advance, 6500)
   }
 })
 onBeforeUnmount(stopAuto)
@@ -98,17 +120,23 @@ const isOn = (id) => presetOn.value == null || presetOn.value.has(id)
               </button>
             </template>
           </nav>
-          <figure class="stage">
-            <template v-for="(s, i) in stops" :key="s.id">
-              <img v-if="loaded.has(i)" :src="shot(s.shot)" :alt="s.alt" :class="{ on: current === i }" :aria-hidden="current !== i" width="1600" height="900">
+          <figure class="stage" :class="{ hoverable: stop.hover }"
+            @pointerenter="e => { if (stop.hover && e.pointerType === 'mouse') { stopAuto(); hovering = true } }"
+            @pointerleave="e => { if (e.pointerType === 'mouse') hovering = false }"
+            @click="stop.hover && (hovering = !hovering)">
+            <template v-for="sc in screens" :key="sc.key">
+              <img v-if="loaded.has(sc.si)" :src="shot(sc.shot)" :alt="sc.alt" :class="{ on: isShown(sc) }" :aria-hidden="!isShown(sc)" width="1600" height="900">
             </template>
             <figcaption class="cap" aria-live="polite">
-              <b>{{ stop.title }}</b>
-              <span>{{ stop.text }}</span>
+              <div v-if="frames.length > 1" class="frames" role="group" :aria-label="`${stop.label} screens`">
+                <button v-for="(f, i) in frames" :key="f.label" type="button" :aria-pressed="shown === i" @click.stop="pickFrame(i)">{{ f.label }}</button>
+              </div>
+              <b>{{ screen.title }}</b>
+              <span>{{ screen.text }}</span>
             </figcaption>
             <div class="arrows">
-              <button type="button" aria-label="Previous tool" @click="go(current - 1)"><i class="fas fa-chevron-left"></i></button>
-              <button type="button" aria-label="Next tool" @click="go(current + 1)"><i class="fas fa-chevron-right"></i></button>
+              <button type="button" aria-label="Previous tool" @click.stop="go(current - 1)"><i class="fas fa-chevron-left"></i></button>
+              <button type="button" aria-label="Next tool" @click.stop="go(current + 1)"><i class="fas fa-chevron-right"></i></button>
             </div>
           </figure>
         </div>
@@ -411,6 +439,20 @@ const isOn = (id) => presetOn.value == null || presetOn.value.has(id)
   cursor: pointer;
 }
 .arrows button:hover { background: var(--panel-3); }
+.frames { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
+.frames button {
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--line-strong);
+  background: transparent;
+  color: var(--dim);
+  font: 600 13px var(--font-body);
+  cursor: pointer;
+}
+.frames button:hover { color: var(--fg); background: var(--panel-2); }
+.frames button[aria-pressed='true'] { background: var(--gold); border-color: var(--gold); color: var(--gold-fg); }
+.stage.hoverable { cursor: zoom-in; }
 .tour-note { margin-top: 14px; text-align: center; color: var(--faint); font-size: 14px; }
 
 /* ---------- modules note ---------- */
