@@ -1,7 +1,7 @@
 ---
 id: WOKEPOET-8
 title: Show the challenge guide in the overlay on a hotkey
-status: Grooming
+status: Ready
 priority: None
 effort: S
 assignee: unassigned
@@ -74,8 +74,45 @@ history:
       unverified; account name blank. Proposed list, one-way sync, OCR hotkey
       later.
     id: c-2026-11-05t02-55-33-000z
-swimlane: require-input
+  - type: comment
+    user: Agent
+    comment: >-
+      Guy picked B and approved list plus sync. Hotkey takes focus, per the
+      recommended default.
+    date: '2026-11-05T03:39:14.506Z'
+    id: c-2026-11-05t03-39-14-506z
+  - type: swimlane_change
+    swimlane: require-input
+    action: cleared
+    user: Agent
+    date: '2026-11-05T03:39:14.506Z'
+    comment: >-
+      Guy picked B and approved list plus sync. Hotkey takes focus, per the
+      recommended default.
+  - type: activity
+    user: Agent
+    date: '2026-11-05T03:39:14.953Z'
+    comment: Updated implementation link.
+    id: a-2026-11-05t03-39-14-953z
+  - type: comment
+    user: Agent
+    comment: >-
+      PR #88 is up: guide panel, list, one-way profile sync, account name
+      prompts, optional dock icon, unit tests. Verified in Electron with a
+      stand-in host against live pages. Not verified: settings page prompt
+      rendering, real hotkey and focus in game, private profile message in the
+      running panel. Hover screen-reading hotkey is a follow-up.
+    date: '2026-11-05T03:39:16.652Z'
+    completionComment: true
+    id: c-2026-11-05t03-39-16-652z
+  - type: status_change
+    from: Grooming
+    to: Ready
+    user: Agent
+    date: '2026-11-05T03:39:16.653Z'
+swimlane: null
 needsAction: null
+implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/88'
 ---
 > **TL;DR** A hotkey shows CraniumCarnage's challenge guide (https://craniumviolence.github.io/) in an overlay panel. It embeds fine in a webview; waiting on Guy's pick from the mockups before building.
 
