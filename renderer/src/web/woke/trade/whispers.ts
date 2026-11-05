@@ -204,3 +204,12 @@ export function priceLabel (p: TradePrice | null): string {
   const unit = p.currency === 'Divine Orb' ? 'div' : p.currency === 'Chaos Orb' ? 'c' : short ? short[0] : p.currency
   return `${+p.amount.toFixed(2)} ${unit}`
 }
+
+// Names to look a single item's art up by, longest first: whispers name a
+// unique with its base ("Doedre's Damning, Paua Ring") and a gem with its level.
+export function artNames (item: string): string[] {
+  const words = item.replace(/^level \d+ \d+% /, '').replace(/,/g, '').split(' ')
+  const out: string[] = []
+  for (let n = words.length; n >= 1 && n >= words.length - 3; n--) out.push(words.slice(0, n).join(' '))
+  return out
+}
