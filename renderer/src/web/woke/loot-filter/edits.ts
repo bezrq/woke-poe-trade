@@ -3,6 +3,7 @@
 // names, so the same list can be reapplied to every new NeverSink version.
 import { ruleLabel } from './parse'
 import { tierLabel } from './names'
+import { STACK_MAX } from './stack'
 import type { FilterAction, FilterBlock, FilterCondition, FilterDoc, Visibility } from './parse'
 
 export type Colour = [number, number, number, number]
@@ -30,6 +31,7 @@ export type FilterEdit =
   | EditBase & { kind: 'style', tier: string, patch: StylePatch }
   | EditBase & { kind: 'visibility', tier: string, visibility: Visibility }
   | EditBase & { kind: 'group', hidden: boolean }
+  | EditBase & { kind: 'stack', tier: string, size: number }
   | EditBase & {
     kind: 'item'
     tier: string
@@ -86,6 +88,7 @@ export function isValidEdit (e: unknown): e is FilterEdit {
     case 'style': return str('tier') && isPatch(x.patch)
     case 'visibility': return str('tier') && VISIBILITIES.includes(x.visibility as string)
     case 'group': return typeof x.hidden === 'boolean'
+    case 'stack': return str('tier') && typeof x.size === 'number' && Number.isInteger(x.size) && x.size > 0 && x.size <= STACK_MAX
     case 'item': return str('tier', 'base') && VISIBILITIES.includes(x.visibility as string) && isPatch(x.patch)
     default: return false
   }
@@ -237,6 +240,17 @@ function applyOne (doc: FilterDoc, edit: FilterEdit): EditStatus {
       for (const b of blocks) applyStyle(b, edit.patch)
       return { edit, ok: true, blocks: blocks.length }
     }
+    case 'stack': {
+      const blocks = blocksOf(doc, edit.type, edit.tier)
+      if (!blocks.length) return { edit, ok: false, blocks: 0, message: 'Tier not found in this filter' }
+      const sized = blocks.filter(b => b.conditions.some(c => c.key === 'StackSize' && c.op === '>='))
+      if (!sized.length) return { edit, ok: false, blocks: 0, message: 'This tier has no stack size in this filter' }
+      for (const b of sized) {
+        b.conditions = b.conditions.map(c => c.key === 'StackSize' && c.op === '>=' ? { ...c, values: [String(edit.size)] } : c)
+        b.dirty = true
+      }
+      return { edit, ok: true, blocks: sized.length }
+    }
     case 'move': {
       // Out of the tier it was moved from: stack tiers list one base many times,
       // and the others stay. If that tier no longer has it (a new version, new
@@ -368,6 +382,7 @@ export function addEdit (list: FilterEdit[], edit: FilterEdit, opts: { separateM
       case 'item': return (e as typeof edit).base === edit.base && (e as typeof edit).tier === edit.tier
       case 'style': return (e as typeof edit).tier === edit.tier
       case 'visibility': return (e as typeof edit).tier === edit.tier
+      case 'stack': return (e as typeof edit).tier === edit.tier
       case 'group': return true
     }
     return false
@@ -391,6 +406,8 @@ export function addEdit (list: FilterEdit[], edit: FilterEdit, opts: { separateM
       anchor: edit.anchor ?? prev.anchor,
       pin: edit.pin ?? prev.pin
     }
+  } else if (edit.kind === 'stack') {
+    merged = { ...edit, id: prev.id }
   } else if (edit.kind === 'group' && !edit.hidden) {
     merged = null
   }
@@ -407,6 +424,7 @@ export function describeEdit (e: FilterEdit): string {
     case 'style': return `Restyled ${ruleLabel(e.type, e.tier)}`
     case 'visibility': return `${e.visibility} ${ruleLabel(e.type, e.tier)}`
     case 'group': return `Hid the whole ${group} group`
+    case 'stack': return `${ruleLabel(e.type, e.tier)}: stacks of ${e.size} or more`
     case 'item': return `Own rule for ${e.base} (${e.visibility === 'Hide' ? 'hidden' : 'restyled'})`
   }
 }
@@ -473,6 +491,13 @@ export function rehomeOptions (doc: FilterDoc, edit: FilterEdit): RehomeOption[]
     case 'style':
     case 'visibility':
       for (const t of types()) for (const tier of tiersOf(doc, t)) out.push({ type: t, tier, label: place(t, tier) })
+      break
+    case 'stack':
+      for (const t of types()) {
+        for (const tier of tiersOf(doc, t)) {
+          if (blocksOf(doc, t, tier).some(b => b.conditions.some(c => c.key === 'StackSize' && c.op === '>='))) out.push({ type: t, tier, label: place(t, tier) })
+        }
+      }
       break
     case 'move':
       for (const t of types(edit.base)) for (const tier of tiersOf(doc, t, true)) if (!tier.startsWith('#')) out.push({ type: t, tier, label: ruleLabel(t, tier) })

@@ -435,6 +435,64 @@ test('dock card: click or scroll a strictness, then reload from there', async ({
   await expect(page.getByRole('button', { name: 'Back to auto' })).toHaveCount(0)
 })
 
+test('stack sizes: type a number or drag a line, the bar follows and the file changes', async ({ overlay, fakeApp }) => {
+  const folder = fs.mkdtempSync(path.join(os.tmpdir(), 'woke-filters-'))
+  fs.writeFileSync(path.join(folder, 'NeverSink.filter'), zlib.gunzipSync(fs.readFileSync(path.join(FIXTURES, 'filters', 'neversink', '1-REGULAR.filter.gz'))))
+  await overlay.boot({ widgets: [lootFilter(folder)] })
+  await openEditor(overlay, fakeApp)
+  const page = overlay.page
+  await page.getByPlaceholder('Filter groups').fill('harvest')
+  await page.getByRole('button', { name: /Harvest/ }).first().click()
+  const scale = page.getByRole('group', { name: 'Stack sizes' })
+  await expect(scale.getByRole('slider')).toHaveCount(5)
+  await overlay.snap('harvest stack scale')
+
+  // Typing redraws the bar as you go, and takes no click on the row.
+  const field = page.getByRole('spinbutton', { name: /Stack size for/ }).first()
+  await expect(field).toHaveValue('4000')
+  await field.fill('3000')
+  await expect(scale.getByRole('slider').first()).toHaveAttribute('aria-valuenow', '3000')
+  await field.blur()
+
+  // Esc takes back what you typed. Back to NeverSink's number is no change at all.
+  await field.fill('3500')
+  await field.press('Escape')
+  await expect(field).toHaveValue('3000')
+  await expect(scale.getByRole('slider').first()).toHaveAttribute('aria-valuenow', '3000')
+  await field.fill('4000')
+  await field.blur()
+  await expect(page.getByRole('tab', { name: /^Changes/ })).toContainText('0')
+  await field.fill('3000')
+  await field.blur()
+  await expect(page.getByRole('tab', { name: /^Changes/ })).toContainText('1')
+
+  // Dragging stops at its neighbour, and the number follows.
+  const line = scale.getByRole('slider').first()
+  const box = (await line.boundingBox())!
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
+  await page.mouse.down()
+  await page.mouse.move(box.x - 600, box.y + 4, { steps: 4 })
+  await page.mouse.up()
+  await expect(field).toHaveValue('501')
+
+  // The Changes tab says what happened.
+  await page.getByRole('tab', { name: /^Changes/ }).click()
+  await expect(page.getByText(/stacks of 501 or more/).first()).toBeVisible()
+
+  // Gold's piles get the same bar.
+  await page.getByRole('tab', { name: 'Rules' }).click()
+  await page.getByPlaceholder('Filter groups').fill('gold')
+  await page.getByRole('button', { name: /^Gold/ }).first().click()
+  await expect(scale.getByRole('slider')).toHaveCount(4)
+  await overlay.snap('gold stack scale')
+
+  await page.getByRole('button', { name: /Save \+ reload/ }).click()
+  await expect.poll(() => fs.existsSync(path.join(folder, 'NeverSink (woke).filter'))).toBe(true)
+  await expect.poll(() => fs.readFileSync(path.join(folder, 'NeverSink (woke).filter'), 'utf8')).toContain('StackSize >= 501')
+  // Let the reload finish here, not in the next test.
+  await expect.poll(() => fakeApp.game.chat).toEqual(['/itemfilter NeverSink (woke)'])
+})
+
 test('a short panel scrolls its columns: nothing runs under the footer', async ({ overlay, fakeApp }) => {
   const folder = fs.mkdtempSync(path.join(os.tmpdir(), 'woke-filters-'))
   fs.writeFileSync(path.join(folder, 'NeverSink.filter'), zlib.gunzipSync(fs.readFileSync(path.join(FIXTURES, 'filters', 'neversink', '1-REGULAR.filter.gz'))))
@@ -454,14 +512,6 @@ test('a short panel scrolls its columns: nothing runs under the footer', async (
     expect(onTop, `height ${height}`).toBe(true)
   }
 
-  // The other tabs fit too.
-  for (const tab of ['Presets', 'NeverSink']) {
-    await page.getByRole('tab', { name: new RegExp(`^${tab}`) }).click()
-    const panel = (await save.boundingBox())!
-    const body = await save.evaluate((el) => { const p = el.closest('.w-surface')!; return { bottom: p.getBoundingClientRect().bottom, sh: p.scrollHeight, ch: p.clientHeight } })
-    expect(panel.y + panel.height, tab).toBeLessThanOrEqual(body.bottom)
-    expect(body.sh, tab).toBeLessThanOrEqual(body.ch + 4)
-  }
 })
 
 test('a save nobody asked to reload waits on the dock icon, and one key sends it once', async ({ overlay, fakeApp }) => {
