@@ -1,16 +1,7 @@
 import { describe, it, expect } from 'vitest'
-import { LOOT_FILTER_TYPE, neverSinkFromOutput, seedLootFilterWidget } from '@/web/woke/loot-filter/widget'
-
-const OUTPUT = [
-  '# WOKE-LOOT-FILTER-EDITOR',
-  '# Made from NeverSink 8.20.2 Very strict, downloaded from GitHub, with 1 change(s).',
-  '# This file is rewritten on every save from the loot filter editor; change it there.',
-  '',
-  '# VERSION:  8.20.2',
-  '# TYPE:     4-VERY-STRICT',
-  '# STYLE:    DEFAULT',
-  '# AUTHOR:   NeverSink'
-].join('\r\n')
+import { LOOT_FILTER_TYPE, seedLootFilterWidget } from '@/web/woke/loot-filter/widget'
+import { itemFacts } from '@/web/woke/loot-filter/item-facts'
+import type { ParsedItem } from '@/parser'
 
 describe('seedLootFilterWidget', () => {
   it('is ready and hidden, so adding it opens nothing over the game', () => {
@@ -30,20 +21,22 @@ describe('seedLootFilterWidget', () => {
   })
 })
 
-describe('neverSinkFromOutput', () => {
-  it('reads the version and strictness of a saved download', () => {
-    expect(neverSinkFromOutput(OUTPUT)).toEqual({ version: '8.20.2', level: 4 })
+describe('map base type', () => {
+  const copy = [
+    'Item Class: Maps', 'Rarity: Unique', "Caer Blaidd, Wolfpack's Den", 'Map (Tier 16)', '--------', 'Map Tier: 16'
+  ].join('\r\n')
+
+  it('names a unique map the way filters do, not the parser\'s plain "Map"', () => {
+    const parsed = { info: { namespace: 'UNIQUE', refName: "Caer Blaidd, Wolfpack's Den" }, uniqueBase: { refName: 'Map' }, mapTier: 16, influences: [] } as unknown as ParsedItem
+    expect(itemFacts(copy, parsed).baseType).toBe('Map (Tier 16)')
   })
 
-  it('ignores files the editor did not make', () => {
-    expect(neverSinkFromOutput(OUTPUT.replace('# WOKE-LOOT-FILTER-EDITOR', '# Mine'))).toBeNull()
+  it('reads it from the copy when the parser has nothing', () => {
+    expect(itemFacts(copy, null).baseType).toBe('Map (Tier 16)')
   })
 
-  it('ignores a copy made from a local file', () => {
-    expect(neverSinkFromOutput(OUTPUT.replace('downloaded from GitHub', 'from a file'))).toBeNull()
-  })
-
-  it('ignores a style it could not restore', () => {
-    expect(neverSinkFromOutput(OUTPUT.replace('DEFAULT', 'CUSTOM-SOUNDS'))).toBeNull()
+  it('leaves other items alone', () => {
+    const boots = ['Item Class: Boots', 'Rarity: Rare', 'Dread Tread', 'Wool Shoes'].join('\r\n')
+    expect(itemFacts(boots, null).baseType).toBe('Wool Shoes')
   })
 })

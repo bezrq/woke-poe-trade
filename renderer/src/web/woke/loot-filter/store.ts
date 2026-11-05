@@ -11,7 +11,7 @@ import { parseFilter, serializeFilter } from './parse'
 import type { FilterDoc } from './parse'
 import { addEdit, applyEdits, nextEditId } from './edits'
 import type { EditStatus, FilterEdit, NewFilterEdit } from './edits'
-import { HISTORY_SIZE, NEVERSINK_OUTPUT, neverSinkFromOutput, outputName } from './widget'
+import { HISTORY_SIZE, outputName } from './widget'
 import type { LootFilterWidget } from './widget'
 import { buildRuleBlocks, insertBuildBlocks } from './build-rules'
 import { useBuildRuleInput } from './build-input'
@@ -444,34 +444,14 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
   const wrongFilterInGame = computed(() => {
     const name = gameFilter.value.name
     if (!name || !doc.value || name === sentOver.value) return false
-    return stem(outputName(cfg())).toLowerCase() !== name.toLowerCase()
+    // The game writes a local filter with its extension.
+    return stem(outputName(cfg())).toLowerCase() !== stem(name).toLowerCase()
   })
 
   // woke: loads can overlap (two strictness steps in a row, a quick change
   // of file). Only the newest one may set the text, or the editor could end
   // up on the level or file you just left.
   let loadSeq = 0
-
-  // No settings, but an earlier NeverSink download saved by this editor: carry
-  // on from it. The strictness ladder stays off, so nothing here rewrites the
-  // filter or types in chat until you ask.
-  async function resumeSavedNeverSink (): Promise<boolean> {
-    const c = cfg()
-    if (c.edits.length || c.rules.length || !files.value.some(f => !f.online && f.name === NEVERSINK_OUTPUT)) return false
-    try {
-      const { text } = await hostRequest<{ text: string }>('filter-read', { dir: c.folder, name: NEVERSINK_OUTPUT, online: false })
-      const found = neverSinkFromOutput(text)
-      if (c.neversink.on) return true
-      if (!found || c.sourceName) return false
-      c.neversink.version = found.version
-      c.neversink.level = found.level
-      c.strictAuto.on = false
-      c.neversink.on = true
-      return true
-    } catch {
-      return false
-    }
-  }
 
   async function load () {
     const seq = ++loadSeq
@@ -506,10 +486,7 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
       // Pick the most recently changed NeverSink file as a starting point.
       const ns = files.value.find(f => !f.online && /neversink/i.test(f.name) && !/\(woke\)/i.test(f.name)) ??
         files.value.find(f => f.online && /neversink/i.test(f.title ?? ''))
-      if (!ns) {
-        if (await resumeSavedNeverSink() && seq === loadSeq) await load()
-        return
-      }
+      if (!ns) return
       cfg().sourceName = ns.name
       cfg().sourceOnline = Boolean(ns.online)
       cfg().sourceTitle = ns.title ?? ''
@@ -638,7 +615,9 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
     return () => { cfg().edits = before.edits; cfg().priceTiers.moves = before.moves; rebuild() }
   }
 
-  async function save (): Promise<boolean> {
+  // reloadNow: you pressed Save + reload, so it reloads wherever you are. Saves
+  // you didn't ask to reload (quick fixes) follow reloadWhenSafe.
+  async function save (opts: { reloadNow?: boolean } = {}): Promise<boolean> {
     if (!doc.value || baseText.value == null) return false
     problems.value = validateFilter(doc.value)
     if (problems.value.length) {
@@ -662,7 +641,7 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
       pushHistory()
       cfg().lastVersion = doc.value.version
       lastSaved.value = Date.now()
-      if (cfg().reloadViaChat) reloadInGame()
+      if (cfg().reloadViaChat) reloadInGame(opts.reloadNow === true)
       setTimeout(() => { readGameFilter().catch(() => {}) }, 8000)
       return true
     } catch (e) {
@@ -673,8 +652,8 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
     }
   }
 
-  // One chat command, sent because the user pressed Save. With
-  // reloadWhenSafe it waits until town/hideout, so it never lands mid-fight.
+  // One chat command, sent because you saved. Unless forced, reloadWhenSafe
+  // holds it until town/hideout.
   function reloadInGame (force = false) {
     if (!force && cfg().reloadWhenSafe && inSafeZone.value !== true) {
       pendingReload.value = true

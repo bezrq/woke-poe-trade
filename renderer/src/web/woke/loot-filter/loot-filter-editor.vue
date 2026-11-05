@@ -30,7 +30,7 @@
     </label>
     <label class="flex items-center gap-2 ml-6">
       <input v-model="reloadWhenSafe" type="checkbox" :disabled="!reloadViaChat">
-      <span>Only in town or hideout (otherwise it waits for your next visit). "Reload now" in the editor skips the wait.</span>
+      <span>Quick fixes and automatic saves reload only in town or hideout. "Save + reload" and "Reload now" always reload right away.</span>
     </label>
 
     <div class="text-sm" style="color: var(--w-dim);">

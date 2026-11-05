@@ -160,19 +160,10 @@ export function seedLootFilterWidget (wmId: number, taken: string[] = []): LootF
   return w
 }
 
-// Reads which NeverSink download a saved "NeverSink (woke).filter" came from,
-// for when the settings are gone but the file isn't (the dev copy doesn't save
-// settings). Null when the file isn't ours, or uses a style we can't name.
-export function neverSinkFromOutput (text: string): { version: string, level: number } | null {
-  const head = text.slice(0, 2000)
-  if (!/^# WOKE-LOOT-FILTER-EDITOR\b/.test(head) || !/^# Made from NeverSink .*downloaded from GitHub/m.test(head)) return null
-  const version = /^#\s*VERSION:\s*(\S+)/m.exec(head)?.[1]
-  const level = /^#\s*TYPE:\s*(\d)-/m.exec(head)?.[1]
-  if (!version || level == null || !/^#\s*STYLE:\s*DEFAULT\s*$/m.test(head)) return null
-  return { version, level: clampLevel(Number(level)) }
-}
-
 export function normalizeLootFilterWidget (w: LootFilterWidget) {
+  // Left over if the app closed while the sample card was open.
+  if (w.wmZorder === 'exclusive') w.wmZorder = null
+  w.wmFlags = w.wmFlags.filter(f => f !== 'hide-on-blur')
   if (!w.anchor) w.anchor = popupAnchor()
   if (w.sampleHotkey === undefined) w.sampleHotkey = null
   if (w.editorHotkey === undefined) w.editorHotkey = null
