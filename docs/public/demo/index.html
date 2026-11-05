@@ -223,8 +223,9 @@ select { padding-right: 28px; }
   document.querySelectorAll('[data-screen]').forEach(function (b) {
     b.addEventListener('click', function () { showScreen(b.dataset.screen) })
   })
+  // The physical key, so Alt+S works on a Mac (Option+S types ß) and any layout.
   document.addEventListener('keydown', function (e) {
-    var combo = (e.ctrlKey ? 'Ctrl+' : '') + (e.altKey ? 'Alt+' : '') + (e.shiftKey ? 'Shift+' : '') + (e.code === 'Space' ? 'Space' : e.key.length === 1 ? e.key.toUpperCase() : e.key)
+    var combo = (e.ctrlKey ? 'Ctrl+' : '') + (e.altKey ? 'Alt+' : '') + (e.shiftKey ? 'Shift+' : '') + (e.code === 'Space' ? 'Space' : /^Key[A-Z]$/.test(e.code) ? e.code.slice(3) : e.key)
     if (/^(Ctrl\+D|Shift\+Space|Alt\+[ESF])$/.test(combo)) { e.preventDefault(); press(combo) }
   })
   window.addEventListener('message', function (e) {

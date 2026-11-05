@@ -184,8 +184,9 @@
 
   // Hotkeys pressed inside the frame go to the demo page, which knows what
   // is under the cursor.
+  // The physical key, so Alt+S works on a Mac (Option+S types ß) and any layout.
   document.addEventListener('keydown', function (e) {
-    var combo = (e.ctrlKey ? 'Ctrl+' : '') + (e.altKey ? 'Alt+' : '') + (e.shiftKey ? 'Shift+' : '') + (e.code === 'Space' ? 'Space' : e.key.length === 1 ? e.key.toUpperCase() : e.key)
+    var combo = (e.ctrlKey ? 'Ctrl+' : '') + (e.altKey ? 'Alt+' : '') + (e.shiftKey ? 'Shift+' : '') + (e.code === 'Space' ? 'Space' : /^Key[A-Z]$/.test(e.code) ? e.code.slice(3) : e.key)
     if (/^(Ctrl\+D|Shift\+Space|Alt\+[ESF])$/.test(combo)) {
       e.preventDefault()
       e.stopPropagation()
@@ -199,7 +200,7 @@
     if (msg.demo === 'overlay') setOverlay(msg.open)
     if (msg.demo === 'action') {
       var events = socket.rec.actions[msg.name] || []
-      if (overlayOpen && /^(price|filter|essence|map)/.test(msg.name)) setOverlay(false)
+      if (overlayOpen && /^(price|filter|essence|map)/.test(msg.name) && !/-stop$/.test(msg.name)) setOverlay(false)
       events.forEach(function (r, i) {
         setTimeout(function () { deliver(r.name, r.payload) }, 40 * i)
       })
