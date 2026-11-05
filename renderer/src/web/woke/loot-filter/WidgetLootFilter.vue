@@ -139,7 +139,7 @@ function ensureLoaded () {
 }
 // Never set up: read nothing until it's first used, so an overlay you haven't
 // touched stays quiet.
-if (props.config.sourceName || props.config.neversink.on) ensureLoaded()
+if (props.config.sourceName || props.config.neversink.on || props.config.wmWants === 'show') ensureLoaded()
 
 async function retry () {
   await store.listFiles()
