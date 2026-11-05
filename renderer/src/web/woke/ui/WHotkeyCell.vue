@@ -8,6 +8,7 @@
       <template v-else>{{ required ? 'Required' : 'No key' }}</template>
     </button>
     <span v-if="problem && !recording" :class="$style.note" :title="problem">{{ problem }}</span>
+    <span v-else-if="gameNote && !recording" class="w-dim text-xs" :title="gameNote">{{ gameNote }}</span>
   </span>
 </template>
 
@@ -17,7 +18,7 @@
 import { computed, shallowRef } from 'vue'
 import { KeyToCode, hotkeyToString } from '@ipc/KeyToCode'
 import WKbd from './WKbd.vue'
-import { normalizeKey, useHotkeyContext } from './hotkey-context'
+import { normalizeKey, poeBindNote, useHotkeyContext } from './hotkey-context'
 
 const props = withDefaults(defineProps<{
   modelValue: string | null | undefined
@@ -42,6 +43,13 @@ const problem = computed(() => {
   if (uses.length < 2) return null
   const others = props.label ? uses.filter(l => l !== props.label) : []
   return others.length ? `Same key as ${others.join(', ')}` : 'Used by another action too'
+})
+
+// Not a problem: taking a game key can be exactly what you meant.
+const gameNote = computed(() => {
+  if (props.quiet || !ctx || !props.modelValue) return null
+  const action = ctx.poeBinds.value.get(normalizeKey(props.modelValue))
+  return action ? poeBindNote(action) : null
 })
 
 function start () {

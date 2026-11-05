@@ -17,6 +17,34 @@ const POSSIBLE_PATH =
     path.join(app.getPath('appData'), 'Path of Exile/Preferences/production_Config.ini')
   ] : []
 
+export interface GameBind {
+  hotkey: string
+  action: string
+}
+
+// production_Config.ini's values read as strings or booleans, depending on them.
+const isTrue = (value: unknown) => value === true || value === 'true'
+
+export function readGameSettings (parsed: Record<string, Record<string, unknown> | undefined>) {
+  const binds: GameBind[] = []
+  for (const [name, value] of Object.entries(parsed['ACTION_KEYS'] ?? {})) {
+    const [code, mod] = String(value).split(' ')
+    const key = CodeToKey[code]
+    // Mouse buttons and keys with no name here can't clash with a hotkey.
+    if (!key || (mod && !['1', '2', '3'].includes(mod))) continue
+    const action = name.replace(/_/g, ' ')
+    binds.push({
+      hotkey: hotkeyToString([key], mod === '2', mod === '1', mod === '3'),
+      action: action[0].toUpperCase() + action.slice(1)
+    })
+  }
+  const display = parsed['DISPLAY'] ?? {}
+  return {
+    binds,
+    isExclusiveFullscreen: isTrue(display['fullscreen']) && !isTrue(display['borderless_windowed_fullscreen'])
+  }
+}
+
 export class GameConfig {
   private _wantedPath: string | null = null
   private _actualPath: string | null = null
@@ -26,12 +54,45 @@ export class GameConfig {
   get showModsKeyNullable () { return this._showModsKey }
   get showModsKey () { return this._showModsKey ?? 'Alt' }
 
+  // woke: the game's own keys, to warn when a hotkey here takes one of them.
+  binds: GameBind[] = []
+  // True fullscreen, where no window can draw over the game.
+  isExclusiveFullscreen = false
+
+  // woke: the game rewrites its config while running, so look again when it starts.
+  async refresh () {
+    // The game can attach while the first read is still going.
+    await this.reading
+    if (!this._actualPath) return
+    try {
+      const contents = await fs.readFile(this._actualPath, { encoding: 'utf-8', flag: 'r' })
+      this.useGameSettings(ini.parse(contents.trimStart()))
+    } catch {
+      this.logger.write('error [GameConfig] Failed to read game configuration file.')
+    }
+  }
+
   constructor (
     private server: ServerEvents,
     private logger: Logger
   ) {}
 
-  async readConfig (filePath: string) {
+  private reading: Promise<void> = Promise.resolve()
+
+  private useGameSettings (parsed: Record<string, Record<string, unknown> | undefined>) {
+    const { binds, isExclusiveFullscreen } = readGameSettings(parsed)
+    this.binds = binds
+    this.isExclusiveFullscreen = isExclusiveFullscreen
+    // The page asks before the first read has finished, so it's told as well.
+    this.server.sendEventTo('broadcast', { name: 'MAIN->CLIENT::woke-event', payload: { topic: 'game-binds', data: binds } })
+  }
+
+  readConfig (filePath: string) {
+    this.reading = this.read(filePath)
+    return this.reading
+  }
+
+  private async read (filePath: string) {
     if (this._wantedPath !== filePath) {
       this._wantedPath = filePath
       this._actualPath = null
@@ -56,6 +117,7 @@ export class GameConfig {
 
       this._showModsKey = this.parseConfigHotkey(
         parsed['ACTION_KEYS']?.['show_advanced_item_descriptions'])
+      this.useGameSettings(parsed)
 
       this._actualPath = filePath
     } catch {
