@@ -113,6 +113,8 @@ export interface DockConfig {
   hidden: string[]
   // Icons dismissed for a while: until when (ms).
   dismissed?: Record<string, number>
+  // Hints on dock cards you've closed for good.
+  closedTips?: string[]
 }
 
 export const DEFAULT_DOCK: DockConfig = {
@@ -144,6 +146,16 @@ export function ensureDockConfig (): DockConfig {
 
 export function saveDock () {
   saveConfig()
+}
+
+export function tipClosed (id: string): boolean {
+  return dockConfig().closedTips?.includes(id) ?? false
+}
+
+export function closeTip (id: string) {
+  const d = ensureDockConfig()
+  d.closedTips = [...(d.closedTips ?? []), id]
+  saveDock()
 }
 
 export const PEEK_MS = 5000

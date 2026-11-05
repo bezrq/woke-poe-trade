@@ -32,7 +32,10 @@
         <div :class="$style.extraHead"><i :class="dockIcon(ex.props)" /> {{ ex.props.title }}</div>
         <SlotOut :entry="ex" />
       </template>
-      <div v-if="!wm.active.value && host.props.wmId != null" :class="$style.foot">{{ overlayKey }} then click the icon for the full window</div>
+      <div v-if="!wm.active.value && host.props.wmId != null && !tipClosed('full-window')" :class="$style.foot" data-tip="full-window">
+        <span>{{ overlayKey }} then click the icon for the full window</span>
+        <button type="button" :class="$style.tipClose" title="Don't show this again" aria-label="Don't show this again" @click="closeTip('full-window')"><i class="fas fa-times" /></button>
+      </div>
     </div>
   </span>
 </template>
@@ -44,7 +47,7 @@ import type { WidgetManager } from '@/web/overlay/interfaces'
 import { AppConfig } from '@/web/Config'
 import { useHoverZone } from '../shared/hover'
 import type { DockEntry } from './dock'
-import { dockArt, dockIcon } from './dock'
+import { closeTip, dockArt, dockIcon, tipClosed } from './dock'
 import DockMenu from './DockMenu.vue'
 
 const props = defineProps<{
@@ -280,6 +283,9 @@ const styles = useCssModule()
   letter-spacing: 0.08em;
   color: var(--w-faint);
 }
-.foot { padding: 3px var(--w-pad) 5px; font-size: calc(10.5px * var(--w-text-scale, 1)); color: var(--w-faint); border-top: 1px solid var(--w-line); }
+.foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 3px var(--w-pad) 5px; font-size: calc(10.5px * var(--w-text-scale, 1)); color: var(--w-faint); border-top: 1px solid var(--w-line); }
+.tipClose { flex: none; background: none; border: 0; padding: 0 2px; color: var(--w-faint); font: inherit; cursor: pointer; }
+.tipClose:hover { color: var(--w-fg); }
+.tipClose:focus-visible { outline: 2px solid var(--w-accent); outline-offset: 1px; }
 @media (prefers-reduced-motion: reduce) { .icon { transition: none; } }
 </style>
