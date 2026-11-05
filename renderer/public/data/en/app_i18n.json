@@ -162,9 +162,9 @@
   "filters": {
     "selected_some": "{0} of {1}, stats",
     "selected_none": "Stats ignored",
-    "hidden_toggle": "Hidden",
+    "hidden_toggle": "Hidden filters",
     "collapse": "Collapse",
-    "mods_toggle": "Mods",
+    "mods_toggle": "Item's mods",
     "empty": "No relevant stats were found",
     "tier": "Tier {0}",
     "tier_gilded": "Unique",
