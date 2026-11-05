@@ -1,42 +1,46 @@
 import { Host } from '@/web/background/IPC'
-import { AppConfig, Config } from '@/web/Config'
+import { AppConfig } from '@/web/Config'
 import { ParsedItem, parseClipboard } from '@/parser'
+import { lookupRequest, lookupUrl } from '@/web/woke/item-lookup/lookup'
+import type { LookupTab } from '@/web/woke/item-lookup/lookup'
 
-const POEDB_LANGS: Record<Config['language'], string> = {
-  'en': 'us',
-  'ru': 'ru',
-  'cmn-Hant': 'tw',
-  'ko': 'kr'
+const LOOKUP_TARGETS: Record<string, LookupTab> = {
+  'open-wiki': 'wiki',
+  'open-poedb': 'poedb',
+  'open-craft-of-exile': 'coe'
 }
 
 export function registerActions () {
   Host.onEvent('MAIN->CLIENT::item-text', (e) => {
-    if (!['open-wiki', 'open-craft-of-exile', 'open-poedb', 'search-similar'].includes(e.target)) return
+    const tab = LOOKUP_TARGETS[e.target]
+    if (!tab && e.target !== 'search-similar') return
     const parsed = parseClipboard(e.clipboard)
     if (!parsed.isOk()) return
 
-    if (e.target === 'open-wiki') {
-      openWiki(parsed.value)
-    } else if (e.target === 'open-craft-of-exile') {
-      openCoE(parsed.value)
-    } else if (e.target === 'open-poedb') {
-      openPoedb(parsed.value)
-    } else if (e.target === 'search-similar') {
+    if (tab) {
+      openLookup(parsed.value, tab, e.position)
+    } else {
       findSimilarItems(parsed.value)
     }
   })
 }
 
+function openLookup (item: ParsedItem, tab: LookupTab, position?: { x: number, y: number }) {
+  if (Host.isElectron) {
+    lookupRequest.value = { item, tab, position }
+  } else {
+    window.open(lookupUrl(tab, item, AppConfig().language))
+  }
+}
+
 export function openWiki (item: ParsedItem) {
-  window.open(`https://www.poewiki.net/wiki/${item.info.refName}`)
+  openLookup(item, 'wiki')
 }
 export function openPoedb (item: ParsedItem) {
-  const slug = encodeURIComponent(item.info.refName.replaceAll("'", '').replaceAll(' ', '_'))
-  window.open(`https://poedb.tw/${POEDB_LANGS[AppConfig().language]}/${slug}`)
+  openLookup(item, 'poedb')
 }
 export function openCoE (item: ParsedItem) {
-  const encodedClipboard = encodeURIComponent(item.rawText)
-  window.open(`https://craftofexile.com/?game=poe1&eimport=${encodedClipboard}`)
+  openLookup(item, 'coe')
 }
 
 export function findSimilarItems (item: ParsedItem) {

@@ -1,6 +1,7 @@
 <template>
   <Widget :config="{ ...config, anchor }" move-handles="none" :removable="false" :inline-edit="false">
-    <template v-if="item">
+    <ItemLookup v-if="lookup" :request="lookup" @close="closeLookup" />
+    <template v-else-if="item">
       <!-- woke: Map mods replaces APT's map check for the items it rates. -->
       <WokeMapVerdictCard v-if="wokeMap"
         :result="wokeMap.result" :config="wokeMap.config" />
@@ -60,6 +61,8 @@ import Widget from '../overlay/Widget.vue'
 import MapCheck from '../map-check/MapCheck.vue'
 import ItemInfo from './ItemInfo.vue'
 import WokeMapVerdictCard from '@/web/woke/map-mods/MapVerdictCard.vue'
+import ItemLookup from '@/web/woke/item-lookup/ItemLookup.vue'
+import { lookupRequest as lookup } from '@/web/woke/item-lookup/lookup'
 import { wokeMapCheck, ensureMapModsConfig, isMapLike as wokeIsMapLike } from '@/web/woke/map-mods/check'
 
 const props = defineProps<{
@@ -76,6 +79,7 @@ registerActions()
 MainProcess.onEvent('MAIN->CLIENT::item-text', (e) => {
   if (e.target !== 'item-check') return
 
+  lookup.value = null
   checkPosition.value = e.position
   item.value = parseClipboard(e.clipboard).unwrapOr(null)
   if (item.value) {
@@ -84,6 +88,21 @@ MainProcess.onEvent('MAIN->CLIENT::item-text', (e) => {
 })
 
 props.config.wmWants = 'hide'
+
+// woke: the wiki, poedb and Craft of Exile keys open a page in this widget. It
+// goes when the widget does, so nothing stays loaded over the game.
+watch(lookup, (request) => {
+  if (!request) return
+  if (request.position) checkPosition.value = request.position
+  wm.show(props.config.wmId)
+})
+watch(() => props.config.wmWants, (wants) => {
+  if (wants === 'hide') lookup.value = null
+})
+function closeLookup () {
+  lookup.value = null
+  wm.hide(props.config.wmId)
+}
 
 const anchor = computed(() => {
   const width = wm.size.value.width

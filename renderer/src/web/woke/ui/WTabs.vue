@@ -12,7 +12,7 @@
 <script setup lang="ts">
 defineProps<{
   modelValue: string
-  options: Array<{ value: string, label: string, count?: number }>
+  options: Array<{ value: string, label: string, count?: number | string }>
 }>()
 const emit = defineEmits<{ (e: 'update:modelValue', v: string): void }>()
 </script>

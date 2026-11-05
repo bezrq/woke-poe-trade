@@ -498,19 +498,19 @@ export function getConfigForHost (): HostConfig {
   if (itemCheck.wikiKey) {
     actions.push({
       shortcut: itemCheck.wikiKey,
-      action: { type: 'copy-item', target: 'open-wiki' }
+      action: { type: 'copy-item', target: 'open-wiki', focusOverlay: true }
     })
   }
   if (itemCheck.craftOfExileKey) {
     actions.push({
       shortcut: itemCheck.craftOfExileKey,
-      action: { type: 'copy-item', target: 'open-craft-of-exile' }
+      action: { type: 'copy-item', target: 'open-craft-of-exile', focusOverlay: true }
     })
   }
   if (itemCheck.poedbKey) {
     actions.push({
       shortcut: itemCheck.poedbKey,
-      action: { type: 'copy-item', target: 'open-poedb' }
+      action: { type: 'copy-item', target: 'open-poedb', focusOverlay: true }
     })
   }
   if (itemCheck.stashSearchKey) {
