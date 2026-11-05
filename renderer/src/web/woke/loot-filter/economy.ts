@@ -62,13 +62,9 @@ export type UniqueRule = 'max' | 'min'
 
 // Builds a lookup from a price snapshot. `uniquesOnBase` lists the uniques
 // that use a base (from APT's item data); passed in so tests can stub it.
-export function priceLookup (
-  items: PriceItem[],
-  uniquesOnBase: (base: string) => string[],
-  rule: UniqueRule = 'max'
-): PriceLookup {
-  // One price per (type, name): the plain variant, or the cheapest one
-  // (6-link and relic variants of uniques are not what drops).
+// One price per (type, name): the plain variant, or the cheapest one (6-link
+// and relic variants of uniques are not what drops).
+function priceFinder (items: PriceItem[]) {
   const byName = new Map<string, PriceItem>()
   for (const i of items) {
     if (/\b[56]L\b|links?/i.test(i.variant)) continue
@@ -76,13 +72,36 @@ export function priceLookup (
     const prev = byName.get(key)
     if (!prev || (!i.variant && prev.variant) || (Boolean(i.variant) === Boolean(prev.variant) && i.chaos < prev.chaos)) byName.set(key, i)
   }
-  const find = (types: string[], name: string) => {
+  return (types: string[], name: string) => {
     for (const t of types) {
       const hit = byName.get(`${t}\u0000${name}`)
       if (hit) return hit
     }
     return undefined
   }
+}
+
+// Everything a base can be: for uniques each unique on it, priced or not.
+export function priceBreakdown (
+  items: PriceItem[],
+  uniquesOnBase: (base: string) => string[]
+) {
+  const find = priceFinder(items)
+  return (group: EconomyGroup, base: string): Array<{ name: string, chaos: number | null, thin: boolean }> => {
+    const names = group.unique ? uniquesOnBase(base).filter(name => !/^Replica /.test(name)) : [base]
+    return names.map(name => {
+      const hit = find(group.ninja, name)
+      return { name, chaos: hit?.chaos ?? null, thin: hit ? isThin(hit) : false }
+    })
+  }
+}
+
+export function priceLookup (
+  items: PriceItem[],
+  uniquesOnBase: (base: string) => string[],
+  rule: UniqueRule = 'max'
+): PriceLookup {
+  const find = priceFinder(items)
   return (group, base) => {
     if (!group.unique) {
       const hit = find(group.ninja, base)

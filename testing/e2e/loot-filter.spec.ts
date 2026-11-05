@@ -127,6 +127,46 @@ test('Alt + F: a card alone for the hovered item, a key hides it', async ({ over
   await expect.poll(() => fs.existsSync(out) ? fs.readFileSync(out, 'utf8') : '').toMatch(/Hide # \$type->woke->own [^\n]*\n(\t[^\n]*\n)*\tBaseType == "Divine Orb"/)
 })
 
+test('prices: a hidden valuable unique lists what else would show, and Show it does what it says', async ({ overlay, fakeApp }) => {
+  const folder = fs.mkdtempSync(path.join(os.tmpdir(), 'woke-filters-'))
+  fs.writeFileSync(path.join(folder, 'NeverSink.filter'), [
+    '# NeverSink test',
+    'Hide # $type->uniques $tier->hideable',
+    '\tRarity Unique',
+    '\tBaseType == "Despot Axe"',
+    '',
+    'Show # $type->uniques $tier->t1',
+    '\tRarity Unique',
+    '\tBaseType == "Headhunter Belt"',
+    ''
+  ].join('\r\n'))
+  await overlay.boot({ widgets: [lootFilter(folder)] })
+  await openEditor(overlay, fakeApp)
+  const page = overlay.page
+  await page.getByRole('tab', { name: /^Prices/ }).click()
+  await page.getByRole('button', { name: /Despot Axe/ }).click()
+  await expect(page.getByText('"Show it" will')).toBeVisible()
+  await expect(page.getByText('Kingmaker').first()).toBeVisible()
+  await expect(page.getByText("Debeon's Dirge")).toBeVisible()
+  await expect(page.getByText('1 trash')).toBeVisible()
+  await expect(page.getByText(/every unique Despot Axe shows/)).toBeVisible()
+  await overlay.snap('prices tab, a hidden item opened')
+
+  // The way into its rule, and back.
+  await page.getByRole('button', { name: 'Open the rule' }).click()
+  await expect(page.getByRole('tab', { name: 'Rules' })).toHaveAttribute('aria-selected', 'true')
+  await page.getByText('Back', { exact: true }).click()
+  await expect(page.getByRole('tab', { name: /^Prices/ })).toHaveAttribute('aria-selected', 'true')
+
+  await page.getByRole('button', { name: /Despot Axe/ }).click()
+  await page.getByRole('button', { name: 'Show it', exact: true }).click()
+  await page.getByRole('button', { name: /^Save/ }).click()
+  await expect.poll(() => {
+    const out = path.join(folder, 'NeverSink (woke).filter')
+    return fs.existsSync(out) ? fs.readFileSync(out, 'utf8') : ''
+  }).toMatch(/Show # \$type->woke->own [^\n]*\n(\t[^\n]*\n)*\tBaseType == "Despot Axe"/)
+})
+
 test('back from a rule returns to the same pile, by button and by the mouse back button', async ({ overlay, fakeApp }) => {
   const folder = filterFolder()
   await overlay.boot({ widgets: [lootFilter(folder)] })
