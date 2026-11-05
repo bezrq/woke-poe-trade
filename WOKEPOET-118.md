@@ -1,7 +1,7 @@
 ---
 id: WOKEPOET-118
 title: 'Listing tooltip: look like the in-game item, with mod tiers and weapon DPS'
-status: Grooming
+status: In Progress
 priority: Medium
 effort: M
 assignee: unassigned
@@ -35,7 +35,27 @@ history:
       Which layout: A (Alt view, tallest), B (tier tags, DPS at the foot; my
       default) or C (table of mods, numbers on top)? DPS placement can mix
       between them. Mock: scratchpad tooltip-options.png, sent in the thread.
-swimlane: require-input
+  - type: comment
+    user: Agent
+    comment: >-
+      Guy's pick: A with tier tags on the left, roll quality % on the right
+      (position in the roll range), and B's bottom row.
+    date: '2026-11-05T15:44:57.255Z'
+    id: c-2026-11-05t15-44-57-255z
+  - type: swimlane_change
+    swimlane: require-input
+    action: cleared
+    user: Agent
+    date: '2026-11-05T15:44:57.255Z'
+    comment: >-
+      Guy's pick: A with tier tags on the left, roll quality % on the right
+      (position in the roll range), and B's bottom row.
+  - type: status_change
+    from: Grooming
+    to: In Progress
+    user: Agent
+    date: '2026-11-05T15:44:57.296Z'
+swimlane: null
 needsAction: null
 ---
 > **TL;DR** Guy: "can we improve this, show mod tiers, stuff like total pdps etc? have it more similar to actual item showing?" The tooltip on a price check trade listing (woke/price-insight/listing-tip.ts → GameTooltip.vue) drops most of what the trade site sends.
