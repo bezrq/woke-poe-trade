@@ -1,7 +1,7 @@
 ---
 id: WOKEPOET-31
 title: Give Woke its own icon and overlay mark
-status: In Progress
+status: Ready
 priority: Medium
 effort: S
 assignee: unassigned
@@ -72,10 +72,44 @@ history:
     to: In Progress
     user: Agent
     date: '2026-11-05T06:15:50.437Z'
-swimlane: null
+  - type: comment
+    user: Agent
+    comment: >-
+      **App icon setting is built, with the Eternal Orb as default.** Settings >
+      Look offers 14 icons; the pick changes the tray, window icons, attach
+      notice, About, setup wizard and a new tab bar mark without a restart. Exe,
+      installer and favicon use the Eternal Orb.
+
+
+      Adversarial review done. Fixed: window setIcon on macOS, tray flash at
+      launch, settings search. Left alone, both existing behaviour for every
+      setting: a pick isn't saved if you quit with Settings still open, and an
+      open setup window can overwrite a pick.
+
+
+      Checks: main tsc, renderer vue-tsc, lint 0 errors, 1733 unit tests,
+      app-icon main test, e2e app-icon and in-game pass. One in-game test failed
+      once in a longer run and passed when re-run alone. Not run: the real tray
+      in Electron, and main's bundling step here, since this worktree has no
+      Electron binary. No docs needed beyond the setting's own hint.
+    date: '2026-11-05T06:34:02.261Z'
+    completionComment: true
+    id: c-2026-11-05t06-34-02-261z
+  - type: activity
+    user: Agent
+    comment: 'PR created: https://github.com/guybnd/woke-poe-trade/pull/115'
+    date: '2026-11-05T06:34:12.847Z'
+    id: a-2026-11-05t06-34-12-847z
+  - type: status_change
+    from: In Progress
+    to: Ready
+    user: Agent
+    date: '2026-11-05T06:34:12.847Z'
+swimlane: open-pr
 needsAction: null
 branch: flux/WOKEPOET-31-give-woke-its-own-icon-and-overlay-mark
 baselineCommit: 37f4e851970b046d13916551eeab175b77a7486d
+implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/115'
 ---
 > **TL;DR:** The app still shows Awakened PoE Trade's mark (tray, exe, overlay). Replace it with original art. Guy picks from mocks before anything is built.
 
