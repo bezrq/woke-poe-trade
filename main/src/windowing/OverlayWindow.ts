@@ -91,6 +91,13 @@ export class OverlayWindow {
     }
 
     if (process.env.VITE_DEV_SERVER_URL) {
+      // woke: Vite may not be answering yet; don't sit on an error page.
+      let retries = 20
+      const ERR_ABORTED = -3 // A newer load replaced this one: nothing failed.
+      this.window.webContents.on('did-fail-load', (_e, code, _desc, _url, isMainFrame) => {
+        if (!isMainFrame || code === ERR_ABORTED || retries-- <= 0) return
+        setTimeout(() => { this.window?.loadURL(url).catch(() => {}) }, 1000)
+      })
       this.window.loadURL(url)
       this.window.webContents.openDevTools({ mode: 'detach', activate: false })
     } else {
