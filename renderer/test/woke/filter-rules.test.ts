@@ -200,6 +200,25 @@ describe('Minimal', () => {
     expect(validateFilter(doc)).toEqual([])
   })
 
+  it('reads Ruthless from a NeverSink-style header', () => {
+    expect(parseFilter('# NeverSink\n# TYPE:     1-REGULAR\n# STYLE:    RUTHLESS\nShow\n').ruthless).toBe(true)
+  })
+
+  it('a file already using Minimal can still be saved, whatever its header says', () => {
+    const doc = parseFilter(`${'# note\n'.repeat(30)}#filterType:Ruthless\nMinimal # $type->a $tier->b\n\tRarity Rare\n`)
+    expect(doc.ruthless).toBe(true)
+    applyPresetChanges(doc, { ...defaultPresets(), bigger: { on: true, size: 40 } })
+    expect(doc.blocks[0].dirty).toBe(true)
+    expect(validateFilter(doc)).toEqual([])
+  })
+
+  it('a broken line in the source reads as no value, so an edit copied from it survives a restart', () => {
+    const look = readStyle(parseFilter('Show\n\tSetFontSize big\n\tSetTextColor x 2 3\n').blocks[0].actions)
+    expect(look.fontSize).toBeUndefined()
+    expect(look.text).toEqual([0, 2, 3, 255])
+    expect(isValidEdit(JSON.parse(JSON.stringify({ id: 1, kind: 'style', type: 'c', tier: 't', patch: look })))).toBe(true)
+  })
+
   it('a Ruthless filter is told apart from NeverSink\'s normal ones', () => {
     for (const level of LEVELS) expect(parseFilter(neverSink(level)).ruthless, level).toBe(false)
   })

@@ -308,7 +308,10 @@ export function parseFilter (source: string): FilterDoc {
     isNeverSink: /NeverSink/i.test(head),
     eol,
     bom,
-    ruthless: /^#\s*filterType:\s*Ruthless/im.test(head) || /^#\s*(TYPE|STYLE):.*RUTHLESS/im.test(head)
+    // By its header, or by already using Minimal: the game would refuse it in
+    // any other filter, so a file that has it must be Ruthless, whatever its header.
+    ruthless: /^#\s*filterType:\s*Ruthless/im.test(head) || /^#\s*(TYPE|STYLE):.*RUTHLESS/im.test(head) ||
+      blocks.some(b => !b.disabled && b.visibility === 'Minimal')
   }
 }
 

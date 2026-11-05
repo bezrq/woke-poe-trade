@@ -94,14 +94,18 @@ export function isValidEdit (e: unknown): e is FilterEdit {
 
 function colour (args: string[]): Colour {
   const [r, g, b, a] = args.map(Number)
-  return [r ?? 0, g ?? 0, b ?? 0, Number.isFinite(a) ? a : 255]
+  const channel = (n: number) => Number.isFinite(n) ? n : 0
+  return [channel(r), channel(g), channel(b), Number.isFinite(a) ? a : 255]
 }
 
 export function readStyle (actions: FilterAction[]): StylePatch {
   const style: StylePatch = {}
   for (const a of actions) {
     switch (a.key) {
-      case 'SetFontSize': style.fontSize = Number(a.args[0]); break
+      case 'SetFontSize':
+        // A broken line in the source reads as no size, not as a NaN to save.
+        if (Number.isFinite(Number(a.args[0]))) style.fontSize = Number(a.args[0])
+        break
       case 'SetTextColor': style.text = colour(a.args); break
       case 'SetBorderColor': style.border = colour(a.args); break
       case 'SetBackgroundColor': style.background = colour(a.args); break
