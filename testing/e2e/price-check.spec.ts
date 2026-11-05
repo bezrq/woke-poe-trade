@@ -85,7 +85,7 @@ test('rare: roll presets search with the item\'s rolls', async ({ overlay, fakeA
   await overlay.boot()
   await overlay.copyItem('items/rare-ring.txt')
   const panel = overlay.widget('price-check')
-  await expect(panel).toContainText('Category: Ring')
+  await expect(panel).toContainText('Generic')
   const rollPresets = panel.locator('[data-roll-presets]')
   await expect(rollPresets.getByText('Low')).toBeVisible()
   const lastSearch = () => {
@@ -105,6 +105,28 @@ test('rare: roll presets search with the item\'s rolls', async ({ overlay, fakeA
   await expect.poll(() => filter('pseudo.pseudo_total_life')?.value?.min).toBeLessThanOrEqual(60)
   await expect(panel).toContainText('Matched: 42')
   await overlay.snap('rare ring with current rolls')
+})
+
+test('rare: the Generic / Base switch changes the title and the search', async ({ overlay, fakeApp }) => {
+  await overlay.boot()
+  await overlay.copyItem('items/rare-ring.txt')
+  const panel = overlay.widget('price-check')
+  const title = panel.locator('.filter-name-label')
+  const scope = panel.locator('[data-search-scope]')
+  await expect(title).toHaveText('Ring')
+  await overlay.snap('filter header on generic')
+
+  await scope.getByText('Base').click()
+  await expect(title).toHaveText('Two-Stone Ring')
+  await panel.getByRole('button', { name: 'Search', exact: true }).click()
+  await expect.poll(() => {
+    const r = fakeApp.requests.filter(r => r.url.includes('/api/trade/search/')).pop()
+    return r ? JSON.parse(r.body).query.type : undefined
+  }).toEqual('Two-Stone Ring')
+  await overlay.snap('filter header on base')
+
+  await scope.getByText('Generic').click()
+  await expect(title).toHaveText('Ring')
 })
 
 test('map: price check shows the map mod verdict strip', async ({ overlay }) => {

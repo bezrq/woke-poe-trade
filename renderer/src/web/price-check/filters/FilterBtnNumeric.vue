@@ -1,6 +1,7 @@
 <template>
-  <div :class="[$style.btn, { [$style.active]: !filter.disabled }]">
-    <button @click="filter.disabled = !filter.disabled" class="pl-2">{{ name }}</button>
+  <div :class="[$style.tile, { [$style.active]: !filter.disabled }]">
+    <button type="button" :class="$style.label" @click="filter.disabled = !filter.disabled">{{ label }}</button>
+    <div :class="$style.values">
     <input :class="$style.input" step="any" type="number"
       v-model.number="inputMin"
       @focus="inputFocus"
@@ -18,6 +19,7 @@
         placeholder="…"
       >
     </template>
+    </div>
   </div>
 </template>
 
@@ -49,6 +51,8 @@ export default defineComponent({
     }, { immediate: true })
 
     return {
+      // Some of these strings are written for "Links: 6", and the value has its own line here.
+      label: computed(() => props.name.replace(/[:：]\s*$/, '')),
       inputMin: computed<number | ''>({
         get () { return _inputMin.value },
         set (value) {
@@ -88,32 +92,56 @@ export default defineComponent({
 </script>
 
 <style lang="postcss" module>
-.btn {
-  @apply rounded;
-  background: var(--w-pc-well, theme('colors.gray.900'));
-  @apply border border-transparent;
-  @apply pr-1;
-  line-height: calc(1.25rem * var(--w-text-scale, 1));
+.tile {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: calc(46px * var(--w-text-scale, 1));
+  min-height: calc(50px * var(--w-text-scale, 1));
+  padding: 2px 6px;
+  border: 1px solid var(--w-line-soft);
+  border-radius: var(--w-radius-sm);
+  color: var(--w-faint);
 
   &.active {
-    @apply border-gray-500;
+    background: var(--w-accent-soft);
+    border-color: var(--w-line-strong);
+    color: var(--w-dim);
   }
 }
+
+.label {
+  font-size: calc(12px * var(--w-text-scale, 1));
+  line-height: calc(16px * var(--w-text-scale, 1));
+  white-space: nowrap;
+
+  &:hover { color: var(--w-fg); }
+}
+
+.values {
+  display: flex;
+  align-items: center;
+  font-size: calc(17px * var(--w-text-scale, 1));
+  line-height: calc(24px * var(--w-text-scale, 1));
+}
+
+.active .values { color: var(--w-fg); }
 
 .input {
   @apply text-center;
   @apply bg-transparent;
-  @apply text-gray-300;
   @apply select-all;
+  color: inherit;
 
   &:hover,
   &:focus {
-    @apply bg-gray-700;
-    @apply -my-px border-t border-b border-gray-500;
+    background: var(--w-panel-3);
   }
 
   &::placeholder {
-    @apply text-gray-400;
+    color: var(--w-faint);
   }
 
   &:focus { cursor: none; }
