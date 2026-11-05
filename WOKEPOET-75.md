@@ -45,6 +45,15 @@ history:
     user: Agent
     date: '2026-11-05T10:05:25.425Z'
     comment: 'Guy picked B, with icons.'
+  - type: activity
+    user: Agent
+    date: '2026-11-05T10:20:19.312Z'
+    comment: >-
+      PR https://github.com/guybnd/woke-poe-trade/pull/146, reviewed and checked
+      locally. Merge requested through the cloud thread. Known limit left in:
+      the last NPC to speak decides the card, so a map with Tujen and Einhar can
+      show Bestiary.
+    id: a-2026-11-05t10-20-19-312z
 swimlane: null
 needsAction: null
 ---
