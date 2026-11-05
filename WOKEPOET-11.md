@@ -63,6 +63,11 @@ history:
     to: Ready
     user: Agent
     date: '2026-11-05T02:50:29.136Z'
+  - type: activity
+    user: Agent
+    date: '2026-11-05T02:54:33.768Z'
+    comment: Task worktree automatically reclaimed (ready-or-terminal-status)
+    id: a-2026-11-05t02-54-33-768z
 needsAction: null
 branch: flux/WOKEPOET-11-window-controls-on-panel-top-bars-minimize-and-right-click-m
 baselineCommit: 95cbada0b56969b164437487851fe1db57556125
