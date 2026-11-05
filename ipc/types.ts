@@ -98,7 +98,8 @@ export type IpcEvent =
   IpcWokePanelKeys |
   IpcWokeHoverZones |
   IpcWokeHover |
-  IpcWokeHoverClick
+  IpcWokeHoverClick |
+  IpcWokeHoverContext
 
 export type IpcEventPayload<Name extends IpcEvent['name'], T extends IpcEvent = IpcEvent> =
   T extends { name: Name, payload: infer P } ? P : never
@@ -269,5 +270,11 @@ type IpcWokeHover =
 // The left mouse button went down on a zone, seen by the global mouse hook.
 type IpcWokeHoverClick =
   Event<'MAIN->OVERLAY::woke-hover-click', {
+    id: string
+  }>
+
+// The right mouse button went down on a zone that had already taken the mouse.
+type IpcWokeHoverContext =
+  Event<'MAIN->OVERLAY::woke-hover-context', {
     id: string
   }>

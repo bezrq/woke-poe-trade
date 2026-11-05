@@ -169,7 +169,7 @@
               </div>
             </div>
             <div v-if="openSession.loot.length" class="text-xs w-dim">
-              Before the first map: <span v-for="(l, j) in openSession.loot" :key="j">{{ l.name }}<template v-if="l.qty > 1"> ×{{ l.qty }}</template><template v-if="j < openSession.loot.length - 1">, </template></span>
+              Before the first map: <span v-for="(l, j) in openSession.loot" :key="j"><span v-item-tip="l">{{ l.name }}<template v-if="l.qty > 1"> ×{{ l.qty }}</template></span><template v-if="j < openSession.loot.length - 1">, </template></span>
             </div>
 
             <div class="flex flex-wrap gap-1 items-center pt-1">

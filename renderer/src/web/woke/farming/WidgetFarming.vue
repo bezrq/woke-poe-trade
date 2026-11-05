@@ -2,7 +2,7 @@
   <Widget :config="config" move-handles="corners" :inline-edit="false" :readonly="true">
     <!-- During a session, in maps and hideout: an icon with divines per hour
          (the map clock while you're in a map). -->
-    <DockItem ref="dockRef" id="farming" title="Farming" :show="dockShow" :badge="dockBadge"
+    <DockItem :menu="dockMenu" ref="dockRef" id="farming" title="Farming" :show="dockShow" :badge="dockBadge"
       :tone="t.profit < 0 ? 'down' : 'up'" :led="s && s.runningSince == null ? 'warn' : null" :wm-id="config.wmId"
       card-width="18rem" @open-change="cardShown = $event">
       <template #card>
@@ -192,7 +192,8 @@ import type { PriceItem } from '../market/types'
 import { onGameLog } from '../shared/game-log'
 import { useZone } from '../shared/zone'
 import DockItem from '../dock/DockItem.vue'
-import { tickWhile } from '../dock/dock'
+import type { DockMenuAction } from '../dock/dock'
+import { openOverlay, tickWhile } from '../dock/dock'
 import { ATLAS_TYPE } from '../atlas/widget'
 import { strategyScarabCosts } from '../atlas/guide'
 import { useLeagues } from '@/web/background/Leagues'
@@ -515,6 +516,15 @@ const itemListener = MainProcess.onEvent('MAIN->CLIENT::item-text', (e) => {
   saveConfig()
 })
 onUnmounted(() => { itemListener.abort() })
+
+// The icon's right-click menu.
+const dockMenu = computed<DockMenuAction[]>(() => s.value
+  ? [
+      { label: s.value.runningSince != null ? 'Pause session' : 'Resume session', icon: s.value.runningSince != null ? 'fas fa-pause' : 'fas fa-play', action: toggle },
+      { label: 'End session and save', icon: 'fas fa-flag-checkered', action: end },
+      { label: 'Session analytics', icon: 'fas fa-chart-bar', action: () => { openOverlay(); openAnalytics() } }
+    ]
+  : [])
 </script>
 
 <style module>

@@ -13,7 +13,7 @@ test('every module\'s widget mounts and shows without errors', async ({ overlay 
   })
   for (const wmType of WIDGET_TYPES) {
     await expect(overlay.widget(wmType), wmType).toBeAttached()
-    // Dock icon only: mechanics in a league mechanic zone, the campaign
+    // Dock icon until opened: mechanics in a league mechanic zone, the campaign
     // tracker during the campaign (its panel went in #117).
     if (wmType === 'woke-mechanics' || wmType === 'woke-campaign') continue
     // Each panel draws something (not an empty shell).
