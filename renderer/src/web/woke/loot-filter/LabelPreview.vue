@@ -16,6 +16,7 @@ import { computed } from 'vue'
 import type { FilterAction } from './parse'
 import { DEFAULT_BG, DEFAULT_FONT, DEFAULT_TEXT, readStyle } from './edits'
 import type { Colour, StylePatch } from './edits'
+import { cssColour as css } from './label-style'
 import { poeColour, shapeGlyph } from './colours'
 import { isCustomSound, soundLabel } from './sounds'
 
@@ -32,8 +33,6 @@ const props = withDefaults(defineProps<{
 }>(), { actions: () => [], styleOverride: undefined, visibility: 'Show', extras: true, scale: 1, defaultText: undefined })
 
 const style = computed<StylePatch>(() => ({ ...readStyle(props.actions), ...(props.styleOverride ?? {}) }))
-
-const css = (c: Colour) => `rgba(${c[0]}, ${c[1]}, ${c[2]}, ${(c[3] ?? 255) / 255})`
 
 const labelStyle = computed(() => {
   const s = style.value

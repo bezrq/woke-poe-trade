@@ -11,7 +11,9 @@
       <WButton v-if="trail.length" size="sm" variant="ghost" icon="fas fa-arrow-left" title="Back to where you were (mouse back button)" @click="goBack">Back</WButton>
       <WSelect :model-value="sourceKey" :options="fileOptions" style="max-width: 20rem;" @update:model-value="pickSource" />
       <WButton size="sm" variant="ghost" icon="fas fa-sync" title="Reload the file list and the filter" @click="refresh" />
-      <WField v-model="search" type="search" icon="fas fa-search" placeholder="Find an item or base type" style="width: 16rem;" />
+      <span @paste.capture="onSearchPaste">
+        <WField v-model="search" type="search" icon="fas fa-search" placeholder="Find an item, or paste one to see its rule" style="width: 19rem;" />
+      </span>
       <span class="grow" />
       <WTabs v-model="tab" :options="tabOptions" />
     </template>
@@ -54,7 +56,8 @@
           <WListItem v-for="g in sec.groups.filter(x => x.type !== RULE_TYPE)" :key="g.type" :active="g.type === selType" @select="selectGroup(g.type)"
             @contextmenu="groupMenu($event, g.type)">
             <span class="flex justify-between gap-2 w-full min-w-0" :class="{ [$style.off]: g.hidden }">
-              <span class="w-trunc">{{ shortName(g) }}</span>
+              <span class="w-trunc" :title="g.type">{{ shortName(g) }}</span>
+              <span v-if="changedIn(g.type)" :class="$style.changed" class="text-xs" :title="`You changed ${changedIn(g.type)} thing(s) here`">{{ changedIn(g.type) }} changed</span>
               <span class="w-faint text-xs w-num">{{ g.tiers.length }}</span>
             </span>
           </WListItem>
@@ -70,7 +73,7 @@
             <span class="flex items-center gap-2 w-full min-w-0">
               <LabelPreview :text="r.base" :actions="r.block.actions" :visibility="r.block.visibility" :extras="false" />
               <span class="grow" />
-              <span class="w-dim text-xs w-trunc">{{ groupName(r.type) }}<template v-if="!r.tier.startsWith('#')"> › {{ r.tier }}</template></span>
+              <span class="w-dim text-xs w-trunc">{{ ruleLabel(r.type, r.tier) }}</span>
             </span>
           </WListItem>
         </template>
@@ -101,12 +104,15 @@
           <button v-for="t in group.tiers" :key="t.tier" class="w-focusable" :class="[$style.tierRow, { [$style.active]: t.tier === selTier, [$style.off]: t.disabled, [$style.dropOk]: dragOver === t.tier }]"
             @click="selTier = t.tier; picked = []" @contextmenu="tierMenu($event, t)"
             @dragover="onDragOver(t, $event)" @dragleave="dragOver = dragOver === t.tier ? null : dragOver" @drop="onDrop(t, $event)">
-            <span :class="$style.tierName" :title="tierName(firstLive(t))">{{ tierName(firstLive(t)) }}</span>
-            <LabelPreview :text="t.bases[0] ?? previewName(t)" :actions="firstLive(t).actions" :visibility="t.disabled ? 'Hide' : t.visibility" style="max-width: 100%; overflow: hidden;" />
-            <span :class="$style.bases" class="w-trunc">
-              <template v-if="t.bases.length">{{ t.bases.slice(0, 5).join(' · ') }}<span v-if="t.bases.length > 5" class="w-faint"> · +{{ t.bases.length - 5 }}</span></template>
-              <span v-else class="w-faint">{{ conditionSummary(t) }}</span>
+            <span :class="$style.tierName" :title="t.tier">{{ tierName(firstLive(t)) }}<span v-if="tierChanged(t.tier)" :class="$style.dot" title="You changed this tier" /></span>
+            <span :class="$style.icons" :title="t.bases.slice(0, 12).join(' · ')">
+              <template v-if="t.bases.length">
+                <template v-for="b in t.bases.slice(0, 3)" :key="b"><img v-if="baseIcon(b)" :src="baseIcon(b)!" :class="$style.rowArt" alt=""></template>
+                <span v-if="t.bases.length > 3" class="w-faint text-xs w-num">+{{ t.bases.length - 3 }}</span>
+              </template>
+              <span v-else class="w-faint text-xs w-trunc">{{ conditionSummary(t) }}</span>
             </span>
+            <LabelPreview :text="t.bases[0] ?? previewName(t)" :actions="firstLive(t).actions" :visibility="t.disabled ? 'Hide' : t.visibility" style="max-width: 100%; overflow: hidden;" />
           </button>
         </template>
       </div>
@@ -118,25 +124,36 @@
           <WEmpty v-else icon="fas fa-sliders-h">Pick a rule to change it, or make a new one.</WEmpty>
         </template>
         <template v-else-if="tier">
-          <div :class="$style.groupTitle">{{ tierName(firstLive(tier)) }}</div>
+          <div class="flex items-center gap-2">
+            <span :class="$style.groupTitle" class="w-trunc" :title="tier.tier">{{ tierName(firstLive(tier)) }}</span>
+            <span class="grow" />
+            <WButton v-if="tierChanged(tier.tier) && !isOwnGroup" size="sm" variant="ghost" icon="fas fa-undo" title="Take back your changes to this tier" @click="resetTier(tier.tier)">Reset tier</WButton>
+          </div>
           <div class="text-xs w-faint">{{ tier.blocks.length > 1 ? `${tier.blocks.length} rules` : `line ${tier.blocks[0].line}` }}<span v-if="tier.disabled"> · commented out in the filter</span></div>
           <StyleEditor :look="readStyle(firstLive(tier).actions)" :visibility="firstLive(tier).visibility"
             :preview-text="tier.bases[0] ?? previewName(tier)" :copy-from="copyFrom"
             @patch="patchTier" @visibility="setTierVisibility" />
 
-          <template v-if="tier.bases.length && !isOwnGroup">
-            <div class="w-group-label" style="padding: 8px 0 2px;">Items in this tier</div>
+          <template v-if="!isOwnGroup && (tier.bases.length || targets.includes(tier.tier))">
+            <div class="w-group-label" style="padding: 8px 0 2px;">Items in this tier · {{ tier.bases.length }}</div>
             <div class="flex flex-wrap gap-1">
               <WChip v-for="b in tier.bases" :key="b" clickable :active="picked.includes(b)" draggable="true"
-                :title="'Drag onto a tier to move it. Shift-click to pick several.'"
-                @click="pickBase(b, $event)" @dragstart="onDragStart(b, $event)" @dragend="dragOver = null">{{ b }}</WChip>
+                title="Right-click to move it. Drag onto a tier, or shift-click to pick several."
+                @click="pickBase(b, $event)" @contextmenu="baseMenu($event, b)" @dragstart="onDragStart(b, $event)" @dragend="dragOver = null">
+                <span class="flex items-center gap-1">
+                  <img v-if="baseIcon(b)" :src="baseIcon(b)!" :class="$style.chipArt" alt="">
+                  <span>{{ b }}</span>
+                  <i v-if="movedHere(b)" class="fas fa-lock w-faint" style="font-size: 0.75em;" title="You put it here, so prices won't move it" />
+                  <button type="button" :class="$style.chipX" :title="movedHere(b) ? 'Back to where it was' : 'Take it off this tier'" :aria-label="`Take ${b} off this tier`" @click.stop="takeOff(b)"><i class="fas fa-times" /></button>
+                </span>
+              </WChip>
             </div>
-            <div v-if="!picked.length && targets.length > 1" class="w-faint text-xs" style="margin-top: 4px;">Drag an item onto a tier in the middle to move it; shift-click to pick several.</div>
+            <AddItemField v-if="store.doc.value && selType && targets.includes(tier.tier)" :doc="store.doc.value" :type="selType" :tier="tier.tier" @add="addItem" />
             <div v-if="picked.length && targets.length > 1" class="flex items-center gap-2 text-sm" style="margin-top: 6px;">
               <span class="w-dim">Move {{ picked.length > 1 ? `${picked.length} items` : picked[0] }} to</span>
               <select :class="$style.select" value="" aria-label="Target tier" @change="moveBase(($event.target as HTMLSelectElement).value)">
                 <option value="" disabled>tier…</option>
-                <option v-for="t in targets" :key="t" :value="t" :disabled="t === tier.tier">{{ t }}</option>
+                <option v-for="t in targets" :key="t" :value="t" :disabled="t === tier.tier">{{ tierLabel(t) }}</option>
               </select>
             </div>
           </template>
@@ -275,8 +292,12 @@ import type { LootFilterWidget } from './widget'
 import { OWN_RULE_TYPE, describeEdit, moveTargets, nextEditId, readStyle, rehome, rehomeOptions } from './edits'
 import type { RehomeOption } from './edits'
 import type { FilterEdit, StylePatch } from './edits'
-import { tierName } from './parse'
+import { ruleLabel, tierName } from './parse'
 import type { Visibility } from './parse'
+import { tierLabel } from './names'
+import AddItemField from './AddItemField.vue'
+import { baseIcon, labelCss } from './label-style'
+import type { AddResult } from './groups'
 import { buildTree, findBase, groupName } from './groups'
 import type { GroupNode, TierNode } from './groups'
 import { hostRequest } from '../shared/host'
@@ -293,7 +314,15 @@ const props = defineProps<{
   openTab?: { tab: 'prices' | 'neversink' | 'changes' } | null
 }>()
 
-const emit = defineEmits<{ (e: 'close'): void }>()
+const emit = defineEmits<{ (e: 'close'): void, (e: 'paste-item', text: string): void }>()
+
+// Pasting a copied item finds its rule, like the hotkey does in game.
+function onSearchPaste (e: ClipboardEvent) {
+  const text = e.clipboardData?.getData('text') ?? ''
+  if (!text.startsWith('Item Class:')) return
+  e.preventDefault()
+  emit('paste-item', text)
+}
 
 const tab = ref<'rules' | 'preview' | 'presets' | 'prices' | 'neversink' | 'build' | 'changes'>('rules')
 const search = ref('')
@@ -526,7 +555,7 @@ function moveBases (bases: string[], to: string) {
   const from = selTier.value
   if (!bases.length || !type || !from || !to || to === from) return
   const undo = props.store.editsWithUndo(bases.map(base => ({ kind: 'move' as const, type, base, from, to })))
-  toast(`Moved ${bases.length > 1 ? `${bases.length} items` : bases[0]} to ${to}`, { anchor: panel.value?.el, undo })
+  toast(`Moved ${bases.length > 1 ? `${bases.length} items` : bases[0]} to ${tierLabel(to)}`, { anchor: panel.value?.el, undo })
   picked.value = []
   selTier.value = to
 }
@@ -538,6 +567,73 @@ function moveBase (to: string) {
 function pickBase (b: string, e: MouseEvent) {
   if (e.shiftKey) picked.value = picked.value.includes(b) ? picked.value.filter(x => x !== b) : [...picked.value, b]
   else picked.value = picked.value.length === 1 && picked.value[0] === b ? [] : [b]
+}
+
+// ---- what you changed ----
+
+function changedIn (type: string): number {
+  return props.config.edits.filter(e => e.type === type).length
+}
+
+function touchesTier (e: FilterEdit, t: string): boolean {
+  switch (e.kind) {
+    case 'move': return e.from === t || e.to === t
+    case 'style': case 'visibility': case 'item': return e.tier === t
+    default: return false
+  }
+}
+
+function tierChanged (t: string): boolean {
+  return props.config.edits.some(e => e.type === selType.value && touchesTier(e, t))
+}
+
+function resetTier (t: string) {
+  const type = selType.value
+  const undo = props.store.changeWithUndo(c => { c.edits = c.edits.filter(e => !(e.type === type && touchesTier(e, t))) })
+  toast(`${tierLabel(t)} is back to NeverSink's`, { anchor: panel.value?.el, undo })
+}
+
+// ---- items on a tier ----
+
+function moveEditHere (b: string) {
+  return props.config.edits.find(e => e.kind === 'move' && e.type === selType.value && e.base === b && e.to === selTier.value)
+}
+const movedHere = (b: string) => Boolean(moveEditHere(b))
+
+function takeOff (b: string) {
+  const type = selType.value
+  const from = selTier.value
+  if (!type || !from) return
+  const moved = moveEditHere(b)
+  const undo = moved ? props.store.removeEdit(moved.id) : props.store.editWithUndo({ kind: 'move', type, base: b, from, to: '' })
+  picked.value = picked.value.filter(x => x !== b)
+  toast(moved ? `${b} is back where it was` : `Took ${b} off ${tierLabel(from)}`, { anchor: panel.value?.el, undo })
+}
+
+function addItem (r: AddResult) {
+  const type = selType.value
+  const to = selTier.value
+  if (!type || !to) return
+  const from = r.sameGroup ? r.block?.tier ?? '' : ''
+  const undo = props.store.editWithUndo({ kind: 'move', type, base: r.base, from, to })
+  const note = r.caughtEarlier && r.block ? `. ${ruleLabel(r.block.type, r.block.tier)} comes first, so it still decides how it looks` : ''
+  toast(`${r.sameGroup ? 'Moved' : 'Added'} ${r.base} to ${tierLabel(to)}${note}`, { anchor: panel.value?.el, undo })
+}
+
+// Every tier drawn in its own look, so you see the result before you pick.
+function baseMenu (ev: MouseEvent, b: string) {
+  const doc = props.store.doc.value
+  const type = selType.value
+  if (!doc || !type) return
+  const moved = moveEditHere(b)
+  openMenu(ev, [
+    ...targets.value.filter(t => t !== selTier.value).map(t => {
+      const block = doc.blocks.find(x => x.type === type && x.tier === t && !x.disabled) ?? doc.blocks.find(x => x.type === type && x.tier === t)
+      return { label: tierLabel(t), labelStyle: block ? labelCss(block.actions) : undefined, icon: 'fas fa-share', action: () => { moveBases([b], t) } }
+    }),
+    { separator: true as const },
+    { label: moved ? 'Back to where it was' : 'Take it off this tier', icon: 'fas fa-times', action: () => { takeOff(b) } }
+  ])
 }
 
 const DRAG_TYPE = 'application/x-woke-bases'
@@ -775,7 +871,7 @@ function openFolder () {
 }
 .tierRow {
   display: grid;
-  grid-template-columns: 6rem 14rem minmax(0, 1fr);
+  grid-template-columns: 6.5rem 5.5rem minmax(0, 1fr);
   gap: 10px;
   align-items: center;
   padding: 6px 8px;
@@ -800,10 +896,34 @@ function openFolder () {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.bases {
-  font-size: var(--w-text-sm);
-  color: var(--w-dim);
+.icons {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+  overflow: hidden;
 }
+.rowArt { width: 18px; height: 18px; object-fit: contain; flex: none; }
+.chipArt { width: 16px; height: 16px; object-fit: contain; flex: none; }
+.chipX {
+  background: none;
+  border: 0;
+  padding: 0 0 0 2px;
+  color: var(--w-faint);
+  font-size: 0.75em;
+  cursor: pointer;
+}
+.chipX:hover { color: var(--w-fg); }
+.dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-left: 5px;
+  border-radius: 50%;
+  background: var(--w-warn);
+  vertical-align: 1px;
+}
+.changed { color: var(--w-warn); white-space: nowrap; }
 .off {
   opacity: 0.5;
   text-decoration: line-through;

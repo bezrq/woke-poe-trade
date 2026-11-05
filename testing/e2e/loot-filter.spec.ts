@@ -59,9 +59,12 @@ test('style editor: NeverSink sound pack, beam and minimap pickers; a pack sound
   await openEditor(overlay, fakeApp)
   const page = overlay.page
   await page.getByRole('tab', { name: 'Rules' }).click()
+  await page.getByRole('button', { name: /^Beam/ }).first().click()
   await page.getByRole('button', { name: 'Red beam' }).first().click()
+  await page.getByRole('button', { name: /^Map icon/ }).first().click()
   await page.getByRole('button', { name: 'Large icon', exact: true }).first().click()
   await page.getByRole('button', { name: 'Star icon' }).first().click()
+  await page.getByRole('button', { name: /^Sound/ }).first().click()
   await page.getByLabel('Alert sound').first().selectOption('2currency.mp3')
   await overlay.snap('style editor with pack sound, beam and star icon')
   await expect.poll(() => fs.existsSync(path.join(folder, '2currency.mp3'))).toBe(true)
@@ -90,9 +93,9 @@ test('rule builder, drag and drop between tiers, and presets end up in the saved
 
   // Drag Chaos Orb from its tier onto another one.
   await page.getByRole('button', { name: /^Currency\s*4$/ }).click()
-  await page.getByRole('button', { name: /t3chaos/ }).click()
-  await page.getByText('Chaos Orb', { exact: true }).last().dragTo(page.getByRole('button', { name: /t2divine/ }))
-  await expect(page.getByText('Moved Chaos Orb to t2divine')).toBeVisible()
+  await page.getByRole('button', { name: /Tier 3/ }).click()
+  await page.getByText('Chaos Orb', { exact: true }).last().dragTo(page.getByRole('button', { name: /Tier 2/ }))
+  await expect(page.getByText('Moved Chaos Orb to Tier 2')).toBeVisible()
 
   // Presets.
   await page.getByRole('tab', { name: /Presets/ }).click()

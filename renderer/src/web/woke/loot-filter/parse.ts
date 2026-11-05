@@ -9,6 +9,8 @@
 // The file is kept as an ordered list of chunks (blocks and the raw text
 // between them), so writing it back reproduces every untouched line exactly.
 
+import { groupLabel, tierLabel } from './names'
+
 export type Visibility = 'Show' | 'Hide' | 'Minimal'
 
 export interface FilterCondition {
@@ -199,15 +201,15 @@ export function ruleLabel (type: string | null, tier: string | null): string {
   if (!type) return 'no rule'
   const group = EDITOR_GROUPS[type] ?? (type.startsWith(UNTAGGED_PREFIX)
     ? (type.slice(UNTAGGED_PREFIX.length) || 'Rule')
-    : type.split('->').map(part => part.charAt(0).toUpperCase() + part.slice(1)).join(' › '))
-  return tier && !tier.startsWith('#') && type !== 'woke->own' ? `${group} › ${tier}` : group
+    : groupLabel(type))
+  return tier && !tier.startsWith('#') && type !== 'woke->own' ? `${group} › ${tierLabel(tier)}` : group
 }
 
 // A tier's name for a person: an own rule goes by its item, an untagged rule
 // has no name.
 export function tierName (b: Pick<FilterBlock, 'tier' | 'editId' | 'conditions'>): string {
   if (b.editId != null) return b.conditions.find(c => c.key === 'BaseType')?.values[0] ?? 'own rule'
-  return !b.tier || b.tier.startsWith('#') ? 'rule' : b.tier
+  return !b.tier || b.tier.startsWith('#') ? 'Rule' : tierLabel(b.tier)
 }
 
 export function parseFilter (source: string): FilterDoc {

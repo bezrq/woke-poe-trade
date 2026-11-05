@@ -47,7 +47,7 @@
         <template #footer><WButton size="sm" variant="primary" @click="mode = 'editor'">Open editor</WButton></template>
       </WPanel>
     </template>
-    <FilterEditor v-else :store="store" :config="config" :focus="focus" :open-tab="openTab" @close="close" />
+    <FilterEditor v-else :store="store" :config="config" :focus="focus" :open-tab="openTab" @close="close" @paste-item="showSample($event, { x: 1, y: 1 })" />
   </Widget>
 </template>
 
@@ -156,14 +156,18 @@ async function retry () {
 
 const itemEvents = MainProcess.onEvent('MAIN->CLIENT::item-text', (e) => {
   if (e.target !== LOOT_FILTER_SAMPLE_TARGET) return
-  samplePosition.value = e.position
-  const parsed = parseClipboard(e.clipboard).unwrapOr(null)
-  sample.value = itemFacts(e.clipboard, parsed)
+  showSample(e.clipboard, e.position)
+})
+
+function showSample (text: string, position: { x: number, y: number }) {
+  samplePosition.value = position
+  const parsed = parseClipboard(text).unwrapOr(null)
+  sample.value = itemFacts(text, parsed)
   areaOverride.value = null
   mode.value = 'card'
   wm.show(props.config.wmId)
   ensureLoaded()
-})
+}
 
 const itemFailed = MainProcess.onEvent('MAIN->CLIENT::item-text-failed', (e) => {
   if (e.target === LOOT_FILTER_SAMPLE_TARGET) toast('The game gave no item text for what is under the mouse.')

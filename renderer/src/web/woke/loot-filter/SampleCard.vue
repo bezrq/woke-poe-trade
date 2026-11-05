@@ -69,7 +69,7 @@
           <div class="w-group-label" :class="$style.label">Move this item to tier</div>
           <button v-for="t in moveTiers" :key="t.tier" :class="[$style.tierRow, { [$style.current]: t.tier === final.tier }]"
             @click="moveTo(t.tier)">
-            <span :class="$style.tierName" :title="t.off ? 'This strictness turns this tier off, so an item moved here goes wherever that tier\'s items go' : t.tier">{{ t.tier }}</span>
+            <span :class="$style.tierName" :title="t.off ? 'This strictness turns this tier off, so an item moved here goes wherever that tier\'s items go' : t.tier">{{ tierLabel(t.tier) }}</span>
             <LabelPreview :text="facts.baseType ?? ''" :actions="t.actions" :visibility="t.visibility" :extras="false" />
             <span class="grow" />
             <span class="text-xs" :class="t.tier === final.tier ? 'w-accent' : 'w-faint'">{{ t.tier === final.tier ? 'current' : (t.off ? 'off at this strictness' : `${t.count} items`) }}</span>
@@ -115,6 +115,7 @@ import type { LootFilterWidget } from './widget'
 import type { ItemFacts } from './item-facts'
 import type { BlockMatch, MatchResult, Tri } from './match'
 import { formatCondition, ruleLabel, tierName } from './parse'
+import { tierLabel } from './names'
 import type { FilterCondition, Visibility } from './parse'
 import { OWN_RULE_TYPE, blocksOf, conditionSignature, moveTargets, readStyle } from './edits'
 import type { StylePatch } from './edits'
@@ -266,16 +267,16 @@ const quick = computed(() => {
     {
       key: '2',
       label: 'Lower',
-      title: lower ? `Move to ${lower.tier}${lower.off ? ' (off at this strictness, so it goes where that tier\'s items go, usually hidden)' : ''}` : 'Already in the lowest tier, or this rule doesn\'t list items by name',
+      title: lower ? `Move to ${tierLabel(lower.tier)}${lower.off ? ' (off at this strictness, so it goes where that tier\'s items go, usually hidden)' : ''}` : 'Already in the lowest tier, or this rule doesn\'t list items by name',
       disabled: !lower,
-      run: () => lower && afterFix(`${name.value}: ${final.value.tier} → ${lower.tier}${lower.off ? ' (off at this strictness)' : ''}`, props.store.editWithUndo({ kind: 'move', type: origin.value.type, base: base.value, from: final.value.tier ?? '', to: lower.tier }))
+      run: () => lower && afterFix(`${name.value}: ${tierName(final.value)} → ${tierLabel(lower.tier)}${lower.off ? ' (off at this strictness)' : ''}`, props.store.editWithUndo({ kind: 'move', type: origin.value.type, base: base.value, from: final.value.tier ?? '', to: lower.tier }))
     },
     {
       key: '3',
       label: 'Raise',
-      title: higher ? `Move to ${higher.tier}${higher.off ? ' (off at this strictness, so it goes where that tier\'s items go, usually hidden)' : ''}` : 'Already in the top tier, or this rule doesn\'t list items by name',
+      title: higher ? `Move to ${tierLabel(higher.tier)}${higher.off ? ' (off at this strictness, so it goes where that tier\'s items go, usually hidden)' : ''}` : 'Already in the top tier, or this rule doesn\'t list items by name',
       disabled: !higher,
-      run: () => higher && afterFix(`${name.value}: ${final.value.tier} → ${higher.tier}${higher.off ? ' (off at this strictness)' : ''}`, props.store.editWithUndo({ kind: 'move', type: origin.value.type, base: base.value, from: final.value.tier ?? '', to: higher.tier }))
+      run: () => higher && afterFix(`${name.value}: ${tierName(final.value)} → ${tierLabel(higher.tier)}${higher.off ? ' (off at this strictness)' : ''}`, props.store.editWithUndo({ kind: 'move', type: origin.value.type, base: base.value, from: final.value.tier ?? '', to: higher.tier }))
     },
     {
       key: '4',
