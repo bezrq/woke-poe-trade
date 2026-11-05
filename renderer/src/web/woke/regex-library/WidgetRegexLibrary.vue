@@ -1,7 +1,7 @@
 <template>
   <Widget :config="config" move-handles="corners" :inline-edit="false">
     <!-- Town and hideout: your hotkeyed strings at a glance. -->
-    <DockItem id="regex-library" title="Regex library" :show="dockShow" :wm-id="config.wmId" card-width="20rem" interactive>
+    <DockItem id="regex-library" title="Regex library" :show="dockShow" :wm-id="config.wmId" card-width="20rem">
       <template #card>
         <div style="padding: 4px 0 6px;">
           <button v-for="e in glance" :key="e.id" type="button" class="w-row w-full text-left" style="grid-template-columns: minmax(0, 1fr) auto;"

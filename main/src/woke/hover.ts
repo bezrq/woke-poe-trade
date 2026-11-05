@@ -1,9 +1,10 @@
 // Hover zones for woke widgets. While the game has focus the overlay window is
 // click-through, so the renderer never sees mouse hover. Widgets register
 // screen rects here; we watch the global mouse and tell them when it enters
-// or leaves. A zone marked `activate` also makes the overlay interactive after
-// the mouse rests on it briefly, and hands focus back to the game when the
-// mouse leaves, so its buttons can be clicked without pressing the overlay key.
+// or leaves. A zone marked `activate` also takes the mouse after it rests there
+// briefly, and hands focus back to the game when it leaves, so the zone gets
+// clicks instead of the game, without pressing the overlay key. That doesn't
+// open the overlay: see OverlayWindow.assertCardActive.
 import { screen } from 'electron'
 import type { Rectangle } from 'electron'
 import { uIOhook } from 'uiohook-napi'
@@ -12,6 +13,12 @@ import type { ServerEvents } from '../server'
 import type { OverlayWindow } from '../windowing/OverlayWindow'
 
 const ACTIVATE_DWELL_MS = 120
+// Long enough to cross the gap between an icon and its card without handing
+// focus back and taking it again.
+const LEAVE_GRACE_MS = 100
+// After something hands focus to the game on purpose (a trade reply is typing
+// into chat), a twitch of the mouse mustn't take it back mid-message.
+const REACTIVATE_AFTER_MS = 600
 const LEFT_BUTTON = 1
 
 interface Zone {
@@ -28,7 +35,11 @@ export class WokeHoverTracker {
   private flat: Zone[] = []
   private listening = false
   private dwellTimer: ReturnType<typeof setTimeout> | null = null
+  private leaveTimer: ReturnType<typeof setTimeout> | null = null
   private activatedByUs = false
+  private noActivateUntil = 0
+  // Holding a button means moving or casting: never take focus from that.
+  private heldButtons = new Set<unknown>()
 
   constructor (
     private server: ServerEvents,
@@ -57,19 +68,27 @@ export class WokeHoverTracker {
     if (want && !this.listening) {
       uIOhook.addListener('mousemove', this.handleMouseMove)
       uIOhook.addListener('mousedown', this.handleMouseDown)
+      uIOhook.addListener('mouseup', this.handleMouseUp)
       this.listening = true
     } else if (!want && this.listening) {
       uIOhook.removeListener('mousemove', this.handleMouseMove)
       uIOhook.removeListener('mousedown', this.handleMouseDown)
+      uIOhook.removeListener('mouseup', this.handleMouseUp)
       this.listening = false
+      this.heldButtons.clear()
       this.leaveActivateZone()
+      this.flushLeave()
     }
   }
 
   private readonly handleMouseMove = (e: UiohookMouseEvent) => {
     // Something handed focus back to the game (a trade reply typed into
-    // chat): resting on the zone again makes it clickable again.
-    if (this.activatedByUs && !this.overlay.isInteractable) this.activatedByUs = false
+    // chat): resting on the zone again makes it clickable again. The overlay
+    // key opening the overlay ends our part too, and leaving mustn't close it.
+    if (this.activatedByUs && !this.overlay.isCardActive) {
+      this.activatedByUs = false
+      this.noActivateUntil = Date.now() + REACTIVATE_AFTER_MS
+    }
     let inActivateZone = false
     for (const zone of this.flat) {
       const inside = contains(zone.rect, e.x, e.y)
@@ -84,10 +103,18 @@ export class WokeHoverTracker {
     else this.leaveActivateZone()
   }
 
+  private readonly handleMouseUp = (e: UiohookMouseEvent) => {
+    this.heldButtons.delete(e.button)
+    this.handleMouseMove(e)
+  }
+
   private readonly handleMouseDown = (e: UiohookMouseEvent) => {
-    if (e.button !== LEFT_BUTTON) return
+    this.heldButtons.add(e.button)
     // Bring `inside` up to date first, so a click also counts as entering.
     this.handleMouseMove(e)
+    // Clicking away means back to the game, right now.
+    if (!this.flat.some(z => z.inside && z.activate)) this.flushLeave()
+    if (e.button !== LEFT_BUTTON) return
     for (const zone of this.flat) {
       if (zone.inside) {
         this.server.sendEventTo('broadcast', { name: 'MAIN->OVERLAY::woke-hover-click', payload: { id: zone.id } })
@@ -95,12 +122,24 @@ export class WokeHoverTracker {
     }
   }
 
+  private canActivate () {
+    return !this.overlay.isInteractable &&
+      // Zones stay registered while you're in another program.
+      this.overlay.isGameActive &&
+      this.heldButtons.size === 0 &&
+      Date.now() >= this.noActivateUntil
+  }
+
   private enterActivateZone () {
-    if (this.dwellTimer || this.activatedByUs || this.overlay.isInteractable) return
+    if (this.leaveTimer) {
+      clearTimeout(this.leaveTimer)
+      this.leaveTimer = null
+    }
+    if (this.dwellTimer || this.activatedByUs || !this.canActivate()) return
     this.dwellTimer = setTimeout(() => {
       this.dwellTimer = null
-      if (!this.overlay.isInteractable && this.flat.some(z => z.inside && z.activate)) {
-        this.overlay.assertOverlayActive()
+      if (this.canActivate() && this.flat.some(z => z.inside && z.activate)) {
+        this.overlay.assertCardActive()
         this.activatedByUs = true
       }
     }, ACTIVATE_DWELL_MS)
@@ -111,9 +150,19 @@ export class WokeHoverTracker {
       clearTimeout(this.dwellTimer)
       this.dwellTimer = null
     }
+    if (this.activatedByUs && !this.leaveTimer) {
+      this.leaveTimer = setTimeout(() => this.flushLeave(), LEAVE_GRACE_MS)
+    }
+  }
+
+  private flushLeave () {
+    if (this.leaveTimer) {
+      clearTimeout(this.leaveTimer)
+      this.leaveTimer = null
+    }
     if (this.activatedByUs) {
       this.activatedByUs = false
-      if (this.overlay.isInteractable) this.overlay.assertGameActive()
+      this.overlay.releaseCard()
     }
   }
 

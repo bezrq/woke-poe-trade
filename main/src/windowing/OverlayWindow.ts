@@ -7,6 +7,9 @@ import type { GameWindow } from './GameWindow'
 
 export class OverlayWindow {
   public isInteractable = false
+  // Interactable only so a hover card can be clicked: the overlay itself stays
+  // closed, so the renderer isn't told about it (see assertCardActive).
+  public isCardActive = false
   public wasUsedRecently = true
   private window?: BrowserWindow
   private overlayKey: string = 'Shift + Space'
@@ -73,16 +76,46 @@ export class OverlayWindow {
     }
   }
 
+  get isGameActive () { return this.poeWindow.isActive }
+
   assertOverlayActive = () => {
-    if (!this.isInteractable) {
+    if (this.isCardActive) {
+      // The window already has focus, so only the renderer has to find out.
+      this.isCardActive = false
+      this.sendFocusChange(false)
+    } else if (!this.isInteractable) {
       this.isInteractable = true
       OverlayController.activateOverlay()
       this.poeWindow.isActive = false
     }
   }
 
+  // Takes the mouse so a dock icon or card gets the click, without opening the
+  // overlay: other widgets, the widget menu and the dimmed background stay away.
+  assertCardActive = () => {
+    if (!this.isInteractable) {
+      this.isCardActive = true
+      this.isInteractable = true
+      OverlayController.activateOverlay()
+      this.poeWindow.isActive = false
+    }
+  }
+
+// The mouse left a dock icon or card. If you tabbed to another program in the
+  // meantime, the game mustn't jump back in front of it.
+  releaseCard = () => {
+    if (!this.isCardActive) return
+    if (!this.window || this.window.isFocused()) {
+      this.assertGameActive()
+    } else {
+      this.isCardActive = false
+      this.isInteractable = false
+      this.window.setIgnoreMouseEvents(true)
+    }
+  }
   assertGameActive = () => {
     if (this.isInteractable) {
+      this.isCardActive = false
       this.isInteractable = false
       OverlayController.focusTarget()
       this.poeWindow.isActive = true
@@ -91,7 +124,7 @@ export class OverlayWindow {
 
   toggleActiveState = () => {
     this.isOverlayKeyUsed = true
-    if (this.isInteractable) {
+    if (this.isInteractable && !this.isCardActive) {
       this.assertGameActive()
     } else {
       this.assertOverlayActive()
@@ -157,13 +190,18 @@ export class OverlayWindow {
 
   private handlePoeWindowActiveChange = (isActive: boolean) => {
     if (isActive && this.isInteractable) {
+      this.isCardActive = false
       this.isInteractable = false
     }
+    this.sendFocusChange(isActive)
+  }
+
+  private sendFocusChange (game: boolean) {
     this.server.sendEventTo('broadcast', {
       name: 'MAIN->OVERLAY::focus-change',
       payload: {
-        game: isActive,
-        overlay: this.isInteractable,
+        game,
+        overlay: this.isInteractable && !this.isCardActive,
         usingHotkey: this.isOverlayKeyUsed
       }
     })
