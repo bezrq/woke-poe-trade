@@ -147,6 +147,15 @@ const MODE_TOOLTIP_LINES: Record<ModMode, string[]> = {
   ]
 }
 
+// Every mod line in the game's stat data. The card rates any stat a map shows,
+// listed in Map mods or not, so this is what a rating has to be missing from
+// before it's really dead.
+export function everyStatLine (): string[] {
+  const out: string[] = []
+  for (const stat of STATS_ITERATOR('')) for (const m of stat.matchers) out.push(m.string)
+  return out
+}
+
 // Every map mod line (all wordings), from APT's stat data.
 export function allAreaMods (): string[] {
   if (areaMods) return areaMods

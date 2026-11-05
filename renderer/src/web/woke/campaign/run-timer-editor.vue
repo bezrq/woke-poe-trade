@@ -7,7 +7,7 @@
       active) to start, pause or end a run by hand.
     </div>
     <w-toggle v-model="autoStart">Start a new run when a character enters The Twilight Strand</w-toggle>
-    <w-toggle v-model="subSplits">Sub-splits for key bosses (Brutus, Merveil, Dominus, Kitava…), timed when you enter their area</w-toggle>
+    <w-toggle v-model="subSplits">Sub-splits for key bosses (Brutus, Merveil, Dominus, Kitava…), timed when they first speak, or when you enter their area</w-toggle>
     <div class="grid gap-2 items-center" style="grid-template-columns: auto 1fr;">
       <span>Hotkey: pause/resume</span>
       <w-hotkey-cell v-model="hotkeyPause" />
