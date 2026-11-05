@@ -163,11 +163,10 @@ async function widen () {
   display: flex;
   flex-direction: column;
   gap: 5px;
-  padding: 7px 9px;
-  margin: 0 0 8px;
-  border-radius: var(--w-r-md);
-  border: 1px solid var(--w-line);
-  background: var(--w-panel);
+  padding: 10px 1rem;
+  margin: -8px -1rem 8px;
+  border-bottom: 1px solid var(--w-line);
+  background: var(--w-pc-well, var(--w-panel-solid));
   color: var(--w-fg);
   font-family: var(--w-body);
   font-size: var(--w-text);
