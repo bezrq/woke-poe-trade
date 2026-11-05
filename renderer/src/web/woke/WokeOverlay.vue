@@ -3,6 +3,7 @@
   <Dock />
   <ToolkitHealth />
   <OverlayLayer />
+  <GameTooltip />
   <AppNotices />
 </template>
 
@@ -11,6 +12,7 @@ import HiddenNote from './switchboard/HiddenNote.vue'
 import Dock from './dock/Dock.vue'
 import ToolkitHealth from './dock/ToolkitHealth.vue'
 import OverlayLayer from './ui/OverlayLayer.vue'
+import GameTooltip from './ui/tooltip/GameTooltip.vue'
 import AppNotices from './app/AppNotices.vue'
 import { MainProcess } from '@/web/background/IPC'
 import { onUnmounted } from 'vue'

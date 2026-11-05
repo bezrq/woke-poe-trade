@@ -6,7 +6,7 @@
       <template #card>
         <div style="padding: 4px var(--w-pad) 6px;" class="flex flex-col gap-0.5">
           <div v-for="r in ranked.slice(0, 5)" :key="opportunityKey(r.opportunity)" class="flex justify-between gap-2">
-            <span class="flex items-center gap-1 min-w-0"><WIcon :src="art(r.opportunity)" fallback="fas fa-coins" /><span class="w-trunc">{{ r.opportunity.name }}<span v-if="r.opportunity.variant" class="w-dim"> {{ r.opportunity.variant }}</span></span></span>
+            <span v-item-tip="r.opportunity" class="flex items-center gap-1 min-w-0"><WIcon :src="art(r.opportunity)" fallback="fas fa-coins" /><span class="w-trunc">{{ r.opportunity.name }}<span v-if="r.opportunity.variant" class="w-dim"> {{ r.opportunity.variant }}</span></span></span>
             <span class="w-num whitespace-nowrap"><span class="w-up">+{{ Math.round((r.opportunity.median - 1) * 100) }}%</span>
               <span v-if="r.chaos != null" class="w-dim"> · {{ formatChaos(r.chaos, snapshot?.divine ?? null) }}</span></span>
           </div>
@@ -87,7 +87,7 @@
         <template v-if="plan.length">
           <div class="w-group-label">Suggested split</div>
           <div v-for="line in plan" :key="key(line.opportunity)" class="w-row" :class="$style.planGrid">
-            <span class="w-trunc flex items-center gap-1"><WIcon :src="art(line.opportunity)" fallback="fas fa-coins" />{{ line.qty }}× {{ label(line.opportunity) }}<i v-if="line.thin" class="fas fa-exclamation-circle w-faint ml-1" :title="THIN_PLAN" /></span>
+            <span v-item-tip="line.opportunity" class="w-trunc flex items-center gap-1"><WIcon :src="art(line.opportunity)" fallback="fas fa-coins" />{{ line.qty }}× {{ label(line.opportunity) }}<i v-if="line.thin" class="fas fa-exclamation-circle w-faint ml-1" :title="THIN_PLAN" /></span>
             <WPrice :chaos="line.cost" :divine="snapshot?.divine" class="w-dim" />
             <span class="w-num w-up text-right" title="Typical value at the end of the hold, in today's divines">≈ {{ fmtDiv(divOf(line.cost) * line.opportunity.median) }}</span>
           </div>
@@ -98,7 +98,7 @@
           <span>Item</span><span class="text-right">Now</span><span class="text-right">Median</span><span class="text-right">Leagues</span><span class="text-right">Up days</span>
         </div>
         <div v-for="r in rows" :key="key(r.opportunity)" class="w-row" :class="$style.rankGrid" @contextmenu="rowMenu($event, r.opportunity, r.changed)">
-          <span class="w-trunc flex items-center gap-1" :title="r.opportunity.type">
+          <span v-item-tip="r.opportunity" class="w-trunc flex items-center gap-1">
             <WIcon :src="art(r.opportunity)" fallback="fas fa-coins" />
             <i v-if="r.changed" class="fas fa-exclamation-triangle mr-1" style="color: var(--w-warn);" title="Changed this league: past leagues may not apply" />
             <i v-if="r.thin || r.opportunity.reliability < THIN_RELIABILITY" class="fas fa-exclamation-circle w-faint mr-1" :title="THIN_ROW" />{{ label(r.opportunity) }}<span class="w-faint text-xs ml-1">{{ r.opportunity.type }}</span>
@@ -136,7 +136,7 @@ import { popupAnchor } from '../ui/window-anchor'
 import { inject, computed, shallowRef, watch } from 'vue'
 import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
-import { WPanel, WField, WSegmented, WChip, WButton, WPrice, WEmpty, WIcon, WSkeleton, openMenu, toast } from '../ui'
+import { WPanel, WField, WSegmented, WChip, WButton, WPrice, WEmpty, WIcon, WSkeleton, openMenu, toast, vItemTip } from '../ui'
 import { copyText } from '../ui/copy'
 import { ninjaIcon } from '../ui/game-icons'
 import { useLeagues } from '@/web/background/Leagues'

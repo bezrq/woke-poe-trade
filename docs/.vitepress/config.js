@@ -1,15 +1,24 @@
 import { defineConfig } from 'vitepress'
+import { readFileSync } from 'node:fs'
 
-const BASE = '/awakened-poe-trade/'
+// The app's version, so download links name the right files.
+const APP_VERSION = JSON.parse(readFileSync(new URL('../../main/package.json', import.meta.url), 'utf8')).version
+const REPO = 'https://github.com/guybnd/woke-poe-trade'
+
+const BASE = '/woke-poe-trade/'
 
 export default defineConfig({
-  title: 'Awakened PoE Trade',
-  description: 'App for price-checking items in Path of Exile',
+  title: 'Woke PoE Trade',
+  description: 'An overlay for Path of Exile 1: price check, maps, profit and trading, without leaving the game',
   base: BASE,
-  mpa: true,
+  // Not MPA: the landing page's story and presets need Vue running in the browser.
+  mpa: false,
+  // The landing page reads the module list from the app (renderer/).
+  vite: { server: { fs: { allow: ['..'] } } },
   head: [
     ['link', { rel: 'shortcut icon', type: 'image/png', href: `${BASE}favicon.png` }],
-    ['meta', { name: 'google-site-verification', content: 'R0xdvBEYFTxfn0RxHhquiA6tBgvshYv3ODk-oNSuq4g' }]
+    ['meta', { name: 'theme-color', content: '#0d0b09' }],
+    ['meta', { property: 'og:image', content: `https://guybnd.github.io${BASE}shots/hero.webp` }]
   ],
   markdown: {
     theme: 'light-plus',
@@ -20,25 +29,20 @@ export default defineConfig({
   },
   themeConfig: {
     // logo: 'TODO', https://github.com/vuejs/vitepress/issues/1401
-    appVersion: '3.29.108',
+    appVersion: APP_VERSION,
     github: {
-      releasesUrl: 'https://github.com/SnosMe/awakened-poe-trade/releases'
+      releasesUrl: `${REPO}/releases`
     },
     socialLinks: [
       {
-        text: 'Discord',
-        color: '#7289DA',
-        link: 'https://github.com/SnosMe/awakened-poe-trade/issues/22'
-      },
-      {
-        text: 'Patreon',
-        color: '#FF424D',
-        link: 'https://patreon.com/awakened_poe_trade'
+        text: 'Home',
+        color: '#8a6420',
+        link: BASE
       },
       {
         text: 'GitHub',
         color: '#181717',
-        link: 'https://github.com/SnosMe/awakened-poe-trade'
+        link: REPO
       }
     ],
     sidebar: [

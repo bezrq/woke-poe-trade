@@ -10,7 +10,7 @@ import { shallowRef, watch } from 'vue'
 import type { ItemFilters, FilterOrGroup, StatFilter } from '@/web/price-check/filters/interfaces'
 import { createTradeRequest, requestTradeResultList, requestResults } from '@/web/price-check/trade/pathofexile-trade'
 import { AppConfig } from '@/web/Config'
-import { RATE_LIMIT_RULES } from '@/web/price-check/trade/common'
+import { RATE_LIMIT_RULES, restrictedMs } from '@/web/price-check/trade/common'
 import { RateLimiter } from '@/web/price-check/trade/RateLimiter'
 import { buildInsight, InsightOptions, Insight } from './insight'
 
@@ -92,6 +92,8 @@ function cloneStats (stats: FilterOrGroup[]): FilterOrGroup[] {
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
 
+export const CANCELLED = 'Cancelled'
+
 export interface PricedSearch { total: number, insight: Insight }
 
 // Search budget right now: how many searches APT's limiter would allow
@@ -101,8 +103,9 @@ export interface PricedSearch { total: number, insight: Insight }
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function searchBudget (count: number, _tick?: number): { left: number, waitMs: number } {
   const limiters = Array.from(RATE_LIMIT_RULES.SEARCH)
-  const left = limiters.length ? Math.min(...limiters.map(l => l.available)) : 0
-  const waitMs = RateLimiter.estimateTime(count, limiters)
+  const penalty = restrictedMs(RATE_LIMIT_RULES.SEARCH)
+  const left = (limiters.length && !penalty) ? Math.min(...limiters.map(l => l.available)) : 0
+  const waitMs = Math.max(RateLimiter.estimateTime(count, limiters), penalty)
   return { left, waitMs }
 }
 
@@ -132,10 +135,13 @@ export async function pricedSearch (
   filters: ItemFilters,
   stats: FilterOrGroup[],
   opts: InsightOptions,
-  onWait?: (seconds: number) => void
+  onWait?: (seconds: number) => void,
+  isCancelled?: () => boolean
 ): Promise<PricedSearch> {
   const request = createTradeRequest(filters, stats)
   for (let attempt = 0; ; attempt++) {
+    // A wait can outlast the panel that asked: don't spend searches for it.
+    if (isCancelled?.()) throw new Error(CANCELLED)
     try {
       const list = await requestTradeResultList(request, filters.trade.league)
       const ids = list.result.slice(0, 10)
@@ -179,7 +185,8 @@ export async function measureDrivers (
   base: number,
   candidates: Candidate[],
   opts: InsightOptions,
-  onProgress: (done: DriverResult[], waiting: number | null) => void
+  onProgress: (done: DriverResult[], waiting: number | null) => void,
+  isCancelled?: () => boolean
 ): Promise<DriverResult[]> {
   const done: DriverResult[] = []
   for (const c of candidates) {
@@ -187,7 +194,7 @@ export async function measureDrivers (
     for (const f of s) {
       if (isStat(f) && f.statRef === c.statRef) f.disabled = true
     }
-    const r = await pricedSearch(filters, s, opts, sec => onProgress(done, sec))
+    const r = await pricedSearch(filters, s, opts, sec => onProgress(done, sec), isCancelled)
     done.push(driverFrom(c, base, r))
     onProgress([...done], null)
   }
@@ -227,11 +234,12 @@ export async function runLadder (
   stats: FilterOrGroup[],
   keep: Candidate[],
   opts: InsightOptions,
-  onProgress: (steps: LadderResult[], waiting: number | null) => void
+  onProgress: (steps: LadderResult[], waiting: number | null) => void,
+  isCancelled?: () => boolean
 ): Promise<LadderResult[]> {
   const steps: LadderResult[] = []
   for (const step of ['core', 'loose'] as LadderStep[]) {
-    const r = await pricedSearch(filters, ladderStats(stats, keep, step), opts, sec => onProgress(steps, sec))
+    const r = await pricedSearch(filters, ladderStats(stats, keep, step), opts, sec => onProgress(steps, sec), isCancelled)
     steps.push({ step, total: r.total, insight: r.insight })
     onProgress([...steps], null)
     if (r.insight.kept.length >= 5) break

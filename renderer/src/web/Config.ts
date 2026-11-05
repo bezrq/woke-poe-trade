@@ -1,4 +1,5 @@
 import { reactive as deepReactive, shallowRef, toRaw } from 'vue'
+import { configForDisk } from './woke/shared/config-disk'
 import isDeepEqual from 'fast-deep-equal'
 import { Host } from '@/web/background/IPC'
 import { HostConfig, ShortcutAction } from '@ipc/types'
@@ -52,6 +53,18 @@ export function saveConfig (opts?: { isTemporary: boolean }) {
   }
 }
 
+// woke: for a window that can't close to save (Settings), and for quitting. The
+// page isn't told, since that would swap its config and close Settings.
+export function saveConfigQuietly () {
+  Host.sendEvent({
+    name: 'CLIENT->MAIN::save-config',
+    payload: { contents: configForDisk(AppConfig()), isTemporary: false, quiet: true }
+  })
+}
+
+// Runs just before the save on quit: a window with edits still on a timer.
+export const beforeQuitSave = new Set<() => void>()
+
 export function pushHostConfig () {
   Host.sendEvent({
     name: 'CLIENT->MAIN::update-host-config',
@@ -64,6 +77,15 @@ export async function initConfig () {
     _lastSavedConfig = JSON.parse(e.contents) // should be a deep copy
     updateConfig(JSON.parse(e.contents))
   })
+
+  // The setup window and browser tabs don't hold the newest settings.
+  if (Host.isElectron && window.location.hash !== '#setup') {
+    Host.onEvent('MAIN->CLIENT::config-flush', () => {
+      for (const run of beforeQuitSave) run()
+      saveConfigQuietly()
+      Host.sendEvent({ name: 'CLIENT->MAIN::config-flushed', payload: undefined })
+    })
+  }
 
   const contents = await Host.getConfig()
   if (!contents) {
@@ -78,17 +100,24 @@ export async function initConfig () {
     updateConfig(defaultConfig())
     saveConfig({ isTemporary: true })
     return
-
-    // TODO
-    // dialog.showErrorBox(
-    //   'Awakened PoE Trade - Incompatible configuration',
-    //   // ----------------------
-    //   'You are trying to use an older version of Awakened PoE Trade with a newer incompatible configuration file.\n' +
-    //   'You need to install the latest version to continue using it.'
-    // )
   }
 
-  updateConfig(upgradeConfig(config))
+  // woke: a file from a newer version, or one the upgrade can't handle, stays
+  // untouched: this run works on defaults or a best effort, saved elsewhere.
+  const isNewer = config.configVersion > defaultConfig().configVersion
+  try {
+    updateConfig(upgradeConfig(config))
+  } catch (e) {
+    console.warn('[config] upgrade failed', e)
+    updateConfig(defaultConfig())
+    Host.configNotice.value = 'upgrade-failed'
+    saveConfig({ isTemporary: true })
+    return
+  }
+  if (isNewer) {
+    Host.configNotice.value = 'newer'
+    saveConfig({ isTemporary: true })
+  }
 }
 
 export function poeWebApi () {
