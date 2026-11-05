@@ -29,7 +29,7 @@
       @preset="selectPreset"
       @submit="doSearch = true">
       <template #rolls>
-        <woke-roll-presets :stats="itemStats" :item="item" @apply="searchAfterPreset" />
+        <woke-roll-presets :stats="itemStats" :item="item" :league="itemFilters.trade.league" @apply="searchAfterPreset" />
       </template>
     </filters-block>
     <trade-listing

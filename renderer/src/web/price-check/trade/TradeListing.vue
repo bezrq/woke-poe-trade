@@ -298,7 +298,7 @@ export default defineComponent({
     const { retryIn, rateLimited } = useRetryCountdown(error)
 
     // woke: improved view reads the same listings, nothing extra is requested
-    const { insight, divine, options: insightOptions } = useInsight(groupedResults)
+    const { insight, divine, options: insightOptions } = useInsight(groupedResults, computed(() => props.filters.trade.league))
 
     // woke: listings found without a rare's mods say nothing about its price.
     const blankSearch = computed(() => isBlankRareSearch(props.item, props.filters, props.stats))

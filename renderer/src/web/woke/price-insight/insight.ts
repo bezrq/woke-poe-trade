@@ -40,7 +40,7 @@ export const FIXING_REASONS = new Set<DropReason>(['fixer', 'wall', 'dump'])
 export type FixRisk = 'none' | 'low' | 'medium' | 'high'
 
 export interface FixSignal {
-  kind: 'bait' | 'wall' | 'dump' | 'thin' | 'old'
+  kind: 'bait' | 'wall' | 'dump' | 'thin' | 'old' | 'norate'
   text: string
 }
 
@@ -173,6 +173,12 @@ export function buildInsight (listings: InsightListing[], opts: InsightOptions):
 
   const { risk, signals } = fixRisk(kept, dropped, listings)
 
+  // Leaving these out could hide the real price, so say so.
+  const noRate = opts.divine ? 0 : listings.filter(l => !l.isMine && l.priceCurrency === 'divine' && l.priceAmount > 0).length
+  if (noRate) {
+    signals.push({ kind: 'norate', text: `${noRate} ${noRate === 1 ? 'listing' : 'listings'} in divines left out: there's no divine rate for this league` })
+  }
+
   if (!kept.length) {
     return { kept: [], dropped, prices, range: null, suggest: null, confidence: 'none', risk, signals }
   }
@@ -186,6 +192,7 @@ export function buildInsight (listings: InsightListing[], opts: InsightOptions):
   if (kept.length >= 8 && spread <= 2) confidence = 'high'
   else if (kept.length >= 4 && spread <= 4) confidence = 'medium'
   else confidence = 'low'
+  if (noRate) confidence = 'low'
 
   const oldOnly = windowRows.every(k => k.age != null && k.age > OLD_MS)
   if (oldOnly && windowRows.every(k => k.instant)) {

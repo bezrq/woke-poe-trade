@@ -38,6 +38,16 @@ export class AppTray {
     })
   }
 
+  // woke: a second launch quits at once; say why, or it just looks broken.
+  notifyAlreadyRunning () {
+    if (process.platform !== 'win32') return
+    this.tray.displayBalloon({
+      iconType: 'info',
+      title: 'Woke PoE Trade is already running',
+      content: `It's in the tray. Press ${this.overlayKey} in game to open it.`
+    })
+  }
+
   rebuildMenu () {
     const contextMenu = Menu.buildFromTemplate([
       {

@@ -12,7 +12,7 @@ import { game } from './game'
 import nodeGypBuild from './stubs/node-gyp-build.cjs'
 import { registeredShortcuts, shellCalls } from 'electron'
 import { uIOhook, UiohookKey, EventType } from 'uiohook-napi'
-import { startServer, eventPipe, httpRoutes } from '../../main/src/server'
+import { startServer, eventPipe, httpRoutes, startConfigOver } from '../../main/src/server'
 import { Logger } from '../../main/src/RemoteLogger'
 import { GameWindow } from '../../main/src/windowing/GameWindow'
 import { OverlayWindow } from '../../main/src/windowing/OverlayWindow'
@@ -196,6 +196,7 @@ export class FakeApp {
   writeConfig (config: unknown) {
     fs.mkdirSync(path.dirname(this.configPath()), { recursive: true })
     fs.writeFileSync(this.configPath(), JSON.stringify(config, null, 2))
+    startConfigOver()
   }
 
   unmockedRequests () { return this.requests.filter(r => !r.mocked) }

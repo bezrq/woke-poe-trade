@@ -69,7 +69,7 @@
 // The settings window (L1): General / Modules / App in a sidebar, search over
 // every page, changes applied as you make them with Undo (S1), resizable (W1).
 import { computed, inject, nextTick, onMounted, onUnmounted, reactive, shallowRef, watch } from 'vue'
-import { AppConfig, updateConfig, saveConfig, pushHostConfig } from '@/web/Config'
+import { AppConfig, updateConfig, saveConfig, saveConfigQuietly, beforeQuitSave, pushHostConfig } from '@/web/Config'
 import type { Config } from '@/web/Config'
 import type { Widget, WidgetManager } from '@/web/overlay/interfaces'
 import { Host } from '@/web/background/IPC'
@@ -150,6 +150,8 @@ function commit (snap: string, since: string) {
   const next = mergeLive(JSON.parse(snap) as Config, JSON.parse(since) as Config)
   updateConfig(next)
   pushHostConfig()
+  // On disk now, so "Change saved" is true whatever happens next.
+  saveConfigQuietly()
 }
 
 function apply (silent = false) {
@@ -195,6 +197,11 @@ watch(() => props.widget.wmWants, (wants) => {
 }, { immediate: true })
 
 function close () { wm.hide(props.widget.wmId) }
+
+// Quitting goes through main's save step; a change still on its timer joins it.
+const applyBeforeQuit = () => { apply(true) }
+beforeQuitSave.add(applyBeforeQuit)
+onUnmounted(() => { beforeQuitSave.delete(applyBeforeQuit) })
 
 function quit () {
   Host.sendEvent({ name: 'CLIENT->MAIN::user-action', payload: { action: 'quit' } })

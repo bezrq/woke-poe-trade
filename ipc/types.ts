@@ -58,13 +58,20 @@ export type UpdateInfo =
     checkedAt: number
   }
 
+// woke: what happened to the settings file at startup, for a notice.
+// newer and upgrade-failed come from the page; the rest from the host.
+export type ConfigNotice = 'restored' | 'reset' | 'unreadable' | 'newer' | 'upgrade-failed'
+
 export interface HostState {
   contents: string | null
   version: string
   updater: UpdateInfo
+  configNotice?: ConfigNotice | null
 }
 
 export type IpcEvent =
+  IpcConfigFlush |
+  IpcConfigFlushed |
   // events that have meaning only in Overlay mode:
   IpcOverlayAttached |
   IpcFocusChange |
@@ -138,7 +145,16 @@ type IpcSaveConfig =
   Event<'CLIENT->MAIN::save-config', {
     contents: string
     isTemporary: boolean
+    // woke: write it without telling the page, which would swap its config.
+    quiet?: boolean
   }>
+
+// woke: the app is quitting: write anything not saved yet, then answer.
+type IpcConfigFlush =
+  Event<'MAIN->CLIENT::config-flush', undefined>
+
+type IpcConfigFlushed =
+  Event<'CLIENT->MAIN::config-flushed', undefined>
 
 type IpcConfigChanged =
   Event<'MAIN->CLIENT::config-changed', {

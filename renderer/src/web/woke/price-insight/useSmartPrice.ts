@@ -39,7 +39,8 @@ export function useSmartPrice (
   })
 
   watch(item, (it) => { loadPoeprices(it) }, { immediate: true })
-  const poeprices = computed(() => poepricesChaos(poepricesState.value, item.value, divine.value))
+  // No rate can mean another league than the one poeprices was asked about.
+  const poeprices = computed(() => divine.value == null ? null : poepricesChaos(poepricesState.value, item.value, divine.value))
 
   // Re-read when the log changes or a minute passes (the "before this
   // session" cut-off moves with time).
