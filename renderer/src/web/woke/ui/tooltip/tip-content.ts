@@ -266,13 +266,24 @@ const present = (sections: TipLine[][]) => sections.filter(s => s.length)
 
 // ---- one builder per kind ----
 
+// The data lists every mod a unique can roll, so a synthesised or random one has
+// dozens that never appear together. No real item has this many of either kind.
+const MOST_IMPLICITS = 4
+const MOST_EXPLICITS = 12
+// The fixed mods come first in the data, so these are the ones to keep.
+const EXPLICITS_SHOWN = 6
+
 export function uniqueTip (name: string, unique: TipUnique, base: TipBase | undefined, variant?: string): TipModel {
   const row = unique.v.find(r => r.n === variant) ?? unique.v[0]
-  const implicits = row?.i ?? []
-  const explicits = row?.e ?? []
+  const allImplicits = row?.i ?? []
+  const allExplicits = row?.e ?? []
+  const implicits = allImplicits.length > MOST_IMPLICITS ? [] : allImplicits
+  const explicits = allExplicits.length > MOST_EXPLICITS ? allExplicits.slice(0, EXPLICITS_SHOWN) : allExplicits
   const mutated = row?.m ?? []
+  // Only mods it's sure to have count towards its stats and requirements.
   const stats = base ? gearStats(base, [...implicits, ...explicits, ...mutated]) : []
   const need = requirements(row?.l ?? base?.l, attributeNeeds(base, [...implicits, ...explicits, ...mutated]))
+  const moreExplicits = allExplicits.length - explicits.length
   return {
     name,
     base: unique.b || undefined,
@@ -280,8 +291,14 @@ export function uniqueTip (name: string, unique: TipUnique, base: TipBase | unde
     sections: present([
       stats,
       need ? [need] : [],
-      implicits.map(m => plain(unwrap(m), 'mod')),
-      [...mutated.map(m => plain(unwrap(m), 'mutated')), ...explicits.map(m => plain(unwrap(m), 'mod'))],
+      implicits.length < allImplicits.length
+        ? [plain(`${allImplicits.length} possible implicit mods`, 'dim')]
+        : implicits.map(m => plain(unwrap(m), 'mod')),
+      [
+        ...mutated.map(m => plain(unwrap(m), 'mutated')),
+        ...explicits.map(m => plain(unwrap(m), 'mod')),
+        ...(moreExplicits ? [plain(`and ${moreExplicits} more possible mods`, 'dim')] : [])
+      ],
       unique.f ? unique.f.split('\n').map(l => plain(l, 'flavour')) : []
     ])
   }

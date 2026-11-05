@@ -71,6 +71,34 @@ describe('the rows in the market tracker', () => {
   })
 })
 
+describe('uniques with a pool of mods', () => {
+  const unique = (name: string) => all(buildTip(pack, { name, kind: 'unique' }))
+
+  it('counts a synthesised unique\'s implicits instead of listing them', () => {
+    const lines = unique('Mask of the Tribunal')
+    expect(lines).toContain('75 possible implicit mods')
+    expect(lines).not.toContain('+(2-6)% to Quality of Socketed Aura Gems')
+    expect(lines).toContain('+(25-30) to all Attributes')
+  })
+  it('leaves a pool out of the item\'s stats', () => {
+    const row = pack.uniques!['Mask of the Tribunal'].v[0]
+    const sure = gearStats(pack.bases!['Magistrate Crown'], row.e ?? []).map(text)
+    expect(sure.length).toBeGreaterThan(0)
+    expect(unique('Mask of the Tribunal')).toEqual(expect.arrayContaining(sure))
+  })
+  it('keeps the first mods of a long list and counts the rest', () => {
+    const lines = unique("Watcher's Eye")
+    expect(lines).toContain('(4-6)% increased maximum Life')
+    expect(lines).toContain('and 84 more possible mods')
+    expect(lines.length).toBeLessThan(12)
+  })
+  it('lists every mod of a unique that really has this many', () => {
+    const lines = unique('The Dancing Duo')
+    expect(lines.some(l => l.includes('possible'))).toBe(false)
+    expect(lines).toContain('Manifested Dancing Dervishes disables both weapon slots')
+  })
+})
+
 describe('gaps', () => {
   it('falls back to the base for a unique with no text', () => {
     const tip = buildTip({ uniques: {}, bases: {} }, { name: 'Star of Wraeclast', kind: 'unique', base: 'Ruby Amulet' })
