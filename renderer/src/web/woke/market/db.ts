@@ -2,6 +2,7 @@
 // (main/src/woke/market-store.ts). It used to live in the overlay's
 // IndexedDB, which is tied to the overlay's port; the old data is moved over
 // once (importOldHistory).
+import { uniqueItems } from './types'
 import type { DailyRow, Snapshot } from './types'
 import { hostRequest } from '../shared/host'
 
@@ -38,7 +39,8 @@ export async function latestSnapshots (league: string, count: number): Promise<S
 
 async function readLatest (league: string, count: number): Promise<Snapshot[]> {
   await importOldHistory()
-  return await hostRequest<Snapshot[]>('market-latest', { league, count }, SLOW_MS)
+  const snapshots = await hostRequest<Snapshot[]>('market-latest', { league, count }, SLOW_MS)
+  return snapshots.map(snap => ({ ...snap, items: uniqueItems(snap.items) }))
 }
 
 // The newest snapshot taken at or before `ts`.
