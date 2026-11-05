@@ -102,7 +102,8 @@ function Overlay-Page {
   } catch {
     return $null
   }
-  $found = @($pages | Where-Object { $_.type -eq 'page' -and $_.url -notlike 'devtools://*' })
+  # The setup window is the same page with #setup; it says nothing about the overlay.
+  $found = @($pages | Where-Object { $_.type -eq 'page' -and $_.url -notlike 'devtools://*' -and $_.url -notlike '*#setup' })
   $good = @($found | Where-Object { $_.url -like "http://localhost:$VitePort/*" })
   if ($good.Count -gt 0) { return $good[0].url }
   if ($found.Count -gt 0) { return $found[0].url }
@@ -244,10 +245,15 @@ function Start-Dev {
     Start-Sleep -Milliseconds 300
   }
 
+  # No answer on the debug port means it can't be checked (branches older than
+  # WOKE_ELECTRON_ARGS have no port), not that the page failed.
   $deadline = (Get-Date).AddSeconds(30)
   while (-not (Page-Loaded (Overlay-Page))) {
     if ((Get-Date) -gt $deadline) {
-      Fail "the overlay page did not load (it is on: $(Overlay-Page)), see $State\main.log and $State\vite.log."
+      $page = Overlay-Page
+      if ($page) { Fail "the overlay page did not load (it is on: $page), see $State\main.log and $State\vite.log." }
+      Write-Host "Could not check the overlay page: no answer on debug port $DebugPort."
+      break
     }
     Start-Sleep -Milliseconds 300
   }
@@ -260,7 +266,7 @@ function Show-Status {
   if ($running) {
     Write-Host "Dev copy RUNNING: $what"
     $page = Overlay-Page
-    if (-not (Page-Loaded $page)) { Write-Host "WARNING: the overlay page did not load (it is on: $page). Run woke-dev to restart." }
+    if ($page -and -not (Page-Loaded $page)) { Write-Host "WARNING: the overlay page did not load (it is on: $page). Run woke-dev to restart." }
   } else {
     Write-Host "Dev copy not running (checkout: $what)"
   }
