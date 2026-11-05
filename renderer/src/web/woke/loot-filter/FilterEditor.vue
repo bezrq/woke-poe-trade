@@ -145,7 +145,7 @@
                 <WChip clickable :active="picked.includes(b)" draggable="true"
                   title="Click to pick it, shift-click to pick a run. Drag onto a tier to move it, with any others you've picked. Right-click for Move to."
                   @click="pickBase(b, $event)" @contextmenu="baseMenu($event, b)" @dragstart="onDragStart(b, $event)" @dragend="dragOver = null">
-                  <span class="flex items-center gap-1">
+                  <span v-item-tip="{ name: b }" class="flex items-center gap-1">
                     <img v-if="baseIcon(b)" :src="baseIcon(b)!" :class="$style.chipArt" alt="">
                     <span>{{ b }}</span>
                     <span v-if="priceOf(b) != null" class="w-num" :class="$style[`p_${priceGrade(priceOf(b), config.safetyNet.minChaos)}`]">{{ priceText(priceOf(b)!) }}</span>
@@ -296,7 +296,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
-import { WPanel, WButton, WSelect, WField, WTabs, WListItem, WChip, WEmpty, WKbd, WBanner, WSkeleton, agoPhrase, openMenu, toast, useCopy } from '../ui'
+import { WPanel, WButton, WSelect, WField, WTabs, WListItem, WChip, WEmpty, WKbd, WBanner, WSkeleton, agoPhrase, openMenu, toast, useCopy, vItemTip } from '../ui'
 import { copyText } from '../ui/copy'
 import { hasUndoToast } from '../ui/layer'
 import LabelPreview from './LabelPreview.vue'
