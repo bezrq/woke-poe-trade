@@ -44,6 +44,9 @@ export class HttpProxy {
         const resHeaders = { ...proxyRes.headers }
         // `net.request` returns an already decoded body
         delete resHeaders['content-encoding']
+        // Another site's page opened through this address must not run as the
+        // app's own page. The app only ever fetches through here.
+        resHeaders['content-security-policy'] = 'sandbox'
         res.writeHead(proxyRes.statusCode, proxyRes.statusMessage, resHeaders)
         ;(proxyRes as unknown as NodeJS.ReadableStream).pipe(res)
       })

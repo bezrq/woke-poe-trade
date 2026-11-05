@@ -31,9 +31,12 @@ describe('isOwnPageRequest', () => {
     expect(isOwnPageRequest(headers)).toBe(false)
   })
 
-  it('with --listen, any Host works but other sites still don\'t', () => {
-    expect(isOwnPageRequest({ host: '192.168.1.5:8585', origin: 'http://192.168.1.5:8585' }, true)).toBe(true)
-    expect(isOwnPageRequest({ host: '192.168.1.5:8585', origin: 'https://evil.example' }, true)).toBe(false)
+  it('with --listen, this PC\'s addresses work, but other sites and rebinding still don\'t', () => {
+    const extra = new Set(['192.168.1.5'])
+    expect(isOwnPageRequest({ host: '192.168.1.5:8585', origin: 'http://192.168.1.5:8585' }, extra)).toBe(true)
+    expect(isOwnPageRequest({ host: '192.168.1.5:8585', origin: 'https://evil.example' }, extra)).toBe(false)
+    expect(isOwnPageRequest({ host: 'evil.example:8585', origin: 'http://evil.example:8585' }, extra)).toBe(false)
+    expect(isOwnPageRequest({ host: 'localhost:8585', origin: 'http://localhost:8585' }, extra)).toBe(true)
   })
 })
 

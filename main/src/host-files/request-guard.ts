@@ -25,11 +25,13 @@ function hostnameOf (host: string): string | null {
   }
 }
 
-// anyHost: started with --listen, where other machines are the point.
-export function isOwnPageRequest (headers: GuardHeaders, anyHost = false): boolean {
+// extraHosts: started with --listen, where other machines are the point: this
+// PC's own addresses count too. A site's own name still doesn't.
+export function isOwnPageRequest (headers: GuardHeaders, extraHosts?: ReadonlySet<string>): boolean {
   const { host, origin } = headers
   if (!host) return false
-  if (!anyHost && !LOOPBACK.has(hostnameOf(host) ?? '')) return false
+  const name = hostnameOf(host) ?? ''
+  if (!LOOPBACK.has(name) && !extraHosts?.has(name)) return false
 
   const site = headers['sec-fetch-site']
   if (site === 'cross-site' || site === 'same-site') return false
@@ -53,12 +55,19 @@ export function sendFile (root: string, url: string, res: ServerResponse) {
     res.end()
     return
   }
-  fs.createReadStream(full)
-    .on('error', () => {
-      if (!res.headersSent) res.statusCode = 404
-      res.end()
-    })
-    .pipe(res)
+  const stream = fs.createReadStream(full)
+  stream.on('error', () => {
+    if (res.headersSent) {
+      // Partway through: ending normally would look like a complete file.
+      res.destroy()
+      return
+    }
+    res.statusCode = 404
+    res.removeHeader('content-type')
+    res.end()
+  })
+  res.on('close', () => { stream.destroy() })
+  stream.pipe(res)
 }
 
 export function resolveInside (root: string, url: string): string | null {

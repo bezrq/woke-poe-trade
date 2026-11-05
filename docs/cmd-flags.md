@@ -13,8 +13,9 @@ Can be useful for Linux users using APT in the browser.
 Changes the listening address for the built-in server.
 Can be useful for people with buggy VPN clients that won't let connect to a local address.
 Use `--listen=0.0.0.0` in that case.
-By default, the server gets a random port, so bookmarking the page in the browser is useless.
-You can change that as well.
+By default, the server uses port 8585; you can change that as well.
+Only this PC's own addresses are accepted. Other machines can use the overlay's
+page, but can't start programs through it.
 
 - `--no-updates` Disables automatic downloading of updates and, consequently,
 their installation.
