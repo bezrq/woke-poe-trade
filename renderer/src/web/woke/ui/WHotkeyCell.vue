@@ -18,7 +18,7 @@
 import { computed, shallowRef } from 'vue'
 import { KeyToCode, hotkeyToString } from '@ipc/KeyToCode'
 import WKbd from './WKbd.vue'
-import { normalizeKey, poeBindNote, useHotkeyContext } from './hotkey-context'
+import { normalizeKey, poeBindNote, reservedKeyNote, useHotkeyContext } from './hotkey-context'
 
 const props = withDefaults(defineProps<{
   modelValue: string | null | undefined
@@ -36,7 +36,10 @@ const btn = shallowRef<HTMLButtonElement | null>(null)
 const ctx = useHotkeyContext()
 
 const problem = computed(() => {
-  if (props.quiet || !ctx || !props.modelValue) return null
+  if (props.quiet || !props.modelValue) return null
+  const reserved = reservedKeyNote(props.modelValue)
+  if (reserved) return reserved
+  if (!ctx) return null
   const norm = normalizeKey(props.modelValue)
   if (ctx.failed.value.has(norm)) return 'Another program holds this key'
   const uses = ctx.uses.value.get(norm) ?? []

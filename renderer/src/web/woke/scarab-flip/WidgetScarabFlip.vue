@@ -1,13 +1,14 @@
 <template>
   <Widget :config="config" move-handles="corners" :inline-edit="false">
     <!-- The best flip on hover, so a quick check doesn't open the panel. -->
-    <DockItem :menu="dockMenu" id="scarab-flip" title="Flips" :show="dockShow" :wm-id="config.wmId">
+    <DockItem :menu="dockMenu" id="scarab-flip" title="Flips" :show="dockShow" :wm-id="config.wmId" :game-click="runOutlines">
       <template #card>
         <div v-if="best" class="flex flex-col gap-0.5" style="padding: 2px var(--w-pad) 6px;">
           <span class="w-num">Best supply: <span v-item-tip="{ name: best.item, type: best.family.ninjaType }">{{ shortName(best.name) }}</span></span>
           <span class="w-dim w-num">{{ best.family.label }}, {{ best.method.label.toLowerCase() }}, +{{ fmt(best.profitEach) }} each<template v-if="best.profitPerDay != null">, up to {{ fmt(best.profitPerDay) }} a day</template></span>
         </div>
         <div v-else class="w-dim" style="padding: 2px var(--w-pad) 6px;">Nothing worth flipping right now</div>
+        <div v-if="clickHint" class="w-dim text-xs" style="padding: 0 var(--w-pad) 6px;">Click to outline flips in the open stash tab</div>
       </template>
     </DockItem>
     <WPanel :title="config.wmTitle || 'Flips'" :icon="panelIcon" :updated="snapshot?.ts ?? null" :fresh-min="40" :stale-min="180" width="34rem">
@@ -141,7 +142,7 @@ import { useMarketCollector } from '../market/collector'
 import { latestSnapshots } from '../market/db'
 import type { Snapshot } from '../market/types'
 import DockItem from '../dock/DockItem.vue'
-import { dockIconEl } from '../dock/dock'
+import { dockConfig, dockIconEl } from '../dock/dock'
 import type { DockMenuAction } from '../dock/dock'
 import { useZone } from '../shared/zone'
 import { DEFAULT_FLIP_SORT, JACKPOT_CHAOS, SUPPLY_HIGH, SUPPLY_MEDIUM, buyList, firstSortDir, isTraded, flipOdds, parseExchange, rareCheapList, sortFlips, supplyLevel } from './calc'
@@ -386,7 +387,9 @@ const FlipName = defineComponent({
   }
 })
 
-// The shortcut: outlines on the open stash tab, or clears them.
+// The shortcut and the icon click: outlines on the open stash tab, or clears them.
+const clickHint = computed(() => Host.isElectron && !wm.active.value && dockConfig().hoverOpens !== false)
+
 function stashNote (text: string) {
   toast(text, { anchor: dockIconEl('scarab-flip'), dock: true, ms: 2500 })
 }
@@ -424,8 +427,12 @@ async function toggleOutlines () {
   stashMarks.value = marks
 }
 
+function runOutlines () {
+  toggleOutlines().catch(() => { stashNote("Couldn't read the screen") })
+}
+
 const stashHotkey = MainProcess.onEvent('MAIN->CLIENT::widget-action', (e) => {
-  if (e.target === stashHotkeyTarget(props.config.wmId)) toggleOutlines().catch(() => { stashNote("Couldn't read the screen") })
+  if (e.target === stashHotkeyTarget(props.config.wmId)) runOutlines()
 })
 onUnmounted(() => { stashHotkey.abort() })
 
