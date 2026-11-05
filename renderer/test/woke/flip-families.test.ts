@@ -3,7 +3,7 @@
 import { describe, it, expect } from 'vitest'
 import { buyList, flipModel, parseExchange, upgradeRows } from '@/web/woke/scarab-flip/calc'
 import type { Quote } from '@/web/woke/scarab-flip/calc'
-import { FAMILIES, bestFlip, familyById, flipRecipe, harvestCost, priceFlip, shortName, unpricedShare } from '@/web/woke/scarab-flip/families'
+import { FAMILIES, bestFlip, familyById, flipRecipe, harvestCost, parseLifeforce, priceFlip, shortName, unpricedShare } from '@/web/woke/scarab-flip/families'
 import type { Exchanges } from '@/web/woke/scarab-flip/families'
 import type { PriceItem } from '@/web/woke/market/types'
 
@@ -56,6 +56,14 @@ describe('Harvest rerolls', () => {
     // Worth rerolling now: worth = 100000 - 1000 = 99000 as an input, plus the 1c.
     expect(dear.buyUnder).toBeCloseTo(99000, 6)
     expect(dear.recipeValue).toBeCloseTo(99001, 6)
+  })
+
+  it('reads a typed lifeforce cost: blank, zero or negative mean the listed cost', () => {
+    expect(parseLifeforce('')).toBeUndefined()
+    expect(parseLifeforce(0)).toBeUndefined()
+    expect(parseLifeforce('-30')).toBeUndefined()
+    expect(parseLifeforce('12')).toBe(12)
+    expect(parseLifeforce(12)).toBe(12)
   })
 
   it('never treats a free or negative craft as profit from nothing', () => {

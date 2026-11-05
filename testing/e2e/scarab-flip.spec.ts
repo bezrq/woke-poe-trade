@@ -1,5 +1,6 @@
 // The flips panel on recorded poe.ninja prices: the verdict, each view, the
 // rare-but-cheap marks, and the families beyond scarabs.
+import type { Page } from '@playwright/test'
 import { test, expect, fixtureText } from './harness'
 
 const DENSE = '**/poe.ninja/poe1/api/economy/current/dense/overviews*'
@@ -29,13 +30,29 @@ function exchangeFeed (rows: Array<[string, number, number]>) {
   }
 }
 
+async function routePrices (overlay: { page: Page }) {
+  const dense = JSON.parse(fixtureText('http/poe.ninja/poe1/api/economy/current/dense/overviews.json'))
+  dense.itemOverviews.push(
+    { type: 'DeliriumOrb', lines: ORBS.map(([name, chaos]) => ({ name, chaos, graph: [] })) },
+    { type: 'Oil', lines: OILS.map(([name, chaos]) => ({ name, chaos, graph: [] })) }
+  )
+  dense.currencyOverviews[0].lines.push({ name: 'Primal Crystallised Lifeforce', chaos: 0.033, graph: [] })
+  await overlay.page.route(DENSE, route => route.fulfill({ json: dense }))
+  await overlay.page.route(EXCHANGE, route => {
+    const type = new URL(route.request().url()).searchParams.get('type')
+    const rows = type === 'DeliriumOrb' ? ORBS : type === 'Oil' ? OILS : []
+    return route.fulfill({ json: exchangeFeed(rows) })
+  })
+}
+
 test('flips: buy list, odds and rare scarabs from recorded prices', async ({ overlay }) => {
   await overlay.boot({ overlayActive: true, widgets: [{ wmType: 'woke-scarab-flip', wmWants: 'show' }] })
   const panel = overlay.widget('woke-scarab-flip')
 
   await expect(panel.getByText(/\d+ scarabs? worth vendoring/)).toBeVisible()
   // Volume comes from the exchange feed, so the supply columns show.
-  await expect(panel.getByText('Traded / day')).toBeVisible()
+  await expect(panel.getByText('Market / day')).toBeVisible()
+  await expect(panel.getByText('Max profit / day')).toHaveAttribute('title', /ceiling/i)
   await expect(panel.getByText('Breach of the Hive', { exact: true })).toBeVisible()
   await overlay.snap('flips-scarabs-buy')
 
@@ -50,18 +67,7 @@ test('flips: buy list, odds and rare scarabs from recorded prices', async ({ ove
 })
 
 test('flips: a Harvest reroll tab and a known-result tab', async ({ overlay }) => {
-  const dense = JSON.parse(fixtureText('http/poe.ninja/poe1/api/economy/current/dense/overviews.json'))
-  dense.itemOverviews.push(
-    { type: 'DeliriumOrb', lines: ORBS.map(([name, chaos]) => ({ name, chaos, graph: [] })) },
-    { type: 'Oil', lines: OILS.map(([name, chaos]) => ({ name, chaos, graph: [] })) }
-  )
-  dense.currencyOverviews[0].lines.push({ name: 'Primal Crystallised Lifeforce', chaos: 0.033, graph: [] })
-  await overlay.page.route(DENSE, route => route.fulfill({ json: dense }))
-  await overlay.page.route(EXCHANGE, route => {
-    const type = new URL(route.request().url()).searchParams.get('type')
-    const rows = type === 'DeliriumOrb' ? ORBS : type === 'Oil' ? OILS : []
-    return route.fulfill({ json: exchangeFeed(rows) })
-  })
+  await routePrices(overlay)
 
   await overlay.boot({ overlayActive: true, widgets: [{ wmType: 'woke-scarab-flip', wmWants: 'show' }] })
   const panel = overlay.widget('woke-scarab-flip')
@@ -69,6 +75,8 @@ test('flips: a Harvest reroll tab and a known-result tab', async ({ overlay }) =
   await panel.getByRole('tab', { name: 'Delirium', exact: true }).click()
   await expect(panel.getByText(/\d+ orbs? worth rerolling/)).toBeVisible()
   await expect(panel.getByText(/of Primal lifeforce/)).toBeVisible()
+  // The cost lives in settings, not on the panel.
+  await expect(panel.getByText('Primal / item')).toHaveCount(0)
   await expect(panel.getByText("Armoursmith's", { exact: true })).toBeVisible()
   await overlay.snap('flips-delirium-harvest')
 
@@ -78,4 +86,27 @@ test('flips: a Harvest reroll tab and a known-result tab', async ({ overlay }) =
   await expect(panel.getByText('Black to Opalescent Oil', { exact: true })).toBeVisible()
   await expect(panel.getByRole('button', { name: 'Odds', exact: true })).toHaveCount(0)
   await overlay.snap('flips-oils-upgrade')
+})
+
+test('flips: the lifeforce cost set in settings changes the panel, and blank goes back to the default', async ({ overlay }) => {
+  await overlay.page.setViewportSize({ width: 2560, height: 1440 })
+  await routePrices(overlay)
+  await overlay.boot({ overlayActive: true, widgets: [{ wmType: 'woke-scarab-flip', wmWants: 'show' }] })
+  const panel = overlay.widget('woke-scarab-flip')
+  await panel.getByRole('tab', { name: 'Delirium', exact: true }).click()
+  // 30 Primal at 0.033c.
+  await expect(panel.getByText(/for 1 c of Primal lifeforce/)).toBeVisible()
+
+  await overlay.widget('menu').locator('.fa-cog').click()
+  const settings = overlay.widget('settings')
+  await settings.getByText('Market & investments', { exact: true }).first().click()
+  const input = settings.locator('[data-setting="Lifeforce per item for Harvest rerolls"] input')
+  // The panel stays mounted but hidden while settings are open.
+  await input.fill('100')
+  await overlay.snap('flips-settings-lifeforce')
+  await expect(panel.getByText(/for 3\.3 c of Primal lifeforce/)).toBeAttached()
+
+  await input.fill('')
+  await expect(panel.getByText(/for 1 c of Primal lifeforce/)).toBeAttached()
+  await expect(input).toHaveValue('')
 })
