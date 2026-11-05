@@ -14,7 +14,36 @@ history:
   - type: activity
     user: Agent
     date: '2026-11-05T08:10:43.740Z'
+    comment: Created ticket.
+    id: a-2026-11-05t08-10-43-740z
+  - type: activity
+    user: Agent
+    date: '2026-11-05T08:10:43.740Z'
     comment: Created as subtask of WOKEPOET-37.
+    id: a-2026-11-05t08-10-43-740z
+  - type: comment
+    user: Agent
+    comment: >-
+      **Which of these should I build?** Mocks:
+      https://claude.ai/artifact/T7Ty4PqX9C1iKtLGvdqovp. Listing mods hover card
+      (A) or open row (B), bulk verdict, price data age, weighted search, real
+      sales from the trade log. Proposed default: hover card, data age and bulk
+      verdict first.
+    date: '2026-11-05T09:41:10.740Z'
+    id: c-2026-11-05t09-41-10-740z
+  - type: swimlane_change
+    swimlane: require-input
+    action: set
+    user: Agent
+    date: '2026-11-05T09:41:10.740Z'
+    comment: >-
+      **Which of these should I build?** Mocks:
+      https://claude.ai/artifact/T7Ty4PqX9C1iKtLGvdqovp. Listing mods hover card
+      (A) or open row (B), bulk verdict, price data age, weighted search, real
+      sales from the trade log. Proposed default: hover card, data age and bulk
+      verdict first.
+swimlane: require-input
+needsAction: null
 ---
 > TL;DR: Listing mods on hover, a corrupted column, a verdict for bulk items, price data age, weighted searches and real sales from the trade log. New UI, so mocks and Guy's pick come first.
 
