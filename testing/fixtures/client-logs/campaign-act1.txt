@@ -35,7 +35,7 @@
 2026/11/04 18:13:30 211740400 cff94598 [INFO Client 21088] : AFK mode is now OFF.
 2026/11/04 18:14:00 211770400 2caa1679 [DEBUG Client 21088] Generating level 9 area "1_1_7_2" with seed 5521101
 2026/11/04 18:14:02 211772400 cff94598 [INFO Client 21088] : You have entered The Upper Prison.
-2026/11/04 18:15:10 211840400 cff94598 [INFO Client 21088] : You have entered The Warden's Quarters.
+2026/11/04 18:15:10 211840400 cff94598 [INFO Client 21088] Brutus, the Warden: Fresh meat.
 2026/11/04 18:15:50 211880400 cff94598 [INFO Client 21088] : WokeTester (Witch) is now level 9
 2026/11/04 18:16:40 211930400 2caa1679 [DEBUG Client 21088] Generating level 10 area "1_1_8" with seed 640011
 2026/11/04 18:16:42 211932400 cff94598 [INFO Client 21088] : You have entered Prisoner's Gate.
@@ -47,7 +47,7 @@
 2026/11/04 18:22:40 212290400 2caa1679 [DEBUG Client 21088] Generating level 13 area "1_1_11_2" with seed 330020
 2026/11/04 18:22:42 212292400 cff94598 [INFO Client 21088] : You have entered The Cavern of Anger.
 2026/11/04 18:23:20 212330400 cff94598 [INFO Client 21088] : WokeTester (Witch) is now level 12
-2026/11/04 18:24:00 212370400 cff94598 [INFO Client 21088] : You have entered Merveil's Lair.
+2026/11/04 18:24:00 212370400 cff94598 [INFO Client 21088] Merveil: I am so cold and lonely. Embrace me.
 2026/11/04 18:25:30 212460400 1a4f3d1 [INFO Client 21088] Connecting to instance server at 159.65.86.12:6112
 2026/11/04 18:25:31 212461400 2caa1679 [DEBUG Client 21088] Generating level 15 area "1_2_town" with seed 1
 2026/11/04 18:25:33 212463400 cff94598 [INFO Client 21088] : You have entered The Forest Encampment.

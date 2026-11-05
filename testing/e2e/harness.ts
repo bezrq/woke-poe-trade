@@ -187,6 +187,9 @@ export class Overlay {
   // Appends lines to the game's Client.txt (see fixtures/client-logs) and
   // waits for the app's log watcher to pick them up.
   async log (lines: string[]) {
+    // The watcher opens the file a moment after the config arrives, later under
+    // load. Bounded: with no module reading the log, it never opens.
+    for (let waited = 0; waited < 5000 && !this.app.logFollowed; waited += 50) await this.page.waitForTimeout(50)
     this.app.appendClientLog(lines)
     await this.page.waitForTimeout(700)
   }

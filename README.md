@@ -26,7 +26,7 @@ Pick a preset on first run (Mapper, Leveling, Trader, Everything or Price check 
 | Economy | Market tracker | Movers and watchlist from poe.ninja |
 | Economy | Investments | League-start buys ranked from past leagues |
 | Economy | Lab gems | Divine Font gem values by colour |
-| Economy | Scarab flip | Whether the 3-to-1 vendor recipe pays, and rare scarabs that are cheap |
+| Economy | Flips | Vendor recipes and Harvest rerolls worth doing: scarabs, catalysts, delirium orbs and more |
 | Economy | Farming profit | Session profit per hour |
 | Economy | Session analytics | Profit per map, strategy and hour over time |
 | Economy | Boss runs | Profit per boss kill |

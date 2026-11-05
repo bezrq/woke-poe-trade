@@ -75,6 +75,8 @@ export interface LootFilterWidget extends Widget {
   sampleHotkey: string | null
   // Opens the full editor.
   editorHotkey: string | null
+  // Types /itemfilter in chat. One press, one command.
+  reloadHotkey: string | null
   // Empty: Documents/My Games/Path of Exile.
   folder: string
   // The downloaded NeverSink file the edits are applied to.
@@ -138,6 +140,7 @@ export function initLootFilterWidget (w: LootFilterWidget) {
   w.anchor = popupAnchor()
   w.sampleHotkey = 'Alt + F'
   w.editorHotkey = 'Alt + Shift + F'
+  w.reloadHotkey = 'Alt + Shift + R'
   w.folder = ''
   w.sourceName = ''
   w.sourceOnline = false
@@ -176,6 +179,7 @@ export function seedLootFilterWidget (wmId: number, taken: string[] = []): LootF
   const free = (key: string | null) => key && !used.has(sortKeys(key)) ? key : null
   w.sampleHotkey = free(w.sampleHotkey)
   w.editorHotkey = free(w.editorHotkey)
+  w.reloadHotkey = free(w.reloadHotkey)
   w.stricterHotkey = free(w.stricterHotkey)
   w.looserHotkey = free(w.looserHotkey)
   return w
@@ -185,6 +189,8 @@ export function normalizeLootFilterWidget (w: LootFilterWidget) {
   if (!w.anchor) w.anchor = popupAnchor()
   if (w.sampleHotkey === undefined) w.sampleHotkey = null
   if (w.editorHotkey === undefined) w.editorHotkey = null
+  // Not Alt + R: that's Map scan's rolling mode.
+  if (w.reloadHotkey === undefined) w.reloadHotkey = 'Alt + Shift + R'
   if (typeof w.folder !== 'string') w.folder = ''
   if (typeof w.sourceName !== 'string') w.sourceName = ''
   if (w.saveMode !== 'overwrite') w.saveMode = 'copy'
@@ -258,6 +264,15 @@ export function editorHotkeyTarget (wmId: number): string {
 
 export function parseEditorHotkeyTarget (target: string): number | null {
   const m = /^woke-loot-filter:(\d+)$/.exec(target)
+  return m ? Number(m[1]) : null
+}
+
+export function reloadHotkeyTarget (wmId: number): string {
+  return `woke-loot-filter:${wmId}:reload`
+}
+
+export function parseReloadHotkeyTarget (target: string): number | null {
+  const m = /^woke-loot-filter:(\d+):reload$/.exec(target)
   return m ? Number(m[1]) : null
 }
 

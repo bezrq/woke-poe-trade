@@ -22,6 +22,7 @@ export interface PobSkillGroup {
   slot: string
   enabled: boolean
   isMain: boolean
+  source?: string
   gems: PobGem[]
 }
 
@@ -135,6 +136,7 @@ function parseGroups (body: string, mainSocketGroup: number | null): PobSkillGro
       slot: a.slot ?? '',
       enabled: a.enabled !== 'false',
       isMain: mainSocketGroup != null && groups.length + 1 === mainSocketGroup,
+      ...(a.source ? { source: a.source } : {}),
       gems
     })
   }

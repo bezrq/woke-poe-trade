@@ -3,8 +3,8 @@
     <template #actions>
       <span class="w-dim text-xs whitespace-nowrap pr-2">{{ result.sub }}</span>
     </template>
-    <div :class="[$style.verdict, result.unidentified ? $style.unknown : $style[result.verdict.verdict]]">
-      <div :class="$style.badge">{{ result.unidentified ? '?' : VERDICT_LABEL[result.verdict.verdict] }}</div>
+    <div :class="[$style.verdict, isUnsure(result) ? $style.unknown : $style[result.verdict.verdict]]">
+      <div :class="$style.badge">{{ isUnsure(result) ? '?' : VERDICT_LABEL[result.verdict.verdict] }}</div>
       <div class="flex flex-col min-w-0">
         <span :class="$style.headline">{{ headline }}</span>
         <span class="w-dim text-xs w-trunc">Profile: {{ profileName }}</span>
@@ -52,6 +52,7 @@ import { modRatings, nextModRating, setModRatings, withRating } from './rules'
 import type { ModRating, Verdict } from './rules'
 import { activeProfile } from './widget'
 import type { MapModsWidget } from './widget'
+import { isUnsure } from './check'
 import type { MapCheckResult } from './check'
 
 const props = defineProps<{
@@ -69,6 +70,8 @@ const headline = computed(() => {
   const v = props.result.verdict
   if (v.deadly.length) return `${v.deadly.length} ${v.deadly.length === 1 ? "mod your build can't run" : "mods your build can't run"}`
   if (v.warn.length) return `${v.warn.length} ${v.warn.length === 1 ? 'mod' : 'mods'} to be careful with`
+  const unread = props.result.unknown.length
+  if (unread) return `${unread} ${unread === 1 ? "mod I couldn't read" : "mods I couldn't read"}, so check before you run it`
   return 'Safe for your build'
 })
 

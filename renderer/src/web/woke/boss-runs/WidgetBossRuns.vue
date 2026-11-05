@@ -8,7 +8,7 @@
           <div v-for="r in arenaBosses" :key="r.boss.id" class="flex flex-col gap-0.5 w-num">
             <div class="w-head-font w-accent w-trunc">{{ r.boss.name }}</div>
             <div v-for="d in cardDrops(r.drops, CARD_DROPS)" :key="d.name" :class="$style.cardDrop">
-              <span class="w-trunc" :title="d.name">{{ d.name }}</span>
+              <span v-item-tip="{ name: d.name, type: typeByName.get(d.name), variant: d.variant }" class="w-trunc">{{ d.name }}</span>
               <span class="text-right" :class="d.chance == null ? 'w-faint' : 'w-dim'">{{ d.chance == null ? '?' : pct(d.chance) }}</span>
               <span class="text-right"><WPrice :chaos="d.price" :divine="divine" /></span>
             </div>
@@ -28,7 +28,7 @@
         </div>
       </template>
     </DockItem>
-    <WPanel ref="panel" :title="config.wmTitle || 'Boss runs'" icon="maven" :updated="prices.snapshot.value?.ts ?? null" :fresh-min="40" :stale-min="180" width="62rem" max-height="80vh" :scroll="false">
+    <WPanel ref="panel" :title="config.wmTitle || 'Boss runs'" icon="maven" :updated="prices.snapshot.value?.ts ?? null" :fresh-min="40" :stale-min="180" width="68rem" max-height="80vh" :scroll="false">
       <template #toolbar>
         <WSegmented v-model="config.tier" :options="tierOptions" />
         <WSegmented v-model="config.sort" :options="sortOptions" />
@@ -53,7 +53,7 @@
           <div class="w-group-label">Profitable now</div>
           <WListItem v-for="r in ranked.good" :key="r.boss.id" :active="r.boss.id === sel?.boss.id" @select="config.selected = r.boss.id" @contextmenu="bossMenu($event, r)">
             <span class="flex justify-between gap-2 w-full min-w-0">
-              <span class="flex items-center gap-2 min-w-0"><WIcon :src="art(r.boss.entry[0]?.name)" fallback="fas fa-skull" /><span class="w-trunc">{{ r.boss.name }}</span></span>
+              <span class="flex items-center gap-2 min-w-0"><WIcon :src="art(r.boss.entry[0]?.name)" fallback="fas fa-skull" /><span class="w-trunc">{{ r.boss.name }}</span><WChip v-if="r.estimated" title="Uses estimated drop chances, not measured kills">est.</WChip></span>
               <span :class="r.profit >= 0 ? 'w-up' : 'w-down'"><WPrice :chaos="config.sort === 'run' ? r.profit : r.perHour" :divine="divine" />{{ config.sort === 'run' ? '' : '/h' }}</span>
             </span>
             <template #sub>{{ subline(r) }}</template>
@@ -63,7 +63,7 @@
             <div class="w-group-label">Losing money</div>
             <WListItem v-for="r in ranked.losing" :key="r.boss.id" :active="r.boss.id === sel?.boss.id" @select="config.selected = r.boss.id" @contextmenu="bossMenu($event, r)">
               <span class="flex justify-between gap-2 w-full min-w-0">
-                <span class="flex items-center gap-2 min-w-0"><WIcon :src="art(r.boss.entry[0]?.name)" fallback="fas fa-skull" /><span class="w-trunc">{{ r.boss.name }}</span></span>
+                <span class="flex items-center gap-2 min-w-0"><WIcon :src="art(r.boss.entry[0]?.name)" fallback="fas fa-skull" /><span class="w-trunc">{{ r.boss.name }}</span><WChip v-if="r.estimated" title="Uses estimated drop chances, not measured kills">est.</WChip></span>
                 <span class="w-down"><WPrice :chaos="config.sort === 'run' ? r.profit : r.perHour" :divine="divine" />{{ config.sort === 'run' ? '' : '/h' }}</span>
               </span>
               <template #sub>{{ subline(r) }}</template>
@@ -106,37 +106,43 @@
                 <WEmpty v-if="!sel.drops.length" :art="{ mechanic: 'maven' }">No drop list for this boss yet. Log a kill or add drops under Rates &amp; sources.</WEmpty>
                 <template v-else>
                   <div class="w-row w-row--head" :class="$style.dropGrid"><span title="Count this drop in the loot">On</span><span>Drop</span><span class="text-right">Chance</span><span class="text-right">Price</span><span class="text-right">Per run</span><span>Share</span></div>
-                  <div v-for="d in sel.drops" :key="d.name" class="w-row" :class="[$style.dropGrid, { [$style.off]: !d.included }]">
+                  <template v-for="d in sel.drops" :key="d.name">
+                  <div class="w-row" :class="[$style.dropGrid, { [$style.off]: !d.included }]">
                     <input type="checkbox" :checked="d.included" :aria-label="`Count ${d.name}`" @change="toggleDrop(sel.boss.id, d.name, ($event.target as HTMLInputElement).checked, d.tooRare)">
                     <span v-item-tip="{ name: d.name, type: typeByName.get(d.name) }" class="w-trunc flex items-center gap-1">
                       <WIcon :src="art(d.name)" fallback="fas fa-gem" /><span class="w-trunc">{{ d.name }}</span><span v-if="d.qty > 1" class="w-dim">×{{ d.qty }}</span>
                       <WChip v-if="d.tooRare" :title="`Rarer than 1 in ${config.plannedRuns} runs`">rare</WChip>
-                      <WChip v-if="d.priceMode" clickable :active="d.priceMode === 'custom'" :title="spreadTitle(d)" @click="editing = editing === d.name ? null : d.name">{{ modeLabel(d.priceMode) }}</WChip>
                     </span>
-                    <span class="text-right w-num" :class="d.rateSource === 'community' ? 'w-dim' : d.rateSource === 'none' ? 'w-faint' : 'w-accent'" :title="rateTitle(d.rateSource)">{{ d.chance == null ? '?' : pct(d.chance) }}</span>
-                    <span class="text-right"><WPrice :chaos="d.price" :divine="divine" /></span>
+                    <span class="text-right w-num" :class="d.rateSource === 'community' ? 'w-dim' : d.rateSource === 'none' ? 'w-faint' : d.rateSource === 'estimate' ? '' : 'w-accent'" :style="d.rateSource === 'estimate' ? 'color: var(--w-warn);' : ''" :title="rateTitle(d.rateSource)">{{ d.chance == null ? '?' : (d.rateSource === 'estimate' ? '~' : '') + pct(d.chance) }}</span>
+                    <span class="flex items-center justify-end gap-1">
+                      <WChip v-if="d.priceMode" clickable :active="d.priceMode === 'custom'" :title="spreadTitle(d)" @click="editing = editing === d.name ? null : d.name">{{ modeLabel(d) }}</WChip>
+                      <WChip v-else-if="d.priceSource === 'trade'" :title="`poe.ninja doesn't list this. Price from ${d.listings} instant buyouts on trade.`">trade</WChip>
+                      <WPrice :chaos="d.price" :divine="divine" />
+                    </span>
                     <span class="text-right"><WPrice :chaos="d.chance == null || d.price == null ? null : d.value" :divine="divine" /></span>
                     <span :class="$style.share"><i :style="{ width: (sel.loot > 0 ? d.value / sel.loot * 100 : 0) + '%' }" /></span>
                   </div>
-                  <div v-if="editingRow" class="flex flex-wrap items-center gap-2 text-sm" :class="$style.editor">
+                  <div v-if="editing === d.name && editingRow" class="flex flex-wrap items-center gap-2 text-sm" :class="$style.editor">
                     <span class="w-accent">{{ editingRow.name }}</span>
-                    <span class="w-dim">poe.ninja has {{ editingRow.spread?.count ?? 0 }} variants:</span>
-                    <span class="flex items-center gap-1"><WPrice :chaos="editingRow.spread?.min" :divine="divine" /> to <WPrice :chaos="editingRow.spread?.max" :divine="divine" /></span>
-                    <WSegmented :model-value="editingRow.priceMode ?? 'median'" :options="modeOptions" @update:model-value="setMode(editingRow.name, $event)" />
+                    <span v-if="editingRow.listings != null" class="w-dim">{{ editingRow.listings.toLocaleString() }} unidentified instant buyouts.</span>
+                    <span class="flex items-center gap-1 w-dim">poe.ninja <WPrice :chaos="editingRow.spread?.median" :divine="divine" /></span>
+                    <WSegmented :model-value="editingRow.priceMode === 'min' ? 'median' : editingRow.priceMode ?? 'median'" :options="modeOptions" @update:model-value="setMode(editingRow.name, $event)" />
                     <label v-if="editingRow.priceMode === 'custom'" class="flex items-center gap-1 w-dim">Price
                       <input type="number" min="0" :class="$style.input" style="width: 5rem;" :value="config.customPrices[editingRow.name] ?? ''" placeholder="chaos"
                         @change="setCustomPrice(editingRow.name, ($event.target as HTMLInputElement).value)">c
                     </label>
                     <WButton size="sm" icon="fas fa-external-link-alt" @click="openUnidSearch(editingRow.name)">Unidentified on trade</WButton>
                   </div>
+                  </template>
                   <div v-if="sel.excluded" class="text-xs w-dim" style="padding: 6px var(--w-pad) 0;">{{ sel.excluded }} drop(s) left out of the loot<template v-if="config.plannedRuns"> (rarer than 1 in {{ config.plannedRuns }} runs, or switched off)</template>.</div>
                   <div v-if="sel.entryMissing.length" class="text-xs" style="padding: 6px var(--w-pad) 0; color: var(--w-warn);">No price for {{ sel.entryMissing.join(', ') }}, so profit is hidden. Tick "I own the entry items" to count it as free.</div>
                   <div class="text-xs w-faint" style="padding: 6px var(--w-pad) 0;">
                     <template v-if="sel.kills >= OWN_RATE_KILLS">Using your own drop rates from {{ sel.kills }} logged kills.</template>
                     <template v-else-if="sel.boss.source">Rates: {{ sel.boss.source.label }}. Your own rates take over after {{ OWN_RATE_KILLS }} logged kills ({{ sel.kills }} so far).</template>
                   </div>
+                  <div v-if="sel.estimated" class="text-xs" style="padding: 6px var(--w-pad) 0; color: var(--w-warn);">"~" = estimated chance, not measured from kills ({{ ESTIMATE_SOURCE_LABEL }}). Treat loot and profit here as rough.</div>
                   <div v-if="sel.unrated" class="text-xs w-faint" style="padding: 6px var(--w-pad);">"?" = no known drop rate; counted as 0. Log kills or type a rate under Rates &amp; sources.</div>
-                  <div v-if="sel.unpriced" class="text-xs" style="padding: 0 var(--w-pad) 6px; color: var(--w-warn);">{{ sel.unpriced }} drop(s) have no poe.ninja price and count as 0.</div>
+                  <div v-if="sel.unpriced" class="text-xs" style="padding: 0 var(--w-pad) 6px; color: var(--w-warn);">{{ sel.unpriced }} drop(s) have no price yet and count as 0.</div>
                 </template>
               </template>
 
@@ -145,12 +151,12 @@
                 <div v-if="logging" class="flex flex-col gap-2" style="padding: 8px var(--w-pad);">
                   <div class="w-dim text-sm">Tick what this kill dropped.</div>
                   <div class="flex flex-wrap gap-1">
-                    <WChip v-for="d in sel.drops" :key="d.name" clickable :active="!!logging[d.name]" @click="toggleLogged(d.name, d.variant)">{{ d.name }}</WChip>
+                    <WChip v-for="d in sel.drops" :key="d.name" v-item-tip="{ name: d.name, type: typeByName.get(d.name), variant: d.variant }" clickable :active="!!logging[d.name]" @click="toggleLogged(d.name, d.variant)">{{ d.name }}</WChip>
                   </div>
                   <div class="relative">
                     <WField v-model="logQuery" icon="fas fa-plus" placeholder="Something else… (search prices)" class="w-full" />
                     <div v-if="logResults.length" class="w-surface absolute left-0 right-0 z-10 mt-1 py-1">
-                      <button v-for="item in logResults" :key="item.type + item.name + item.variant" class="w-row w-full text-left" style="grid-template-columns: minmax(0,1fr) auto;" @click="toggleLogged(item.name, item.variant || undefined); logQuery = ''">
+                      <button v-for="item in logResults" :key="item.type + item.name + item.variant" v-item-tip="item" class="w-row w-full text-left" style="grid-template-columns: minmax(0,1fr) auto;" @click="toggleLogged(item.name, item.variant || undefined); logQuery = ''">
                         <span class="w-trunc">{{ item.name }}<span v-if="item.variant" class="w-dim ml-1">{{ item.variant }}</span></span>
                         <WPrice :chaos="item.chaos" :divine="divine" />
                       </button>
@@ -186,11 +192,15 @@
                     <div v-if="sel.boss.source.note" style="color: var(--w-warn);">{{ sel.boss.source.note }}</div>
                   </div>
                   <div v-else class="w-dim">No public drop data for this boss. Add its drops below and type rates you trust, or log kills.</div>
-                  <div class="w-faint text-xs">Your typed rates win over community rates, which win over your kill log. Prices are from poe.ninja.</div>
+                  <div v-if="sel.estimated" style="color: var(--w-warn);">
+                    {{ sel.estimated }} drop(s) use estimated chances, not measured kills: {{ ESTIMATE_SOURCE_LABEL }}.
+                    <a v-if="estimateUrl(sel.boss.id)" :href="estimateUrl(sel.boss.id)!" target="_blank" class="w-accent">Open source ↗</a>
+                  </div>
+                  <div class="w-faint text-xs">Your typed rates win over community rates, then your kill log, then estimates. Prices are from poe.ninja; jewels use unidentified trade listings.</div>
                 </div>
                 <div class="w-row w-row--head" :class="$style.rateGrid"><span>Drop</span><span>Source</span><span class="text-right">Chance %</span><span /></div>
                 <div v-for="d in sel.drops" :key="d.name" class="w-row" :class="$style.rateGrid">
-                  <span class="w-trunc">{{ d.name }}</span>
+                  <span v-item-tip="{ name: d.name, type: typeByName.get(d.name), variant: d.variant }" class="w-trunc">{{ d.name }}</span>
                   <span class="w-dim text-xs">{{ rateTitle(d.rateSource) }}</span>
                   <input type="number" min="0" max="100" step="0.01" :class="$style.input" class="text-right"
                     :value="d.chance == null ? '' : +(d.chance * 100).toFixed(3)" placeholder="?"
@@ -203,7 +213,7 @@
                 <div class="relative" style="padding: 8px var(--w-pad);">
                   <WField v-model="dropQuery" icon="fas fa-plus" placeholder="Add a drop to this boss…" class="w-full" />
                   <div v-if="dropResults.length" class="w-surface absolute left-0 right-0 z-10 mt-1 py-1" style="margin: 0 var(--w-pad);">
-                    <button v-for="item in dropResults" :key="item.type + item.name + item.variant" class="w-row w-full text-left" style="grid-template-columns: minmax(0,1fr) auto;" @click="addDrop(sel.boss.id, item.name, item.variant || undefined)">
+                    <button v-for="item in dropResults" :key="item.type + item.name + item.variant" v-item-tip="item" class="w-row w-full text-left" style="grid-template-columns: minmax(0,1fr) auto;" @click="addDrop(sel.boss.id, item.name, item.variant || undefined)">
                       <span class="w-trunc">{{ item.name }}<span v-if="item.variant" class="w-dim ml-1">{{ item.variant }}</span></span>
                       <WPrice :chaos="item.chaos" :divine="divine" />
                     </button>
@@ -270,13 +280,16 @@ import { WPanel, WTabs, WSegmented, WField, WButton, WEmpty, WPrice, WChip, WLis
 import { ninjaIcon } from '../ui/game-icons'
 import { usePriceIndex } from '../market/price-index'
 import { useLeagues } from '@/web/background/Leagues'
+import { poeWebApi } from '@/web/Config'
 import { BOSSES } from './bosses'
 import DockItem from '../dock/DockItem.vue'
 import { showWithOverlay } from '../dock/dock'
 import type { DockMenuAction } from '../dock/dock'
 import { arenaBosses as arenaBossIds, useZone } from '../shared/zone'
-import { bossesAtLevel, cardDrops, evaluateBoss, formatRunTime, killDropPrice, luck, parseRunTime, priceResolver, unidentifiedTradeUrl } from './calc'
+import { bossesAtLevel, cardDrops, evaluateBoss, formatRunTime, killDropPrice, luck, parseRunTime, priceResolver, tradeWanted, unidentifiedTradeUrl } from './calc'
 import type { BossResult, DropRow, KillRecord, PriceMode, RateSource } from './calc'
+import { ESTIMATE_SOURCE_LABEL, estimateUrl } from './estimates'
+import { useTradePrices } from './use-trade-prices'
 import { OWN_RATE_KILLS } from './calc'
 
 const props = defineProps<{
@@ -314,7 +327,23 @@ const sortOptions = [{ value: 'hour', label: 'Per hour' }, { value: 'run', label
 
 const prices = usePriceIndex()
 const divine = computed(() => prices.snapshot.value?.divine ?? null)
-const px = computed(() => priceResolver(prices.snapshot.value?.items ?? []))
+const tradePrices = useTradePrices()
+const px = computed(() => {
+  const league = prices.snapshot.value?.league ?? ''
+  return priceResolver(prices.snapshot.value?.items ?? [], name => tradePrices.get(league, name))
+})
+
+// Trade lookups only while this panel is on screen.
+const onScreen = computed(() => props.config.wmWants === 'show' && wm.active.value)
+const wantedKey = computed(() => tradeWanted(BOSSES, props.config.selected, props.config, px.value).join('\n'))
+watch([onScreen, () => prices.snapshot.value?.league, divine, wantedKey], ([show, league, rate, key]) => {
+  // The queries use English names, which the regional trade sites won't match.
+  if (!show || !league || !rate || poeWebApi() !== 'www.pathofexile.com') {
+    tradePrices.stop()
+    return
+  }
+  tradePrices.request(league, rate, key ? key.split('\n') : [])
+}, { immediate: true })
 
 const results = computed(() => BOSSES
   .filter(b => props.config.tier === 'all' || b.tier === props.config.tier)
@@ -378,7 +407,7 @@ function pct (chance: number) {
 }
 
 function rateTitle (src: RateSource) {
-  return { custom: 'my rate', community: 'community', mine: 'my kills', none: 'unknown' }[src]
+  return { custom: 'my rate', community: 'community', mine: 'my kills', estimate: 'estimate', none: 'unknown' }[src]
 }
 
 function short (name: string | null) {
@@ -414,14 +443,18 @@ function addDrop (id: string, name: string, variant?: string) {
 // Rare drops and high-variance prices
 const editing = shallowRef<string | null>(null)
 const editingRow = computed(() => sel.value?.drops.find(d => d.name === editing.value && d.priceMode) ?? null)
-const modeOptions = [{ value: 'min', label: 'Cheapest' }, { value: 'median', label: 'Median' }, { value: 'custom', label: 'My price' }]
+const modeOptions = [{ value: 'unid', label: 'Unidentified' }, { value: 'median', label: 'poe.ninja' }, { value: 'custom', label: 'My price' }]
 
-function modeLabel (mode: PriceMode) {
-  return { min: 'cheapest', median: 'median', custom: 'my price' }[mode]
+function modeLabel (d: DropRow) {
+  if (d.priceMode === 'unid' && d.priceSource !== 'trade') return tradePrices.pending(d.name) ? '…' : 'ninja'
+  return { unid: 'unid', min: 'cheapest', median: 'ninja', custom: 'my price' }[d.priceMode!]
 }
 function spreadTitle (d: DropRow) {
-  if (!d.spread) return 'No poe.ninja price'
-  return `${d.spread.count} poe.ninja variants, ${Math.round(d.spread.min)}c to ${Math.round(d.spread.max)}c. Click to choose how to price it.`
+  const ask = 'Click to choose how to price it.'
+  if (d.priceMode === 'unid' && d.listings != null) return `Middle of the cheapest 10 of ${d.listings} unidentified instant buyouts on trade. ${ask}`
+  if (d.priceMode === 'unid') return tradePrices.pending(d.name) ? `Looking up unidentified listings on trade. Showing poe.ninja until then. ${ask}` : `No unidentified trade price right now, so this is poe.ninja. ${ask}`
+  if (!d.spread) return `No poe.ninja price. ${ask}`
+  return `${d.spread.count} poe.ninja row(s), ${Math.round(d.spread.min)}c to ${Math.round(d.spread.max)}c. ${ask}`
 }
 function toggleDrop (id: string, name: string, on: boolean, tooRare: boolean) {
   const rest = Object.fromEntries(Object.entries(props.config.dropToggles[id] ?? {}).filter(([n]) => n !== name))
@@ -555,7 +588,7 @@ const dockMenu = computed<DockMenuAction[]>(() => [{
   gap: 6px;
 }
 .kv { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 3px 10px; font-size: var(--w-fs-md); align-items: center; }
-.dropGrid { grid-template-columns: 16px minmax(0, 1fr) 62px 72px 72px 70px; }
+.dropGrid { grid-template-columns: 16px minmax(0, 1fr) 62px 104px 72px 48px; }
 .off { opacity: 0.45; }
 .cardStats { margin-top: 4px; }
 .cardDrop { display: grid; grid-template-columns: minmax(0, 1fr) 46px 58px; gap: 6px; align-items: center; }

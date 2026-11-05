@@ -87,7 +87,7 @@ const INFLUENCE_PSEUDO_TEXT = {
 interface FilterBoolean { option?: 'true' | 'false' }
 interface FilterRange { min?: number, max?: number }
 
-interface TradeRequest {
+export interface TradeRequest {
   query: {
     status: { option: 'online' | 'securable' | 'available' | 'any' }
     name?: string | { discriminator: string, option: string }

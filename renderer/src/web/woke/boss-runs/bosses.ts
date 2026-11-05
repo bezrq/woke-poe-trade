@@ -23,13 +23,14 @@ export interface BossDrop {
   qty?: number
   // poe.ninja gem variant to price, e.g. '1' for a level 1 gem.
   variant?: string
-  // Drops unidentified and its poe.ninja variants differ a lot in price
-  // (jewel keystone/radius, ascendancy...). Priced by median variant unless
-  // the player picks the cheapest one or types a price.
+  // Drops unidentified and its value depends on the roll (jewel keystone,
+  // radius, ascendancy...). Priced from unidentified trade listings unless the
+  // player picks poe.ninja or types a price.
   variable?: boolean
 }
 
-// Uniques that drop unidentified with a wide price spread between variants.
+// Uniques that drop unidentified and whose value depends on what they roll.
+// Priced from unidentified trade listings; poe.ninja only has one low row.
 export const VARIABLE_ITEMS = new Set([
   'Impossible Escape',
   'Thread of Hope',
@@ -38,7 +39,12 @@ export const VARIABLE_ITEMS = new Set([
   'Forbidden Flame',
   'Sublime Vision',
   "Atziri's Splendour",
-  "Doryani's Invitation"
+  "Doryani's Invitation",
+  'The Light of Meaning',
+  'Rational Doctrine',
+  'Beauty',
+  'Melding of the Flesh',
+  'Dissolution of the Flesh'
 ])
 
 export interface BossEntry {
@@ -90,17 +96,18 @@ export const BOSSES: Boss[] = ([
     tier: 'uber',
     entry: [{ name: 'Awakening Fragment', qty: 4 }],
     runSeconds: 180,
-    source: { label: 'poe.how community runs (3.29)', url: POE_HOW + 'uber-sirus', kills: 200, note: 'Small sample: treat rare drops as rough.' },
+    source: { label: 'poe.how community runs (3.29)', url: POE_HOW + 'uber-sirus', kills: 606 },
     drops: [
-      { name: "Oriath's End", chance: 0.075 },
-      { name: 'Orb of Dominance', chance: 0.06 },
-      { name: "Awakener's Orb", chance: 0.16 },
-      { name: 'Thread of Hope', chance: 0.535 },
-      { name: 'The Tempest Rising', chance: 0.42 },
-      { name: 'A Fate Worse Than Death', chance: 0.05 },
-      { name: 'Annihilation Support', chance: 0.09, variant: '1' },
-      { name: 'Oubliette Reliquary Key', chance: 0.01 },
-      { name: 'The Saviour', chance: null }
+      { name: "Oriath's End", chance: 0.0875 },
+      { name: 'Orb of Dominance', chance: 0.0594 },
+      { name: "Awakener's Orb", chance: 0.198 },
+      { name: 'Thread of Hope', chance: 0.4455 },
+      { name: 'The Tempest Rising', chance: 0.2822 },
+      { name: 'A Fate Worse Than Death', chance: 0.0479 },
+      { name: 'Annihilation Support', chance: 0.0578, variant: '1' },
+      { name: 'Oubliette Reliquary Key', chance: 0.0116 },
+      { name: 'The Saviour', chance: 0.0066 },
+      { name: "Zana's Ingenuity", chance: 0.1799 }
     ]
   },
   {
@@ -126,7 +133,8 @@ export const BOSSES: Boss[] = ([
       { name: 'Impresence', chance: null },
       { name: 'Curio of Decay', chance: null },
       { name: 'The Devourer of Minds', chance: null },
-      { name: 'Auspicious Ambitions', chance: null }
+      { name: 'Auspicious Ambitions', chance: null },
+      { name: 'Cooldown Recovery Support', chance: null, variant: '1' }
     ]
   },
   {
@@ -175,7 +183,8 @@ export const BOSSES: Boss[] = ([
       { name: 'The Annihilating Light', chance: null },
       { name: 'Crystallised Omniscience', chance: null },
       { name: 'Eldritch Exalted Orb', chance: null },
-      { name: 'Overheat Support', chance: null, variant: '1' }
+      { name: 'Overheat Support', chance: null, variant: '1' },
+      { name: 'Auspicious Ambitions', chance: null }
     ]
   },
   {
@@ -200,7 +209,8 @@ export const BOSSES: Boss[] = ([
       { name: 'Eldritch Orb of Annulment', chance: null },
       { name: 'Eldritch Exalted Orb', chance: null },
       { name: 'Ravenous Passion', chance: null },
-      { name: 'Gluttony Support', chance: null, variant: '1' }
+      { name: 'Gluttony Support', chance: null, variant: '1' },
+      { name: 'Auspicious Ambitions', chance: null }
     ]
   },
   {
@@ -223,7 +233,8 @@ export const BOSSES: Boss[] = ([
       { name: 'Starforge', chance: null },
       { name: 'Templar Astrolabe', chance: null },
       { name: 'Fungal Astrolabe', chance: null },
-      { name: 'Voidstorm Support', chance: null, variant: '1' }
+      { name: 'Voidstorm Support', chance: null, variant: '1' },
+      { name: 'The Unblinking Eye', chance: null }
     ]
   },
   {
@@ -251,16 +262,17 @@ export const BOSSES: Boss[] = ([
     tier: 'pinnacle',
     entry: [{ name: "The Maven's Writ", qty: 1 }],
     runSeconds: 240,
-    source: { label: 'poe.how drop list, no rates yet', url: POE_HOW + 'maven', kills: null },
+    source: { label: 'poe.how community runs (3.29)', url: POE_HOW + 'maven', kills: 100, note: 'Small sample: treat rare drops as rough.' },
     drops: [
-      { name: 'Orb of Conflict', chance: null },
-      { name: 'Echoforge', chance: null },
-      { name: 'Doppelgänger Guise', chance: null },
+      { name: 'Orb of Conflict', chance: 0.33 },
+      { name: 'Echoforge', chance: 0.01 },
+      { name: 'Doppelgänger Guise', chance: 0.04 },
       { name: "Graven's Secret", chance: null },
-      { name: 'Legacy of Fury', chance: null },
+      { name: 'Legacy of Fury', chance: 0.38 },
       { name: "Arn's Anguish", chance: null },
       { name: "Olesya's Delight", chance: null },
-      { name: 'Invert the Rules Support', chance: null, variant: '1' }
+      { name: 'Invert the Rules Support', chance: 0.07, variant: '1' },
+      { name: 'Auspicious Ambitions', chance: null }
     ]
   },
   {
@@ -299,7 +311,8 @@ export const BOSSES: Boss[] = ([
       { name: 'Dawnbreaker', chance: null },
       { name: 'Eldritch Exalted Orb', chance: null },
       { name: 'Dawnstrider', chance: null },
-      { name: 'Overheat Support', chance: null, variant: '1' }
+      { name: 'Overheat Support', chance: null, variant: '1' },
+      { name: 'Auspicious Ambitions', chance: null }
     ]
   },
   {
@@ -326,7 +339,8 @@ export const BOSSES: Boss[] = ([
       { name: 'Void Shockwave Support', chance: null, variant: '1' },
       { name: 'Mark of the Shaper', chance: null },
       { name: 'Mark of the Elder', chance: null },
-      { name: 'Voidfletcher', chance: null }
+      { name: 'Voidfletcher', chance: null },
+      { name: 'Cooldown Recovery Support', chance: null, variant: '1' }
     ]
   },
   {
@@ -415,7 +429,8 @@ export const BOSSES: Boss[] = ([
       { name: 'Garb of the Ephemeral', chance: 0.15 },
       { name: 'Bottled Faith', chance: 0.05 },
       { name: 'The Hook', chance: 0.03 },
-      { name: 'Greater Kinetic Instability Support', chance: null, variant: '1' }
+      { name: 'Greater Kinetic Instability Support', chance: null, variant: '1' },
+      { name: 'Imperfect Memories', chance: null }
     ]
   },
   {
@@ -427,7 +442,14 @@ export const BOSSES: Boss[] = ([
     source: { label: 'poedb drop list, no rates yet', url: POEDB + 'The_Infinite_Hunger', kills: null },
     drops: [
       { name: 'Ceaseless Feast', chance: null },
-      { name: 'Black Zenith', chance: null }
+      { name: 'Black Zenith', chance: null },
+      { name: 'Choking Guilt', chance: null },
+      { name: 'The Eternal Struggle', chance: null },
+      { name: 'Grand Eldritch Ichor', chance: null },
+      { name: 'Greater Eldritch Ichor', chance: null },
+      { name: 'Eldritch Exalted Orb', chance: null },
+      { name: 'Eldritch Chaos Orb', chance: null },
+      { name: 'Eldritch Orb of Annulment', chance: null }
     ]
   },
   {
@@ -440,7 +462,12 @@ export const BOSSES: Boss[] = ([
     drops: [
       { name: 'Polaric Devastation', chance: null },
       { name: 'Sudden Dawn', chance: null },
-      { name: 'The Eternal Struggle', chance: null }
+      { name: 'The Eternal Struggle', chance: null },
+      { name: 'Grand Eldritch Ember', chance: null },
+      { name: 'Greater Eldritch Ember', chance: null },
+      { name: 'Eldritch Exalted Orb', chance: null },
+      { name: 'Eldritch Chaos Orb', chance: null },
+      { name: 'Eldritch Orb of Annulment', chance: null }
     ]
   },
   {
@@ -464,7 +491,15 @@ export const BOSSES: Boss[] = ([
     entry: [{ name: 'An Audience With The King', qty: 1 }],
     runSeconds: 180,
     source: { label: 'poedb drop list, no rates yet', url: POEDB + 'The_King_in_the_Mists', kills: null },
-    drops: [{ name: 'The Light of Meaning', chance: null }]
+    drops: [
+      { name: 'The Light of Meaning', chance: null },
+      { name: 'The Untouched Soul', chance: null },
+      { name: 'Pragmatism', chance: null },
+      { name: 'Hexpass Support', chance: null, variant: '1' },
+      { name: 'Hextoad Support', chance: null, variant: '1' },
+      { name: 'The Burden of Shadows', chance: null },
+      { name: 'The Endless Darkness', chance: null }
+    ]
   },
   {
     id: 'sasan',

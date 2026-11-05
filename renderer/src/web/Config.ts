@@ -12,6 +12,8 @@ import { MAP_CHECK_TYPE, initMapCheckWidget } from './woke/map-mods/map-check'
 import { SEARCH_TYPE, initSearchWidget, moveSearchKey } from './woke/search/widget'
 import type { SearchWidget } from './woke/search/widget'
 import { moveStashSearchToLibrary } from './woke/regex-library/apt-import'
+import { carryRewordedRatings } from './woke/map-mods/rules'
+import type { ModRating } from './woke/map-mods/rules'
 import { movePopupsToNewSpot } from './woke/ui/window-anchor'
 import type { WokeModulesConfig } from './woke/modules'
 import type { ItemCheckWidget } from './item-check/widget'
@@ -507,6 +509,11 @@ function upgradeConfig (_config: Config): Config {
       config.widgets.push(seedLootFilterWidget(Math.max(0, ...config.widgets.map(w => w.wmId)) + 1, taken))
     }
     ensureWokeConfig(modules).woke.lootFilterSeeded = true
+  }
+  // woke: map mod ratings follow mods the game has reworded.
+  for (const w of config.widgets as Array<{ wmType: string, profiles?: Array<{ ratings?: Record<string, ModRating> }> }>) {
+    if (w.wmType !== 'woke-map-mods') continue
+    for (const p of w.profiles ?? []) if (p.ratings) carryRewordedRatings(p.ratings)
   }
   // woke: Stash search strings move into the Regex library.
   moveStashSearchToLibrary(config.widgets as Array<Record<string, any> & { wmId: number, wmType: string }>)
