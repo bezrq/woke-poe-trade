@@ -291,6 +291,32 @@
   color: var(--w-fg);
 }
 
+/* Warm stone (picked for the price check, layout A): stronger text and lines than
+ * the shared panels, since this window is read in a hurry over the game. */
+:root:not([data-woke-theme]) #price-window,
+:root[data-woke-theme="hybrid"] #price-window,
+:root:not([data-woke-theme]) .w-pc-side,
+:root[data-woke-theme="hybrid"] .w-pc-side {
+  --w-panel-2: #1a1713;
+  --w-panel-solid: #0f0d0a;
+  --w-panel: #0f0d0a;
+  --w-panel-3: #27221b;
+  --w-line: #40372a;
+  --w-line-soft: #2b251c;
+  --w-line-strong: #5a4c39;
+  --w-fg: #f2ebde;
+  --w-dim: #bdb3a3;
+  --w-faint: #958a7a;
+  --w-accent: #e3b75f;
+  --w-accent-soft: rgba(227, 183, 95, 0.14);
+  --w-up: #7fcf90;
+  --w-down: #ef8474;
+  --w-ninja: #93c1e4;
+  --w-pc-window: #1a1713;
+  --w-pc-well: #0f0d0a;
+  --w-pc-raise: #27221b;
+}
+
 /* APT's price check colours that live in component styles, not utility classes. */
 :root:not([data-woke-theme="classic"]) {
   --w-pc-window: var(--w-panel-2);
