@@ -1,6 +1,6 @@
 <template>
   <Widget :config="config" move-handles="corners" :inline-edit="false">
-    <DockItem id="challenges" title="Challenges" :show="config.dockIcon === true"
+    <DockItem :menu="dockMenu" id="challenges" title="Challenges" :show="config.dockIcon === true"
       :badge="config.summary ? `${config.summary.done}/${config.summary.total}` : null" :wm-id="config.wmId" card-width="20rem">
       <template #card>
         <div v-if="config.summary" style="padding: 6px var(--w-pad);">
@@ -80,7 +80,8 @@ import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
 import { WBanner, WButton, WField, WPanel } from '../ui'
 import DockItem from '../dock/DockItem.vue'
-import { hideWhilePlaying, tickWhile } from '../dock/dock'
+import type { DockMenuAction } from '../dock/dock'
+import { hideWhilePlaying, showWithOverlay, tickWhile } from '../dock/dock'
 import {
   READ_GUIDE_JS, READ_PROFILE_JS, guideSkinCss, guideUrl, matchesFilter, mergeProgress, parseHotkeyTarget,
   profileUrl, readProfile, scrollToJs, summarize, tickJs, toggleTickJs
@@ -279,6 +280,20 @@ onUnmounted(() => {
   hotkeys.abort()
   stopReading()
 })
+
+// The icon's right-click menu.
+const dockMenu = computed<DockMenuAction[]>(() => [
+  {
+    label: 'Sync from your profile',
+    icon: 'fas fa-sync-alt',
+    disabled: syncing.value,
+    action: () => {
+      showWithOverlay(wm, props.config.wmId)
+      nextTick(() => { sync().catch(() => {}) })
+    }
+  },
+  { label: 'Open in your browser', icon: 'fas fa-external-link-alt', action: openExternal }
+])
 </script>
 
 <style module>

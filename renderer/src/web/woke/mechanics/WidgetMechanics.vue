@@ -3,7 +3,7 @@
     <div class="flex gap-2 min-h-0 items-start">
       <!-- While you play: an icon in the dock, only in a zone with a mechanic;
            resting the mouse on it shows the glance card. -->
-      <DockItem id="mechanics" :art="mechanicIcon(dockMech.id).src" :icon="dockMech.icon" :title="dockMech.label" :show="dockShow" :wm-id="config.wmId"
+      <DockItem :menu="dockMenu" id="mechanics" :art="mechanicIcon(dockMech.id).src" :icon="dockMech.icon" :title="dockMech.label" :show="dockShow" :wm-id="config.wmId"
         card-width="19rem" @activate="openFull">
         <template #card>
           <div v-if="wm.active.value" class="flex justify-end" style="padding: 2px 6px 0;">
@@ -160,11 +160,12 @@ export default {
 import { inject, computed, shallowRef } from 'vue'
 import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
-import { WPanel, WSegmented, WButton, WPrice, WField, WSelect, WBanner, WIcon } from '../ui'
+import { toast, WPanel, WSegmented, WButton, WPrice, WField, WSelect, WBanner, WIcon } from '../ui'
 import { usePriceIndex } from '../market/price-index'
 import DockItem from '../dock/DockItem.vue'
+import type { DockMenuAction } from '../dock/dock'
 import { mechanicIcon } from '../ui/game-icons'
-import { hideWhilePlaying } from '../dock/dock'
+import { dockIconEl, hideWhilePlaying, saveDock } from '../dock/dock'
 import MechanicPrices from './MechanicPrices.vue'
 import ExpeditionGlance from './ExpeditionGlance.vue'
 import { MECHANICS, mechanicById, priceScarabs } from './data'
@@ -306,6 +307,34 @@ function boardMatch (member: string, div: string, reward: string) {
   if (!q) return true
   return member.toLowerCase().includes(q) || div.toLowerCase().includes(q) || reward.toLowerCase().includes(q)
 }
+
+// The icon's right-click menu.
+const dockMenu = computed<DockMenuAction[]>(() => [
+  {
+    label: 'Switch mechanic by zone',
+    icon: 'fas fa-random',
+    checked: !!props.config.autoSwitch,
+    action: () => { props.config.autoSwitch = !props.config.autoSwitch; saveDock() }
+  },
+  ...(zoneMech.value
+    ? [{
+        label: `Never show ${mechanicById(zoneMech.value)?.label ?? 'this mechanic'}`,
+        icon: 'fas fa-eye-slash',
+        action: () => {
+          const id = zoneMech.value
+          if (!id) return
+          const el = dockIconEl('mechanics')
+          props.config.hidden = [...props.config.hidden, id]
+          saveDock()
+          toast(`${mechanicById(id)?.label ?? 'Mechanic'} won't show`, {
+            anchor: el,
+            dock: true,
+            undo: () => { props.config.hidden = props.config.hidden.filter(x => x !== id); saveDock() }
+          })
+        }
+      }]
+    : [])
+])
 </script>
 
 <style module>
