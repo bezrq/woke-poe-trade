@@ -6,7 +6,7 @@ import fs from 'fs'
 import path from 'path'
 import { FIXTURES } from '../helpers/game-data'
 import { parseDenseChunks, findDivinePrice } from '@/web/woke/market/parse'
-import { computeMovers } from '@/web/woke/market/analysis'
+import { computeMovers, trendBaseline } from '@/web/woke/market/analysis'
 import { CATEGORY_TYPES } from '@/web/woke/market/types'
 import type { PriceItem } from '@/web/woke/market/types'
 import { buildInsight } from '@/web/woke/price-insight/insight'
@@ -15,7 +15,8 @@ import { parseMonolith, rateMonolith, MEDS, ALL_ESSENCES } from '@/web/woke/esse
 import { BOSSES } from '@/web/woke/boss-runs/bosses'
 import { evaluateBoss, priceResolver, observedRates, parseRunTime, formatRunTime } from '@/web/woke/boss-runs/calc'
 import type { BossPrefs } from '@/web/woke/boss-runs/calc'
-import { DumpImporter } from '@/web/woke/league-invest/dumps'
+import { DumpImporter, importLeagues } from '@/web/woke/league-invest/dumps'
+import type { LeagueHistory } from '@/web/woke/league-invest/dumps'
 import { MECHANICS, mechanicById, priceGroup } from '@/web/woke/mechanics/data'
 import { REWARDS } from '@/web/woke/mechanics/betrayal'
 import { MECHANIC_ICONS } from '@/web/woke/ui/game-icons'
@@ -59,6 +60,18 @@ describe('poe.ninja', () => {
     const div = computeMovers(now, then, { minChaos: 1, limit: 10, unit: 'div', divNow: 300, divThen: 150, type: 'Scarab' })
     expect(div.find(m => m.name === 'Flat Scarab')?.change).toBeCloseTo(0)
     expect(div.find(m => m.name === 'Down Scarab')?.change).toBeCloseTo(-0.75)
+  })
+})
+
+describe('market movers from poe.ninja trend', () => {
+  it('measures moves in divines when local history does not reach back', () => {
+    const item = (type: string, name: string, chaos: number, d1: number) => ({ type, name, variant: '', chaos, d1 })
+    const now = [item('Currency', 'Divine Orb', 300, 150), item('Scarab', 'Flat Scarab', 200, 100)]
+    const { then, divThen } = trendBaseline(now, '24h')
+    expect(divThen).toBe(150)
+    const movers = computeMovers(now, then, { minChaos: 1, limit: 10, unit: 'div', divNow: 300, divThen, type: 'Scarab' })
+    // Doubled in chaos, flat in divines.
+    expect(movers[0].change).toBeCloseTo(0, 5)
   })
 })
 
@@ -246,6 +259,18 @@ describe('league-start investments', () => {
     expect(ranked.map(o => o.name)).toEqual(['Rising Scarab'])
     expect(ranked[0].median).toBeCloseTo(3, 1)
     expect(ranked[0].leagues.sort()).toEqual(['Alpha', 'Beta'])
+  })
+
+  it('a league that cannot be built does not stop the others', async () => {
+    const imp = new DumpImporter()
+    for (const csv of dumps('Alpha')) imp.addCsv(csv)
+    imp.addCsv(dumps('NoCurrency')[1])
+    for (const csv of dumps('Omega')) imp.addCsv(csv)
+    const saved: LeagueHistory[] = []
+    const res = await importLeagues(imp, async (h) => { saved.push(h) })
+    expect(saved.map(h => h.league)).toEqual(['Alpha', 'Omega'])
+    expect(res.imported).toEqual(['Alpha', 'Omega'])
+    expect(res.failed).toEqual([expect.stringContaining('NoCurrency')])
   })
 
   it('refuses a file that is not a poe.ninja dump', () => {

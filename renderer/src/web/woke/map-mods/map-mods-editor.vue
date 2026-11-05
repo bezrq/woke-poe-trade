@@ -46,6 +46,7 @@ import { defineComponent, computed } from 'vue'
 import WHotkeyCell from '../ui/WHotkeyCell.vue'
 import { configProp, configModelValue } from '@/web/settings/utils'
 import { WButton, WField, WSelect } from '../ui'
+import { copyOfProfile } from './rules'
 import type { JuiceWeights } from './rules'
 import { activeProfile, normalizeMapModsWidget } from './widget'
 import type { MapModsWidget } from './widget'
@@ -91,7 +92,7 @@ export default defineComponent({
       },
       copyProfile () {
         const id = nextId()
-        w.value.profiles = [...w.value.profiles, { id, name: `${profile.value.name} copy`, ratings: { ...profile.value.ratings }, mins: { ...profile.value.mins }, highlight: profile.value.highlight }]
+        w.value.profiles = [...w.value.profiles, copyOfProfile(profile.value, id)]
         w.value.activeProfile = id
       },
       removeProfile () {

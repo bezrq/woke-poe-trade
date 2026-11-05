@@ -283,6 +283,11 @@ export function shortLabel (matcher: string): string {
   return s.length > 28 ? s.slice(0, 27) + '…' : s
 }
 
+// A new profile with everything this one has, under its own id and name.
+export function copyOfProfile (profile: MapModProfile, id: number): MapModProfile {
+  return { ...profile, id, name: `${profile.name} copy`, ratings: { ...profile.ratings }, mins: { ...profile.mins } }
+}
+
 export function defaultProfile (): MapModProfile {
   return {
     id: 1,

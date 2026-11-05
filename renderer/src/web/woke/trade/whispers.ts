@@ -94,12 +94,21 @@ function splitQty (text: string): { qty: number, item: string } {
   return { qty: Number(m[1].replace(',', '.')), item: m[2] }
 }
 
-const SINGLE_RE = /^Hi, I would like to buy your (?<item>.+?)(?: listed for (?<price>.+?))? in (?<league>.+?) \(stash tab "(?<tab>.*)"; position: left (?<left>\d+), top (?<top>\d+)\)(?<note>.*)$/
-const SINGLE_NO_TAB_RE = /^Hi, I would like to buy your (?<item>.+?)(?: listed for (?<price>.+?))?(?: in (?<league>[^()]+?))?\.?$/
+// Item names can hold " in " ("A Note in the Wind"), so the priced forms take
+// the item up to " listed for", and the unpriced ones up to the last " in ".
+const SINGLE_RES = [
+  /^Hi, I would like to buy your (?<item>.+?) listed for (?<price>.+?) in (?<league>.+?) \(stash tab "(?<tab>.*)"; position: left (?<left>\d+), top (?<top>\d+)\)(?<note>.*)$/,
+  /^Hi, I would like to buy your (?<item>.+) in (?<league>.+?) \(stash tab "(?<tab>.*)"; position: left (?<left>\d+), top (?<top>\d+)\)(?<note>.*)$/
+]
+const SINGLE_NO_TAB_RES = [
+  /^Hi, I would like to buy your (?<item>.+?) listed for (?<price>.+?)(?: in (?<league>[^()]+?))?\.?$/,
+  /^Hi, I would like to buy your (?<item>.+) in (?<league>[^()]+?)\.?$/,
+  /^Hi, I would like to buy your (?<item>.+?)\.?$/
+]
 const BULK_RE = /^Hi, I'd like to buy your (?<item>.+?) for my (?<price>.+?) in (?<league>.+?)\.(?<note>.*)$/
 
 export function parseOffer (body: string): TradeOffer | null {
-  let m = SINGLE_RE.exec(body)
+  let m = SINGLE_RES[0].exec(body) ?? SINGLE_RES[1].exec(body)
   if (m?.groups) {
     const g = m.groups
     return {
@@ -119,7 +128,7 @@ export function parseOffer (body: string): TradeOffer | null {
     return { item, qty, price: parsePrice(g.price), league: g.league, tab: null, note: g.note.trim(), bulk: true }
   }
   // Listings in a public tab without a position (older format, some items).
-  m = SINGLE_NO_TAB_RE.exec(body)
+  m = SINGLE_NO_TAB_RES[0].exec(body) ?? SINGLE_NO_TAB_RES[1].exec(body) ?? SINGLE_NO_TAB_RES[2].exec(body)
   if (m?.groups) {
     const g = m.groups
     return { item: g.item, qty: 1, price: g.price ? parsePrice(g.price) : null, league: g.league ?? '', tab: null, note: '', bulk: false }
