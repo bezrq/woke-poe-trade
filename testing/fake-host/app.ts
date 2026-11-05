@@ -12,7 +12,7 @@ import { game } from './game'
 import nodeGypBuild from './stubs/node-gyp-build.cjs'
 import { registeredShortcuts, shellCalls } from 'electron'
 import { uIOhook, UiohookKey, EventType } from 'uiohook-napi'
-import { startServer, eventPipe, server, startConfigOver } from '../../main/src/server'
+import { startServer, eventPipe, httpRoutes, startConfigOver } from '../../main/src/server'
 import { Logger } from '../../main/src/RemoteLogger'
 import { GameWindow } from '../../main/src/windowing/GameWindow'
 import { OverlayWindow } from '../../main/src/windowing/OverlayWindow'
@@ -214,7 +214,7 @@ function clientLogStamp (d: Date): string {
 // Query strings are ignored. `_any[.<method>].json` in a folder answers any
 // last path part (a league name, a list of trade result ids).
 function fixtureProxy (app: FakeApp) {
-  server.prependListener('request', (req: IncomingMessage, res: ServerResponse) => {
+  httpRoutes.prependListener('request', (req: IncomingMessage, res: ServerResponse) => {
     if (!req.url?.startsWith('/proxy/')) return
     let body = ''
     req.on('data', (c: Buffer) => { body += c.toString('utf8') })

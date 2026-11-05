@@ -20,6 +20,9 @@
           <datalist :id="`${uid}-${c.key}`">
             <option v-for="v in suggestions(c.key)" :key="v" :value="v" />
           </datalist>
+          <div v-if="c.key === 'BaseType' && unknownBases(c.values).length" class="text-xs" style="color: var(--w-warn);">
+            Check the spelling of {{ unknownBases(c.values).join(', ') }}: the game refuses a whole filter over a base it doesn't know.
+          </div>
         </template>
         <template v-else-if="kindOf(c) === 'number'">
           <span class="flex items-center gap-1">
@@ -71,6 +74,7 @@
 </template>
 
 <script setup lang="ts">
+import { BASE_FACTS } from './base-facts'
 import { computed } from 'vue'
 import { WChip, WField, WSegmented, WToggle } from '../ui'
 import StyleEditor from './StyleEditor.vue'
@@ -119,6 +123,10 @@ const known = computed(() => ({
   Class: knownValues(props.store.doc.value, 'Class'),
   BaseType: knownValues(props.store.doc.value, 'BaseType')
 }))
+
+function unknownBases (values: string[]): string[] {
+  return values.filter(v => !(v in BASE_FACTS) && !known.value.BaseType.includes(v))
+}
 
 function suggestions (key: string): string[] {
   return key === 'Class' ? known.value.Class : key === 'BaseType' ? known.value.BaseType : []

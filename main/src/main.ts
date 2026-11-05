@@ -5,7 +5,7 @@ import './woke/user-data'
 import { app } from 'electron'
 import { uIOhook } from 'uiohook-napi'
 import os from 'node:os'
-import { startServer, eventPipe, server, configFlushed } from './server'
+import { startServer, eventPipe, httpRoutes, configFlushed } from './server'
 import { Logger } from './RemoteLogger'
 import { GameWindow } from './windowing/GameWindow'
 import { OverlayWindow } from './windowing/OverlayWindow'
@@ -50,7 +50,7 @@ app.on('ready', async () => {
   const gameConfig = new GameConfig(eventPipe, logger)
   const poeWindow = new GameWindow()
   const appUpdater = new AppUpdater(eventPipe)
-  const _httpProxy = new HttpProxy(server, logger)
+  const _httpProxy = new HttpProxy(httpRoutes, logger)
   initWoke(eventPipe, logger, poeWindow, gameLogWatcher)
   registerWokeHandler('game-filter', async () => await gameFilterSetting(gameConfig.actualPath))
   initSetup(appUpdater)

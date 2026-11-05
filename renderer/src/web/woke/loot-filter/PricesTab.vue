@@ -18,7 +18,8 @@
     <template v-else-if="config.priceTiers.on">
       <!-- Stays in view however long the lists get. -->
       <div :class="$style.applyBar">
-        <span><b>{{ moves.length ? `${moves.length} item${moves.length > 1 ? 's' : ''}` : 'Nothing' }}</b> {{ moves.length ? 'would move' : 'to move: tiers match today\'s prices' }}</span>
+        <span v-if="store.pricesTooOld.value"><b>Prices are too old</b> to move anything until they update</span>
+        <span v-else><b>{{ moves.length ? `${moves.length} item${moves.length > 1 ? 's' : ''}` : 'Nothing' }}</b> {{ moves.length ? 'would move' : 'to move: tiers match today\'s prices' }}</span>
         <button v-if="config.priceTiers.moves.length" type="button" :class="$style.link" class="w-focusable text-xs" :aria-expanded="showMoved" @click="showMoved = !showMoved">{{ config.priceTiers.moves.length }} moved so far <i :class="showMoved ? 'fas fa-chevron-down' : 'fas fa-chevron-right'" /></button>
         <span class="grow" />
         <WButton v-if="moves.length" size="sm" variant="ghost" @click="keepAll">Keep all where they are</WButton>
@@ -36,12 +37,13 @@
         </div>
       </template>
       <div v-if="moves.length" class="w-group-label" :class="$style.label">Would move</div>
-      <div v-for="m in moves" :key="m.type + m.base" :class="$style.row" @contextmenu="moveMenu($event, m)">
-        <input :id="`pm-${m.type}-${m.base}`" v-model="picked[m.type + '|' + m.base]" type="checkbox" :class="$style.check" :aria-label="`Move ${m.base}`">
+      <div v-for="m in moves" :key="m.type + m.base" v-item-tip="{ name: m.base }" :class="$style.row" @contextmenu="moveMenu($event, m)">
+        <input :id="`pm-${m.type}-${m.base}`" v-model="picked[pickKey(m)]" type="checkbox" :class="$style.check" :aria-label="`Move ${m.base}`">
         <img v-if="icon(m)" :src="icon(m)!" :class="$style.art" alt="">
         <LabelPreview :text="m.base" :actions="lookOf(m.type, m.to)" :extras="false" />
         <button type="button" :class="$style.link" class="w-focusable text-xs w-trunc" :title="`Open ${groupLabel(m.type)} ${m.from} in Rules`" @click="emit('open-rule', { type: m.type, tier: m.from, base: m.base })">{{ groupLabel(m.type) }} <i class="fas fa-external-link-alt" /></button>
         <span class="w-num text-xs"><span :class="rank(m.to) < rank(m.from) ? $style.up : $style.down">{{ tierLabel(m.from) }} → {{ tierLabel(m.to) }}</span></span>
+        <WChip v-if="m.hides" :class="$style.bad" title="This tier is hidden at your strictness. Left unticked so a price alone doesn't hide it.">would hide it</WChip>
         <span class="grow" />
         <span class="w-num text-xs w-dim w-trunc" :title="m.note">{{ m.note ? `${m.note} · ` : '' }}</span>
         <WPrice :chaos="m.chaos" :divine="divine" />
@@ -52,12 +54,10 @@
           <span :class="$style.check" />
           <LabelPreview :text="s.base" :actions="lookOf(s.type, s.tier)" :extras="false" />
           <button type="button" :class="$style.link" class="w-focusable text-xs" :title="`Open ${groupLabel(s.type)} ${s.tier} in Rules`" @click="emit('open-rule', { type: s.type, tier: s.tier, base: s.base })">{{ groupLabel(s.type) }}, {{ tierLabel(s.tier) }} <i class="fas fa-external-link-alt" /></button>
-          <WChip :title="s.reason === 'thin' ? 'poe.ninja had no price on 3 or more of the last 7 days, so this price is easy to fake' : 'You placed this item yourself'">
-            {{ s.reason === 'thin' ? 'thin market' : 'your tier, locked' }}
-          </WChip>
+          <WChip :title="SKIP_WHY[s.reason].title">{{ SKIP_WHY[s.reason].label }}</WChip>
           <span class="grow" />
           <span class="w-faint text-xs">price says {{ tierLabel(s.wanted) }}</span>
-          <WButton v-if="s.reason === 'thin'" size="sm" variant="ghost" title="Move it, though its price has gaps" @click="moveAnyway(s)">Move anyway</WButton>
+          <WButton v-if="s.reason !== 'locked'" size="sm" variant="ghost" title="Move it, though this price may not be real" @click="moveAnyway(s)">Move anyway</WButton>
           <WButton v-else size="sm" variant="ghost" title="Let prices move it again" @click="unlock(s)">Unlock</WButton>
           <WPrice :chaos="s.chaos" :divine="divine" />
         </div>
@@ -70,7 +70,7 @@
         <WField v-model.number="minChaos" type="number" suffix="c" style="width: 5.5rem;" aria-label="Safety net value in chaos" />
         <span class="w-dim text-xs">{{ config.safetyNet.on ? `${store.safetyCount.value} hidden item${store.safetyCount.value === 1 ? '' : 's'} caught right now` : 'off' }}</span>
       </div>
-      <div class="w-faint text-xs">One rule at the top of your filter, white on red with a short red beam, for valuable items the rest of the filter would hide. Thin markets are left out.</div>
+      <div class="w-faint text-xs">One rule at the top of your filter, white on red with a short red beam and an alert sound, for valuable items the rest of the filter would hide. Thin markets count, since a junk price only costs you a click. It can't judge rares, gems, cluster jewels or maps, which have no one price for a base.</div>
       <WToggle :model-value="dockNotice" @update:model-value="setDockNotice">Tell me on the dock icon</WToggle>
     </div>
 
@@ -80,13 +80,13 @@
       {{ hiddenCount }} hidden<template v-if="caughtCount">; your {{ config.safetyNet.minChaos }}c safety net still shows {{ caughtCount }}</template>. Click one to see what you'd get.
     </div>
     <template v-for="r in rows" :key="r.key">
-      <button type="button" class="w-focusable" :class="[$style.row, $style.healthRow, { [$style.open]: openRow === r.key }]" :aria-expanded="openRow === r.key" @click="openRow = openRow === r.key ? null : r.key">
+      <button v-item-tip="{ name: r.v.base }" type="button" class="w-focusable" :class="[$style.row, $style.healthRow, { [$style.open]: openRow === r.key }]" :aria-expanded="openRow === r.key" @click="openRow = openRow === r.key ? null : r.key">
         <img v-if="r.icon" :src="r.icon" :class="$style.art" alt="">
         <LabelPreview :text="r.v.base" :actions="r.v.block?.actions ?? []" :visibility="r.v.state === 'hidden' ? 'Hide' : 'Show'" :extras="false" />
         <span class="w-trunc text-xs" :class="$style.who">
           <b v-if="r.top && r.top !== r.v.base">{{ r.top }}</b>
           <span v-else>{{ groupLabel(r.v.group.type) }}</span>
-          <span v-if="r.items.length > 1" class="w-dim"> {{ config.priceTiers.uniqueRule === 'min' ? 'cheapest' : 'highest priced' }} of {{ r.items.length }}</span>
+          <span v-if="r.items.length > 1" class="w-dim"> highest priced of {{ r.items.length }}</span>
         </span>
         <span v-if="r.trash" :class="$style.trash" class="text-xs">{{ r.trash }} trash</span>
         <span class="grow" />
@@ -100,7 +100,7 @@
           <div v-for="i in r.items" :key="i.name" :class="$style.priceRow">
             <img v-if="itemIcon(r.v, i.name)" :src="itemIcon(r.v, i.name)!" :class="$style.bigArt" alt="">
             <span v-else :class="$style.bigArt" />
-            <span class="w-trunc text-sm" :title="i.name">{{ i.name }}</span>
+            <span v-item-tip="{ name: i.name }" class="w-trunc text-sm">{{ i.name }}</span>
             <span :class="$style.bar"><i :class="$style[`g_${i.grade}`]" :style="{ width: `${priceBar(i.chaos, r.most)}%` }" /></span>
             <span class="w-num text-xs" :class="$style[`${i.grade}Text`]">{{ i.chaos != null ? `${Math.round(i.chaos)}c` : 'no price' }}</span>
             <span class="text-xs" :class="$style[`${i.grade}Text`]">{{ GRADE_LABEL[i.grade] }}{{ i.thin ? ', thin market' : '' }}</span>
@@ -112,7 +112,7 @@
           <div v-for="(line, n) in r.effect" :key="n" class="w-dim text-xs">{{ line }}</div>
           <div class="flex flex-wrap items-center gap-1" style="margin-top: 6px;">
             <WButton size="sm" variant="primary" @click="showIt(r.v)">Show it</WButton>
-            <WButton size="sm" variant="ghost" title="Off this list until its price doubles" @click="dismiss(r.v)">Not for me</WButton>
+            <WButton size="sm" variant="ghost" :title="r.v.state === 'hidden' ? 'Stays hidden, and off this list, until its price doubles' : 'Off this list until its price doubles'" @click="dismiss(r.v)">Not for me</WButton>
             <WButton v-if="r.v.block?.type && r.v.block.tier" size="sm" variant="ghost" icon="fas fa-external-link-alt" @click="emit('open-rule', { type: r.v.block!.type!, tier: r.v.block!.tier!, base: r.v.base })">Open the rule</WButton>
           </div>
         </div>
@@ -123,7 +123,7 @@
 
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
-import { WButton, WChip, WEmpty, WField, WPrice, WSegmented, WToggle, agoPhrase, gameIcon, ninjaIcon, openMenu, toast } from '../ui'
+import { WButton, WChip, WEmpty, WField, WPrice, WSegmented, WToggle, agoPhrase, gameIcon, ninjaIcon, openMenu, toast, vItemTip } from '../ui'
 import { TURN_OFF_IDS } from './notices'
 import { gradeItems, healthKey, isDismissed, priceBar, showEffect, trashCount } from './health'
 import type { PriceGrade } from './health'
@@ -131,7 +131,7 @@ import { usePoeninja } from '@/web/background/Prices'
 import LabelPreview from './LabelPreview.vue'
 import type { LootFilterStore } from './store'
 import type { LootFilterWidget } from './widget'
-import { ECONOMY_GROUPS, lockKey, tierRank } from './economy'
+import { ECONOMY_GROUPS, NET_GROUPS, lockKey, tierRank } from './economy'
 import type { PriceMove, PriceSkip } from './economy'
 import { conditionSignature } from './edits'
 import { SAFETY_LOOK } from './safety'
@@ -156,6 +156,12 @@ const allSkipped = computed(() => plan.value?.skipped ?? [])
 const skipped = computed(() => allSkipped.value.slice(0, 20))
 
 const emit = defineEmits<{ (e: 'open-rule', rule: { type: string, tier: string, base: string }): void }>()
+
+const SKIP_WHY = {
+  thin: { label: 'thin market', title: 'poe.ninja had no price on 3 or more of the last 7 days, so this price is easy to fake' },
+  volatile: { label: 'price jumped', title: 'It tripled or fell to a third this week, or doubled or halved in a day. It moves once the price settles.' },
+  locked: { label: 'your tier, locked', title: 'You placed this item yourself' }
+}
 
 const GRADE_LABEL: Record<PriceGrade, string> = { high: 'worth it', mid: 'some value', trash: 'trash', unknown: '' }
 const openRow = ref<string | null>(null)
@@ -190,8 +196,19 @@ function itemIcon (v: { group: { unique?: boolean, ninja: string[] } }, name: st
 function dismiss (v: BaseVerdict) {
   const key = healthKey(v)
   const before = props.config.healthDismissed
+  const netBefore = props.config.netDismissed
   props.config.healthDismissed = { ...before, [key]: v.chaos }
-  toast(`${v.base} is off this list until its price doubles`, { anchor: props.anchor, undo: () => { props.config.healthDismissed = before } })
+  const undo = () => {
+    props.config.healthDismissed = before
+    props.config.netDismissed = netBefore
+  }
+  // Only a hidden item has a net rule to take back, and that's in the file.
+  if (v.state === 'hidden') {
+    props.config.netDismissed = { ...netBefore, [key]: v.chaos }
+    moved(`${v.base} stays hidden until its price doubles`, undo)
+  } else {
+    toast(`${v.base} is off this list until its price doubles`, { anchor: props.anchor, undo })
+  }
 }
 
 const dockNotice = computed(() => !TURN_OFF_IDS.every(id => props.config.noticesOff.includes(id)))
@@ -206,12 +223,15 @@ const uniqueOptions = [
   { value: 'min', label: 'Cheapest unique' }
 ]
 
-// Ticked by default; unticked rows stay put this time.
+// Ticked by default, except what a price alone would hide. Unticked rows stay
+// put this time.
 const picked = reactive<Record<string, boolean>>({})
+// A row that starts hiding at another strictness is a new choice.
+const pickKey = (m: PriceMove) => `${m.type}|${m.base}|${m.hides ? 'hides' : ''}`
 watch(moves, (list) => {
-  for (const m of list) if (picked[m.type + '|' + m.base] === undefined) picked[m.type + '|' + m.base] = true
+  for (const m of list) if (picked[pickKey(m)] === undefined) picked[pickKey(m)] = !m.hides
 }, { immediate: true })
-const pickedMoves = computed(() => moves.value.filter(m => picked[m.type + '|' + m.base]))
+const pickedMoves = computed(() => moves.value.filter(m => picked[pickKey(m)]))
 
 const minChaos = computed({
   get: () => props.config.safetyNet.minChaos,
@@ -219,7 +239,7 @@ const minChaos = computed({
 })
 
 function groupLabel (type: string): string {
-  return ECONOMY_GROUPS.find(g => g.type === type)?.label ?? groupName(type)
+  return NET_GROUPS.find(g => g.type === type)?.label ?? groupName(type)
 }
 
 function rank (tier: string): number {
@@ -270,7 +290,9 @@ function unlock (s: PriceSkip) {
     c.priceTiers.locks = c.priceTiers.locks.filter(k => k !== key)
     c.edits = c.edits.filter(e => !(e.kind === 'move' && e.type === s.type && e.base === s.base))
   })
-  toast(ownMove ? `Dropped your move of ${s.base}, so prices can move it again` : `Prices can move ${s.base} again`, { anchor: props.anchor, undo })
+  // Only your own move changes the file.
+  if (ownMove) moved(`Dropped your move of ${s.base}, so prices can move it again`, undo)
+  else toast(`Prices can move ${s.base} again`, { anchor: props.anchor, undo })
 }
 
 function keepAll () {
@@ -279,8 +301,7 @@ function keepAll () {
 }
 
 function reset () {
-  const undo = props.store.resetPrices()
-  toast('Price groups are back on NeverSink\'s tiers', { anchor: props.anchor, undo })
+  moved('Price groups are back on NeverSink\'s tiers', props.store.resetPrices())
 }
 
 function moveMenu (e: MouseEvent, m: PriceMove) {
@@ -294,8 +315,7 @@ function moveMenu (e: MouseEvent, m: PriceMove) {
 function showIt (v: BaseVerdict) {
   const b = v.block
   if (!b?.type || !b.tier) return
-  const undo = props.store.editWithUndo({ kind: 'item', type: b.type, tier: b.tier, base: v.base, visibility: 'Show', patch: v.state === 'hidden' ? SAFETY_LOOK : { fontSize: 40 }, anchor: conditionSignature(b), pin: true })
-  toast(`${v.base} now shows`, { anchor: props.anchor, undo })
+  moved(`${v.base} now shows`, props.store.editWithUndo({ kind: 'item', type: b.type, tier: b.tier, base: v.base, visibility: 'Show', patch: v.state === 'hidden' ? SAFETY_LOOK : { fontSize: 40 }, anchor: conditionSignature(b), pin: true }))
 }
 </script>
 

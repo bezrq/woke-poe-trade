@@ -49,7 +49,7 @@ export function showEffect (v: BaseVerdict, items: HealthItem[]): string[] {
     ? `every ${rarity.toLowerCase()} ${v.base}`
     : cond ? `every ${v.base} of rarity ${cond.op} ${cond.values.join(' ')}` : v.base
   const out = [v.state === 'hidden'
-    ? `Adds one rule of yours above everything: ${who} shows, white on red with a short red beam.`
+    ? `Adds one rule of yours above everything: ${who} shows, white on red with a short red beam and an alert sound.`
     : `Adds one rule of yours above everything: ${who} shows at font size 40 (${DEFAULT_FONT} is the game's default).`]
   if (rarity === 'Unique') {
     out.push(`Normal, magic and rare ${v.base} stay as they are.`)

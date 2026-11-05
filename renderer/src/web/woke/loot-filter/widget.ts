@@ -101,6 +101,10 @@ export interface LootFilterWidget extends Widget {
   savedBuildSig?: string
   // Fingerprint of price moves + safety net at the last save.
   savedExtraSig?: string
+  // The same without the net's list: your changes, as last saved.
+  savedUserSig?: string
+  // The source and its text, as the last save was made from them.
+  savedSourceHash?: string
   priceTiers: PriceTiers
   safetyNet: SafetyNet
   // Changes as they were at each of the last saves, newest first.
@@ -112,6 +116,8 @@ export interface LootFilterWidget extends Widget {
   presets: Presets
   // "Not for me" on a valuable hidden item: its price then, by group|base.
   healthDismissed: Record<string, number>
+  // The same on a hidden item: the net leaves it hidden too.
+  netDismissed: Record<string, number>
   // Your changes step by step, for undo and redo.
   timeline: Timeline
   // Dock icon notices you've turned off, and what each said when you pressed Got it.
@@ -151,6 +157,7 @@ export function initLootFilterWidget (w: LootFilterWidget) {
   w.rules = []
   w.presets = defaultPresets()
   w.healthDismissed = {}
+  w.netDismissed = {}
   w.timeline = emptyTimeline()
   w.noticesOff = []
   w.noticesSeen = {}
@@ -209,6 +216,8 @@ export function normalizeLootFilterWidget (w: LootFilterWidget) {
   if (!w.safetyNet || typeof w.safetyNet !== 'object') w.safetyNet = { ...DEFAULT_SAFETY_NET }
   if (typeof w.safetyNet.on !== 'boolean') w.safetyNet.on = DEFAULT_SAFETY_NET.on
   if (typeof w.safetyNet.minChaos !== 'number' || !(w.safetyNet.minChaos > 0)) w.safetyNet.minChaos = DEFAULT_SAFETY_NET.minChaos
+  const last = w.safetyNet.last
+  if (last && (!Array.isArray(last.plain) || !Array.isArray(last.unique))) delete w.safetyNet.last
   if (!Array.isArray(w.history)) w.history = []
   const ns = w.neversink as Partial<NeverSinkSource> | undefined
   const dn = defaultNeverSink()
@@ -235,6 +244,7 @@ export function normalizeLootFilterWidget (w: LootFilterWidget) {
   w.rules = w.rules.filter(r => r && typeof r.id === 'number' && Array.isArray(r.conditions) && isPatch(r.patch))
   w.presets = normalizePresets(w.presets)
   if (!w.healthDismissed || typeof w.healthDismissed !== 'object') w.healthDismissed = {}
+  if (!w.netDismissed || typeof w.netDismissed !== 'object') w.netDismissed = {}
   w.timeline = normalizeTimeline(w.timeline)
   if (!Array.isArray(w.noticesOff)) w.noticesOff = []
   if (!w.noticesSeen || typeof w.noticesSeen !== 'object') w.noticesSeen = {}

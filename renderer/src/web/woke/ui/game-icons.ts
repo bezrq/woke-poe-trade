@@ -64,7 +64,8 @@ export function ninjaIcon (type: string, name: string): string | null {
   if (name === 'Chaos Orb') return CURRENCY_ICONS.chaos
   if (name === 'Divine Orb') return CURRENCY_ICONS.divine
   const ns: Ns = /^Unique/.test(type) ? 'UNIQUE' : /Gem/.test(type) ? 'GEM' : type === 'DivinationCard' ? 'DIVINATION_CARD' : 'ITEM'
-  return gameIcon(name, ns)
+  // The item data has no Foulborn uniques: they look like the original.
+  return gameIcon(name, ns) ?? (ns === 'UNIQUE' && name.startsWith('Foulborn ') ? gameIcon(name.slice(9), ns) : null)
 }
 
 // A module's icon: its game art (null when it has none or the art isn't
