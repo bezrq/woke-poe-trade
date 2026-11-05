@@ -129,12 +129,11 @@ function useBulkApi () {
   const result = shallowRef<BulkSearchExtended | null>(null)
 
   async function search (item: ParsedItem, filters: ItemFilters) {
+    searchId += 1
+    const _searchId = searchId
     try {
-      searchId += 1
       error.value = null
       result.value = null
-
-      const _searchId = searchId
 
       // override, because at league start many players set wrong price, and this breaks optimistic search
       const have = (item.info.refName === 'Chaos Orb')
@@ -152,7 +151,8 @@ function useBulkApi () {
         }
       }
     } catch (err) {
-      error.value = (err as Error).message
+      // woke: a search that's been replaced has nothing to say.
+      if (_searchId === searchId) error.value = (err as Error).message
     }
   }
 

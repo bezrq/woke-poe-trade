@@ -20,6 +20,10 @@ export class Cache {
     }, ttl * 1000)
   }
 
+  clear (): void {
+    this.cached.clear()
+  }
+
   static deriveTtl (...limits: RateLimiter[]): number {
     return (limits.length) ? CACHE_TTL : 0
   }

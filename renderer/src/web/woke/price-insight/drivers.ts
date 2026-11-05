@@ -20,8 +20,9 @@ export const DEFAULT_SEED = [
   '+# to Level of all',
   'to Level of Socketed',
   'increased Movement Speed',
-  'to maximum Life',
-  'to maximum Energy Shield',
+  // Not "to maximum": a rare's life usually reaches the search as "total maximum Life".
+  'maximum Life',
+  'maximum Energy Shield',
   'increased maximum Energy Shield',
   'to all Elemental Resistances',
   'Resistance',

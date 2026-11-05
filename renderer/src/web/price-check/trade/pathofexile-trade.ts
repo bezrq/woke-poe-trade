@@ -761,6 +761,10 @@ export function createTradeRequest (filters: ItemFilters, stats: FilterOrGroup[]
 
 const cache = new Cache()
 
+export function clearTradeCache () {
+  cache.clear()
+}
+
 export async function requestTradeResultList (body: TradeRequest, leagueId: string): Promise<SearchResult> {
   let data = cache.get<SearchResult>([body, leagueId])
 

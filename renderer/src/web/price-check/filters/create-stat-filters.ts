@@ -515,6 +515,8 @@ function finalFilterTweaks (ctx: FiltersCreationContext) {
     if (countVisible <= 3) {
       enableAllFilters(ctx.filters)
     }
+    // woke: a good armour base rarely sets a unique's price, and ticking it hides the cheap ones.
+    if (basePercentile) basePercentile.disabled = true
   }
 }
 

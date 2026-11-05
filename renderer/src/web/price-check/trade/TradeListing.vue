@@ -11,6 +11,8 @@
       </div>
       <online-filter v-if="list" class="w-pc-online" :filters="filters" api="trade" />
       <div class="w-pc-grow flex-1"></div>
+      <button v-if="list" type="button" class="w-icon-btn mr-1" title="Search again: results are otherwise kept for 5 minutes"
+        :disabled="fetching" @click="refresh"><i class="fas fa-sync-alt text-xs" /></button>
       <price-view-toggle class="mr-2" />
       <trade-links v-if="list"
         :get-link="makeTradeLink" />
@@ -139,7 +141,7 @@
 import { defineComponent, computed, watch, PropType, inject, shallowReactive, shallowRef, ShallowRef } from 'vue'
 import { useI18nNs } from '@/web/i18n'
 import UiErrorBox from '@/web/ui/UiErrorBox.vue'
-import { requestTradeResultList, requestResults, createTradeRequest, PricingResult, SearchResult } from './pathofexile-trade'
+import { requestTradeResultList, requestResults, createTradeRequest, clearTradeCache, PricingResult, SearchResult } from './pathofexile-trade'
 import { getTradeEndpoint } from './common'
 import { AppConfig } from '@/web/Config'
 import { PriceCheckWidget } from '@/web/overlay/interfaces'
@@ -238,7 +240,10 @@ function useTradeApi () {
               .then(results => r1
                 .then(() => { _fetchResults.push(...results) }))
           : Promise.resolve()
-        await Promise.all([r1, r2])
+        // woke: a failed page leaves what the other one loaded on screen.
+        const pages = await Promise.allSettled([r1, r2])
+        const failed = pages.find((page): page is PromiseRejectedResult => page.status === 'rejected')
+        if (failed && !_fetchResults.length) throw failed.reason
       }
 
       let fetched = 20
@@ -376,6 +381,11 @@ export default defineComponent({
       listSettled: computed(() => !tableLoading.value && !fetching.value),
       slowdownReady: slowdown.isReady,
       execSearch: () => { search(props.filters, props.stats) },
+      refresh: () => {
+        clearTradeCache()
+        search(props.filters, props.stats)
+      },
+      fetching,
       error,
       retryIn,
       rateLimited,
