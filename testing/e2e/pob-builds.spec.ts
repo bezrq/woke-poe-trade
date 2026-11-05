@@ -182,3 +182,15 @@ test('the price check chip reads the saved loadout', async ({ overlay }) => {
   await overlay.copyItem('items/rare-ring.txt')
   await expect(overlay.widget('price-check')).toContainText('Your base · Ring')
 })
+
+test('a build that is not active says its loadout only applies once it is', async ({ overlay }) => {
+  const widgets = loadoutSeed({})
+  widgets[0].activeBuild = 'Showcase.xml'
+  await overlay.boot({ widgets, overlayActive: true })
+  await overlay.widget('woke-pob-builds').getByText('Loadouts', { exact: false }).first().click()
+  const detail = overlay.page.locator('[data-w-panel]').filter({ hasText: 'Open in PoB' })
+  const hint = detail.getByText('Other windows use your active build')
+  await expect(hint).toBeVisible()
+  await detail.getByRole('button', { name: 'Make active' }).click()
+  await expect(hint).toHaveCount(0)
+})

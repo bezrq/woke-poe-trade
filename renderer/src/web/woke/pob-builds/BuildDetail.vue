@@ -36,6 +36,7 @@
             <i v-if="pick && set === shownSet" class="fas fa-thumbtack text-xs" /> {{ set.title }}<span v-if="set === shownSet" class="w-accent"> · now</span>
           </WChip>
         </div>
+        <div v-if="!isActive" class="pt-1 text-xs" style="color: var(--w-warn);">Other windows use your active build. Press Make active to use this loadout there.</div>
         <div :class="$style.heading">Links<template v-if="shownSet && skillSets.length > 1"> · {{ shownSet.title }}</template></div>
         <div v-for="(g, i) in shownLinks" :key="i" :class="$style.linkGroup">
           <div :class="$style.link">
@@ -88,6 +89,7 @@
             <i v-if="pick && set === shownItemSet" class="fas fa-thumbtack text-xs" /> {{ set.title }}<span v-if="set === shownItemSet" class="w-accent"> · now</span>
           </WChip>
         </div>
+        <div v-if="!isActive" class="pt-1 text-xs" style="color: var(--w-warn);">Other windows use your active build. Press Make active to use this loadout there.</div>
         <div :class="$style.heading">Gear<template v-if="shownItemSet && itemSets.length > 1"> · {{ shownItemSet.title }}</template></div>
         <WEmpty v-if="!gear.length" icon="fas fa-tshirt">No items in this build. Add them in PoB's Items tab to see what to look for.</WEmpty>
         <div v-for="(s, i) in gear" :key="i" :class="$style.gearRow"
