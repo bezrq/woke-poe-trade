@@ -63,7 +63,8 @@ onBeforeUnmount(() => observer?.disconnect())
           <p class="lede">An overlay for Path of Exile 1, built on Awakened PoE Trade. {{ toolkit.length }} modules sit on one rail at the edge of your screen, and you turn on only the ones you use.</p>
           <div class="cta">
             <a class="btn" :href="DOWNLOAD">Download for Windows</a>
-            <a class="ghost" href="#modules">See the modules</a>
+            <!-- target keeps VitePress's router off: the demo is its own page. -->
+            <a class="ghost" :href="withBase('/demo/')" target="_self">Try the demo</a>
           </div>
           <p class="facts"><span v-for="f in HERO_FACTS" :key="f">{{ f }}</span></p>
         </div>

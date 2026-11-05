@@ -2,14 +2,17 @@ name: Docs
 
 # The site (landing page + help pages) deploys from master only: GitHub Pages
 # takes deploys from the default branch. It also reads the module list and the
-# app version, so those changes redeploy it too.
+# app version, and builds the overlay for the browser demo (docs/demo), so
+# those changes redeploy it too.
 on:
   push:
     branches:
       - master
     paths:
       - 'docs/**'
-      - 'renderer/src/web/woke/modules.ts'
+      - 'renderer/**'
+      - 'testing/fixtures/http/**'
+      - 'testing/fixtures/screens/landing/**'
       - 'main/package.json'
       - '.github/workflows/pages.yml'
   workflow_dispatch:
@@ -26,9 +29,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-      - run: npm install
+        with:
+          node-version: 22
+      - run: npm ci
         working-directory: ./docs
+      - run: npm ci
+        working-directory: ./renderer
       - run: npx vitepress build
+        working-directory: ./docs
+      - run: node scripts/build-demo.mjs
         working-directory: ./docs
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
