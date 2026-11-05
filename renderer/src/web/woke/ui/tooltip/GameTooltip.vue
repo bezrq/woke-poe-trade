@@ -56,6 +56,15 @@
             <span v-for="(p, i) in line" :key="i" :class="$style[`t-${p.tone}`]">{{ p.text }}</span>
           </div>
         </section>
+        <footer v-if="lookup.uniques" :class="$style.uniques">
+          <div v-for="u in shownUniques" :key="u.name" :class="$style.uniqueRow">
+            <span :class="[$style.uniqueName, 'w-trunc']">{{ u.name }}</span>
+            <WPrice v-if="u.chaos != null" :chaos="u.chaos" :divine="lookup.divine" />
+            <span v-else class="w-faint">no price</span>
+            <span :class="$style[`g-${u.grade}`]">{{ u.label }}{{ u.thin ? ', thin market' : '' }}</span>
+          </div>
+          <div v-if="moreUniques" class="w-faint">and {{ moreUniques }} cheaper</div>
+        </footer>
         <footer v-if="lookup.market" :class="$style.strip">
           <WPrice :chaos="lookup.market.chaos" :divine="lookup.market.divine" />
           <span v-if="lookup.market.variant" class="w-dim">{{ lookup.market.variant }}</span>
@@ -92,6 +101,9 @@ const placed = shallowRef<{ left: number, top: number } | null>(null)
 const item = computed<PobItem | null>(() => tip.value?.content.kind === 'item' ? tip.value.content.item : null)
 const gem = computed<GemTip | null>(() => tip.value?.content.kind === 'gem' ? tip.value.content : null)
 const lookup = computed<LookupTip | null>(() => tip.value?.content.kind === 'lookup' ? tip.value.content : null)
+const MAX_UNIQUES = 12
+const shownUniques = computed(() => lookup.value?.uniques?.slice(0, MAX_UNIQUES) ?? [])
+const moreUniques = computed(() => Math.max(0, (lookup.value?.uniques?.length ?? 0) - MAX_UNIQUES))
 const data = computed(() => gem.value ? gemData(gem.value.name) : null)
 
 const FRAMES: Record<string, string> = { UNIQUE: 'unique', RELIC: 'unique', RARE: 'rare', MAGIC: 'magic' }
@@ -143,8 +155,23 @@ function scale () {
   return parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--w-ui-scale')) || 1
 }
 
-// Items open beside their row, so the rows you're reading stay in view; gems
-// open above the name, as in the game. Falls back to whichever side fits.
+// Items follow the cursor, below and to its right, flipping at the screen's
+// edges. Gems open above the name, as in the game.
+const CURSOR_GAP = 16
+const pointer = shallowRef<{ x: number, y: number } | null>(null)
+
+function nearCursor (at: { x: number, y: number }, w: number, h: number) {
+  const vw = window.innerWidth
+  const vh = window.innerHeight
+  const left = at.x + CURSOR_GAP + w <= vw - EDGE ? at.x + CURSOR_GAP : at.x - CURSOR_GAP - w
+  const top = at.y + CURSOR_GAP + h <= vh - EDGE ? at.y + CURSOR_GAP : at.y - CURSOR_GAP - h
+  return {
+    left: Math.max(EDGE, Math.min(left, vw - w - EDGE)),
+    top: Math.max(EDGE, Math.min(top, vh - h - EDGE))
+  }
+}
+
+// Falls back to whichever side fits.
 function place (anchor: DOMRect, w: number, h: number, beside: boolean) {
   const vw = window.innerWidth
   const vh = window.innerHeight
@@ -165,15 +192,28 @@ function place (anchor: DOMRect, w: number, h: number, beside: boolean) {
   return (beside ? sideways() ?? upright() : upright() ?? sideways()) ?? { left: clampX(anchor.right + GAP), top: clampY(anchor.top) }
 }
 
+function reposition () {
+  const t = tip.value
+  if (!t || !el.value) return
+  const r = el.value.getBoundingClientRect()
+  const s = scale()
+  const p = t.content.kind !== 'gem' && pointer.value
+    ? nearCursor(pointer.value, r.width, r.height)
+    : place(t.anchor, r.width, r.height, t.content.kind !== 'gem')
+  placed.value = { left: p.left / s, top: p.top / s }
+}
+
+function onPointer (e: MouseEvent) {
+  pointer.value = { x: e.clientX, y: e.clientY }
+  if (tip.value && tip.value.content.kind !== 'gem') reposition()
+}
+
 watch(tip, async (t) => {
   placed.value = null
   if (!t) return
   await nextTick()
   if (!el.value) return
-  const r = el.value.getBoundingClientRect()
-  const s = scale()
-  const p = place(t.anchor, r.width, r.height, t.content.kind !== 'gem')
-  placed.value = { left: p.left / s, top: p.top / s }
+  reposition()
 })
 
 // Hidden until measured, so it never flashes in the wrong spot.
@@ -188,10 +228,14 @@ const pos = computed(() => placed.value
 const wm = inject<WidgetManager | undefined>('wm', undefined)
 watch(() => wm?.active.value, hideTip)
 onMounted(() => {
+  window.addEventListener('mousemove', onPointer, true)
+  window.addEventListener('mouseover', onPointer, true)
   window.addEventListener('blur', hideTip)
   window.addEventListener('scroll', hideTip, true)
 })
 onUnmounted(() => {
+  window.removeEventListener('mousemove', onPointer, true)
+  window.removeEventListener('mouseover', onPointer, true)
   window.removeEventListener('blur', hideTip)
   window.removeEventListener('scroll', hideTip, true)
   hideTip()
@@ -268,6 +312,28 @@ onUnmounted(() => {
 .t-rare { color: var(--w-r-rare); }
 .t-currency { color: var(--w-r-currency); }
 .t-card { color: var(--w-r-divination); }
+
+/* What a base in a unique tier can drop as, most valuable first. */
+.uniques {
+  padding: 6px 12px;
+  font-family: var(--w-body);
+  font-size: var(--w-fs-sm);
+  text-align: left;
+  background: rgba(255, 255, 255, 0.03);
+  border-top: 1px solid rgba(var(--tip-rgb), 0.4);
+}
+.uniqueRow {
+  display: grid;
+  grid-template-columns: minmax(8rem, 1fr) 4.5rem 6.5rem;
+  gap: var(--w-s2);
+  align-items: center;
+  min-height: 20px;
+}
+.uniqueName { color: var(--w-r-unique); }
+.g-high { color: var(--w-accent); }
+.g-mid { color: var(--w-dim); }
+.g-trash { color: var(--w-down); }
+.g-unknown { color: var(--w-faint); }
 
 /* The price at the foot of a looked-up item. */
 .strip {

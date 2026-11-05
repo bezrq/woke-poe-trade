@@ -67,7 +67,7 @@ Helpers: `ago(ts)` / `freshness(ts)` (one shared clock), `gameIcon(name, ns)`.
 
 ## Item tooltip
 
-Put `v-item-tip="{ name, type?, variant? }"` on a row or name to show the game-style tooltip beside the panel, with the item's text and a poe.ninja price strip. `type` is the poe.ninja row type; without it the kind comes from the name. Any market row works as is: `v-item-tip="m"`. The text lives in `public/data/tips` and loads on the first hover; rebuild it each league with `npm run tip-data -- <league>`.
+Put `v-item-tip="{ name, type?, variant? }"` on a row or name to show the game-style tooltip at the cursor, with the item's text and a poe.ninja price strip. `type` is the poe.ninja row type; without it the kind comes from the name. Any market row works as is: `v-item-tip="m"`. The text lives in `public/data/tips` and loads on the first hover; rebuild it each league with `npm run tip-data -- <league>`.
 
 ## Utility classes
 

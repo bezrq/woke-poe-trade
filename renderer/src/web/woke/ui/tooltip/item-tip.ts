@@ -11,12 +11,14 @@ import { usePoeninja } from '@/web/background/Prices'
 import { buildTip, kindOfNinjaType, packFiles } from './tip-content'
 import type { TipKind, TipModel, TipPack } from './tip-content'
 import { hideTip, onTipHide, showTipAt } from './tooltip'
-import type { TipMarket } from './tooltip'
+import type { TipBaseUnique, TipMarket } from './tooltip'
 
 export interface ItemTipRef {
   name: string
   type?: string
   variant?: string
+  // For a base in a filter's unique tiers: what it can drop as. Read on hover.
+  uniques?: () => TipBaseUnique[]
 }
 
 const SHOW_DELAY_MS = 60
@@ -67,7 +69,17 @@ function marketFor (ref: ItemTipRef, kind: TipKind): TipMarket | null {
   }
 }
 
-async function tipFor (ref: ItemTipRef): Promise<{ model: TipModel | null, market: TipMarket | null }> {
+async function tipFor (ref: ItemTipRef): Promise<{ model: TipModel | null, market: TipMarket | null, uniques?: TipBaseUnique[], divine?: number | null }> {
+  const uniques = ref.uniques?.()
+  if (uniques?.length) {
+    const ninja = usePoeninja()
+    ninja.queuePricesFetch()
+    const divine = ninja.xchgRate.value ?? null
+    // The list comes most valuable first: that one in full, then all of them.
+    await Promise.all(packFiles('unique').map(loadFile))
+    const model = buildTip(pack, { name: uniques[0].name, kind: 'unique', base: ref.name })
+    return { model, market: null, uniques, divine }
+  }
   const kind = ref.type ? kindOfNinjaType(ref.type) : kindOfName(ref.name)
   await Promise.all(packFiles(kind).map(loadFile))
   const base = kind === 'unique' ? ITEM_BY_REF('UNIQUE', ref.name)?.[0]?.unique?.base : undefined
@@ -101,9 +113,9 @@ function enter (e: Event) {
   cancel()
   const mine = seq
   timer = setTimeout(() => {
-    tipFor(ref).then(({ model, market }) => {
+    tipFor(ref).then(({ model, market, uniques, divine }) => {
       if (mine !== seq || !el.isConnected) return
-      if (model) showTipAt(el, { kind: 'lookup', model, market })
+      if (model) showTipAt(el, { kind: 'lookup', model, market, uniques, divine })
       // No text for it, but a price is still worth showing.
       else if (market) showTipAt(el, { kind: 'lookup', model: { name: ref.name, frame: 'normal', sections: [] }, market })
       else hideTip()

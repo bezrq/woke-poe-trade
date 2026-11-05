@@ -30,10 +30,22 @@ export interface TipMarket {
   graph: number[]
 }
 
+// One unique a base can drop as, for a base in a filter's unique tiers.
+export interface TipBaseUnique {
+  name: string
+  chaos: number | null
+  grade: 'high' | 'mid' | 'trash' | 'unknown'
+  // Says what the price means: "worth it", "trash".
+  label: string
+  thin: boolean
+}
+
 export interface LookupTip {
   kind: 'lookup'
   model: TipModel
   market: TipMarket | null
+  uniques?: TipBaseUnique[]
+  divine?: number | null
 }
 
 export type TipContent = GemTip | ItemTip | LookupTip
@@ -41,11 +53,7 @@ export type TipContent = GemTip | ItemTip | LookupTip
 export const tip = shallowRef<{ content: TipContent, anchor: DOMRect } | null>(null)
 
 export function showTipAt (target: HTMLElement, content: TipContent) {
-  let anchor = target.getBoundingClientRect()
-  // Items open beside their row: clear of the whole panel, not just the row.
-  const panel = content.kind === 'gem' ? null : target.closest('[data-w-panel]')?.getBoundingClientRect()
-  if (panel) anchor = new DOMRect(panel.left, anchor.top, panel.width, anchor.height)
-  tip.value = { content, anchor }
+  tip.value = { content, anchor: target.getBoundingClientRect() }
 }
 
 export function showTip (e: Event, content: TipContent) {
