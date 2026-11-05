@@ -22,6 +22,12 @@ describe('Credits', () => {
     expect(CREDIT_GROUPS[0].credits[0]).toMatchObject({ name: 'Awakened PoE Trade', license: 'MIT' })
   })
 
+  it('lists the websites panels load, such as the lab and the challenge guide', () => {
+    const sites = CREDIT_GROUPS.find(g => g.id === 'websites')!.credits.map(c => c.url)
+    expect(sites).toContain('https://www.poelab.com/')
+    expect(sites).toContain('https://craniumviolence.github.io/')
+  })
+
   it('states the license of what we copy into the app', () => {
     const copied = ['exile-leveling', 'GemCheck', 'NeverSink filter']
     for (const name of copied) {

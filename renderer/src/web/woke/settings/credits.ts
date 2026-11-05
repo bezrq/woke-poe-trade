@@ -36,13 +36,14 @@ export const CREDIT_GROUPS: CreditGroup[] = [
     ]
   },
   {
-    id: 'live',
-    title: 'Live data and links',
+    id: 'websites',
+    title: 'Websites we use',
     credits: [
-      { name: 'Path of Exile trade site', url: 'https://www.pathofexile.com/trade', use: 'Listings for price checks, and saved and live searches.' },
+      { name: 'Path of Exile website', url: 'https://www.pathofexile.com/trade', use: 'Listings for price checks, saved and live searches, and the Atlas tree page.' },
       { name: 'poe.ninja', url: 'https://poe.ninja/', use: 'Prices, market trackers and league investment history.' },
       { name: 'poeprices.info', url: 'https://www.poeprices.info/', use: 'Price predictions for rare items.' },
-      { name: 'poelab.com', url: 'https://www.poelab.com/', use: 'The daily Labyrinth layouts.' },
+      { name: 'PoELab', url: 'https://www.poelab.com/', use: 'The daily Labyrinth layouts in the Lab panel, for your lab runs.' },
+      { name: "CraniumCarnage's challenge guide", url: 'https://craniumviolence.github.io/', use: 'The guide for the achievements window we are building.' },
       { name: 'poe.how', url: 'https://poe.how/economy/bosses/', use: 'Boss drop lists and community drop rates.' },
       { name: 'poe.re', url: 'https://poe.re/', use: 'Stash search strings to save in the Regex library, and the idea for our map search strings.' },
       { name: 'pobb.in', url: 'https://pobb.in/', use: 'Shared build links you can import.' },
@@ -56,8 +57,7 @@ export const CREDIT_GROUPS: CreditGroup[] = [
     id: 'inspiration',
     title: 'Inspiration',
     credits: [
-      { name: 'Wealthy Exile', url: 'https://wealthyexile.com/', use: 'The idea behind the farming session tracker.' },
-      { name: 'CraniumCarnage challenge guide', url: 'https://craniumviolence.github.io/', use: 'The guide we plan to show in a challenge panel.' }
+      { name: 'Wealthy Exile', url: 'https://wealthyexile.com/', use: 'The idea behind the farming session tracker.' }
     ]
   },
   {
