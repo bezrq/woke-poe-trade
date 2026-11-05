@@ -566,16 +566,19 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
   }
 
   // Switches strictness and saves. Returns Undo, or null if nothing was saved.
+  let levelSwitch = 0
   async function setLevel (level: number, opts: { auto?: boolean } = {}): Promise<(() => void) | null> {
     const ns = cfg().neversink
     if (!ns.on) return null
     const before = ns.level
     const next = clampLevel(level)
     if (next === before) return null
+    const mine = ++levelSwitch
     ns.level = next
     await load()
-    // A newer switch (a second key press) saves its own level.
-    if (cfg().neversink.level !== next) return null
+    // A newer switch (a second key press) saves its own level. Going by the switch,
+    // not the level: A, B, A has this load's rules out of date with the level right.
+    if (mine !== levelSwitch) return null
     if (!doc.value || !await save({ auto: opts.auto })) return null
     return () => { setLevel(before).catch(() => {}) }
   }
@@ -604,10 +607,35 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
   // over from it. The reload waits for your click on the card: this can come from
   // a timer (scrolling), and GGG's rules don't allow a chat command from one.
   async function pickLevel (level: number) {
+    const ns = cfg().neversink
+    const auto = cfg().strictAuto
     const next = clampLevel(level)
-    if (!cfg().neversink.on || next === cfg().neversink.level) return
-    if (cfg().strictAuto.on) cfg().strictAuto.paused = ladderPick.value !== next
-    await setLevel(next, { auto: true })
+    if (!ns.on) return
+    if (next === ns.level) {
+      if (auto.on && auto.paused && ladderPick.value === next) auto.paused = false
+      return
+    }
+    const before = ns.level
+    const wasPaused = auto.paused
+    const hadEdits = userDirty()
+    if (auto.on) auto.paused = ladderPick.value !== next
+    const mine = levelSwitch + 1
+    const undo = await setLevel(next, { auto: true }).catch(() => null)
+    if (mine !== levelSwitch) return
+    if (!undo) {
+      // Neither saved nor loaded: the card goes back to what the game file still is.
+      const why = error.value
+      ns.level = before
+      auto.paused = wasPaused
+      await load().catch(() => {})
+      toast(`Couldn't switch to ${LEVEL_NAMES[next]}.${why ? ` ${why}` : ''}`)
+      return
+    }
+    if (hadEdits) {
+      toast(`Loot filter: ${LEVEL_NAMES[next]}. Your unsaved edits were saved with it.`, { undo: () => { auto.paused = wasPaused; undo() } })
+    } else if (!cfg().reloadViaChat) {
+      toast(`Loot filter: ${LEVEL_NAMES[next]}. Reload it in the game's options to use it.`)
+    }
   }
 
   function resumeLadder () {

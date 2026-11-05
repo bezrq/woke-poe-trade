@@ -455,6 +455,33 @@ describe('sources', () => {
     expect(sent.chat).toHaveLength(1)
   })
 
+  it('a dock card pick that can\'t save goes back, and can be tried again', async () => {
+    for (let i = 0; i < 7; i++) host.neversink.set(`8.20.1//${i}`, neverSink(LEVELS[i]))
+    const config = widget({ neversink: { on: true, version: '8.20.1', prevVersion: null, style: '', level: 1, latest: null, latestChanges: '', checkedAt: Date.now() } })
+    const store = useLootFilter(() => config)
+    await store.load()
+    host.writeFails = 1
+    await store.pickLevel(4)
+    expect(config.neversink.level).toBe(1)
+    expect(config.strictAuto.paused).toBe(false)
+    expect(store.doc.value).toBeTruthy()
+    await store.pickLevel(4)
+    expect(config.neversink.level).toBe(4)
+    expect(inGame().strictness).toBe('4-VERY-STRICT')
+  })
+
+  it('a dock card pick of a level that can\'t load goes back to one that can', async () => {
+    host.neversink.set('8.20.1//1', neverSink(LEVELS[1]))
+    host.latestVersion = '8.20.1'
+    const config = widget({ neversink: { on: true, version: '8.20.1', prevVersion: null, style: '', level: 1, latest: null, latestChanges: '', checkedAt: Date.now() } })
+    const store = useLootFilter(() => config)
+    await store.load()
+    await store.pickLevel(4)
+    expect(config.neversink.level).toBe(1)
+    expect(config.strictAuto.paused).toBe(false)
+    expect(store.doc.value).toBeTruthy()
+  })
+
   it('a dock card pick past either end stays on the last level', async () => {
     for (let i = 0; i < 7; i++) host.neversink.set(`8.20.1//${i}`, neverSink(LEVELS[i]))
     const config = widget({ neversink: { on: true, version: '8.20.1', prevVersion: null, style: '', level: 6, latest: null, latestChanges: '', checkedAt: Date.now() } })

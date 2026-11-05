@@ -10,7 +10,7 @@
             <div class="flex items-center gap-2">
               <span class="whitespace-nowrap">{{ LEVEL_NAMES[shownLevel] }}</span>
               <span class="w-faint text-xs whitespace-nowrap">{{ config.strictAuto.on ? (config.strictAuto.paused ? 'auto paused' : 'auto') : 'manual' }}</span>
-              <button v-if="config.strictAuto.on && config.strictAuto.paused" type="button" :class="$style.link" @click="store.resumeLadder()">Back to auto</button>
+              <button v-if="config.strictAuto.on && config.strictAuto.paused" type="button" :class="$style.link" @click="backToAuto">Back to auto</button>
               <span class="grow" />
               <span v-if="!config.strictAuto.paused" class="w-faint text-xs w-num whitespace-nowrap">NeverSink {{ config.neversink.version }}</span>
             </div>
@@ -249,7 +249,7 @@ const scrolledTo = ref<number | null>(null)
 let scrollTimer: ReturnType<typeof setTimeout> | undefined
 const shownLevel = computed(() => scrolledTo.value ?? props.config.neversink.level)
 // Only worth marking once it differs from what's on.
-const wantedLevel = computed(() => props.config.strictAuto.on && props.config.strictAuto.paused ? store.ladderPick.value : null)
+const wantedLevel = computed(() => props.config.strictAuto.on && props.config.strictAuto.paused && store.ladderPick.value !== shownLevel.value ? store.ladderPick.value : null)
 
 function pickNow (level: number) {
   clearTimeout(scrollTimer)
@@ -259,13 +259,19 @@ function pickNow (level: number) {
 
 function onLevelWheel (e: WheelEvent) {
   if (!e.deltaY) return
-  // A fast spin can arrive as one event: 100 is one notch.
-  const notches = Math.max(1, Math.round(Math.abs(e.deltaY) / 100))
-  const next = clampLevel(shownLevel.value + Math.sign(e.deltaY) * notches)
+  // One level per event: how far a notch reports depends on your Windows setting.
+  const next = clampLevel(shownLevel.value + Math.sign(e.deltaY))
   scrolledTo.value = next
   clearTimeout(scrollTimer)
   scrollTimer = setTimeout(() => pickNow(next), SCROLL_SETTLE_MS)
 }
+function backToAuto () {
+  clearTimeout(scrollTimer)
+  scrolledTo.value = null
+  store.resumeLadder()
+  if (store.ladderPick.value == null) toast('Auto strictness is back on. It picks a level from your next map.')
+}
+
 onUnmounted(() => {
   // A scroll still settling is still what you asked for.
   if (scrolledTo.value != null) pickNow(scrolledTo.value)

@@ -422,6 +422,7 @@ test('dock card: click or scroll a strictness, then reload from there', async ({
   await level('Strict').hover()
   await page.mouse.wheel(0, 100)
   await expect(level('Very strict')).toHaveAttribute('aria-pressed', 'true')
+  await page.waitForTimeout(100)
   await page.mouse.wheel(0, 100)
   await expect(level('Uber strict')).toHaveAttribute('aria-pressed', 'true')
   await expect.poll(() => fs.statSync(out).mtimeMs, { timeout: 5000 }).toBeGreaterThan(before)
