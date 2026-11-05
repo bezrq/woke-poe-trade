@@ -181,10 +181,10 @@ export const PAGES: SettingsPage[] = [
     group: 'modules',
     sub: 'Trade & prices',
     icon: modulePageIcon('market'),
-    description: 'Movers, watchlist, league-start investments and scarab flipping from poe.ninja.',
+    description: 'Movers, watchlist, league-start investments and flips from poe.ninja.',
     modules: ['market', 'league-invest', 'scarab-flip'],
     widgets: ['woke-market-tracker', 'woke-league-invest', 'woke-scarab-flip'],
-    find: ['Market tracker', 'Watchlist', 'Investments', 'League day', 'Scarab flip', 'Scarab vendor recipe']
+    find: ['Market tracker', 'Watchlist', 'Investments', 'League day', 'Flips', 'Scarab flip', 'Scarab vendor recipe', 'Harvest reroll', 'Catalyst', 'Delirium orb']
   },
   {
     id: 'campaign',

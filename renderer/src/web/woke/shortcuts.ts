@@ -17,7 +17,7 @@ import type { MapScanWidget } from './map-mods/scan'
 import { isModuleOn, isWidgetTypeOn } from './modules'
 import { ESSENCE_SCAN_TYPE, essenceHotkeyTarget, essenceOnceTarget } from './essence-scan/widget'
 import type { EssenceScanWidget } from './essence-scan/widget'
-import { LOOT_FILTER_TYPE, LOOT_FILTER_SAMPLE_TARGET, editorHotkeyTarget, strictnessHotkeyTarget } from './loot-filter/widget'
+import { LOOT_FILTER_TYPE, LOOT_FILTER_SAMPLE_TARGET, editorHotkeyTarget, reloadHotkeyTarget, strictnessHotkeyTarget } from './loot-filter/widget'
 import type { LootFilterWidget } from './loot-filter/widget'
 import { CAMPAIGN_TYPE, hotkeyTarget as campaignHotkeyTarget } from './campaign/widget'
 import type { CampaignWidget } from './campaign/widget'
@@ -147,6 +147,10 @@ export function wokeShortcutsFor (widget: Widget, config: { woke?: { setupDone: 
     }
     if (lf.editorHotkey) {
       actions.push({ shortcut: lf.editorHotkey, keepModKeys: true, action: { type: 'trigger-event', target: editorHotkeyTarget(widget.wmId), focusOverlay: true } })
+    }
+    if (lf.reloadHotkey && lf.reloadViaChat) {
+      // Every key is released first, so a held Alt can't change what gets typed.
+      actions.push({ shortcut: lf.reloadHotkey, action: { type: 'trigger-event', target: reloadHotkeyTarget(widget.wmId) } })
     }
     // Strictness steps only mean something with NeverSink from GitHub.
     if (lf.neversink?.on) {

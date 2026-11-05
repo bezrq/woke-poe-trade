@@ -1,14 +1,18 @@
 // Scarab vendor recipe: expected value, buy list, odds and rare-but-cheap marks.
 import { describe, it, expect } from 'vitest'
-import { buyList, flipModel, flipOdds, parseExchange, rareCheapList, scarabQuotes, shortScarab, RARE_SHARE } from '@/web/woke/scarab-flip/calc'
-import type { ScarabQuote } from '@/web/woke/scarab-flip/calc'
+import { buyList, familyQuotes, flipModel, flipOdds, parseExchange, rareCheapList, shortScarab, RARE_SHARE } from '@/web/woke/scarab-flip/calc'
+import { familyById, flipRecipe } from '@/web/woke/scarab-flip/families'
+import type { ExchangeQuotes, FlipOptions, Quote } from '@/web/woke/scarab-flip/calc'
 import { SAMPLE_ROLLS, TIER_ROLLS, UNSAMPLED_TIERS } from '@/web/woke/scarab-flip/weights'
 import type { PriceItem } from '@/web/woke/market/types'
 
 const PLAIN = { sellDiscount: 0, reroll: false }
+const scarabs = familyById('scarabs')
+const model = (q: Map<string, Quote>, options: FlipOptions) => flipModel(q, options, flipRecipe(scarabs, scarabs.methods[0], 0))
+const scarabQuotes = (items: PriceItem[], exchange: ExchangeQuotes | null) => familyQuotes(items, scarabs.ninjaType, scarabs.match, exchange)
 
 function quotes (prices: Record<string, number>, tradedChaos: number | null = 1000) {
-  return new Map<string, ScarabQuote>(Object.entries(prices).map(([name, chaos]) => [name, { chaos, tradedChaos }]))
+  return new Map<string, Quote>(Object.entries(prices).map(([name, chaos]) => [name, { chaos, tradedChaos }]))
 }
 
 // Sample counts: Harvest Scarab 649, Harvest of Doubling 218, Scarab of Wisps 212.
@@ -17,28 +21,28 @@ const TOTAL = 649 + 218 + 212
 
 describe('recipe value', () => {
   it('is the price of each result times its weight', () => {
-    const m = flipModel(quotes(THREE), PLAIN)
+    const m = model(quotes(THREE), PLAIN)
     const ev = (649 * 1 + 218 * 100 + 212 * 10) / TOTAL
     expect(m.recipeValue).toBeCloseTo(ev, 8)
     expect(m.buyUnder).toBeCloseTo(ev / 3, 8)
   })
 
   it('never gives back the scarab you put in', () => {
-    const m = flipModel(quotes(THREE), PLAIN)
+    const m = model(quotes(THREE), PLAIN)
     const harvest = m.rows.find(r => r.name === 'Harvest Scarab')!
     const without = (218 * 100 + 212 * 10) / (218 + 212)
     expect(harvest.profit).toBeCloseTo(without - 3, 8)
   })
 
   it('takes the sell discount off the results', () => {
-    const plain = flipModel(quotes(THREE), PLAIN)
-    const discounted = flipModel(quotes(THREE), { sellDiscount: 0.1, reroll: false })
+    const plain = model(quotes(THREE), PLAIN)
+    const discounted = model(quotes(THREE), { sellDiscount: 0.1, reroll: false })
     expect(discounted.recipeValue).toBeCloseTo(plain.recipeValue * 0.9, 8)
   })
 
   it('rerolling cheap results raises the value and settles', () => {
-    const plain = flipModel(quotes(THREE), PLAIN)
-    const reroll = flipModel(quotes(THREE), { sellDiscount: 0, reroll: true })
+    const plain = model(quotes(THREE), PLAIN)
+    const reroll = model(quotes(THREE), { sellDiscount: 0, reroll: true })
     expect(reroll.recipeValue).toBeGreaterThan(plain.recipeValue)
     // The answer satisfies its own definition: a result is worth at least a third of a recipe.
     const v = reroll.recipeValue
@@ -49,7 +53,7 @@ describe('recipe value', () => {
 
 describe('weights', () => {
   it('uses the sample first, then the wiki tier, and leaves the rest out', () => {
-    const m = flipModel(quotes({ 'Harvest Scarab': 1, 'Breach Scarab of the Hive': 1, 'Trarthan Scarab': 1 }), PLAIN)
+    const m = model(quotes({ 'Harvest Scarab': 1, 'Breach Scarab of the Hive': 1, 'Trarthan Scarab': 1 }), PLAIN)
     expect(m.rows.find(r => r.name === 'Harvest Scarab')!.weightSource).toBe('sample')
     const breach = m.rows.find(r => r.name === 'Breach Scarab of the Hive')!
     expect(breach.weightSource).toBe('tier')
@@ -69,7 +73,7 @@ describe('buy list', () => {
     const q = quotes({ 'Harvest Scarab': 1, 'Harvest Scarab of Doubling': 100, 'Scarab of Wisps': 2 })
     q.get('Harvest Scarab')!.tradedChaos = 2
     q.get('Scarab of Wisps')!.tradedChaos = 1000
-    const list = buyList(flipModel(q, PLAIN), true)
+    const list = buyList(model(q, PLAIN).rows, true)
     expect(list.map(r => r.name)).toEqual(['Scarab of Wisps', 'Harvest Scarab'])
     expect(list[1].profit).toBeGreaterThan(list[0].profit)
     expect(list[1].tradedPerDay).toBe(2)
@@ -78,13 +82,13 @@ describe('buy list', () => {
   it('hides prices with no trades behind them unless asked', () => {
     const q = quotes({ 'Harvest Scarab': 1, 'Harvest Scarab of Doubling': 100, 'Torment Scarab of Possession': 0.05 })
     q.get('Torment Scarab of Possession')!.tradedChaos = 0.1
-    const m = flipModel(q, PLAIN)
-    expect(buyList(m, true).map(r => r.name)).not.toContain('Torment Scarab of Possession')
-    expect(buyList(m, false).map(r => r.name)).toContain('Torment Scarab of Possession')
+    const m = model(q, PLAIN)
+    expect(buyList(m.rows, true).map(r => r.name)).not.toContain('Torment Scarab of Possession')
+    expect(buyList(m.rows, false).map(r => r.name)).toContain('Torment Scarab of Possession')
   })
 
   it('is empty when no scarab is cheap enough', () => {
-    expect(buyList(flipModel(quotes({ 'Harvest Scarab': 50, 'Scarab of Wisps': 50 }), PLAIN), true)).toEqual([])
+    expect(buyList(model(quotes({ 'Harvest Scarab': 50, 'Scarab of Wisps': 50 }), PLAIN).rows, true)).toEqual([])
   })
 })
 
@@ -101,14 +105,14 @@ describe('rare and cheap', () => {
   }
 
   it('marks rare scarabs costing under a third of a typical rare one', () => {
-    const m = flipModel(quotes(POOL), PLAIN)
+    const m = model(quotes(POOL), PLAIN)
     // Typical rare scarab here: the middle of 4, 8, 38, 44, 68, 500 = 41c.
     expect(m.typicalRare).toBe(41)
     expect(rareCheapList(m).map(r => r.name)).toEqual(['Scarab of Radiant Storms', 'Blight Scarab of Invigoration'])
   })
 
   it('never marks a common scarab, however cheap', () => {
-    const m = flipModel(quotes(POOL), PLAIN)
+    const m = model(quotes(POOL), PLAIN)
     const common = m.rows.find(r => r.name === 'Harvest Scarab')!
     expect(common.share).toBeGreaterThan(RARE_SHARE)
     expect(common.rareCheap).toBe(false)
@@ -117,14 +121,14 @@ describe('rare and cheap', () => {
   it('skips cheap prices nobody trades, which may just be stale', () => {
     const q = quotes(POOL)
     q.get('Scarab of Radiant Storms')!.tradedChaos = 0
-    const names = rareCheapList(flipModel(q, PLAIN)).map(r => r.name)
+    const names = rareCheapList(model(q, PLAIN)).map(r => r.name)
     expect(names).toEqual(['Blight Scarab of Invigoration'])
   })
 })
 
 describe('odds', () => {
   it('splits chance and value by price range', () => {
-    const o = flipOdds(flipModel(quotes({ 'Harvest Scarab': 0.5, 'Horned Scarab of Bloodlines': 800 }), PLAIN))
+    const o = flipOdds(model(quotes({ 'Harvest Scarab': 0.5, 'Horned Scarab of Bloodlines': 800 }), PLAIN))
     const low = o.buckets[0]
     const top = o.buckets[o.buckets.length - 1]
     expect(low.chance).toBeCloseTo(649 / (649 + 34), 8)
@@ -137,7 +141,7 @@ describe('odds', () => {
   })
 
   it('has no jackpot line when nothing reaches that price', () => {
-    expect(flipOdds(flipModel(quotes(THREE), PLAIN)).jackpotOneIn).toBeNull()
+    expect(flipOdds(model(quotes(THREE), PLAIN)).jackpotOneIn).toBeNull()
   })
 })
 
@@ -169,7 +173,7 @@ describe('price feeds', () => {
   it('falls back to the dense prices with volume unknown', () => {
     const q = scarabQuotes(dense, null)
     expect(q.get('Harvest Scarab')).toEqual({ chaos: 2, tradedChaos: null })
-    const list = buyList(flipModel(new Map([['Harvest Scarab', q.get('Harvest Scarab')!], ['Scarab of Wisps', q.get('Scarab of Wisps')!]]), PLAIN), true)
+    const list = buyList(model(new Map([['Harvest Scarab', q.get('Harvest Scarab')!], ['Scarab of Wisps', q.get('Scarab of Wisps')!]]), PLAIN).rows, true)
     expect(list[0].profitPerDay).toBeNull()
   })
 })

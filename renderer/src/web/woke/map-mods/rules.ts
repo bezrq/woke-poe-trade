@@ -70,7 +70,6 @@ export const PRESETS: MapModPreset[] = [
     id: 'phys-reflect',
     label: 'Physical reflect',
     matchers: [
-      'Monsters reflect #% of Physical Damage',
       'Rare Monsters have Physical Thorns reflecting # Physical Damage',
       '#% of Melee Physical Damage taken reflected to Attacker'
     ]
@@ -79,7 +78,6 @@ export const PRESETS: MapModPreset[] = [
     id: 'ele-reflect',
     label: 'Elemental reflect',
     matchers: [
-      'Monsters reflect #% of Elemental Damage',
       'Rare Monsters have Elemental Thorns reflecting # Elemental Damage'
     ]
   },
@@ -159,6 +157,33 @@ export const PRESETS: MapModPreset[] = [
     ]
   }
 ]
+
+// Mods the game has reworded. The old wording no longer rolls, so a rating on
+// it would never match a map.
+const REWORDED: Record<string, string[]> = {
+  'Monsters reflect #% of Physical Damage': [
+    'Rare Monsters have Physical Thorns reflecting # Physical Damage',
+    '#% of Melee Physical Damage taken reflected to Attacker'
+  ],
+  'Monsters reflect #% of Elemental Damage': ['Rare Monsters have Elemental Thorns reflecting # Elemental Damage']
+}
+
+// Moves a rating from an old wording to the new one. A rating already on the
+// new wording is the player's own and stays.
+export function carryRewordedRatings (ratings: Record<string, ModRating>) {
+  for (const [old, current] of Object.entries(REWORDED)) {
+    const rating = ratings[old]
+    if (!rating) continue
+    Reflect.deleteProperty(ratings, old)
+    for (const m of current) ratings[m] ??= rating
+  }
+}
+
+// Rated mods that aren't in the game's current mod list.
+export function deadRatings (ratings: Record<string, ModRating>, known: Iterable<string>): string[] {
+  const set = new Set(known)
+  return Object.keys(ratings).filter(m => !set.has(m))
+}
 
 // Mods in a preset are the well-known run-killers; auto-trim keeps them longest.
 export function modPriority (matcher: string): number {
@@ -370,8 +395,10 @@ export function defaultProfile (): MapModProfile {
     ratings: {
       'Players cannot Regenerate Life, Mana or Energy Shield': 'warn',
       'Players have #% to all maximum Resistances': 'warn',
-      'Monsters reflect #% of Physical Damage': 'deadly',
-      'Monsters reflect #% of Elemental Damage': 'deadly',
+      // Flat damage back at you, so careful rather than can't run.
+      'Rare Monsters have Physical Thorns reflecting # Physical Damage': 'warn',
+      'Rare Monsters have Elemental Thorns reflecting # Elemental Damage': 'warn',
+      '#% of Melee Physical Damage taken reflected to Attacker': 'warn',
       'Area contains two Unique Bosses': 'good'
     }
   }

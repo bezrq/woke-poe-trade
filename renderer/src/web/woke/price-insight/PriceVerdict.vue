@@ -41,7 +41,7 @@
     <div :class="$style.line">
       <template v-if="insight.range">
         <span class="w-num" :class="$style.fact">Cheapest <w-price :class="$style.factPrice" :chaos="insight.range.low" :divine="divine" :unit="ninjaInfo ? 'auto' : rangeUnit" /></span>
-        <span v-if="!ninjaInfo && insight.range.high > insight.range.low" class="w-num" :class="$style.fact">up to <w-price :class="$style.factPrice" :chaos="insight.range.high" :divine="divine" :unit="rangeUnit" /></span>
+        <span v-if="(!ninjaInfo || expanded) && insight.range.high > insight.range.low" class="w-num" :class="$style.fact">up to <w-price :class="$style.factPrice" :chaos="insight.range.high" :divine="divine" :unit="rangeUnit" /></span>
       </template>
       <button v-if="ranges.length" type="button" :class="[$style.sparkBtn, { [$style.on]: historyOpen }]"
         :title="(historyOpen ? 'Hide price history' : 'Show price history') + (ninjaNotCounted ? '. poe.ninja isn\'t counted in this price' : '')" @click="historyOpen = !historyOpen">
@@ -55,18 +55,18 @@
       </button>
       <span class="flex-1" />
       <span v-if="insight.range" :class="$style.count" :title="droppedTitle">{{ countText }}</span>
-      <button type="button" class="w-icon-btn" :title="expanded ? 'Show less' : 'Show sources, listing notes and what drives the price'"
+      <button type="button" class="w-icon-btn" :title="expanded ? 'Show less' : 'Show more detail and what drives the price'"
         @click="verdictExpanded = !verdictExpanded">
         <i class="fas text-xs" :class="expanded ? 'fa-chevron-up' : 'fa-chevron-down'" />
       </button>
     </div>
 
-    <p v-if="age" :class="$style.note" :style="age.stale ? { color: 'var(--w-warn)' } : undefined">{{ age.text }}</p>
+    <p v-if="age && (expanded || age.stale)" :class="$style.note" :style="age.stale ? { color: 'var(--w-warn)' } : undefined">{{ age.text }}</p>
 
     <price-history-chart v-if="historyOpen && ranges.length" :ranges="ranges" :series="series" :divine="divine"
       :from-ninja="Boolean(ninjaInfo)" :loading="leagueLoading" @range="onRange" />
 
-    <div v-if="expanded && blend.points.length" :class="$style.sources">
+    <div v-if="expanded && sourcesAddAnything(blend, headline?.from)" :class="$style.sources">
       <div v-if="blend.points.length > 1" :class="$style.agree">{{ AGREEMENT_SENTENCE[blend.agreement] }}<template v-if="headline?.from === 'blend'">. The headline blends them, listings count most</template></div>
       <div v-for="p in blend.points" :key="p.key" :class="[$style.source, { [$style.off]: p.weight === 0 }]" :title="p.note">
         <span :class="{ [$style.ninjaName]: p.key === 'ninja' }">{{ p.label }}</span>
@@ -75,8 +75,8 @@
           <w-price :chaos="p.low" :divine="divine" /><template v-if="p.high > p.low">–<w-price :chaos="p.high" :divine="divine" /></template>
         </span>
       </div>
-      <a v-if="ninjaInfo" :class="$style.ninjaLink" :href="ninjaInfo.url" target="_blank">Open on poe.ninja ↗</a>
     </div>
+    <p v-if="expanded && ninjaInfo" :class="$style.note"><a :class="$style.ninjaLink" :href="ninjaInfo.url" target="_blank">Open on poe.ninja ↗</a></p>
     <p v-if="expanded && insight.range && accountMissing" :class="$style.note">Your own listings may be counted here. Add your account name in settings to leave them out.</p>
     <label v-if="expanded && canAsk" :class="$style.ppToggle">
       <input type="checkbox" v-model="usePoeprices">
@@ -98,6 +98,7 @@ import { dataAge } from './data-age'
 import PriceHistoryChart from './PriceHistoryChart.vue'
 import { verdictExpanded, historyOpen } from './view'
 import { DROP_LABEL, DropReason, Insight, Confidence, FixRisk, notePrice, noteText } from './insight'
+import { sourcesAddAnything } from './sources'
 import type { Agreement } from './sources'
 import { seriesChange, HistoryRange } from './history'
 import { useSmartPrice } from './useSmartPrice'

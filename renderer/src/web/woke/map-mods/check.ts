@@ -104,6 +104,11 @@ export function checkMap (item: ParsedItem, config: MapModsWidget): MapCheckResu
   return { mode, name, sub: subParts.join(' · '), verdict, juice, props, unknown, unidentified: item.isUnidentified }
 }
 
+// A RUN can't be trusted when a mod couldn't be read; hidden mods say nothing at all.
+export function isUnsure (result: Pick<MapCheckResult, 'unidentified' | 'unknown' | 'verdict'>): boolean {
+  return result.unidentified || (result.verdict.verdict === 'run' && result.unknown.length > 0)
+}
+
 // The checker's config, for the strip inside APT's own windows. Null when the
 // widget hasn't been added from the overlay menu yet.
 export function findMapModsConfig (): MapModsWidget | null {
