@@ -9,6 +9,8 @@ import { decodeFamilyFromSource as decodeMercenarySupports, SearchMode as MercSe
 import { RateLimiter } from './RateLimiter'
 import { ModifierType } from '@/parser/modifiers'
 import { Cache } from './Cache'
+import { listingTipItem, ListingItem } from '@/web/woke/price-insight/listing-tip'
+import type { PobItem } from '@/web/woke/pob-builds/widget'
 
 export const CATEGORY_TO_TRADE_ID = new Map([
   [ItemCategory.Map, 'map'],
@@ -217,18 +219,12 @@ export interface SearchResult {
 
 interface FetchResult {
   id: string
-  item: {
+  item: ListingItem & {
     ilvl?: number
     stackSize?: number
     corrupted?: boolean
-    properties?: Array<{
-      values: [[string, number]]
-      type:
-      78 | // Corpse Level (Filled Coffin)
-      30 | // Spawns a Level %0 Monster when Harvested
-      6 | // Quality
-      5 // Level
-    }>
+    // properties[].type: 78 Corpse Level (Filled Coffin), 30 Spawns a Level %0
+    // Monster when Harvested, 6 Quality, 5 Level
     note?: string
   }
   listing: {
@@ -253,6 +249,8 @@ export interface PricingResult {
   relativeDate: string
   // woke: raw ISO time, used by the improved price view to spot stale listings
   indexedAt?: string
+  // woke: the listed item for the hover tooltip, or null when it has no mods
+  tipItem: PobItem | null
   priceAmount: number
   priceCurrency: string
   isMine: boolean
@@ -839,6 +837,7 @@ export async function requestResults (
       level: result.item.properties?.find(prop => prop.type === 5)?.values[0][0],
       relativeDate: DateTime.fromISO(result.listing.indexed).toRelative({ style: 'short' }) ?? '',
       indexedAt: result.listing.indexed,
+      tipItem: listingTipItem(result.item),
       priceAmount: result.listing.price?.amount ?? 0,
       priceCurrency: result.listing.price?.currency ?? 'no price',
       hasNote: result.item.note != null,
