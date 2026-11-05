@@ -1,7 +1,7 @@
 ---
 id: WOKEPOET-10
 title: Trade search window can't be moved or resized
-status: Ready
+status: Done
 priority: Medium
 effort: S
 assignee: Agent
@@ -52,6 +52,24 @@ history:
     to: Ready
     user: Agent
     date: '2026-11-05T02:42:59.235Z'
+  - type: comment
+    user: Agent
+    comment: >-
+      PR squash-merged for branch
+      `flux/WOKEPOET-10-trade-search-window-can-t-be-moved-or-resized` —
+      advanced to Done.
+    date: '2026-11-05T02:46:58.970Z'
+    id: c-2026-11-05t02-46-58-970z
+  - type: status_change
+    from: Ready
+    to: Done
+    user: Agent
+    date: '2026-11-05T02:46:58.970Z'
+  - type: activity
+    user: Agent
+    date: '2026-11-05T02:46:59.539Z'
+    comment: Task worktree automatically reclaimed (ready-or-terminal-status)
+    id: a-2026-11-05t02-46-59-539z
 branch: flux/WOKEPOET-10-trade-search-window-can-t-be-moved-or-resized
 baselineCommit: 95cbada0b56969b164437487851fe1db57556125
 needsAction: null
