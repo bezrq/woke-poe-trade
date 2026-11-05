@@ -20,7 +20,13 @@ export function registerActions () {
     const tab = LOOKUP_TARGETS[e.target]
     if (!tab && e.target !== 'search-similar') return
     const parsed = parseClipboard(e.clipboard)
-    if (!parsed.isOk()) return
+    if (!parsed.isOk()) {
+      // Main already gave the overlay focus for the panel that isn't coming.
+      if (tab && e.focusOverlay && Host.isElectron) {
+        Host.sendEvent({ name: 'OVERLAY->MAIN::focus-game', payload: undefined })
+      }
+      return
+    }
 
     if (tab) {
       openLookup(parsed.value, tab, e.position)

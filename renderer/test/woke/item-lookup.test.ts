@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { canCraft, lookupKeyAction, lookupTabs, lookupUrl, matchBookmarks, popOutUrl, toggleBookmark } from '@/web/woke/item-lookup/lookup'
+import { canCraft, lookupKeyAction, lookupTabs, lookupUrl, matchBookmarks, panelKey, popOutUrl, toggleBookmark } from '@/web/woke/item-lookup/lookup'
 import type { LookupKeys } from '@/web/woke/item-lookup/lookup'
 
 const item = { rawText: 'Rarity: Rare\n+1% & more', info: { refName: "Maligaro's Virtuosity" } }
@@ -46,6 +46,20 @@ describe('lookupKeyAction', () => {
   it('ignores a tab the item does not have and other keys', () => {
     expect(lookupKeyAction('Alt + C', 'wiki', ['wiki', 'poedb'], keys)).toBeNull()
     expect(lookupKeyAction('Alt + Q', 'wiki', [...tabs], keys)).toBeNull()
+  })
+})
+
+describe('panelKey', () => {
+  it('keeps keys that typing in a page can not hit', () => {
+    for (const k of ['Alt + W', 'Ctrl + W', 'Ctrl + Shift + X', 'Shift + Alt + X', 'Ctrl + Shift + Alt + X', 'F5']) {
+      expect(panelKey(k)).toBe(k)
+    }
+  })
+
+  it('drops keys that typing would hit', () => {
+    for (const k of ['W', 'Shift + W', '5', 'Space', 'Enter', 'Alt', null]) {
+      expect(panelKey(k)).toBeNull()
+    }
   })
 })
 

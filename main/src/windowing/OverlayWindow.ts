@@ -69,6 +69,8 @@ export class OverlayWindow {
     })
 
     this.window.webContents.on('before-input-event', this.handleExtraCommands)
+    // woke: a reload takes any open panel with it, without it saying so.
+    this.window.webContents.on('did-start-loading', () => { this.panelKeys.clear() })
     this.window.webContents.on('did-attach-webview', (_, webviewWebContents) => {
       webviewWebContents.on('before-input-event', this.handleExtraCommands)
     })
@@ -189,7 +191,8 @@ export class OverlayWindow {
       code = code.slice('Digit'.length)
     }
 
-    if (shiftKey && altKey) code = `Shift + Alt + ${code}`
+    if (ctrlKey && shiftKey && altKey) code = `Ctrl + Shift + Alt + ${code}`
+    else if (shiftKey && altKey) code = `Shift + Alt + ${code}`
     else if (ctrlKey && shiftKey) code = `Ctrl + Shift + ${code}`
     else if (ctrlKey && altKey) code = `Ctrl + Alt + ${code}`
     else if (altKey) code = `Alt + ${code}`

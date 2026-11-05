@@ -116,6 +116,13 @@ export function matchBookmarks (list: Bookmark[], filter: string): Bookmark[] {
   return list.filter(b => isWebUrl(b.url) && (!needle || b.name.toLowerCase().includes(needle) || b.url.toLowerCase().includes(needle)))
 }
 
+// The page gets the keyboard, so a key with no Ctrl or Alt would be taken from
+// whatever you type into it. Such a key doesn't work inside the panel.
+export function panelKey (key: string | null): string | null {
+  if (!key) return null
+  return /^F\d+$/.test(key) || /(^|\+ )(Ctrl|Alt) \+/.test(key) ? key : null
+}
+
 // A key press this soon after opening is a held key or a double tap, not a
 // request to leave the overlay.
 export const POP_OUT_GUARD_MS = 400

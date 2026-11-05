@@ -59,7 +59,7 @@ import { AppConfig } from '@/web/Config'
 import type { ItemCheckWidget } from '@/web/item-check/widget'
 import { WEmpty, WField, WKbd, WListItem, WPanel, WTabs, toast } from '../ui'
 import {
-  POP_OUT_GUARD_MS, TAB_LABELS, isWebUrl, lookupKeyAction, lookupTabs, lookupUrl, matchBookmarks, popOutUrl, toggleBookmark
+  POP_OUT_GUARD_MS, TAB_LABELS, isWebUrl, lookupKeyAction, lookupTabs, lookupUrl, matchBookmarks, panelKey, popOutUrl, toggleBookmark
 } from './lookup'
 import type { Bookmark, LookupKeys, LookupRequest, PanelTab } from './lookup'
 
@@ -75,11 +75,19 @@ const opened = shallowRef<PanelTab[]>(props.request.tab === 'bookmarks' ? [] : [
 const views = new Map<PanelTab, ViewEl>()
 const wired = new WeakSet<ViewEl>()
 const currentUrls = shallowRef<Partial<Record<PanelTab, string>>>({})
-const openedAt = performance.now()
+let lastJumpAt = performance.now()
 const panel = shallowRef<InstanceType<typeof WPanel> | null>(null)
 const filter = shallowRef('')
 const page = shallowRef<Bookmark | null>(null)
 const pageId = computed(() => page.value?.id)
+
+// A webview throws if asked before it has attached.
+function viewUrl (t: PanelTab) {
+  try { return views.get(t)?.getURL?.() } catch { return undefined }
+}
+function viewTitle (t: PanelTab) {
+  try { return views.get(t)?.getTitle?.() } catch { return undefined }
+}
 
 function setView (t: PanelTab, el: unknown) {
   if (!el) {
@@ -92,7 +100,7 @@ function setView (t: PanelTab, el: unknown) {
   if (wired.has(view)) return
   wired.add(view)
   const note = () => {
-    currentUrls.value = { ...currentUrls.value, [t]: view.getURL?.() }
+    currentUrls.value = { ...currentUrls.value, [t]: viewUrl(t) }
   }
   view.addEventListener('did-navigate', note)
   view.addEventListener('did-navigate-in-page', note)
@@ -103,10 +111,10 @@ const bookmarks = computed(() => widget.value.bookmarks)
 const shown = computed(() => matchBookmarks(bookmarks.value, filter.value))
 
 const keys = computed<LookupKeys>(() => ({
-  wiki: widget.value.wikiKey,
-  poedb: widget.value.poedbKey,
-  coe: widget.value.craftOfExileKey,
-  bookmarks: widget.value.bookmarksKey
+  wiki: panelKey(widget.value.wikiKey),
+  poedb: panelKey(widget.value.poedbKey),
+  coe: panelKey(widget.value.craftOfExileKey),
+  bookmarks: panelKey(widget.value.bookmarksKey)
 }))
 const activeKey = computed(() => tab.value === 'bookmarks' || tab.value === 'page' ? null : keys.value[tab.value])
 const popOutTitle = computed(() => activeKey.value ? `Open in your browser (${activeKey.value})` : 'Open in your browser')
@@ -139,9 +147,8 @@ function selectTab (t: PanelTab) {
 }
 
 function toggleStar () {
-  const view = views.get(tab.value)
-  const url = view?.getURL?.() || urls.value[tab.value]
-  widget.value.bookmarks = toggleBookmark(bookmarks.value, url, view?.getTitle?.())
+  const url = viewUrl(tab.value) || urls.value[tab.value]
+  widget.value.bookmarks = toggleBookmark(bookmarks.value, url, viewTitle(tab.value))
   currentUrls.value = { ...currentUrls.value, [tab.value]: url }
 }
 
@@ -169,7 +176,7 @@ function openExternal (url: string) {
 
 function popOut () {
   const fallback = urls.value[tab.value]
-  if (fallback) openExternal(popOutUrl(views.get(tab.value)?.getURL?.(), fallback))
+  if (fallback) openExternal(popOutUrl(viewUrl(tab.value), fallback))
 }
 
 function close () {
@@ -181,8 +188,12 @@ function close () {
 const keyController = MainProcess.onEvent('MAIN->OVERLAY::woke-panel-key', ({ key }) => {
   const action = lookupKeyAction(key, tab.value, itemTabs.value, keys.value)
   if (!action) return
-  if (action.type === 'switch') selectTab(action.tab)
-  else if (performance.now() - openedAt >= POP_OUT_GUARD_MS) popOut()
+  if (action.type === 'switch') {
+    selectTab(action.tab)
+    lastJumpAt = performance.now()
+  } else if (performance.now() - lastJumpAt >= POP_OUT_GUARD_MS) {
+    popOut()
+  }
 })
 
 function sendKeys (list: string[]) {

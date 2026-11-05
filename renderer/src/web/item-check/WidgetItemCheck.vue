@@ -1,6 +1,6 @@
 <template>
-  <Widget :config="{ ...config, anchor }" move-handles="none" :removable="false" :inline-edit="false">
-    <ItemLookup v-if="lookup" :request="lookup" @close="closeLookup" />
+  <Widget :config="widgetConfig" move-handles="none" :removable="false" :hideable="!lookup" :inline-edit="false">
+    <ItemLookup v-if="lookup" :key="lookupKey" :request="lookup" @close="closeLookup" />
     <template v-else-if="item">
       <!-- woke: Map mods replaces APT's map check for the items it rates. -->
       <WokeMapVerdictCard v-if="wokeMap"
@@ -93,8 +93,10 @@ props.config.wmWants = 'hide'
 
 // woke: the wiki, poedb and Craft of Exile keys open a page in this widget. It
 // goes when the widget does, so nothing stays loaded over the game.
+const lookupKey = ref(0)
 watch(lookup, (request) => {
   if (!request) return
+  lookupKey.value++
   if (request.position) checkPosition.value = request.position
   wm.show(props.config.wmId)
 })
@@ -121,6 +123,11 @@ const anchor = computed(() => {
       ? (poePanelWidth / width) * 100
       : ((width - poePanelWidth) / width) * 100
   }
+})
+
+// The computed anchor over the real config, so a panel's saved size sticks.
+const widgetConfig = new Proxy(props.config, {
+  get: (target, key, receiver) => key === 'anchor' ? anchor.value : Reflect.get(target, key, receiver)
 })
 
 // Sets Map mods up (with APT's ratings brought over) the first time a map is checked.
