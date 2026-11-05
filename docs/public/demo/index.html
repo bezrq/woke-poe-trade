@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>Woke PoE Trade demo</title>
+<meta name="description" content="The Woke PoE Trade overlay running in your browser, on real game screens with sample prices.">
+<link rel="icon" type="image/png" href="../favicon.png">
+<style>
+/* The demo: a 1920x1080 game screen with the real overlay in a frame on top,
+   scaled to fit the window, and a dock of hotkeys below it. The overlay and
+   the screen share one coordinate space, so scan results land on the screen
+   where the app put them. */
+:root {
+  color-scheme: dark;
+  --bg: #0d0b09;
+  --panel: #15120f;
+  --panel-3: #29241d;
+  --line: rgba(212, 166, 74, 0.16);
+  --line-strong: rgba(212, 166, 74, 0.38);
+  --fg: #efe8db;
+  --dim: #bdb3a3;
+  --gold: #d4a64a;
+  --gold-hi: #f0c66e;
+  --gold-fg: #17130c;
+  --font: 'Geist', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --mono: 'Geist Mono', ui-monospace, Consolas, monospace;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { height: 100%; margin: 0; }
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font: 14px/1.5 var(--font);
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr);
+  overflow: hidden;
+  padding: env(safe-area-inset-top, 0px) max(12px, env(safe-area-inset-right, 0px)) env(safe-area-inset-bottom, 0px) max(12px, env(safe-area-inset-left, 0px));
+}
+a { color: inherit; }
+.top { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-block: 10px; flex-wrap: wrap; }
+.back { display: inline-flex; align-items: center; gap: 8px; font-weight: 700; text-decoration: none; font-size: 15px; }
+.back img { width: 22px; height: 22px; }
+.tag { font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--dim); padding: 4px 10px; border-radius: 999px; border: 1px solid var(--line); }
+.screens { display: flex; gap: 4px; flex-wrap: wrap; }
+.screens button, .key, select {
+  height: 34px; padding: 0 14px; border-radius: 999px; border: 0; cursor: pointer;
+  background: var(--panel-3); color: var(--fg); font: 600 13px var(--font);
+}
+.screens button[aria-pressed='true'] { background: var(--fg); color: var(--bg); }
+.stage-wrap { position: relative; min-height: 0; overflow: hidden; }
+/* Placed absolutely so its 1920px size never widens the page; fit() scales it. */
+.stage {
+  position: absolute; left: 50%; top: 50%; width: 1920px; height: 1080px;
+  transform-origin: center center;
+  border-radius: 12px; overflow: hidden; border: 1px solid var(--line-strong);
+  background: #000 center / cover no-repeat;
+}
+.stage iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: transparent; }
+.spot {
+  position: absolute; transform: translate(-50%, -50%); pointer-events: none;
+  width: 34px; height: 34px; border-radius: 50%; border: 3px solid var(--gold-hi);
+  box-shadow: 0 0 0 8px rgba(240, 198, 110, 0.18), 0 0 24px rgba(240, 198, 110, 0.7);
+}
+.spot span {
+  position: absolute; left: 50%; top: 44px; transform: translateX(-50%); white-space: nowrap;
+  background: var(--gold); color: var(--gold-fg); font: 700 18px var(--font); padding: 6px 14px; border-radius: 999px;
+}
+.loading { position: absolute; inset: 0; display: grid; place-items: center; font-size: 28px; color: var(--dim); background: rgba(13, 11, 9, 0.6); }
+.dock { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; align-items: center; padding-block: 10px 12px; }
+.key { display: inline-flex; align-items: center; gap: 8px; }
+.key kbd { font: 500 11px var(--mono); padding: 2px 6px; border-radius: 6px; background: var(--bg); color: var(--gold-hi); border: 1px solid var(--line); }
+.key.hot { background: var(--gold); color: var(--gold-fg); }
+.key.hot kbd { background: rgba(0, 0, 0, 0.15); color: var(--gold-fg); border-color: transparent; }
+.key[aria-pressed='true'] { outline: 2px solid var(--gold-hi); outline-offset: 2px; }
+.item { display: inline-flex; align-items: center; gap: 6px; padding-left: 12px; border-radius: 999px; background: var(--panel); border: 1px solid var(--line); }
+.item label { font-size: 12px; color: var(--dim); }
+select { padding-right: 28px; }
+.hint { width: 100%; text-align: center; color: var(--dim); font-size: 13px; }
+:focus-visible { outline: 3px solid var(--gold-hi); outline-offset: 2px; }
+@media (max-width: 700px) {
+  .key kbd, .tag { display: none; }
+  .screens button, .key, select { height: 32px; padding: 0 11px; font-size: 12px; }
+}
+</style>
+</head>
+<body>
+<header class="top">
+  <a class="back" href="../"><img src="../favicon.png" alt="">Woke PoE Trade</a>
+  <div class="screens" role="group" aria-label="Game screen">
+    <button type="button" data-screen="jungle" aria-pressed="true">In a map</button>
+    <button type="button" data-screen="essence" aria-pressed="false">Essence</button>
+    <button type="button" data-screen="stash" aria-pressed="false">Map in stash</button>
+  </div>
+  <span class="tag">Demo · sample prices</span>
+</header>
+
+<div class="stage-wrap" id="wrap">
+  <div class="stage" id="stage">
+    <iframe id="app" title="The overlay" src="app/index.html" allowtransparency="true"></iframe>
+    <div class="spot" id="spot" hidden><span id="spot-label"></span></div>
+    <div class="loading" id="loading">Starting the overlay…</div>
+  </div>
+</div>
+
+<footer class="dock">
+  <span class="item">
+    <label for="item">Under the cursor</label>
+    <select id="item">
+      <option value="price-unique">Kaom's Heart</option>
+      <option value="price-rare">Rare ring</option>
+      <option value="price-currency">Divine Orb</option>
+      <option value="price-map">T16 map</option>
+    </select>
+  </span>
+  <button type="button" class="key hot" data-combo="Ctrl+D"><kbd>Ctrl+D</kbd>Price check</button>
+  <button type="button" class="key" data-combo="Shift+Space" id="overlay-key" aria-pressed="false"><kbd>Shift+Space</kbd>Overlay</button>
+  <button type="button" class="key" data-combo="Alt+E" id="essence-key" aria-pressed="false"><kbd>Alt+E</kbd>Essence scan</button>
+  <button type="button" class="key" data-combo="Alt+S" id="map-key" aria-pressed="false"><kbd>Alt+S</kbd>Map scan</button>
+  <button type="button" class="key" data-combo="Alt+F"><kbd>Alt+F</kbd>Filter rule</button>
+  <p class="hint" id="hint">The keys work on your keyboard too. Shift+Space opens the overlay; the rail on its left edge holds every tool.</p>
+</footer>
+
+<script>
+(function () {
+  'use strict'
+  // Screens are 1920x1080 here; the scan cursors are the recorded ones
+  // (testing/fixtures/screens/*.json, 2560x1440) scaled by 0.75.
+  var SCREENS = {
+    jungle: { file: 'screenshot-0020.jpg' },
+    essence: { file: 'screenshot-0025.jpg', spot: { x: 714, y: 401, label: 'Essence monolith: press Alt+E' } },
+    stash: { file: 'screenshot-0007.jpg', spot: { x: 454, y: 608, label: 'Hovered map: press Alt+S' } }
+  }
+  var frame = document.getElementById('app')
+  var stage = document.getElementById('stage')
+  var wrap = document.getElementById('wrap')
+  var spot = document.getElementById('spot')
+  var hint = document.getElementById('hint')
+  var state = { screen: 'jungle', overlay: false, essence: false, map: false, ready: false }
+
+  function fit () {
+    var s = Math.min(wrap.clientWidth / 1920, wrap.clientHeight / 1080)
+    stage.style.transform = 'translate(-50%, -50%) scale(' + s + ')'
+  }
+  window.addEventListener('resize', fit)
+  fit()
+
+  function send (msg) { frame.contentWindow.postMessage(msg, '*') }
+  function act (name) { if (state.ready) send({ demo: 'action', name: name }) }
+
+  function stopScans () {
+    if (state.essence) { act('essence-scan-stop'); state.essence = false }
+    if (state.map) { act('map-scan-stop'); state.map = false }
+    sync()
+  }
+  function showScreen (name) {
+    if (name !== state.screen) stopScans()
+    state.screen = name
+    var s = SCREENS[name]
+    stage.style.backgroundImage = 'url(screens/' + s.file + ')'
+    spot.hidden = !s.spot
+    if (s.spot) {
+      spot.style.left = s.spot.x + 'px'
+      spot.style.top = s.spot.y + 'px'
+      document.getElementById('spot-label').textContent = s.spot.label
+    }
+    document.querySelectorAll('[data-screen]').forEach(function (b) {
+      b.setAttribute('aria-pressed', String(b.dataset.screen === name))
+    })
+  }
+  function sync () {
+    // The marker points at what to scan; once scanning, the result is there.
+    spot.hidden = !SCREENS[state.screen].spot || state.essence || state.map
+    document.getElementById('overlay-key').setAttribute('aria-pressed', String(state.overlay))
+    document.getElementById('essence-key').setAttribute('aria-pressed', String(state.essence))
+    document.getElementById('map-key').setAttribute('aria-pressed', String(state.map))
+  }
+
+  function press (combo) {
+    if (!state.ready) return
+    switch (combo) {
+      case 'Ctrl+D':
+        act(document.getElementById('item').value)
+        hint.textContent = 'Priced from recorded trade site listings. Change the item under the cursor to try another.'
+        break
+      case 'Shift+Space':
+        state.overlay = !state.overlay
+        send({ demo: 'overlay', open: state.overlay })
+        hint.textContent = state.overlay
+          ? 'The overlay is open: click around. The rail on the left edge holds every tool. Shift+Space closes it.'
+          : 'Back in the game. Panels stay out of the way until you need them.'
+        break
+      case 'Alt+E':
+        if (state.essence) { act('essence-scan-stop'); state.essence = false; break }
+        stopScans()
+        showScreen('essence')
+        act('essence-scan')
+        state.essence = true
+        hint.textContent = 'Essence scan read the monolith: Misery and Scorn are worth corrupting. Alt+E again stops scanning.'
+        break
+      case 'Alt+S':
+        if (state.map) { act('map-scan-stop'); state.map = false; break }
+        stopScans()
+        showScreen('stash')
+        act('map-scan')
+        state.map = true
+        hint.textContent = 'Map scan read the tooltip: max res down, so it says CARE. Alt+S again stops scanning.'
+        break
+      case 'Alt+F':
+        act('filter-card')
+        hint.textContent = 'The loot filter rule for a Divine Orb, as your NeverSink filter styles it. Change it right here.'
+        break
+    }
+    sync()
+  }
+
+  document.querySelectorAll('[data-combo]').forEach(function (b) {
+    b.addEventListener('click', function () { press(b.dataset.combo) })
+  })
+  document.querySelectorAll('[data-screen]').forEach(function (b) {
+    b.addEventListener('click', function () { showScreen(b.dataset.screen) })
+  })
+  // The physical key, so Alt+S works on a Mac (Option+S types ß) and any layout.
+  document.addEventListener('keydown', function (e) {
+    var combo = (e.ctrlKey ? 'Ctrl+' : '') + (e.altKey ? 'Alt+' : '') + (e.shiftKey ? 'Shift+' : '') + (e.code === 'Space' ? 'Space' : /^Key[A-Z]$/.test(e.code) ? e.code.slice(3) : e.key)
+    if (/^(Ctrl\+D|Shift\+Space|Alt\+[ESF])$/.test(combo)) { e.preventDefault(); press(combo) }
+  })
+  window.addEventListener('message', function (e) {
+    if (e.source !== frame.contentWindow) return
+    var msg = e.data || {}
+    if (msg.demo === 'ready') {
+      state.ready = true
+      document.getElementById('loading').hidden = true
+    }
+    if (msg.demo === 'key') press(msg.combo)
+    if (msg.demo === 'overlay') { state.overlay = msg.open; sync() }
+  })
+  showScreen('jungle')
+})()
+</script>
+</body>
+</html>

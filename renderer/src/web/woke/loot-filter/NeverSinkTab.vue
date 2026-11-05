@@ -21,7 +21,8 @@
           <i class="fas fa-download" style="color: var(--w-accent);" />
           <b>NeverSink {{ store.updateReady.value.version }} is ready</b>
           <span class="w-dim text-sm">· {{ store.updateReady.value.ok }} of {{ store.updateReady.value.total }} of your changes fit
-            <span v-if="store.updateReady.value.ok < store.updateReady.value.total" style="color: var(--w-warn);">({{ store.updateReady.value.total - store.updateReady.value.ok }} will need a new home)</span></span>
+            <span v-if="store.updateReady.value.ok < store.updateReady.value.total" style="color: var(--w-warn);">({{ store.updateReady.value.total - store.updateReady.value.ok }} will need a new home)</span>
+            <span v-if="store.updateReady.value.movesTotal > store.updateReady.value.movesFit"> · {{ store.updateReady.value.movesTotal - store.updateReady.value.movesFit }} price moves go back to NeverSink's tiers</span></span>
           <span class="grow" />
           <WButton size="sm" variant="primary" @click="update">Update</WButton>
         </div>

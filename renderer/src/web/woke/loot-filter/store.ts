@@ -4,7 +4,7 @@ import { MainProcess } from '@/web/background/IPC'
 import { hostRequest } from '../shared/host'
 import { customSoundsIn, installPackSounds } from './sounds'
 import { ruleBlocks } from './rules'
-import { applyPresetChanges, normalizePresets, presetBlocks, presetsOn } from './presets'
+import { applyPresetChanges, colourBlindActions, normalizePresets, presetBlocks, presetsOn } from './presets'
 import { clearUndoToasts } from '../ui/layer'
 import { isTownLike } from '../campaign/log-parse'
 import { onGameLog } from '../shared/game-log'
@@ -18,10 +18,11 @@ import { HISTORY_SIZE, baseFromCopy, isWokeCopy, outputName } from './widget'
 import type { LootFilterWidget } from './widget'
 import { buildRuleBlocks, insertBuildBlocks } from './build-rules'
 import { useBuildRuleInput } from './build-input'
-import { applyPriceMoves, lockKey, lockedByEdits, mergeMoves, planRetier } from './economy'
-import type { PriceMove, RetierPlan } from './economy'
-import { SAFETY_RULE_TYPE, auditBases, safetyBases, safetyBlocks } from './safety'
-import type { BaseVerdict } from './safety'
+import { applyPriceMoves, lockKey, lockedByEdits, mergeMoves, planRetier, tierRank } from './economy'
+import type { EconomyGroup, PriceMove, RetierPlan } from './economy'
+import { SAFETY_RULE_TYPE, auditBases, lastLookup, netFromAudit, safetyBlocks, stackNet, valuableFromAudit, withLast } from './safety'
+import { isDismissed } from './health'
+import type { BaseVerdict, NetList } from './safety'
 import { describeProblem, validateFilter } from './validate'
 import type { FilterProblem } from './validate'
 import { useFilterPrices } from './prices'
@@ -70,14 +71,20 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
   // many of NeverSink's rules they adjusted.
   const presetList = shallowRef<string>('')
   const presetChanges = ref(0)
+  const prices = useFilterPrices(() => cfg().priceTiers.uniqueRule)
   // woke: with NeverSink from GitHub, the version, style and level are part
   // of the file as well (a new style used to read "saved" until you saved).
   const sourceSig = () => {
     const ns = cfg().neversink
     return ns.on ? [ns.version, ns.style, ns.level] : []
   }
+  // With no league known yet (leagues still loading, or the fetch failed) a move
+  // isn't called foreign.
+  const inLeague = (m: PriceMove) => !m.league || !prices.currentLeague.value || m.league === prices.currentLeague.value
+  const activeMoves = () => cfg().priceTiers.on ? cfg().priceTiers.moves.filter(inLeague) : []
+  const moveKey = (m: PriceMove) => [m.type, m.base, m.from, m.to]
   const extraSig = () => {
-    const parts: unknown[] = [cfg().priceTiers.on ? cfg().priceTiers.moves : [], cfg().safetyNet.on ? safetyList.value : '']
+    const parts: unknown[] = [activeMoves().map(moveKey), cfg().safetyNet.on ? safetyList.value : '']
     // Only when used, so turning these features on doesn't flag old saves.
     if (cfg().rules.length) parts.push(cfg().rules)
     if (presetsOn(cfg().presets)) parts.push(cfg().presets, presetList.value)
@@ -86,13 +93,45 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
     return hash(JSON.stringify(parts))
   }
   const signature = () => JSON.stringify([cfg().edits, hash(buildSig.value), extraSig()])
+  // Everything you changed, leaving out what follows prices by itself.
+  const userSig = () => hash(JSON.stringify([cfg().edits, buildSig.value, cfg().priceTiers.on, cfg().priceTiers.moves.map(moveKey), cfg().rules, cfg().sourceName, cfg().sourceOnline, cfg().saveMode, presetsOn(cfg().presets) ? cfg().presets : null, sourceSig()]))
   // The build part is only known once the build file is read, so start from
   // what the last save used.
   const savedEdits = ref(JSON.stringify([cfg().edits, cfg().savedBuildSig ?? hash(buildSig.value), cfg().savedExtraSig ?? extraSig()]))
-  const prices = useFilterPrices(() => cfg().priceTiers.uniqueRule)
+  // woke: until a save records it, an old config counts as saved if its edits
+  // match what the last save wrote.
+  const userDirty = () => {
+    const saved = cfg().savedUserSig
+    if (saved != null) return saved !== userSig()
+    try { return JSON.stringify(JSON.parse(savedEdits.value)[0]) !== JSON.stringify(cfg().edits) } catch { return false }
+  }
+  // Writing the file with nobody asking: only over a file this editor has saved
+  // before, with nothing of yours unsaved, and with all your changes in place.
+  function mayAutoSave (): boolean {
+    return cfg().savedExtraSig != null && !userDirty() && !failed.value.length
+  }
+
+  // Prices this old say little: warn, and stop offering moves from them.
+  const STALE_HOURS = 24
+  const TOO_OLD_HOURS = 72
+  const now = ref(Date.now())
+  const nowTimer = setInterval(() => { now.value = Date.now() }, 10 * 60 * 1000)
+  const priceAgeHours = computed(() => prices.updatedAt?.value != null ? (now.value - prices.updatedAt.value) / 3600000 : null)
+  const pricesStale = computed(() => (priceAgeHours.value ?? 0) >= STALE_HOURS)
+  const pricesTooOld = computed(() => (priceAgeHours.value ?? 0) >= TOO_OLD_HOURS)
+  // Moves made in another league: kept for Undo, but not in the file.
+  const otherMoves = computed(() => cfg().priceTiers.on ? cfg().priceTiers.moves.filter(m => !inLeague(m)) : [])
+  const movesFromOtherLeague = computed(() => otherMoves.value.length)
+  const otherMovesLeague = computed(() => otherMoves.value[0]?.league ?? null)
   // Problems found by the last save attempt.
   const problems = shallowRef<FilterProblem[]>([])
   const safetyCount = ref(0)
+  // The file has a newer net list than the game has loaded.
+  const netWaitsForReload = ref(false)
+  // The source filter is not what the last save was made from.
+  const sourceChanged = ref(false)
+  // No prices to judge by: the net is on its last list, or empty.
+  const netWithoutPrices = computed(() => cfg().safetyNet.on && !prices.safety.value && doc.value != null)
   const lastSaved = ref<number | null>(null)
   // Version of the base file when it was loaded, to flag NeverSink updates.
   const baseVersion = ref<string | null>(null)
@@ -126,6 +165,9 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
       }
       clearTimeout(reloadTimer)
       if (safe) {
+        // The game rewrites its config now and then, so this is when a filter
+        // it couldn't load shows up.
+        readGameFilter().catch(() => {})
         reloadTimer = setTimeout(() => {
           if (inSafeZone.value !== true) return
           // The ladder switches only here, in town or hideout, never mid-map.
@@ -143,6 +185,7 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
   onUnmounted(() => {
     stopLog()
     clearTimeout(reloadTimer)
+    clearInterval(nowTimer)
     if (settleTimer) settle()
   })
 
@@ -150,6 +193,26 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
   const failed = computed(() => statuses.value.filter(s => !s.ok))
   const updatedSinceSave = computed(() =>
     baseVersion.value != null && cfg().lastVersion != null && baseVersion.value !== cfg().lastVersion)
+
+  // A tier outside the price ranks (exhide and the like) is a deliberate place to
+  // put something; a known rank has to be lower to count as moving it down.
+  function movedDown (group: EconomyGroup, base: string): boolean {
+    const rank = (tier: string) => tierRank(tier, [tier], group)
+    return cfg().edits.some(e => {
+      if (e.kind !== 'move' || e.base !== base || (e.type !== group.type && !e.type.startsWith(group.type + '->'))) return false
+      const to = rank(e.to)
+      const from = rank(e.from)
+      return to == null || (from != null && to > from)
+    })
+  }
+
+  const sourceStamp = (text: string) => `${cfg().sourceName}|${hash(text)}`
+
+  // What the net leaves hidden because you said so: "Not for me" on a hidden
+  // item, or moving it down yourself.
+  function heldBack (v: BaseVerdict): boolean {
+    return isDismissed(cfg().netDismissed, v) || movedDown(v.group, v.base)
+  }
 
   // A filter text with everything applied: build rules, price moves, your
   // edits and the safety net. The editor's own doc, and the preview's
@@ -169,7 +232,8 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
     insertBuildBlocks(next, presetTop)
     insertBuildBlocks(next, ruleBlocks(cfg().rules))
     // Price moves next: your own moves (edits) are applied after them and win.
-    if (cfg().priceTiers.on && cfg().priceTiers.moves.length) applyPriceMoves(next, cfg().priceTiers.moves)
+    let movesFit = 0
+    if (activeMoves().length) movesFit = applyPriceMoves(next, activeMoves())
     const isNetEdit = (e: FilterEdit) => e.type === SAFETY_RULE_TYPE
     const results = new Map(applyEdits(next, cfg().edits.filter(e => !isNetEdit(e))).map(r => [r.edit.id, r]))
     // Quiet mode, bigger labels, colour-blind colours: over NeverSink's rules
@@ -179,15 +243,36 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
     // Restyles of the net apply after it exists.
     let netCount = 0
     let netList = ''
-    const lookup = prices.lookup.value
-    if (cfg().safetyNet.on && lookup) {
-      const bases = safetyBases(next, lookup, cfg().safetyNet.minChaos)
-      insertBuildBlocks(next, safetyBlocks(bases))
-      netCount = bases.plain.length + bases.unique.length
-      netList = JSON.stringify(bases)
+    let netFresh: NetList | null = null
+    if (cfg().safetyNet.on) {
+      // woke: no prices (a new league, a fresh install) must not take the net
+      // out of the file: the last list stays until there are prices again.
+      const lookup = prices.safety.value
+      const line = cfg().safetyNet.minChaos
+      const types = prices.pricedTypes?.value
+      const known = lookup
+        ? (types ? withLast(lookup, cfg().safetyNet.last, line, t => types.has(t)) : lookup)
+        : lastLookup(cfg().safetyNet.last, line)
+      const verdicts = auditBases(next, known, line)
+      const bases = netFromAudit(verdicts, v => heldBack(v))
+      if (lookup) {
+        const stacks = stackNet(next, lookup, line, (group, base) => cfg().netDismissed[`${group.type}|${base}`] != null || movedDown(group, base))
+        if (Object.keys(stacks).length) bases.stacks = stacks
+      } else if (cfg().safetyNet.last?.stacks) {
+        // Only names this filter lists, as with the rest of the list.
+        const listed = new Set(next.blocks.flatMap(b => b.conditions.flatMap(c => c.key === 'BaseType' ? c.values : [])))
+        const kept = Object.entries(cfg().safetyNet.last!.stacks!).map(([size, list]) => [size, list.filter(b => listed.has(b))] as const).filter(([, list]) => list.length)
+        if (kept.length) bases.stacks = Object.fromEntries(kept)
+      }
+      const netBlocks = safetyBlocks(bases)
+      if (cfg().presets.colourBlind.on) netBlocks.forEach(colourBlindActions)
+      insertBuildBlocks(next, netBlocks)
+      if (lookup) netFresh = { ...valuableFromAudit(verdicts), line, ...(bases.stacks ? { stacks: bases.stacks } : {}) }
+      netCount = bases.plain.length + bases.unique.length + Object.values(bases.stacks ?? {}).reduce((n, l) => n + l.length, 0)
+      if (lookup || netCount) netList = JSON.stringify(bases)
     }
     for (const r of applyEdits(next, cfg().edits.filter(isNetEdit))) results.set(r.edit.id, r)
-    return { doc: next, results, buildCount, netCount, netList, presetChanges, presetSig: JSON.stringify(presetTop.map(b => b.conditions)) }
+    return { doc: next, results, buildCount, netCount, netList, netFresh, movesFit, presetChanges, presetSig: JSON.stringify(presetTop.map(b => b.conditions)) }
   }
 
   // Own rules and presets as last built, to rebuild when the UI edits them.
@@ -201,6 +286,8 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
     buildBlockCount.value = c.buildCount
     safetyCount.value = c.netCount
     safetyList.value = c.netList
+    // Only a change: this runs often and the config is watched.
+    if (c.netFresh && JSON.stringify(cfg().safetyNet.last) !== JSON.stringify(c.netFresh)) cfg().safetyNet.last = c.netFresh
     presetChanges.value = c.presetChanges
     presetList.value = c.presetSig
     statuses.value = cfg().edits.map(e => c.results.get(e.id)!)
@@ -224,15 +311,15 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
   const plan = computed<RetierPlan | null>(() => {
     const d = doc.value
     const lookup = prices.lookup.value
-    if (!d || !lookup || !cfg().priceTiers.on) return null
+    if (!d || !lookup || !cfg().priceTiers.on || pricesTooOld.value) return null
     return planRetier(d, lookup, { locked: locked.value })
   })
   // Valuable items the filter (without the safety net) hides or shows small.
   const health = computed<BaseVerdict[]>(() => {
     const d = doc.value
-    const lookup = prices.lookup.value
+    const lookup = prices.safety.value
     if (!d || !lookup) return []
-    return auditBases(d, lookup, Math.min(cfg().safetyNet.minChaos, 10)).filter(v => v.state !== 'ok' && !v.thin)
+    return auditBases(d, lookup, Math.min(cfg().safetyNet.minChaos, 10)).filter(v => v.state !== 'ok' && !v.mine && !heldBack(v))
   })
 
   // Applies the planned moves (all, or the ones passed).
@@ -241,7 +328,10 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
     if (!list.length) return () => {}
     const before = cfg().priceTiers.moves
     cfg().priceTiers.prev = before
-    cfg().priceTiers.moves = mergeMoves(before, list)
+    // Another league's moves don't build on these.
+    const league = prices.currentLeague.value ?? undefined
+    // Moves from before leagues were kept are this league's from now on.
+    cfg().priceTiers.moves = mergeMoves(activeMoves().map(m => m.league ? m : { ...m, league }), list.map(m => ({ ...m, league })))
     cfg().priceTiers.appliedAt = Date.now()
     rebuild()
     return () => {
@@ -353,7 +443,7 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
   }
 
   // Price index updates, or settings that change the net: refresh.
-  watch(() => [prices.lookup.value, cfg().safetyNet.on, cfg().safetyNet.minChaos, cfg().priceTiers.on], () => {
+  watch(() => [prices.lookup.value, prices.safety.value, cfg().safetyNet.on, cfg().safetyNet.minChaos, cfg().priceTiers.on, cfg().netDismissed, prices.currentLeague.value], () => {
     if (baseText.value != null) rebuild()
   })
 
@@ -371,7 +461,7 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
 
   // Download result for a newer version, checked against your changes before
   // you're asked to update (E1).
-  const updateReady = shallowRef<{ version: string, ok: number, total: number } | null>(null)
+  const updateReady = shallowRef<{ version: string, ok: number, total: number, movesFit: number, movesTotal: number } | null>(null)
   const checking = ref(false)
   // What the game has selected (production_Config.ini).
   const gameFilter = shallowRef<{ name: string | null, loaded: boolean | null }>({ name: null, loaded: null })
@@ -390,13 +480,16 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
 
   // Parses a text with everything applied, the way rebuild() does, to see how
   // many of your changes would fit.
-  function fitOf (text: string): { ok: number, total: number } {
-    const res = [...compose(text).results.values()]
-    return { ok: res.filter(r => r.ok).length, total: res.length }
+  function fitOf (text: string): { ok: number, total: number, movesFit: number, movesTotal: number } {
+    const c = compose(text)
+    const res = [...c.results.values()]
+    return { ok: res.filter(r => r.ok).length, total: res.length, movesFit: c.movesFit, movesTotal: activeMoves().length }
   }
 
   // Once a day: is there a newer NeverSink? If so, download it and check it
   // against your changes; the editor then offers the update.
+  const isNewer = (a: string, b: string) => a.localeCompare(b, 'en', { numeric: true, sensitivity: 'base' }) > 0
+
   async function checkForUpdate (force = false) {
     const ns = cfg().neversink
     if (!ns.on || checking.value) return
@@ -415,14 +508,15 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
         ns.latestChanges = got.changes
         ns.checkedAt = Date.now()
       }
-      if (!ns.version || latest === ns.version) { updateReady.value = null; return }
+      // Only ever forward: a copy from master can be ahead of the latest release.
+      if (!ns.version || !isNewer(latest, ns.version)) { updateReady.value = null; return }
       let version = latest
       let text: string
       try {
         text = (await hostRequest<{ text: string }>('ns-read', { version, style: ns.style, level: ns.level })).text
       } catch {
         version = (await hostRequest<{ version: string }>('ns-download', { style: ns.style })).version
-        if (version === ns.version) { updateReady.value = null; return }
+        if (!isNewer(version, ns.version)) { updateReady.value = null; return }
         text = (await hostRequest<{ text: string }>('ns-read', { version, style: ns.style, level: ns.level })).text
       }
       updateReady.value = { version, ...fitOf(text) }
@@ -508,6 +602,8 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
     followLadder()
   }
 
+  let ladderHeldFor: number | null = null
+
   // In town or hideout: switch to what the ladder says for recent maps.
   // Returns true when it started a switch. It saves the file; the reload waits
   // for you to press Reload now.
@@ -516,6 +612,13 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
     if (!ns.on || !doc.value || saving.value) return false
     const target = ladderTarget(cfg().strictAuto, recentAreas)
     if (target == null || target === ns.level) return false
+    // woke: a switch saves, and you haven't said these are ready for the game.
+    if (userDirty()) {
+      if (ladderHeldFor !== target) toast(`Auto strictness wants ${LEVEL_NAMES[target]}, but waits until you save your changes.`)
+      ladderHeldFor = target
+      return false
+    }
+    ladderHeldFor = null
     const top = Math.max(...recentAreas)
     setLevel(target, { auto: true }).then(undo => {
       if (!undo) return
@@ -641,6 +744,12 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
       baseText.value = text
       rebuild()
       baseVersion.value = doc.value?.version ?? null
+      // woke: the filter you made this from changed (FilterBlade, an online
+      // filter the game updated): bring the copy along unless you're mid-change.
+      const savedHash = cfg().savedSourceHash
+      // Only about the same source: opening another filter isn't a change to it.
+      sourceChanged.value = savedHash != null && savedHash.startsWith(`${cfg().sourceName}|`) && savedHash !== sourceStamp(text)
+      if (sourceChanged.value && outputSaved.value && mayAutoSave()) save({ noReload: true }).catch(() => {})
     } catch (e) {
       if (seq !== loadSeq) return
       error.value = `Can't open ${cfg().sourceName}: ${(e as Error).message}`
@@ -763,14 +872,16 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
   // Saves run one at a time: two quick fixes in a row must not race for the
   // same temp file, and the last one writes the latest edits.
   let saveQueue: Promise<unknown> = Promise.resolve()
-  function save (opts: { reloadNow?: boolean, auto?: boolean } = {}): Promise<boolean> {
+  function save (opts: { reloadNow?: boolean, noReload?: boolean, auto?: boolean } = {}): Promise<boolean> {
     const run = saveQueue.then(() => saveNow(opts))
     saveQueue = run.catch(() => {})
     return run
   }
 
-  async function saveNow (opts: { reloadNow?: boolean, auto?: boolean }): Promise<boolean> {
+  async function saveNow (opts: { reloadNow?: boolean, noReload?: boolean, auto?: boolean }): Promise<boolean> {
     if (!doc.value || baseText.value == null) return false
+    // Queued behind other saves: look again now it's this one's turn.
+    if (opts.noReload && ((!dirty.value && !sourceChanged.value) || !mayAutoSave())) return false
     problems.value = validateFilter(doc.value)
     if (problems.value.length) {
       error.value = `Not saved, the game would reject it: ${describeProblem(problems.value[0])}${problems.value.length > 1 ? ` (and ${problems.value.length - 1} more)` : ''}`
@@ -785,13 +896,17 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
         baseNeedsBackup.value = false
       }
       // Pack sounds the filter uses go into the folder first, so the game finds them.
-      await installPackSounds(customSoundsIn(doc.value), cfg().folder).catch(() => 0)
+      await installPackSounds(customSoundsIn(doc.value), cfg().folder).catch(() => {
+        toast('Couldn\'t copy NeverSink\'s sounds into your filter folder, so those rules will be silent.')
+      })
       // What this write holds, taken now: an edit made while it runs is not in
       // the file and must still read as unsaved.
       const written = {
         sig: signature(),
         build: hash(buildSig.value),
         extra: extraSig(),
+        user: userSig(),
+        source: sourceStamp(baseText.value),
         edits: cfg().edits,
         moves: cfg().priceTiers.moves,
         version: doc.value.version
@@ -800,14 +915,22 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
       savedEdits.value = written.sig
       cfg().savedBuildSig = written.build
       cfg().savedExtraSig = written.extra
+      cfg().savedUserSig = written.user
       pushHistory(written.edits, written.moves)
       cfg().lastVersion = written.version
       lastSaved.value = Date.now()
-      if (cfg().reloadViaChat) {
-        if (opts.auto) holdReload()
-        else reloadInGame(opts.reloadNow === true)
+      if (opts.noReload) netWaitsForReload.value = true
+      else {
+        netWaitsForReload.value = false
+        if (cfg().reloadViaChat) {
+          if (opts.auto) holdReload()
+          else reloadInGame(opts.reloadNow === true)
+        }
       }
-      setTimeout(() => { readGameFilter().catch(() => {}) }, 8000)
+      for (const wait of [8000, 60000]) setTimeout(() => { readGameFilter().catch(() => {}) }, wait)
+      cfg().savedSourceHash = written.source
+      // A newer source may have loaded during the write.
+      sourceChanged.value = written.source !== sourceStamp(baseText.value)
       return true
     } catch (e) {
       error.value = `Couldn't save: ${(e as Error).message}`
@@ -831,6 +954,7 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
   const reloadCommand = () => `/itemfilter ${stem(outputName(cfg()))}`
 
   function sendReload () {
+    netWaitsForReload.value = false
     sentOver.value = gameFilter.value.name
     MainProcess.sendEvent({
       name: 'CLIENT->MAIN::user-action',
@@ -846,6 +970,16 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
   })
   onUnmounted(() => { chatDropped.abort() })
 
+  // woke: the net's list lives in the file, so a new list has to reach the file
+  // or the game keeps judging by old prices. Only when nothing of yours is
+  // unsaved; the reload still waits for town.
+  watch(() => [safetyList.value, activeMoves().length, prices.currentLeague.value], () => {
+    if (!cfg().safetyNet.on || !prices.safety.value || baseText.value == null) return
+    if (!outputSaved.value || !dirty.value || !mayAutoSave()) return
+    // Nobody pressed anything, so nothing gets typed into chat for this.
+    save({ noReload: true }).catch(() => {})
+  }, { flush: 'post' })
+
   watch(rulesSig, (sig) => { if (baseText.value != null && sig !== builtRulesSig) rebuild() })
 
   // A new active build, or a rule switched on or off: show it right away.
@@ -857,6 +991,14 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
     plan,
     health,
     safetyCount,
+    netWithoutPrices,
+    netWaitsForReload,
+    sourceChanged,
+    pricesStale,
+    pricesTooOld,
+    priceAgeHours,
+    movesFromOtherLeague,
+    otherMovesLeague,
     problems,
     applyPrices,
     lockItem,

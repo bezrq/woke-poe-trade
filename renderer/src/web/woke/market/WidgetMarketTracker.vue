@@ -74,13 +74,13 @@
         <WEmpty v-else-if="moversNote" :art="{ currency: 'divine' }">{{ moversNote }}</WEmpty>
         <template v-else>
           <div class="w-row w-row--head" :class="$style.grid"><span /><span>Item</span><span>Then</span><span class="text-right">Now</span><span class="text-right">%</span></div>
-          <div v-for="m in movers" :key="key(m)" class="w-row" :class="$style.grid" tabindex="0"
+          <div v-for="m in movers" :key="key(m)" v-item-tip="m" class="w-row" :class="$style.grid" tabindex="0"
             @contextmenu="rowMenu($event, m)" @keydown.w.prevent="toggleWatch(m)" @keydown.c.ctrl.prevent="copyName(m)">
             <button @click="toggleWatch(m)" :title="isWatched(m) ? 'Remove from watchlist' : 'Add to watchlist'"
               class="w-icon-btn" :class="{ 'w-icon-btn--on': isWatched(m) }">
               <i :class="isWatched(m) ? 'fas fa-star' : 'far fa-star'" />
             </button>
-            <span class="w-trunc inline-flex items-center gap-1.5" :class="rarityClass(m.type)" :title="m.type">
+            <span class="w-trunc inline-flex items-center gap-1.5" :class="rarityClass(m.type)">
               <WIcon :src="ninjaIcon(m.type, m.name) ?? undefined" /><i v-if="isThin(m)" class="fas fa-exclamation-circle w-faint mr-1" :title="thinTitle(m)" />{{ m.name }}<span v-if="m.variant" class="w-dim ml-1">{{ m.variant }}</span></span>
             <WPrice :chaos="m.then" :divine="latest?.divine" :unit="unitFor(m)" class="w-dim" />
             <WPrice :chaos="m.now" :divine="latest?.divine" :unit="unitFor(m)" />
@@ -91,12 +91,12 @@
 
       <template v-else>
         <WEmpty v-if="!config.watchlist.length" icon="far fa-star">Star items in Movers, press <WKbd keys="W" /> on a row, or search above to watch them.</WEmpty>
-        <div v-for="w in watchRows" :key="key(w.item)" class="w-row" :class="$style.grid" tabindex="0"
+        <div v-for="w in watchRows" :key="key(w.item)" v-item-tip="w.item" class="w-row" :class="$style.grid" tabindex="0"
           @contextmenu="rowMenu($event, w.item)" @keydown.delete.prevent="toggleWatch(w.item)" @keydown.c.ctrl.prevent="copyName(w.item)">
           <button @click="toggleWatch(w.item)" title="Remove from watchlist (Del)" class="w-icon-btn w-icon-btn--on">
             <i class="fas fa-star" />
           </button>
-          <span class="w-trunc inline-flex items-center gap-1.5" :class="rarityClass(w.item.type)" :title="w.item.type">
+          <span class="w-trunc inline-flex items-center gap-1.5" :class="rarityClass(w.item.type)">
             <WIcon :src="ninjaIcon(w.item.type, w.item.name) ?? undefined" /><i v-if="w.thin" class="fas fa-exclamation-circle w-faint mr-1" :title="thinTitle({ gaps: w.gaps })" />{{ w.item.name }}<span v-if="w.item.variant" class="w-dim ml-1">{{ w.item.variant }}</span>
             <button class="w-icon-btn ml-1" :class="{ 'w-icon-btn--on': hasAlert(w.item) }" :title="alertTitle(w.item)"
               @click="alertKey = alertKey === key(w.item) ? null : key(w.item)"><i class="fas fa-bell text-xs" /></button>
@@ -146,7 +146,7 @@ import { useLeagues } from '@/web/background/Leagues'
 import { useMarketCollector } from './collector'
 import { dailyHistory, dailyRowsForDate, latestSnapshots, snapshotAtOrBefore } from './db'
 import { computeMovers, trendBaseline } from './analysis'
-import { WPanel, WTabs, WSegmented, WSelect, WField, WPrice, WDelta, WSpark, WEmpty, WChip, WIcon, WKbd, WSkeleton, WBanner, ninjaIcon, openMenu, toast } from '../ui'
+import { WPanel, WTabs, WSegmented, WSelect, WField, WPrice, WDelta, WSpark, WEmpty, WChip, WIcon, WKbd, WSkeleton, WBanner, ninjaIcon, openMenu, toast, vItemTip } from '../ui'
 import { copyText } from '../ui/copy'
 import type { Mover } from './analysis'
 import { isThin, itemKey, thinTitle, utcDate } from './types'

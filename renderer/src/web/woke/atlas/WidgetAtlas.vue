@@ -6,7 +6,7 @@
       <template #card>
         <div v-if="selected" style="padding: 4px var(--w-pad) 6px;" class="flex flex-col gap-0.5">
           <div v-for="(p, i) in pricedScarabs" :key="i" class="flex justify-between gap-2">
-            <span class="flex items-center gap-1 min-w-0"><WIcon :src="p.item ? ninjaIcon(p.item.type, p.item.name) ?? undefined : undefined" fallback="fas fa-bug" /><span class="w-trunc">{{ p.qty > 1 ? p.qty + '× ' : '' }}{{ p.name }}</span></span>
+            <span v-item-tip="p.item ?? { name: p.name }" class="flex items-center gap-1 min-w-0"><WIcon :src="p.item ? ninjaIcon(p.item.type, p.item.name) ?? undefined : undefined" fallback="fas fa-bug" /><span class="w-trunc">{{ p.qty > 1 ? p.qty + '× ' : '' }}{{ p.name }}</span></span>
             <span v-if="p.item" class="w-num w-dim">{{ formatChaos(p.item.chaos * p.qty, prices.snapshot.value?.divine ?? null) }}</span>
           </div>
           <div v-if="scarabCost != null" class="flex justify-between w-num"><span class="w-dim">Scarabs per map</span>
@@ -78,10 +78,10 @@
               <span v-if="scarabCost != null" class="ml-auto normal-case tracking-normal w-accent">{{ fmt(scarabCost) }} per map</span>
             </div>
             <template v-if="pricedScarabs.length">
-              <div v-for="(p, i) in pricedScarabs" :key="i" class="flex items-center gap-2">
+              <div v-for="(p, i) in pricedScarabs" :key="i" v-item-tip="p.item ?? { name: p.name }" class="flex items-center gap-2">
                 <WIcon :src="p.item ? ninjaIcon(p.item.type, p.item.name) ?? undefined : undefined" fallback="fas fa-bug" />
                 <span class="w-num w-dim">{{ p.qty }}×</span>
-                <span class="w-trunc" :title="p.item ? p.item.name : 'No poe.ninja match'">{{ p.item?.name ?? p.name }}</span>
+                <span class="w-trunc" :title="p.item ? undefined : 'No poe.ninja match'">{{ p.item?.name ?? p.name }}</span>
                 <span class="ml-auto w-num w-dim">{{ p.item ? fmt(p.item.chaos * p.qty) : '?' }}</span>
               </div>
             </template>
@@ -163,7 +163,7 @@ import { inject, computed, shallowRef, watch } from 'vue'
 import { MainProcess } from '@/web/background/IPC'
 import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
-import { WPanel, WField, WButton, WEmpty, WListItem, WIcon, WBanner, WSkeleton, openMenu, toast, useCopy } from '../ui'
+import { WPanel, WField, WButton, WEmpty, WListItem, WIcon, WBanner, WSkeleton, openMenu, toast, useCopy, vItemTip } from '../ui'
 import { SAVE_MESSAGE, saveToRegexLibrary } from '../regex-library/save'
 import { ninjaIcon } from '../ui/game-icons'
 import type { AtlasStrategy } from './widget'

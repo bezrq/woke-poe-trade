@@ -86,10 +86,11 @@
   </div>
   <ui-error-box class="mb-2" v-else>
     <template #name>{{ t(':error') }}</template>
-    <p v-if="error.includes('JSON')">{{ t('app.leagues_failed_help') }}</p>
+    <p v-if="rateLimited">The trade site is limiting requests. Searching again too soon makes the wait longer.</p>
+    <p v-else-if="error.includes('JSON')">{{ t('app.leagues_failed_help') }}</p>
     <p v-else>Error: {{ error }}</p>
     <template #actions>
-      <button class="btn" @click="execSearch">{{ t('Retry') }}</button>
+      <button class="btn" :disabled="retryIn > 0" @click="execSearch">{{ t('Retry') }}<template v-if="retryIn > 0"> ({{ retryIn }}s)</template></button>
       <button class="btn" @click="openTradeLink">{{ t('Browser') }}</button>
     </template>
   </ui-error-box>
@@ -109,6 +110,7 @@ import { ItemFilters } from '../filters/interfaces'
 import { ParsedItem } from '@/parser'
 import { PriceCheckWidget } from '@/web/overlay/interfaces'
 import { artificialSlowdown } from './artificial-slowdown'
+import { useRetryCountdown } from './retry-countdown'
 import OnlineFilter from './OnlineFilter.vue'
 import TradeLinks from './TradeLinks.vue'
 import '@/web/woke/price-insight/price-table.css'
@@ -280,6 +282,7 @@ export default defineComponent({
   setup (props, ctx) {
     const widget = computed(() => AppConfig<PriceCheckWidget>('price-check')!)
     const { error, result, search } = useBulkApi()
+    const { retryIn, rateLimited } = useRetryCountdown(error)
     const { marketRatio, find: findMarketRatio } = useMarketRatioFinder()
 
     const showBrowser = inject<(url: string) => void>('builtin-browser')!
@@ -334,6 +337,8 @@ export default defineComponent({
     return {
       t,
       error,
+      retryIn,
+      rateLimited,
       result,
       selectedResults,
       tableLoading,

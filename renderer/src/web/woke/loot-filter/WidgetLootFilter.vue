@@ -216,19 +216,43 @@ function openEditorFromCard (at?: { type: string, tier: string }) {
 
 // ---- dock icon ----
 
+// Saved prices load a moment after the start: no warning about none until then.
+const pricesSettled = ref(false)
+const settleTimer = setTimeout(() => { pricesSettled.value = true }, 30000)
+onUnmounted(() => { clearTimeout(settleTimer) })
+
 const dockRef = shallowRef<InstanceType<typeof DockItem> | null>(null)
 const dockArt = computed(() => gameIcon('Orb of Scouring', 'ITEM'))
 const sortedLadder = computed(() => [...props.config.strictAuto.ladder].sort((a, b) => a.from - b.from))
 const allNotes = computed<Notice[]>(() => {
   const out: Notice[] = []
   const ready = store.updateReady.value
-  if (ready) out.push({ id: 'update', value: ready.version, tab: 'neversink', text: `NeverSink ${ready.version} is ready: ${ready.ok} of ${ready.total} changes fit. Update in the editor.` })
+  if (ready) out.push({ id: 'update', value: ready.version, tab: 'neversink', text: `NeverSink ${ready.version} is ready: ${ready.ok} of ${ready.total} changes fit${ready.movesTotal > ready.movesFit ? `, and ${ready.movesTotal - ready.movesFit} price moves will go back to NeverSink's tiers` : ''}. Update in the editor.` })
   const moves = store.plan.value?.moves.length ?? 0
   if (moves) out.push({ id: 'prices', value: moves, tab: 'prices', text: `${moves} item${moves > 1 ? 's' : ''} would move to match today's prices.` })
   if (store.safetyCount.value) out.push({ id: 'safety', value: store.safetyCount.value, tab: 'prices', text: `Safety net shows ${store.safetyCount.value} valuable item${store.safetyCount.value > 1 ? 's' : ''} the filter hides.` })
+  if (store.netWithoutPrices.value && pricesSettled.value) {
+    out.push({
+      id: 'net-prices',
+      value: store.safetyCount.value,
+      tab: 'prices',
+      text: store.safetyCount.value
+        ? `No poe.ninja prices for this league yet. The safety net is using its last list of ${store.safetyCount.value}.`
+        : 'No poe.ninja prices for this league yet, so the safety net is empty.'
+    })
+  } else if (store.pricesStale.value) {
+    const hours = Math.round(store.priceAgeHours.value ?? 0)
+    out.push({ id: 'prices-old', value: Math.floor(hours / 24), warn: true, tab: 'prices', text: `Prices are ${hours >= 48 ? `${Math.round(hours / 24)} days` : `${hours} hours`} old, so the safety net and price moves may be off.` })
+  }
+  if (store.movesFromOtherLeague.value) {
+    const n = store.movesFromOtherLeague.value
+    out.push({ id: 'moves-league', value: n, warn: true, tab: 'prices', text: `${n} price move${n > 1 ? 's' : ''} from ${store.otherMovesLeague.value} ${n > 1 ? 'are' : 'is'} off in this league.` })
+  }
   if (store.gameFilter.value.loaded === false) out.push({ id: 'load', value: 1, warn: true, tab: 'changes', text: 'The game couldn\'t load your filter. Open the editor and save again.' })
   else if (store.wrongFilterInGame.value) out.push({ id: 'wrong', value: store.gameFilter.value.name ?? '', warn: true, text: `The game is using "${store.gameFilter.value.name}", not your saved copy.` })
   if (store.failed.value.length) out.push({ id: 'failed', value: store.failed.value.length, warn: true, tab: 'changes', text: `${store.failed.value.length} change(s) need a new home after a NeverSink update.` })
+  if (store.sourceChanged.value) out.push({ id: 'source-changed', value: 1, passing: true, tab: 'changes', text: 'The filter you started from has changed. Save to bring your copy up to date.' })
+  if (store.netWaitsForReload.value && !store.pendingReload.value) out.push({ id: 'net-reload', value: 1, passing: true, tab: 'prices', text: 'Prices changed the safety net. It takes effect the next time you reload the filter.' })
   if (store.pendingReload.value) out.push({ id: 'pending', value: 1, passing: true, text: 'Saved. Press Reload now in the filter window to use it in game.' })
   return out
 })
