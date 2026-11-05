@@ -78,7 +78,7 @@ describe('market movers from poe.ninja trend', () => {
 describe('price insight (trade listings)', () => {
   const NOW = Date.parse('2026-11-04T12:00:00Z')
   const listing = (id: string, amount: number, extra: Partial<InsightListing> = {}): InsightListing => ({
-    id, priceAmount: amount, priceCurrency: 'chaos', accountStatus: 'online', indexedAt: '2026-11-04T10:00:00Z', isMine: false, hasFee: false, ...extra
+    id, accountName: `seller-${id}`, priceAmount: amount, priceCurrency: 'chaos', accountStatus: 'online', indexedAt: '2026-11-04T10:00:00Z', isMine: false, hasFee: false, ...extra
   } as InsightListing)
 
   it('drops bait, own and stale listings and suggests a price', () => {
