@@ -14,5 +14,12 @@ history:
     user: Agent
     date: '2026-11-05T13:25:19.033Z'
     comment: Created ticket.
+    id: a-2026-11-05t13-25-19-033z
+  - type: activity
+    user: Agent
+    date: '2026-11-05T14:02:26.534Z'
+    comment: Updated implementation link.
+    id: a-2026-11-05t14-02-26-534z
+implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/190'
 ---
 Guy: clicking a bubble whose card is open from hover should close it. Today a click only opens. In game only; with the overlay open a click still opens the full window.
