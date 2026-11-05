@@ -129,8 +129,9 @@ const zone = useZone()
 const inLab = computed(() => zone.kind === 'lab')
 const labDiff = computed<LabDifficulty | null>(() => inLab.value ? labDifficultyOf(zone.areaId, zone.areaLevel) : null)
 const peekDiff = shallowRef<LabDifficulty | null>(null)
-// The layout shown goes with this name, so the two can't disagree.
-const shownDiff = computed(() => inLab.value ? peekDiff.value ?? labDiff.value : null)
+// In a room the room says. In the plaza it's the layout loaded for your usual
+// difficulty, when auto-load is on.
+const shownDiff = computed(() => labDiff.value ?? (inLab.value && props.config.autoOpen !== false ? peekDiff.value : null))
 const peekImg = shallowRef<string | null>(null)
 const peekError = shallowRef<string | null>(null)
 let peekDay = ''
@@ -141,12 +142,13 @@ watch(() => [zone.areaId, zone.enteredAt, labDiff.value] as const, async ([areaI
   const plaza = isPlazaArea(areaId)
   const d = plaza ? props.config.defaultDifficulty : room
   if (!inLab.value || !d || props.config.autoOpen === false) return
+  // The layout you're running stays put from room to room, whatever the clock
+  // says; a failed load is retried at the next plaza.
+  if (!plaza && peekDiff.value === d) return
   // Reuse the layout only within the same lab day (resets at midnight UTC),
   // and retry when what we got was yesterday's because today's wasn't up.
   const day = new Date().toISOString().slice(0, 10)
   if (peekDiff.value === d && peekImg.value && peekDay === day && !staleOf(peekImg.value)) return
-  // A failed load is retried on the next plaza, not on every room.
-  if (!plaza && peekDiff.value === d && peekError.value && peekDay === day) return
   peekDay = day
   peekImg.value = null
   peekError.value = null
