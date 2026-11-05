@@ -41,6 +41,12 @@ test('the hotkey opens the palette ready to type, and Esc leaves it', async ({ o
 
   await box.press('Escape')
   await expect(box).toBeHidden()
+
+  // The same key closes it, since global hotkeys are off while it has the keyboard.
+  await overlay.pressHotkey(SEARCH_KEY)
+  await expect(box).toBeFocused()
+  await overlay.page.keyboard.press('Alt+KeyP')
+  await expect(box).toBeHidden()
 })
 
 test('prices are grouped, and the detail shows every variant and its actions', async ({ overlay }) => {
@@ -59,6 +65,8 @@ test('prices are grouped, and the detail shows every variant and its actions', a
   await box.fill('enlighten')
   await expect(panel.getByText('4/20c').first()).toBeVisible()
   await panel.getByRole('button', { name: /Corrupted gems are shown/ }).click()
+  // The filter's click leaves the keyboard on the box.
+  await expect(box).toBeFocused()
   await expect(panel.getByText('4/20c').first()).toBeVisible()
   await panel.getByRole('button', { name: /Only corrupted gems/ }).click()
   await expect(panel.getByText('4/20c').first()).toBeHidden()
@@ -66,6 +74,13 @@ test('prices are grouped, and the detail shows every variant and its actions', a
   await expect(panel.getByText('4/20c').first()).toBeVisible()
 
   // Tools and settings are found too, and an item with no price gets links.
+  // Filtered out isn't the same as having no price.
+  await box.fill('headhunter')
+  await panel.getByRole('button', { name: /Corrupted gems are shown/ }).click()
+  await expect(panel.getByText('No poe.ninja price')).toHaveCount(1) // Replica Headhunter only
+  await panel.getByRole('button', { name: /Only corrupted gems/ }).click()
+  await panel.getByRole('button', { name: /Corrupted gems are hidden/ }).click()
+
   await box.fill('market')
   await expect(panel.getByRole('button', { name: /Market tracker\s*Tool/ })).toBeVisible()
   await expect(panel.getByRole('button', { name: /Market & investments/ })).toBeVisible()

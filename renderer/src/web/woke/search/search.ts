@@ -4,10 +4,20 @@ import { itemKey, isCorrupted } from '../market/types'
 import type { PriceItem, CorruptedFilter } from '../market/types'
 
 export const MIN_QUERY = 2
+// More than this and the list is too long to read: keep typing.
+export const PRICE_GROUP_LIMIT = 30
 
-// "Kaom's Heart" should match "kaoms heart" too.
+// "Kaom's Heart" should match "kaoms heart" too. Names repeat on every
+// keystroke, across thousands of rows, so each is worked out once.
+const normalized = new Map<string, string>()
 function normalize (text: string): string {
-  return text.toLowerCase().replace(/['’]/g, '').trim().replace(/\s+/g, ' ')
+  let n = normalized.get(text)
+  if (n == null) {
+    n = text.toLowerCase().replace(/['’]/g, '').trim().replace(/\s+/g, ' ')
+    if (normalized.size > 100_000) normalized.clear()
+    normalized.set(text, n)
+  }
+  return n
 }
 
 // 0 name starts with it, 1 every word starts a word, 2 found inside a word,
@@ -66,7 +76,7 @@ export function searchPrices (
   }
   const out = [...groups.values()].sort((a, b) => a.rank - b.rank || b.high - a.high || a.name.localeCompare(b.name))
   for (const group of out) group.variants.sort((a, b) => b.chaos - a.chaos)
-  return out.slice(0, opts.limit ?? 30)
+  return out.slice(0, opts.limit ?? PRICE_GROUP_LIMIT)
 }
 
 export function passesCorrupted (item: { type: string, variant: string }, filter: CorruptedFilter): boolean {
@@ -108,10 +118,10 @@ export function baseUniqueName (name: string): string {
   return name.replace(/^Foulborn /, '')
 }
 
-export function tradeUrl (league: string, item: { name?: string, type?: string }): string {
+export function tradeUrl (league: string, item: { name?: string, type?: string }, host = 'www.pathofexile.com'): string {
   const query = {
     query: { status: { option: 'online' }, ...item },
     sort: { price: 'asc' }
   }
-  return `https://www.pathofexile.com/trade/search/${encodeURIComponent(league)}?q=${encodeURIComponent(JSON.stringify(query))}`
+  return `https://${host}/trade/search/${encodeURIComponent(league)}?q=${encodeURIComponent(JSON.stringify(query))}`
 }

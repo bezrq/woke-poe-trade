@@ -1,7 +1,7 @@
 <template>
   <Widget :config="config" move-handles="none" :removable="false" :inline-edit="false" :readonly="true">
-    <WPanel width="66rem" max-height="72vh" :scroll="false" :resizable="false">
-      <div :class="$style.root" data-search-palette>
+    <WPanel v-if="open" width="66rem" max-height="72vh" :scroll="false" :resizable="false">
+      <div :class="$style.root" data-search-palette @click="keepTyping" @keydown="onHotkey">
         <div v-if="pins.length" :class="$style.pins">
           <button v-for="(p, i) in pins" :key="key(p)" :class="[$style.pin, { [$style.pinTop]: i === 0 && pins.length > 1 }]"
             title="Remove from the comparison" @click="togglePin(p)">
@@ -19,9 +19,9 @@
         <div :class="$style.panes">
           <div ref="listEl" :class="$style.list" class="w-scroll">
             <template v-for="section in sections" :key="section.label">
-              <div :class="$style.head">{{ section.label }}</div>
+              <div :class="$style.head">{{ section.label }}<template v-if="section.capped"> · first {{ PRICE_GROUP_LIMIT }}, keep typing</template></div>
               <button v-for="e in section.entries" :key="e.id" tabindex="-1" :class="[$style.res, { [$style.sel]: e === selected }]"
-                :data-selected="e === selected || undefined" @click="selected = e; focusInput()" @dblclick="run(e)">
+                :data-selected="e === selected || undefined" @click="selected = e" @dblclick="run(e)">
                 <WIcon v-if="e.kind === 'price'" :src="ninjaIcon(e.group.type, e.group.name) ?? undefined" size="md" />
                 <WIcon v-else-if="e.kind === 'item'" :src="e.info.icon" size="md" />
                 <i v-else :class="e.icon" :style="{ width: 'var(--w-icon-md)', textAlign: 'center' }" />
@@ -71,7 +71,7 @@
             </template>
             <template v-else-if="selected?.kind === 'item'">
               <div :class="$style.title"><WIcon :src="selected.info.icon" size="lg" /><span>{{ selected.name }}</span></div>
-              <p class="w-dim">poe.ninja has no price for this. Rares, bases, flasks and cluster jewels aren't in the saved prices.</p>
+              <p class="w-dim">{{ snapshot ? "poe.ninja has no price for this. Rares, bases, flasks and cluster jewels aren't in the saved prices." : 'No saved prices yet, so this has no price here.' }}</p>
               <div :class="$style.acts">
                 <WButton size="sm" @click="openLookup(selected, 'wiki')">Wiki</WButton>
                 <WButton size="sm" @click="openLookup(selected, 'poedb')">poedb</WButton>
@@ -124,16 +124,19 @@ import { registry } from '@/web/overlay/widget-registry'
 import { AppConfig } from '@/web/Config'
 import { Host } from '@/web/background/IPC'
 import { useLeagues } from '@/web/background/Leagues'
-import { ITEM_BY_TRANSLATED, ITEMS_ITERATOR } from '@/assets/data'
+import { ITEM_BY_REF, ITEMS_ITERATOR } from '@/assets/data'
+import { getTradeEndpoint } from '@/web/price-check/trade/common'
 import type { BaseType } from '@/assets/data/interfaces'
 import { createVirtualItem, ItemRarity } from '@/parser/ParsedItem'
 import { WPanel, WButton, WPrice, WDelta, WIcon, WKbd, ninjaIcon, toast } from '../ui'
 import WCorruptedFilter from '../ui/WCorruptedFilter.vue'
 import { copyText } from '../ui/copy'
-import { MODULES, isModuleOn, isWidgetTypeOn } from '../modules'
+import { MODULES, isWidgetTypeOn } from '../modules'
+import { pressedKeys, sortKeys } from '../loot-filter/hotkey-match'
+import { whenIdle } from '../shared/perf'
 import { PAGES } from '../settings/pages'
 import { ICON_TOOL_NAMES, iconFor, looksLikeItem, parseWidgetTitle } from '../tab-bar/tools'
-import { holdPricesForSearch, usePriceIndexReadonly } from '../market/price-index'
+import { holdPricesForSearch, useSearchSnapshot } from '../market/price-index'
 import { MARKET_TRACKER_TYPE, marketSearchRequest } from '../market/widget'
 import type { MarketTrackerWidget } from '../market/widget'
 import { isThin, itemKey, thinTitle } from '../market/types'
@@ -144,7 +147,7 @@ import { LOOT_FILTER_TYPE, strictnessHotkeyTarget } from '../loot-filter/widget'
 import { MAP_SCAN_TYPE, scanHotkeyTarget } from '../map-mods/scan'
 import { ESSENCE_SCAN_TYPE, essenceHotkeyTarget, essenceOnceTarget } from '../essence-scan/widget'
 import { RUN_TIMER_TYPE, hotkeyTarget as timerTarget } from '../campaign/run-timer'
-import { baseUniqueName, changeSince, groupKey, rarityClass, searchNamed, searchPrices, tradeUrl, typeLabel } from './search'
+import { PRICE_GROUP_LIMIT, baseUniqueName, changeSince, groupKey, rarityClass, searchNamed, searchPrices, tradeUrl, typeLabel } from './search'
 import type { PriceGroup } from './search'
 import { SEARCH_TARGET, searchRequest } from './widget'
 import type { SearchWidget } from './widget'
@@ -153,7 +156,7 @@ const props = defineProps<{ config: SearchWidget }>()
 const wm = inject<WidgetManager>('wm')!
 const { t } = useI18n()
 const leagues = useLeagues()
-const prices = usePriceIndexReadonly()
+const snapshot = useSearchSnapshot()
 
 interface Base { id: string, name: string, sub: string }
 interface PriceEntry extends Base { kind: 'price', group: PriceGroup }
@@ -165,9 +168,17 @@ const query = shallowRef('')
 const corrupted = shallowRef<CorruptedFilter>('any')
 const input = shallowRef<HTMLInputElement | null>(null)
 const listEl = shallowRef<HTMLElement | null>(null)
-const pins = shallowRef<PriceItem[]>([])
+const pinKeys = shallowRef<string[]>([])
 
-const divine = computed(() => prices.snapshot.value?.divine ?? null)
+const divine = computed(() => snapshot.value?.divine ?? null)
+// Pins follow the latest prices, and go if the item isn't in them (a new league).
+const priceByKey = computed(() => new Map((snapshot.value?.items ?? []).map(i => [itemKey(i), i])))
+const pins = computed(() => pinKeys.value
+  .map(k => priceByKey.value.get(k))
+  .filter((p): p is PriceItem => !!p)
+  .sort((a, b) => b.chaos - a.chaos))
+// Names with any price at all, whatever the filter or the list's limit.
+const pricedNames = computed(() => new Set((snapshot.value?.items ?? []).map(i => baseUniqueName(i.name))))
 const open = computed(() => props.config.wmWants === 'show')
 const queryOk = computed(() => query.value.trim().length >= 2)
 const key = itemKey
@@ -273,19 +284,20 @@ function settingEntries (): ActionEntry[] {
 }
 
 // ---- results ----
-const sections = computed<Array<{ label: string, entries: Entry[] }>>(() => {
-  const items = prices.snapshot.value?.items ?? []
+const sections = computed<Array<{ label: string, entries: Entry[], capped?: boolean }>>(() => {
+  if (!open.value) return []
+  const items = snapshot.value?.items ?? []
   if (!queryOk.value) {
     const recent = recentGroups(items)
     return recent.length ? [{ label: 'Recent', entries: recent.map(priceEntry) }] : []
   }
   const q = query.value
   const groups = searchPrices(items, q, { corrupted: corrupted.value })
-  const priced = new Set(groups.map(g => baseUniqueName(g.name)))
-  const other = searchNamed(gameItems().filter(i => !priced.has(i.refName) && !priced.has(i.name)), q, i => i.name, 8)
-    .map((info): ItemEntry => ({ kind: 'item', id: `i:${info.namespace}:${info.name}`, name: info.name, sub: 'No poe.ninja price', info }))
+  const priced = pricedNames.value
+  const other = searchNamed(gameItems().filter(i => !priced.has(i.refName)), q, i => i.name, 8)
+    .map((info): ItemEntry => ({ kind: 'item', id: `i:${info.namespace}:${info.name}`, name: info.name, sub: snapshot.value ? 'No poe.ninja price' : 'No price', info }))
   const out = [
-    { label: 'Prices', entries: groups.map(priceEntry) as Entry[] },
+    { label: 'Prices', entries: groups.map(priceEntry) as Entry[], capped: groups.length >= PRICE_GROUP_LIMIT },
     { label: 'Other items', entries: other as Entry[] },
     { label: 'Tools', entries: searchNamed(toolEntries(), q, e => e.name) as Entry[] },
     { label: 'Do it now', entries: searchNamed(commandEntries(), q, e => e.name) as Entry[] },
@@ -359,11 +371,10 @@ function remember (entry: Entry | null) {
 
 // ---- pins ----
 const PIN_MAX = 5
-function isPinned (item: PriceItem) { return pins.value.some(p => key(p) === key(item)) }
+function isPinned (item: PriceItem) { return pinKeys.value.includes(key(item)) }
 function togglePin (item: PriceItem) {
-  pins.value = isPinned(item)
-    ? pins.value.filter(p => key(p) !== key(item))
-    : [...pins.value, item].slice(-PIN_MAX).sort((a, b) => b.chaos - a.chaos)
+  const k = key(item)
+  pinKeys.value = isPinned(item) ? pinKeys.value.filter(p => p !== k) : [...pinKeys.value, k].slice(-PIN_MAX)
 }
 
 // ---- Market tracker ----
@@ -391,7 +402,8 @@ function nsOf (type: string): BaseType['namespace'] {
 }
 function infoFor (entry: PriceEntry | ItemEntry): BaseType | undefined {
   if (entry.kind === 'item') return entry.info
-  return ITEM_BY_TRANSLATED(nsOf(entry.group.type), baseUniqueName(entry.group.name))?.[0]
+  // poe.ninja's names are the English ones, whatever the game's language.
+  return ITEM_BY_REF(nsOf(entry.group.type), baseUniqueName(entry.group.name))?.[0]
 }
 function canPriceCheck (entry: PriceEntry | ItemEntry) {
   return infoFor(entry)?.namespace === 'UNIQUE'
@@ -422,8 +434,8 @@ function openTrade (entry: PriceEntry | ItemEntry) {
   const info = infoFor(entry)
   const name = entry.kind === 'price' ? entry.group.name : entry.name
   const url = info?.namespace === 'UNIQUE'
-    ? tradeUrl(league, { name: info.refName, type: info.unique?.base })
-    : tradeUrl(league, { type: info?.refName ?? name })
+    ? tradeUrl(league, { name: info.name, ...(AppConfig().language === 'en' ? { type: info.unique?.base } : {}) }, getTradeEndpoint())
+    : tradeUrl(league, { type: info?.name ?? name }, getTradeEndpoint())
   window.open(url)
 }
 function findInStash (name: string) {
@@ -444,16 +456,33 @@ function onPaste (e: ClipboardEvent) {
 }
 
 // ---- opening and closing ----
-function focusInput () {
-  nextTick(() => { input.value?.focus(); input.value?.select() })
+function focusInput (select = false) {
+  nextTick(() => {
+    input.value?.focus()
+    if (select) input.value?.select()
+  })
+}
+// Clicking a button mustn't take the keyboard away from the box.
+function keepTyping (e: MouseEvent) {
+  if ((e.target as Element).closest('button')) focusInput()
+}
+// Global hotkeys are off while the overlay has the keyboard, so the key that
+// opened this has to be caught here to close it again.
+function onHotkey (e: KeyboardEvent) {
+  const key = props.config.hotkey
+  if (key && pressedKeys(e) === sortKeys(key)) {
+    e.preventDefault()
+    close()
+  }
 }
 function start (text: string) {
-  if (isModuleOn(AppConfig(), 'market')) holdPricesForSearch()
+  holdPricesForSearch()
   query.value = text
   corrupted.value = 'any'
   selected.value = entries.value[0] ?? null
   wm.show(props.config.wmId)
-  focusInput()
+  focusInput(true)
+  whenIdle(gameItems)
 }
 function close () {
   wm.hide(props.config.wmId)
@@ -473,14 +502,14 @@ watch(searchRequest, (request) => {
   start(request.query)
 })
 // The hotkey can arrive before the overlay has the keyboard.
-watch(wm.active, (active) => { if (active && open.value) focusInput() })
+watch(wm.active, (active) => { if (active && open.value) focusInput(true) })
 watch(open, (now) => {
-  if (now) focusInput()
+  if (now) focusInput(true)
   else remember(queryOk.value ? selected.value : null)
 })
 
 const dataNote = computed(() => {
-  const snap = prices.snapshot.value
+  const snap = snapshot.value
   if (!snap) return 'No saved prices yet'
   const min = Math.max(0, Math.round((Date.now() - snap.ts) / 60000))
   return `poe.ninja · ${snap.league} · ${min} min ago`

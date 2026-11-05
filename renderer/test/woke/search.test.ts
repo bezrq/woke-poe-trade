@@ -128,7 +128,8 @@ describe('helpers', () => {
   })
   it('tradeUrl encodes the league and the query', () => {
     const url = tradeUrl('Hardcore Allflame', { name: "Kaom's Heart", type: 'Glorious Plate' })
-    expect(url).toContain('/trade/search/Hardcore%20Allflame?q=')
+    expect(url).toContain('https://www.pathofexile.com/trade/search/Hardcore%20Allflame?q=')
+    expect(tradeUrl('L', { type: 'x' }, 'ru.pathofexile.com')).toContain('https://ru.pathofexile.com/')
     const q = JSON.parse(decodeURIComponent(url.split('?q=')[1]))
     expect(q.query).toEqual({ status: { option: 'online' }, name: "Kaom's Heart", type: 'Glorious Plate' })
   })

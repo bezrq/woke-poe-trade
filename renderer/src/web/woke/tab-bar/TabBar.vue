@@ -167,8 +167,7 @@ import ToolIcon from './ToolIcon.vue'
 import { ICON_TOOL_NAMES, artFor, iconFor, allowsCopies, groupByModule, groupTypes, looksLikeItem, migrateToRail, parseWidgetTitle } from './tools'
 import type { TabBarConfig } from './tools'
 import { WIcon, WPrice, ninjaIcon } from '../ui'
-import { isModuleOn } from '@/web/woke/modules'
-import { holdPricesForSearch, usePriceIndexReadonly } from '../market/price-index'
+import { holdPricesForSearch, useSearchSnapshot } from '../market/price-index'
 import { groupKey, rarityClass, searchPrices } from '../search/search'
 import { searchRequest } from '../search/widget'
 
@@ -271,6 +270,12 @@ function toggle (tab: Tab) {
   else wm.show(tab.wmId)
 }
 
+// Opens it from the launcher, whatever state it's in.
+function toggleOpen (tab: Tab) {
+  if (tab.wmType === 'item-search') openSearch('')
+  else wm.show(tab.wmId)
+}
+
 function togglePin (tab: Tab) {
   const pinned = props.config.pinned ?? []
   props.config.pinned = tab.pinned ? pinned.filter(id => id !== tab.wmId) : [...pinned, tab.wmId]
@@ -296,7 +301,7 @@ function shift (tab: Tab, dir: -1 | 1) {
 function resetPosition (tab: Tab) {
   const w = wm.widgets.value.find(x => x.wmId === tab.wmId) as (Widget & { anchor?: Anchor }) | undefined
   if (w?.anchor) w.anchor = popupAnchor()
-  wm.show(tab.wmId)
+  toggleOpen(tab)
 }
 
 function forget (wmId: number) {
@@ -403,7 +408,7 @@ function openBesideRail (kind: 'launcher' | 'add') {
   nextTick(() => searchInput.value?.focus())
 }
 function openLauncher () {
-  if (isModuleOn(AppConfig(), 'market')) holdPricesForSearch()
+  holdPricesForSearch()
   openBesideRail('launcher')
 }
 function openAdd () { openBesideRail('add') }
@@ -450,16 +455,16 @@ function openFirstMatch () {
     if (priceGroups.value.length) openSearch(priceGroups.value[0].name)
     return
   }
-  wm.show(first.wmId)
+  toggleOpen(first)
   closePopup()
 }
 
 // Prices for what's typed. Clicking one opens the full search on it.
-const prices = usePriceIndexReadonly()
-const divine = computed(() => prices.snapshot.value?.divine ?? null)
+const snapshot = useSearchSnapshot()
+const divine = computed(() => snapshot.value?.divine ?? null)
 const priceGroups = computed(() => {
   if (popup.value?.kind !== 'launcher') return []
-  return searchPrices(prices.snapshot.value?.items ?? [], launcherQuery.value, { limit: 5 })
+  return searchPrices(snapshot.value?.items ?? [], launcherQuery.value, { limit: 5 })
 })
 function openSearch (text: string) {
   closePopup()

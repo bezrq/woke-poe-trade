@@ -45,7 +45,7 @@
 
       <template #meta>
         <template v-if="searching && latest">
-          <span>{{ searchCount }} {{ searchCount === 1 ? 'price' : 'prices' }} for "{{ query.trim() }}"</span><span class="w-faint">·</span>
+          <span>{{ searchCount }} {{ searchCount === 1 ? 'price' : 'prices' }} for "{{ query.trim() }}"<template v-if="searchGroups.length >= PRICE_GROUP_LIMIT">, first {{ PRICE_GROUP_LIMIT }} items only</template></span><span class="w-faint">·</span>
           <span>Category, c min and Thin don't apply to a search</span>
         </template>
         <template v-else-if="latest">
@@ -66,7 +66,7 @@
 
       <template v-if="searching">
         <WSkeleton v-if="!latest && league" :rows="8" />
-        <WEmpty v-else-if="!searchGroups.length" icon="fas fa-search">Nothing on poe.ninja matches "{{ query.trim() }}". Rares, bases, flasks and cluster jewels have no saved price.</WEmpty>
+        <WEmpty v-else-if="!searchGroups.length" icon="fas fa-search">Nothing on poe.ninja matches "{{ query.trim() }}"<template v-if="corrupted !== 'any'"> with the corrupted filter on</template>. Rares, bases, flasks and cluster jewels have no saved price.</WEmpty>
         <template v-else>
           <div class="w-row w-row--head" :class="$style.grid"><span /><span>Item</span><span>Then</span><span class="text-right">Now</span><span class="text-right">%</span></div>
           <template v-for="g in searchGroups" :key="groupKey(g)">
@@ -169,7 +169,7 @@ import { useLeagues } from '@/web/background/Leagues'
 import { useMarketCollector } from './collector'
 import { dailyHistory, dailyRowsForDate, latestSnapshots, snapshotAtOrBefore } from './db'
 import { computeMovers, trendBaseline } from './analysis'
-import { groupKey, rarityClass, searchPrices } from '../search/search'
+import { PRICE_GROUP_LIMIT, groupKey, rarityClass, searchPrices } from '../search/search'
 import WCorruptedFilter from '../ui/WCorruptedFilter.vue'
 import { WPanel, WTabs, WSegmented, WSelect, WField, WPrice, WDelta, WSpark, WEmpty, WChip, WIcon, WKbd, WSkeleton, WBanner, ninjaIcon, openMenu, toast } from '../ui'
 import { copyText } from '../ui/copy'
@@ -242,6 +242,8 @@ function searchChange (item: PriceItem) {
 watch(marketSearchRequest, (text) => {
   if (text == null) return
   query.value = text
+  // You asked for this item: an old filter mustn't hide it.
+  props.config.corrupted = 'any'
   marketSearchRequest.value = null
 }, { immediate: true })
 
@@ -429,9 +431,9 @@ function rowMenu (e: MouseEvent, item: { type: string, name: string, variant: st
   const watched = isWatched(item)
   openMenu(e, [
     { label: watched ? 'Stop watching' : 'Watch price', icon: watched ? 'fas fa-star' : 'far fa-star', keys: watched ? 'Del' : 'W', action: () => toggleWatch(item) },
-    ...(watched ? [{ label: 'Set price alert…', icon: 'fas fa-bell', action: () => { props.config.view = 'watchlist'; alertKey.value = key(item) } }] : []),
+    ...(watched ? [{ label: 'Set price alert…', icon: 'fas fa-bell', action: () => { query.value = ''; props.config.view = 'watchlist'; alertKey.value = key(item) } }] : []),
     { label: 'Copy name', icon: 'far fa-copy', keys: 'Ctrl + C', action: () => copyName(item) },
-    { label: 'Show only this category', icon: 'fas fa-filter', action: () => { props.config.view = 'movers'; props.config.typeFilter = item.type } }
+    { label: 'Show only this category', icon: 'fas fa-filter', action: () => { query.value = ''; props.config.view = 'movers'; props.config.typeFilter = item.type } }
   ])
 }
 </script>
