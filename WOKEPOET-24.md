@@ -19,6 +19,14 @@ history:
     to: In Progress
     user: Agent
     date: '2026-11-05T04:11:40.545Z'
+  - type: activity
+    user: Agent
+    date: '2026-11-05T05:06:50.742Z'
+    comment: >-
+      Merged in PR #100 (master 3151639), live on the dev build. Follow-up PR
+      opened for loading when the editor was left open. Waiting on Guy's in-game
+      test of the map edit and ground items.
+    id: a-2026-11-05t05-06-50-742z
 needsAction: null
 ---
 > **TL;DR:** Alt + F already opens the matching filter rule for a hovered item with quick edits. On the ground it releases Alt before copying, so an item your filter hides (only visible while Alt is held) loses its label and nothing is copied. Keep Alt held through the copy.
