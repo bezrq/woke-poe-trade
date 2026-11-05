@@ -246,7 +246,7 @@ const allNotes = computed<Notice[]>(() => {
   }
   if (store.movesFromOtherLeague.value) {
     const n = store.movesFromOtherLeague.value
-    out.push({ id: 'moves-league', value: n, warn: true, tab: 'prices', text: `${n} price move${n > 1 ? 's' : ''} from ${props.config.priceTiers.league} ${n > 1 ? 'are' : 'is'} off in this league.` })
+    out.push({ id: 'moves-league', value: n, warn: true, tab: 'prices', text: `${n} price move${n > 1 ? 's' : ''} from ${store.otherMovesLeague.value} ${n > 1 ? 'are' : 'is'} off in this league.` })
   }
   if (store.gameFilter.value.loaded === false) out.push({ id: 'load', value: 1, warn: true, tab: 'changes', text: 'The game couldn\'t load your filter. Open the editor and save again.' })
   else if (store.wrongFilterInGame.value) out.push({ id: 'wrong', value: store.gameFilter.value.name ?? '', warn: true, text: `The game is using "${store.gameFilter.value.name}", not your saved copy.` })

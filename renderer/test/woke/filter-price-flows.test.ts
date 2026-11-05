@@ -7,7 +7,7 @@ import { useLootFilter } from '@/web/woke/loot-filter/store'
 import { initLootFilterWidget } from '@/web/woke/loot-filter/widget'
 import type { LootFilterWidget } from '@/web/woke/loot-filter/widget'
 import { SAFETY_RULE_TYPE } from '@/web/woke/loot-filter/safety'
-import { ECONOMY_GROUPS, applyPriceMoves, isVolatile, planRetier } from '@/web/woke/loot-filter/economy'
+import { ECONOMY_GROUPS, applyPriceMoves, isVolatile, mergeMoves, planRetier } from '@/web/woke/loot-filter/economy'
 import type { PriceLookup, PriceMove } from '@/web/woke/loot-filter/economy'
 import { loadGameData } from '../helpers/game-data'
 import { LEVELS, neverSink } from '../helpers/neversink'
@@ -180,10 +180,11 @@ describe('the net follows prices into the file', () => {
 })
 
 const MOVE: PriceMove = { type: 'divination', base: 'Mid One', from: 't2', to: 't1', chaos: 500 }
+const UP = (league?: string): PriceMove => ({ ...MOVE, league })
 const inTier = (tier: string) => written().blocks.find(b => b.tier === tier)!.conditions.find(c => c.key === 'BaseType')!.values
 
 describe('moves belong to a league', () => {
-  const moved = (league: string | null) => ({ priceTiers: { on: true, moves: [MOVE], prev: null, locks: [], appliedAt: 1, league, uniqueRule: 'max' as const } })
+  const moved = (league?: string) => ({ priceTiers: { on: true, moves: [UP(league)], prev: null, locks: [], appliedAt: 1, uniqueRule: 'max' as const } })
 
   it('applies moves in their own league', async () => {
     const { store } = await opened(moved('Allflame'))
@@ -204,13 +205,35 @@ describe('moves belong to a league', () => {
     const { store, config } = await opened(moved('Mirage'))
     store.applyPrices([{ ...MOVE, base: 'Mid Two' }])
     expect(config.priceTiers.moves.map(m => m.base)).toEqual(['Mid Two'])
-    expect(config.priceTiers.league).toBe('Allflame')
+    expect(config.priceTiers.moves[0].league).toBe('Allflame')
+  })
+
+  it('undo brings back the old league\'s moves still marked as theirs', async () => {
+    const { store, config } = await opened(moved('Mirage'))
+    const undo = store.applyPrices([{ ...MOVE, base: 'Mid Two' }])
+    undo()
+    await store.save()
+    expect(config.priceTiers.moves[0].league).toBe('Mirage')
+    expect(inTier('t2')).toContain('Mid One')
+  })
+
+  it('switching league takes them out of the file by itself, and nothing reads as unsaved', async () => {
+    P.safety.value = VALUABLE
+    const { store } = await opened(moved('Allflame'))
+    await store.save()
+    expect(inTier('t1')).toContain('Mid One')
+    P.currentLeague.value = 'Mirage'
+    await settled()
+    expect(inTier('t2')).toContain('Mid One')
+    expect(store.dirty.value).toBe(false)
+    expect(store.movesFromOtherLeague.value).toBe(1)
+    expect(store.otherMovesLeague.value).toBe('Allflame')
   })
 
   it('takes a config from before leagues as this league\'s', async () => {
-    const { store, config } = await opened(moved(null))
+    const { store, config } = await opened(moved())
     await store.save()
-    expect(config.priceTiers.league).toBe('Allflame')
+    expect(config.priceTiers.moves[0].league).toBe('Allflame')
     expect(inTier('t1')).toContain('Mid One')
   })
 })
@@ -247,6 +270,56 @@ describe('the filter you started from changes', () => {
     await settled()
     expect(inTier('t2')).not.toContain('Mid Three')
     expect(again.sourceChanged.value).toBe(true)
+  })
+})
+
+describe('auto saves stay out of your way', () => {
+  it('opening another filter writes nothing', async () => {
+    const { store, config } = await opened()
+    await store.save()
+    P.safety.value = VALUABLE
+    await settled()
+    host.files.set('Other.filter', SOURCE)
+    config.sourceName = 'Other.filter'
+    await store.load()
+    P.safety.value = prices({ 'Low Two': 500 })
+    await settled()
+    expect(host.files.has('Other (woke).filter')).toBe(false)
+    expect(store.sourceChanged.value).toBe(false)
+  })
+
+  it('a save you made leaves no notice about a reload still to come', async () => {
+    const { store, config } = await opened()
+    await store.save()
+    P.safety.value = VALUABLE
+    await settled()
+    expect(store.netWaitsForReload.value).toBe(true)
+    config.netDismissed = { 'divination|Low One': 300 }
+    await store.save({ reloadNow: true })
+    await settled()
+    expect(store.netWaitsForReload.value).toBe(false)
+  })
+
+  it('your own move up doesn\'t hold the net back', async () => {
+    const { store } = await opened()
+    await store.save()
+    store.edit({ kind: 'move', type: 'divination', base: 'Low One', from: 't3', to: 't2' })
+    store.edit({ kind: 'visibility', type: 'divination', tier: 't2', visibility: 'Hide' })
+    P.safety.value = VALUABLE
+    await store.save()
+    expect(netBases()).toContain('Low One')
+  })
+})
+
+describe('updates', () => {
+  it('never offers a version older than the one in use', async () => {
+    for (let i = 0; i < 7; i++) host.neversink.set(`8.20.9//${i}`, neverSink(LEVELS[i]))
+    host.latestVersion = '8.20.2'
+    const config = widget({ neversink: { on: true, version: '8.20.9', prevVersion: null, style: '', level: 1, latest: null, latestChanges: '', checkedAt: null } })
+    const store = useLootFilter(() => config)
+    await store.load()
+    await store.checkForUpdate(true)
+    expect(store.updateReady.value).toBeNull()
   })
 })
 
@@ -337,6 +410,15 @@ describe('planning moves', () => {
     expect(isVolatile({ chaos: 200, d1: 100 })).toBe(true)
     expect(isVolatile({ chaos: 150, d1: 100, d7: 100 })).toBe(false)
     expect(isVolatile({ chaos: 150 })).toBe(false)
+  })
+
+  it('a new move starts from where the item is, when the stored one gave way', () => {
+    const stored: PriceMove = { type: 'divination', base: 'Mid One', from: 't2', to: 't1', chaos: 500 }
+    // NeverSink has it in t3 now, so the stored move no longer holds.
+    expect(mergeMoves([stored], [{ ...stored, from: 't3', to: 't2' }])).toEqual([{ ...stored, from: 't3', to: 't2' }])
+    // It did hold: this is one move in two steps, and going back drops it.
+    expect(mergeMoves([stored], [{ ...stored, from: 't1', to: 't3' }])[0]).toMatchObject({ from: 't2', to: 't3' })
+    expect(mergeMoves([stored], [{ ...stored, from: 't1', to: 't2' }])).toEqual([])
   })
 
   it('gives way to NeverSink when it has re-tiered the item since', () => {

@@ -208,6 +208,8 @@ export interface PriceMove {
   note?: string
   // The tier it goes to is hidden at this strictness.
   hides?: boolean
+  // The league it was made for. Prices don't carry over to a new one.
+  league?: string
 }
 
 export interface PriceSkip {
@@ -346,6 +348,9 @@ export function mergeMoves (stored: PriceMove[], next: PriceMove[]): PriceMove[]
   for (const m of next) {
     const i = out.findIndex(o => o.type === m.type && o.base === m.base)
     if (i < 0) { out.push(m); continue }
+    // The stored move didn't put it where it is now (it gave way to a NeverSink
+    // update), so this one starts from there.
+    if (out[i].to !== m.from) { out[i] = m; continue }
     const first = out[i].from
     if (first === m.to) out.splice(i, 1)
     else out[i] = { ...m, from: first }

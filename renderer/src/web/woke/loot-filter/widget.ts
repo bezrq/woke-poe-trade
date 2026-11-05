@@ -32,8 +32,6 @@ export interface PriceTiers {
   // `${type}|${base}` keys you kept where they are.
   locks: string[]
   appliedAt: number | null
-  // The league `moves` were made for. Prices don't carry over to a new one.
-  league: string | null
   // How a base with several uniques is priced.
   uniqueRule: UniqueRule
 }
@@ -105,7 +103,7 @@ export interface LootFilterWidget extends Widget {
   savedExtraSig?: string
   // The same without the net's list: your changes, as last saved.
   savedUserSig?: string
-  // The source text the last save was made from.
+  // The source and its text, as the last save was made from them.
   savedSourceHash?: string
   priceTiers: PriceTiers
   safetyNet: SafetyNet
@@ -131,7 +129,7 @@ export interface LootFilterWidget extends Widget {
 }
 
 export function defaultPriceTiers (): PriceTiers {
-  return { on: true, moves: [], prev: null, locks: [], appliedAt: null, league: null, uniqueRule: 'max' }
+  return { on: true, moves: [], prev: null, locks: [], appliedAt: null, uniqueRule: 'max' }
 }
 
 export function initLootFilterWidget (w: LootFilterWidget) {
@@ -212,7 +210,6 @@ export function normalizeLootFilterWidget (w: LootFilterWidget) {
       prev: Array.isArray(pt.prev) ? pt.prev : null,
       locks: Array.isArray(pt.locks) ? pt.locks.filter(x => typeof x === 'string') : [],
       appliedAt: typeof pt.appliedAt === 'number' ? pt.appliedAt : null,
-      league: typeof pt.league === 'string' ? pt.league : null,
       uniqueRule: pt.uniqueRule === 'min' ? 'min' : 'max'
     }
   }

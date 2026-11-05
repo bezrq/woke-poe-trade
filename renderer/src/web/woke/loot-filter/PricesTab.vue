@@ -38,7 +38,7 @@
       </template>
       <div v-if="moves.length" class="w-group-label" :class="$style.label">Would move</div>
       <div v-for="m in moves" :key="m.type + m.base" :class="$style.row" @contextmenu="moveMenu($event, m)">
-        <input :id="`pm-${m.type}-${m.base}`" v-model="picked[m.type + '|' + m.base]" type="checkbox" :class="$style.check" :aria-label="`Move ${m.base}`">
+        <input :id="`pm-${m.type}-${m.base}`" v-model="picked[pickKey(m)]" type="checkbox" :class="$style.check" :aria-label="`Move ${m.base}`">
         <img v-if="icon(m)" :src="icon(m)!" :class="$style.art" alt="">
         <LabelPreview :text="m.base" :actions="lookOf(m.type, m.to)" :extras="false" />
         <button type="button" :class="$style.link" class="w-focusable text-xs w-trunc" :title="`Open ${groupLabel(m.type)} ${m.from} in Rules`" @click="emit('open-rule', { type: m.type, tier: m.from, base: m.base })">{{ groupLabel(m.type) }} <i class="fas fa-external-link-alt" /></button>
@@ -226,10 +226,12 @@ const uniqueOptions = [
 // Ticked by default, except what a price alone would hide. Unticked rows stay
 // put this time.
 const picked = reactive<Record<string, boolean>>({})
+// A row that starts hiding at another strictness is a new choice.
+const pickKey = (m: PriceMove) => `${m.type}|${m.base}|${m.hides ? 'hides' : ''}`
 watch(moves, (list) => {
-  for (const m of list) if (picked[m.type + '|' + m.base] === undefined) picked[m.type + '|' + m.base] = !m.hides
+  for (const m of list) if (picked[pickKey(m)] === undefined) picked[pickKey(m)] = !m.hides
 }, { immediate: true })
-const pickedMoves = computed(() => moves.value.filter(m => picked[m.type + '|' + m.base]))
+const pickedMoves = computed(() => moves.value.filter(m => picked[pickKey(m)]))
 
 const minChaos = computed({
   get: () => props.config.safetyNet.minChaos,
