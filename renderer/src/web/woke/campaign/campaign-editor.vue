@@ -25,18 +25,16 @@
     <div>
       <div class="mb-1">Display</div>
       <div class="flex flex-col gap-1">
-        <w-toggle v-model="cardOpen">Show the guide card (off: one line in the strip)</w-toggle>
         <label class="flex items-center gap-2">
           <span>Steps on the card</span>
           <input v-model.number="cardSteps" type="number" min="1" max="8" class="w-input rounded px-1 leading-6 w-16">
         </label>
-        <w-toggle v-model="hideAfterCampaign">Hide in maps and hideouts once the campaign is done</w-toggle>
         <w-toggle v-model="showBuild">Show the active PoB build's tree and main gems on the card</w-toggle>
       </div>
     </div>
 
     <div class="grid gap-2 items-center" style="grid-template-columns: auto 1fr;">
-      <span>Hotkey: show/hide guide</span>
+      <span>Hotkey: keep the card open</span>
       <w-hotkey-cell v-model="hotkeyCard" />
       <span>Hotkey: step done</span>
       <w-hotkey-cell v-model="hotkeyNext" />
@@ -115,9 +113,7 @@ export default defineComponent({
       title: configModelValue(() => props.configWidget, 'wmTitle'),
       charName: configModelValue(() => props.configWidget, 'charName'),
       showBuild: configModelValue(() => props.configWidget, 'showBuild'),
-      cardOpen: configModelValue(() => props.configWidget, 'cardOpen'),
       cardSteps: configModelValue(() => props.configWidget, 'cardSteps'),
-      hideAfterCampaign: configModelValue(() => props.configWidget, 'hideAfterCampaign'),
       hotkeyCard: configModelValue(() => props.configWidget, 'hotkeyCard'),
       hotkeyNext: configModelValue(() => props.configWidget, 'hotkeyNext'),
       hotkeyPrev: configModelValue(() => props.configWidget, 'hotkeyPrev'),

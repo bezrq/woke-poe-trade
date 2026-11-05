@@ -18,8 +18,7 @@
       </template>
     </DockItem>
     <div class="flex flex-col items-start gap-1" data-w-panel>
-      <!-- HUD strip: always on while the run is going. The campaign tracker
-           shows run time in its own strip, so the timer docks under it. -->
+      <!-- HUD strip: with the campaign tracker placed, its card has the run time. -->
       <div v-if="!docked" data-widget-drag :class="$style.strip">
         <template v-if="run">
           <span :class="$style.where" class="w-head-font w-accent w-trunc">
@@ -56,8 +55,7 @@
       </div>
 
       <!-- Splits panel -->
-      <div v-if="docked && !config.expanded && wm.active.value" data-widget-drag :class="$style.strip" class="w-faint">Run timer · shown in the campaign tracker strip</div>
-      <WPanel v-if="config.expanded" ref="panel" width="21rem" max-height="60vh" :style="docked ? 'margin-top: 2.4rem' : ''">
+      <WPanel v-if="config.expanded" ref="panel" width="21rem" max-height="60vh">
         <template #title>
           <template v-if="run">Run<template v-if="run.charName"> · {{ run.charName }}<span class="w-dim"> ({{ run.className }})</span></template></template>
           <template v-else>Campaign runs</template>

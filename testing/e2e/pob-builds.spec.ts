@@ -152,7 +152,8 @@ function loadoutSeed (loadouts: Record<string, unknown>) {
 test('a picked loadout reaches the other windows, is saved, and Auto undoes it', async ({ overlay }) => {
   await overlay.boot({ widgets: loadoutSeed({}), overlayActive: true })
   await overlay.replayLog('client-logs/campaign-act1.txt')
-  const strip = overlay.widget('woke-campaign')
+  const strip = overlay.dockIcon('campaign')
+  await strip.locator('span').first().click()
   await expect(strip).toContainText(`Your links · ${day1}`)
   await expect(strip).toContainText('Arc')
 

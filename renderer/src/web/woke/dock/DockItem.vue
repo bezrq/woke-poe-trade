@@ -6,7 +6,7 @@
 //   <DockItem id="farming" icon="fas fa-coins" title="Farming" :show="inMap" :badge="perHour">
 //     <template #card>…</template>
 //   </DockItem>
-import { inject, onUnmounted, useSlots } from 'vue'
+import { inject, onUnmounted, useSlots, watch } from 'vue'
 import type { WidgetManager } from '@/web/overlay/interfaces'
 import { PEEK_MS, peeksOn, registerDockEntry, unregisterDockEntry } from './dock'
 import type { DockLed, DockTone } from './dock'
@@ -25,6 +25,8 @@ const props = withDefaults(defineProps<{
   wmId?: number
   cardWidth?: string
   interactive?: boolean
+  progress?: number | null
+  pinnable?: boolean
 }>(), {
   icon: undefined,
   art: undefined,
@@ -34,7 +36,9 @@ const props = withDefaults(defineProps<{
   into: undefined,
   wmId: undefined,
   cardWidth: undefined,
-  interactive: false
+  interactive: false,
+  progress: null,
+  pinnable: false
 })
 
 const emit = defineEmits<{
@@ -63,7 +67,15 @@ function peek (text: string, ms = PEEK_MS) {
   }, ms + 50)
 }
 
-defineExpose({ peek })
+// Keep the card open until asked again. It never outlives the icon, and a
+// click's pin ends with the overlay.
+function togglePin () {
+  entry.pinned = entry.pinned ? null : 'key'
+}
+watch(() => props.show, (show) => { if (!show) entry.pinned = null })
+watch(() => wm?.active.value, (active) => { if (!active && entry.pinned === 'click') entry.pinned = null })
+
+defineExpose({ peek, togglePin })
 </script>
 
 <template>

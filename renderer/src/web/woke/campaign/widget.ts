@@ -1,4 +1,5 @@
 import type { Widget, Anchor } from '@/web/overlay/widgets'
+import { actFromAreaId, isTown } from './log-parse'
 import { DEFAULT_ROUTE_OPTIONS } from './route-parse'
 import type { RouteOptions } from './route-parse'
 
@@ -15,6 +16,8 @@ export interface CampaignState {
   updatedAt: number
   // Build gems ticked as bought or taken for this character (PoB names).
   gemsGot?: string[]
+  // Past the campaign: no icon, and the route stays where it is.
+  asleep?: boolean
 }
 
 export interface ZoneNote {
@@ -36,12 +39,8 @@ export interface CampaignWidget extends Widget {
   // Built-in route (exile-leveling) options and progress.
   route: RouteOptions
   step: number
-  // Show the guide card under the strip.
-  cardOpen: boolean
   // How many route steps the card lists (current one included).
   cardSteps: number
-  // Hide in maps and hideouts once the campaign is done.
-  hideAfterCampaign: boolean
   hotkeyCard: string | null
   hotkeyNext: string | null
   hotkeyPrev: string | null
@@ -55,13 +54,21 @@ export function emptyState (): CampaignState {
 export function migrateCampaign (w: CampaignWidget) {
   if (!w.route) w.route = { ...DEFAULT_ROUTE_OPTIONS }
   if (typeof w.step !== 'number') w.step = 0
-  if (w.cardOpen === undefined) w.cardOpen = true
   if (w.cardSteps === undefined) w.cardSteps = 3
-  if (w.hideAfterCampaign === undefined) w.hideAfterCampaign = true
   if (w.hotkeyCard === undefined) w.hotkeyCard = null
   if (w.hotkeyNext === undefined) w.hotkeyNext = null
   if (w.hotkeyPrev === undefined) w.hotkeyPrev = null
   if (w.state && !Array.isArray(w.state.gemsGot)) w.state.gemsGot = []
+}
+
+// The log doesn't say which character is playing, so where you go decides:
+// a map means past the campaign, and a campaign zone that isn't a town (the
+// Twilight Strand for a new character) means levelling again. Towns and
+// hideouts say nothing, since anyone can walk through them.
+export function routeAsleepAfter (asleep: boolean, areaId: string): boolean {
+  if (/^Map/i.test(areaId)) return true
+  if (actFromAreaId(areaId) != null && !isTown(areaId)) return false
+  return asleep
 }
 
 export type CampaignHotkey = 'card' | 'next' | 'prev'

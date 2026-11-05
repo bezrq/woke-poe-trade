@@ -1,18 +1,19 @@
 <template>
-  <Widget :config="config" move-handles="corners" :inline-edit="false" :readonly="true">
-    <!-- While you play: one icon (act badge, green while ahead of your best);
-         the strip and guide below show only with the overlay open. -->
+  <Widget :config="config" move-handles="none" :inline-edit="false" :readonly="true">
+    <!-- The tracker is only this icon and its card, with the overlay open too. -->
     <DockItem ref="dockRef" id="campaign" title="Campaign" :show="dockShow"
-      :badge="s.act ? actShort(s.act) : null" :tone="dockTone" :wm-id="config.wmId" card-width="24rem"
-      @open-change="cardShown = $event">
+      :badge="dockBadge" :tone="dockTone" :progress="actStep ? actStep.done / actStep.total : null"
+      pinnable card-width="24rem" @open-change="cardShown = $event">
       <template #card>
         <div :class="$style.body">
           <div class="flex items-baseline gap-2">
-            <span class="w-head-font w-accent w-trunc">{{ s.act ? actLabel(s.act) + ' · ' : '' }}{{ s.zone || 'waiting for a zone change' }}</span>
-            <span v-if="s.level != null" class="ml-auto w-num whitespace-nowrap">Lv {{ s.level }}
+            <span class="w-head-font w-accent w-trunc" :title="s.charName ? `Following ${s.charName}'s level-ups` : undefined">{{ s.zone || 'Waiting for a zone change' }}</span>
+            <span v-if="s.level != null" class="ml-auto w-num whitespace-nowrap" :title="xpTitle">Lv {{ s.level }}
               <span v-if="xp" :class="[$style.pill, $style['pill--' + xp.band]]">{{ xpLabel }}</span></span>
           </div>
           <template v-if="current">
+            <div :class="$style.actHead"><span>{{ actLabel(current.act) }}</span><span v-if="actStep" class="w-num">{{ actStep.done }} of {{ actStep.total }}</span></div>
+            <div v-if="actStep" :class="$style.prog"><i :style="{ width: `${actStep.done / actStep.total * 100}%` }" /></div>
             <div v-for="(st, i) in shown" :key="st.index" :class="i === 0 ? $style.now : $style.next">
               <div class="flex gap-1.5">
                 <span :class="i === 0 ? 'w-accent' : 'w-faint'">{{ i === 0 ? '›' : '·' }}</span>
@@ -30,89 +31,21 @@
             <span v-if="timer.paused" style="color: var(--w-warn);">paused</span>
             <span v-if="timer.act" class="ml-auto w-dim">act {{ formatClock(timer.act) }}</span>
           </div>
-          <CampaignBuild :config="config" :show-tree="false" :max-links="1" />
+          <CampaignBuild :config="config" :tickable="wm.active.value" :show-tree="wm.active.value" :max-links="wm.active.value ? 2 : 1" />
+          <!-- Clicks only reach the card with the overlay open. -->
+          <div v-if="wm.active.value" class="flex flex-wrap items-center gap-1" :class="$style.build">
+            <button class="w-icon-btn" :class="$style.textBtn" @click="move(-1)"><i class="fas fa-chevron-left text-xs" /> Step back</button>
+            <button class="w-icon-btn" :class="$style.textBtn" @click="move(1)">Step done <i class="fas fa-chevron-right text-xs" /></button>
+            <button v-if="timerWidget" class="w-icon-btn" :class="[$style.textBtn, { 'w-icon-btn--on': timerWidget.expanded }]" @click="timerWidget.expanded = !timerWidget.expanded"><i class="fas fa-stopwatch text-xs" /> Splits</button>
+            <button v-if="otherChar" class="w-icon-btn" :class="$style.textBtn"
+              :title="`Follow ${otherChar.charName} (${otherChar.className}, level ${otherChar.level}) instead`" @click="follow(otherChar)">
+              <i class="fas fa-exchange-alt text-xs" /> {{ otherChar.charName }}
+            </button>
+            <button class="w-icon-btn ml-auto" :class="$style.textBtn" @click="openSettings"><i class="fas fa-cog text-xs" /> Settings</button>
+          </div>
         </div>
       </template>
     </DockItem>
-    <div v-if="visible" class="flex flex-col items-start gap-1 min-w-0" data-w-panel>
-      <!-- HUD strip: no title bar, so the strip itself is the drag handle. -->
-      <div data-widget-drag :class="$style.strip">
-        <template v-if="logMissing && !s.updatedAt">
-          <span class="w-down"><i class="fas fa-exclamation-triangle text-xs" /> Client.txt not found.</span>
-          <span class="w-dim">Set its path in Settings → General.</span>
-        </template>
-        <template v-else-if="!s.zone">
-          <span class="w-dim">Campaign tracker · waiting for a zone change…</span>
-        </template>
-        <template v-else>
-          <span :class="$style.where" class="w-head-font w-accent w-trunc">
-            <template v-if="s.act">{{ actShort(s.act) }} · </template>{{ s.zone }}
-          </span>
-          <template v-if="s.level != null">
-            <span :class="$style.sep" />
-            <span class="flex items-center gap-1.5" :title="xpTitle">
-              <span :class="$style.k">Lv</span> <span class="w-num">{{ s.level }}</span>
-              <span v-if="xp" :class="[$style.pill, $style['pill--' + xp.band]]">{{ xpLabel }}</span>
-            </span>
-            <span v-if="s.charName" class="w-dim w-trunc" :class="$style.char" :title="`Following ${s.charName}'s level-ups`">{{ s.charName }}</span>
-            <button v-if="wm.active.value && otherChar" class="w-icon-btn" :class="$style.switch"
-              :title="`Follow ${otherChar.charName} (${otherChar.className}, level ${otherChar.level}) instead`"
-              @click="follow(otherChar)">
-              <i class="fas fa-exchange-alt text-xs" /> {{ otherChar.charName }}
-            </button>
-          </template>
-          <template v-if="timer">
-            <span :class="$style.sep" />
-            <span><span :class="$style.k">Run</span> <span class="w-num">{{ formatClock(timer.total) }}</span></span>
-            <span v-if="timer.delta != null" class="w-num" :class="timer.delta <= 0 ? 'w-up' : 'w-down'">{{ formatDelta(timer.delta) }}</span>
-            <span v-if="timer.paused" class="w-num" style="color: var(--w-warn);">paused</span>
-          </template>
-          <template v-if="!config.cardOpen && current">
-            <span :class="$style.sep" />
-            <span class="w-trunc" :class="$style.oneLine"><span class="w-accent">›</span> <RouteParts :parts="current.parts" /></span>
-          </template>
-        </template>
-
-        <span v-if="wm.active.value" class="flex items-center gap-0.5">
-          <span :class="$style.sep" />
-          <button class="w-icon-btn" title="Back one step" @click="move(-1)"><i class="fas fa-chevron-left text-xs" /></button>
-          <button class="w-icon-btn" title="Mark step done" @click="move(1)"><i class="fas fa-chevron-right text-xs" /></button>
-          <button class="w-icon-btn" :class="{ 'w-icon-btn--on': config.cardOpen }" title="Show or hide the guide" @click="config.cardOpen = !config.cardOpen">
-            <i class="fas fa-route text-xs" />
-          </button>
-          <button v-if="timerWidget" class="w-icon-btn" :class="{ 'w-icon-btn--on': timerWidget.expanded }" title="Splits and past runs" @click="timerWidget.expanded = !timerWidget.expanded">
-            <i class="fas fa-stopwatch text-xs" />
-          </button>
-        </span>
-      </div>
-
-      <!-- Guide card -->
-      <div v-if="config.cardOpen && (s.zone || wm.active.value)" :class="$style.card">
-        <div :class="$style.cardHead" data-widget-drag>
-          <span class="w-head-font">{{ current ? actLabel(current.act) : 'Campaign' }}</span>
-          <span v-if="current" class="w-faint ml-auto">{{ left }} step{{ left === 1 ? '' : 's' }} left in act</span>
-        </div>
-        <div v-if="!current" class="w-dim" :class="$style.body">Route finished. Good luck in maps.</div>
-        <div v-else :class="$style.body">
-          <div v-for="(st, i) in shown" :key="st.index" :class="i === 0 ? $style.now : $style.next">
-            <div class="flex gap-1.5">
-              <span :class="i === 0 ? 'w-accent' : 'w-faint'">{{ i === 0 ? '›' : '·' }}</span>
-              <span class="min-w-0">
-                <RouteParts :parts="st.parts" />
-                <span v-if="st.recommendedLevel != null" class="w-num" :class="lowFor(st) ? 'w-down' : 'w-faint'"> · lv {{ st.recommendedLevel }}</span>
-              </span>
-            </div>
-            <div v-for="(sub, j) in (i === 0 ? st.subs : [])" :key="j" :class="$style.sub" class="w-dim">
-              <RouteParts :parts="sub" />
-            </div>
-          </div>
-          <div v-if="note" :class="$style.callout" class="whitespace-pre-wrap">{{ note }}</div>
-
-          <CampaignBuild :config="config" :tickable="wm.active.value" />
-        </div>
-      </div>
-    </div>
-    <div v-else-if="wm.active.value" data-widget-drag :class="$style.strip" class="w-faint">Campaign tracker · hidden after the campaign</div>
   </Widget>
 </template>
 
@@ -136,7 +69,6 @@ import { AppConfig, saveConfig } from '@/web/Config'
 import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
 import { formatClock } from '../ui/format'
-import { useVisibleClock } from '../shared/visible-clock'
 import RouteParts from './RouteParts.vue'
 import DockItem from '../dock/DockItem.vue'
 import { hideWhilePlaying, tickWhile } from '../dock/dock'
@@ -144,9 +76,9 @@ import { reportProblem } from '../dock/health'
 import { actFromAreaId, actLabel } from './log-parse'
 import CampaignBuild from './CampaignBuild.vue'
 import type { LogEvent } from './log-parse'
-import { emptyState, migrateCampaign, parseHotkeyTarget } from './widget'
+import { emptyState, migrateCampaign, parseHotkeyTarget, routeAsleepAfter } from './widget'
 import type { CampaignWidget } from './widget'
-import { advanceOnEnter, resyncTo, stepsLeftInAct, upcoming, xpState } from './route-parse'
+import { actProgress, advanceOnEnter, resyncTo, upcoming, xpState } from './route-parse'
 import type { RouteStep } from './route-parse'
 import { bundledRoute, routeData } from './route-data'
 import { followGameLog } from '../shared/game-log'
@@ -189,11 +121,25 @@ watch(() => `${props.config.route.leagueStart}|${props.config.route.library}|${p
 
 const current = computed<RouteStep | undefined>(() => route.value.steps[props.config.step])
 const shown = computed(() => upcoming(route.value, props.config.step, Math.max(1, props.config.cardSteps)))
-const left = computed(() => stepsLeftInAct(route.value, props.config.step))
+const actStep = computed(() => actProgress(route.value, props.config.step))
 
 function move (by: number) {
-  props.config.step = Math.min(route.value.steps.length, Math.max(0, props.config.step + by))
+  const step = Math.min(route.value.steps.length, Math.max(0, props.config.step + by))
+  if (step !== props.config.step) stepChanged(step)
   saveConfig()
+}
+
+// A step changed: the icon grows into the next step for a moment.
+function stepChanged (step: number) {
+  props.config.step = step
+  if (caughtUp) setTimeout(peekStep, 0)
+}
+
+function openSettings () {
+  const settings = wm.widgets.value.find(w => w.wmType === 'settings')
+  if (!settings) return
+  wm.setFlag(settings.wmId, 'settings::page=Campaign & run timer', true)
+  wm.show(settings.wmId)
 }
 
 function lowFor (st: RouteStep) {
@@ -203,6 +149,14 @@ function lowFor (st: RouteStep) {
 function actShort (act: number) {
   return act === 11 ? 'Epilogue' : `A${act}`
 }
+
+// The zone you stand in and the step you're on can be in different acts (the
+// route goes back to towns), so everything about progress reads the step.
+const areaAct = computed(() => actFromAreaId(s.value.areaId))
+const dockBadge = computed(() => {
+  const act = current.value?.act ?? (areaAct.value === 11 ? 11 : null)
+  return act != null ? actShort(act) : null
+})
 
 // ---- XP band ----
 
@@ -246,9 +200,7 @@ const note = computed(() => {
 // ---- run timer (shown in this strip when the timer widget is placed) ----
 
 const now = shallowRef(Date.now())
-// Ticks only while the widget is on screen.
-useVisibleClock(() => props.config, () => { now.value = Date.now() }, 1000)
-// ...and while the dock card is open.
+// Ticks only while the card is open.
 const cardShown = shallowRef(false)
 onUnmounted(tickWhile(() => cardShown.value, () => { now.value = Date.now() }, 1000))
 
@@ -270,20 +222,11 @@ const timer = computed(() => {
   }
 })
 
-// ---- visibility ----
-
-const campaignDone = computed(() => props.config.step >= route.value.steps.length || s.value.act === 11 ||
-  (timerWidget.value?.run?.finished ?? false))
-const visible = computed(() => {
-  if (!props.config.hideAfterCampaign || !campaignDone.value) return true
-  // Still show in campaign zones (e.g. the Epilogue), hide in maps and hideouts.
-  return actFromAreaId(s.value.areaId) != null
-})
-
 // ---- dock icon ----
 
-// Campaign areas and towns only; maps, hideouts and the lab hide it.
-const dockShow = computed(() => visible.value && actFromAreaId(s.value.areaId) != null)
+// Campaign areas and towns only, while the route is awake and has steps left
+// (the Epilogue still shows it, finished). Maps, hideouts and the lab hide it.
+const dockShow = computed(() => !s.value.asleep && areaAct.value != null && (current.value != null || areaAct.value === 11))
 const dockTone = computed(() => {
   const d = timer.value?.delta
   return d == null ? 'accent' : d <= 0 ? 'up' : 'down'
@@ -293,7 +236,7 @@ const dockRef = shallowRef<InstanceType<typeof DockItem> | null>(null)
 function peekStep () {
   const step = current.value
   if (!step || !s.value.zone) return
-  dockRef.value?.peek(`${s.value.zone} · ${step.parts.map(p => p.text).join('')}`)
+  dockRef.value?.peek(`Next: ${step.parts.map(p => p.text).join('')}`)
 }
 
 // ---- Client.txt ----
@@ -314,10 +257,14 @@ function apply (ev: LogEvent): boolean {
       state.level = null
       state.gemsGot = []
     }
-    props.config.step = advanceOnEnter(route.value, props.config.step, ev.areaId, routeData)
+    state.asleep = routeAsleepAfter(state.asleep ?? false, ev.areaId)
+    // A character past the campaign doesn't walk the route by using towns.
+    if (!state.asleep) {
+      const step = advanceOnEnter(route.value, props.config.step, ev.areaId, routeData)
+      if (step !== props.config.step) stepChanged(step)
+    }
   } else if (ev.kind === 'zone') {
     state.zone = ev.name
-    if (caughtUp) setTimeout(peekStep, 0)
   } else if (ev.kind === 'level') {
     // Party members' level-ups are logged too. Follow the character named
     // in the settings, or else the first one seen, the way the run timer does.
@@ -356,7 +303,6 @@ function follow (c: SeenChar) {
   saveConfig()
 }
 
-const logMissing = shallowRef(false)
 // Replayed lines from the start-up read don't peek the next step.
 let caughtUp = false
 
@@ -379,15 +325,14 @@ followGameLog({
   since: () => props.config.state.updatedAt,
   onLines: (lines, live) => { caughtUp = live; applyLines(lines) },
   onTail: (tail) => {
-    logMissing.value = tail.path == null
-    reportProblem('client-log', logMissing.value ? 'Client.txt not found, so the campaign tracker can\'t follow you. Set its path in Settings → General.' : null)
+    reportProblem('client-log', tail.path == null ? 'Client.txt not found, so the campaign tracker can\'t follow you. Set its path in Settings → General.' : null)
   }
 })
 
 const hotkeys = MainProcess.onEvent('MAIN->CLIENT::widget-action', (e) => {
   const parsed = parseHotkeyTarget(e.target)
   if (!parsed || parsed.wmId !== props.config.wmId) return
-  if (parsed.action === 'card') props.config.cardOpen = !props.config.cardOpen
+  if (parsed.action === 'card') dockRef.value?.togglePin()
   else move(parsed.action === 'next' ? 1 : -1)
   saveConfig()
 })
@@ -398,31 +343,6 @@ onUnmounted(() => {
 </script>
 
 <style module>
-.strip {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 5px 12px;
-  background: var(--w-panel);
-  border: 1px solid var(--w-line);
-  border-radius: var(--w-r-md);
-  box-shadow: var(--w-shadow);
-  font-size: var(--w-fs-md);
-  white-space: nowrap;
-  color: var(--w-fg);
-  max-width: 64rem;
-}
-.where { font-size: var(--w-fs-lg); max-width: 18rem; }
-.char { max-width: 9rem; }
-.switch { width: auto; padding: 0 6px; gap: 4px; font-size: var(--w-fs-md); }
-.oneLine { max-width: 26rem; }
-.sep { width: 1px; align-self: stretch; background: var(--w-line); }
-.k {
-  font-size: var(--w-fs-xs);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--w-faint);
-}
 .pill {
   font-family: var(--w-num);
   font-size: var(--w-fs-xs);
@@ -433,28 +353,25 @@ onUnmounted(() => {
 .pill--safe { color: var(--w-up); background: color-mix(in srgb, var(--w-up) 15%, transparent); }
 .pill--edge { color: var(--w-warn); background: color-mix(in srgb, var(--w-warn) 15%, transparent); }
 .pill--penalty { color: var(--w-down); background: color-mix(in srgb, var(--w-down) 16%, transparent); }
-.card {
-  width: 24rem;
-  max-width: 100%;
-  background: var(--w-panel);
-  border: 1px solid var(--w-line);
-  border-radius: var(--w-r-md);
-  box-shadow: var(--w-shadow);
-  color: var(--w-fg);
-  font-size: var(--w-fs-md);
+.actHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-top: 4px;
+  font-size: var(--w-fs-xs);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--w-dim);
+}
+.prog {
+  height: 4px;
+  margin-bottom: 3px;
+  border-radius: 2px;
+  background: var(--w-line);
   overflow: hidden;
 }
-.cardHead {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  padding: 4px var(--w-pad);
-  background: var(--w-header-bg);
-  border-bottom: 1px solid var(--w-line);
-  color: var(--w-accent);
-  font-size: var(--w-fs-md);
-}
-.cardHead :global(.w-faint) { font-size: var(--w-fs-xs); }
+.prog i { display: block; height: 100%; background: var(--w-accent); }
+.textBtn { width: auto; padding: 0 6px; gap: 4px; font-size: var(--w-fs-sm); }
 .body {
   display: flex;
   flex-direction: column;
