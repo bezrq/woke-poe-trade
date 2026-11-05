@@ -27,13 +27,15 @@ test('regex library icon: a click opens the card, and its strings can be clicked
   await expect(entry).toBeVisible({ timeout: 200 })
   await expect(entry).toHaveCount(0, { timeout: 2000 })
 
-  // Resting on the icon opens it too; moving onto a string makes it clickable.
+  // Resting on the icon opens it too. Over a string the game keeps focus (keys
+  // still reach it) while the card takes the click.
   await overlay.hoverDockIcon('regex-library')
   await expect(entry).toBeVisible({ timeout: 2000 })
   expect(fakeApp.game.focused).toBe(true)
   const box = await entry.boundingBox()
   await overlay.moveMouse(Math.round(box!.x + box!.width / 2), Math.round(box!.y + box!.height / 2))
-  await expect.poll(() => fakeApp.game.focused).toBe(false)
+  await expect(entry).toBeVisible()
+  expect(fakeApp.game.focused).toBe(true)
   await entry.click()
   await expect.poll(() => fakeApp.game.stashSearches).toEqual(['"!eflec"'])
   expect(fakeApp.game.focused).toBe(true)
