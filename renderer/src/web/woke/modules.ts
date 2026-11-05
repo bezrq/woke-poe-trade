@@ -23,7 +23,7 @@ export interface ModuleDef {
   description: string
   group: ModuleGroup
   widgetTypes: string[]
-  // One icon everywhere (tab bar, dock, settings): Font Awesome, plus game
+  // One icon everywhere (rail, dock, settings): Font Awesome, plus game
   // art when there is some (resolved by moduleIcon in ui/game-icons.ts).
   icon: ModuleIcon
   needs: ModuleNeed[]

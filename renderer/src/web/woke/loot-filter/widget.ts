@@ -1,6 +1,8 @@
 import type { Widget, Anchor } from '@/web/overlay/widgets'
 import { isPatch, isValidEdit } from './edits'
 import type { FilterEdit } from './edits'
+import { emptyTimeline, normalizeTimeline } from './timeline'
+import type { Timeline } from './timeline'
 import { DEFAULT_BUILD_RULES } from './build-rules'
 import type { BuildRuleSwitches } from './build-rules'
 import type { PriceMove, UniqueRule } from './economy'
@@ -110,6 +112,8 @@ export interface LootFilterWidget extends Widget {
   presets: Presets
   // "Not for me" on a valuable hidden item: its price then, by group|base.
   healthDismissed: Record<string, number>
+  // Your changes step by step, for undo and redo.
+  timeline: Timeline
   // Dock icon notices you've turned off, and what each said when you pressed Got it.
   noticesOff: string[]
   noticesSeen: Record<string, string | number>
@@ -147,6 +151,7 @@ export function initLootFilterWidget (w: LootFilterWidget) {
   w.rules = []
   w.presets = defaultPresets()
   w.healthDismissed = {}
+  w.timeline = emptyTimeline()
   w.noticesOff = []
   w.noticesSeen = {}
   w.stricterHotkey = 'Alt + BracketRight'
@@ -230,6 +235,7 @@ export function normalizeLootFilterWidget (w: LootFilterWidget) {
   w.rules = w.rules.filter(r => r && typeof r.id === 'number' && Array.isArray(r.conditions) && isPatch(r.patch))
   w.presets = normalizePresets(w.presets)
   if (!w.healthDismissed || typeof w.healthDismissed !== 'object') w.healthDismissed = {}
+  w.timeline = normalizeTimeline(w.timeline)
   if (!Array.isArray(w.noticesOff)) w.noticesOff = []
   if (!w.noticesSeen || typeof w.noticesSeen !== 'object') w.noticesSeen = {}
   if (w.stricterHotkey === undefined) w.stricterHotkey = 'Alt + BracketRight'
