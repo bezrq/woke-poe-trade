@@ -120,11 +120,21 @@ function only (c: FilterCondition, applies: boolean | null, actual: number | und
   return applies === false ? false : numeric(c, actual)
 }
 
+// BaseType lists run to hundreds of names, and a walk asks every one of them.
+const baseSets = new WeakMap<FilterCondition, Set<string>>()
+
+function isBase (c: FilterCondition, base: string | undefined): Tri {
+  if (base == null) return null
+  let set = baseSets.get(c)
+  if (!set) baseSets.set(c, set = new Set(c.values))
+  return set.has(base)
+}
+
 export function evalCondition (c: FilterCondition, item: ItemFacts): Tri {
   const cls = item.itemClass
   switch (c.key) {
     case 'Class': return strings(c, item.itemClass)
-    case 'BaseType': return strings(c, item.baseType)
+    case 'BaseType': return c.op === '==' && c.count == null ? isBase(c, item.baseType) : strings(c, item.baseType)
     case 'Rarity': return rarity(c, item.rarity)
     case 'ItemLevel': return numeric(c, item.itemLevel)
     case 'DropLevel': return numeric(c, item.dropLevel)
@@ -187,14 +197,27 @@ function mergeActions (base: FilterAction[], top: FilterAction[]): FilterAction[
   return [...out, ...top]
 }
 
-export function matchItem (doc: FilterDoc, item: ItemFacts): MatchResult {
+// `brief`: stops at the first failed condition, for walks that only want the
+// outcome. A block that fails then lists fewer condition results.
+function evalBlockBrief (block: FilterBlock, item: ItemFacts): BlockMatch {
+  let result: Tri = true
+  for (const condition of block.conditions) {
+    const r = evalCondition(condition, item)
+    if (r === false) return { block, result: false, conditions: [] }
+    if (r === null) result = null
+  }
+  return { block, result, conditions: [] }
+}
+
+export function matchItem (doc: FilterDoc, item: ItemFacts, opts: { brief?: boolean } = {}): MatchResult {
   const layers: BlockMatch[] = []
   const uncertain: BlockMatch[] = []
   let actions: FilterAction[] = []
   let visibility: MatchResult['visibility'] = 'Show'
+  const evaluate = opts.brief ? evalBlockBrief : evalBlock
   for (const block of doc.blocks) {
     if (block.disabled) continue
-    const m = evalBlock(block, item)
+    const m = evaluate(block, item)
     if (m.result === false) continue
     if (m.result === null) {
       // Continue blocks only layer style, so they can't steal the item.
