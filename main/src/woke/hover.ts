@@ -50,6 +50,11 @@ export class WokeHoverTracker {
       this.flat = [...this.zones.values()].flat()
       this.updateListening()
     })
+    // A button on an `activate` zone opened something that needs the overlay
+    // (settings): leaving the zone no longer hands focus back to the game.
+    this.server.onEventAnyClient('OVERLAY->MAIN::woke-hover-keep', () => {
+      this.activatedByUs = false
+    })
   }
 
   private updateListening () {

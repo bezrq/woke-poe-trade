@@ -1,6 +1,7 @@
 import type { Widget, Anchor } from '@/web/overlay/widgets'
 import { actFromAreaId, isTown } from './log-parse'
 import { DEFAULT_ROUTE_OPTIONS } from './route-parse'
+import type { PinId } from './pins'
 import type { RouteOptions } from './route-parse'
 
 export const CAMPAIGN_TYPE = 'woke-campaign'
@@ -39,6 +40,8 @@ export interface CampaignWidget extends Widget {
   // Built-in route (exile-leveling) options and progress.
   route: RouteOptions
   step: number
+  // Values kept on screen in the icon (none by default).
+  pins: PinId[]
   // How many route steps the card lists (current one included).
   cardSteps: number
   hotkeyCard: string | null
@@ -55,6 +58,7 @@ export function migrateCampaign (w: CampaignWidget) {
   if (!w.route) w.route = { ...DEFAULT_ROUTE_OPTIONS }
   if (typeof w.step !== 'number') w.step = 0
   if (w.cardSteps === undefined) w.cardSteps = 3
+  if (!Array.isArray(w.pins)) w.pins = []
   if (w.hotkeyCard === undefined) w.hotkeyCard = null
   if (w.hotkeyNext === undefined) w.hotkeyNext = null
   if (w.hotkeyPrev === undefined) w.hotkeyPrev = null

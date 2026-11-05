@@ -2,10 +2,11 @@
   <Widget :config="config" move-handles="none" :inline-edit="false" :readonly="true">
     <!-- The tracker is only this icon and its card, with the overlay open too. -->
     <DockItem ref="dockRef" id="campaign" title="Campaign" :show="dockShow"
-      :badge="dockBadge" :tone="dockTone" :progress="actStep ? actStep.done / actStep.total : null"
+      :badge="dockBadge" :tone="dockTone" :progress="actStep ? actStep.done / actStep.total : null" :readouts="readouts"
       pinnable card-width="24rem" @open-change="cardShown = $event">
       <template #card>
         <div :class="$style.body">
+          <button ref="pinBtn" class="w-icon-btn" :class="[$style.textBtn, $style.pinBtn]" title="Choose what stays on screen" @click="openSettings"><i class="fas fa-thumbtack text-xs" /> Pin to screen</button>
           <div class="flex items-baseline gap-2">
             <span class="w-head-font w-accent w-trunc" :title="s.charName ? `Following ${s.charName}'s level-ups` : undefined">{{ s.zone || 'Waiting for a zone change' }}</span>
             <span v-if="s.level != null" class="ml-auto w-num whitespace-nowrap" :title="xpTitle">Lv {{ s.level }}
@@ -31,17 +32,18 @@
             <span v-if="timer.paused" style="color: var(--w-warn);">paused</span>
             <span v-if="timer.act" class="ml-auto w-dim">act {{ formatClock(timer.act) }}</span>
           </div>
-          <CampaignBuild :config="config" :tickable="wm.active.value" :show-tree="wm.active.value" :max-links="wm.active.value ? 2 : 1" />
-          <!-- Clicks only reach the card with the overlay open. -->
-          <div v-if="wm.active.value" class="flex flex-wrap items-center gap-1" :class="$style.build">
+          <!-- Pinned by a click: the overlay is open, so show what can be clicked.
+               Not on overlay-open alone: resting on the pin button opens the
+               overlay, and a card changing height would move the button away. -->
+          <CampaignBuild :config="config" :tickable="expanded" :show-tree="expanded" :max-links="expanded ? 2 : 1" />
+          <div v-if="expanded" class="flex flex-wrap items-center gap-1" :class="$style.build">
             <button class="w-icon-btn" :class="$style.textBtn" @click="move(-1)"><i class="fas fa-chevron-left text-xs" /> Step back</button>
             <button class="w-icon-btn" :class="$style.textBtn" @click="move(1)">Step done <i class="fas fa-chevron-right text-xs" /></button>
-            <button v-if="timerWidget" class="w-icon-btn" :class="[$style.textBtn, { 'w-icon-btn--on': timerWidget.expanded }]" @click="timerWidget.expanded = !timerWidget.expanded"><i class="fas fa-stopwatch text-xs" /> Splits</button>
+            <button v-if="timerWidget" class="w-icon-btn" :class="[$style.textBtn, { 'w-icon-btn--on': timerWidget.expanded }]" @click="toggleSplits"><i class="fas fa-stopwatch text-xs" /> Splits</button>
             <button v-if="otherChar" class="w-icon-btn" :class="$style.textBtn"
               :title="`Follow ${otherChar.charName} (${otherChar.className}, level ${otherChar.level}) instead`" @click="follow(otherChar)">
               <i class="fas fa-exchange-alt text-xs" /> {{ otherChar.charName }}
             </button>
-            <button class="w-icon-btn ml-auto" :class="$style.textBtn" @click="openSettings"><i class="fas fa-cog text-xs" /> Settings</button>
           </div>
         </div>
       </template>
@@ -64,7 +66,7 @@ export default {
 
 <script setup lang="ts">
 import { inject, computed, reactive, shallowRef, watch, onUnmounted } from 'vue'
-import { MainProcess } from '@/web/background/IPC'
+import { Host, MainProcess } from '@/web/background/IPC'
 import { AppConfig, saveConfig } from '@/web/Config'
 import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
@@ -73,6 +75,8 @@ import RouteParts from './RouteParts.vue'
 import DockItem from '../dock/DockItem.vue'
 import { hideWhilePlaying, tickWhile } from '../dock/dock'
 import { reportProblem } from '../dock/health'
+import { useHoverZone } from '../shared/hover'
+import { pinnedReadouts, pinsTick } from './pins'
 import { actFromAreaId, actLabel } from './log-parse'
 import CampaignBuild from './CampaignBuild.vue'
 import type { LogEvent } from './log-parse'
@@ -108,6 +112,8 @@ if (props.config.wmFlags[0] === 'uninitialized') {
 }
 migrateCampaign(props.config)
 hideWhilePlaying(props.config)
+// Nothing to open from the tab bar: the icon is the whole tracker.
+if (!props.config.wmFlags.includes('menu::skip')) props.config.wmFlags = [...props.config.wmFlags, 'menu::skip']
 
 const s = computed(() => props.config.state)
 
@@ -116,7 +122,10 @@ const s = computed(() => props.config.state)
 const route = computed(() => bundledRoute(props.config.route))
 // Options changed: the step list is different, so find our place again.
 watch(() => `${props.config.route.leagueStart}|${props.config.route.library}|${props.config.route.bandit}`, () => {
-  if (props.config.state.areaId) props.config.step = resyncTo(route.value, props.config.state.areaId)
+  // Asleep, or somewhere the route never goes (a map, a hideout): keep the place.
+  if (props.config.state.asleep || !props.config.state.areaId) return
+  const step = resyncTo(route.value, props.config.state.areaId)
+  if (step > 0) props.config.step = step
 })
 
 const current = computed<RouteStep | undefined>(() => route.value.steps[props.config.step])
@@ -125,7 +134,10 @@ const actStep = computed(() => actProgress(route.value, props.config.step))
 
 function move (by: number) {
   const step = Math.min(route.value.steps.length, Math.max(0, props.config.step + by))
-  if (step !== props.config.step) stepChanged(step)
+  if (step !== props.config.step) {
+    props.config.step = step
+    setTimeout(peekStep, 0)
+  }
   saveConfig()
 }
 
@@ -135,9 +147,19 @@ function stepChanged (step: number) {
   if (caughtUp) setTimeout(peekStep, 0)
 }
 
+// The splits panel opens where the card may be, so the card lets go.
+function toggleSplits () {
+  const w = timerWidget.value
+  if (!w) return
+  w.expanded = !w.expanded
+  if (w.expanded) dockRef.value?.togglePin()
+}
+
 function openSettings () {
   const settings = wm.widgets.value.find(w => w.wmType === 'settings')
   if (!settings) return
+  // The overlay may be open only because the mouse rests on this button.
+  Host.sendEvent({ name: 'OVERLAY->MAIN::woke-hover-keep', payload: undefined })
   wm.setFlag(settings.wmId, 'settings::page=Campaign & run timer', true)
   wm.show(settings.wmId)
 }
@@ -200,9 +222,7 @@ const note = computed(() => {
 // ---- run timer (shown in this strip when the timer widget is placed) ----
 
 const now = shallowRef(Date.now())
-// Ticks only while the card is open.
 const cardShown = shallowRef(false)
-onUnmounted(tickWhile(() => cardShown.value, () => { now.value = Date.now() }, 1000))
 
 const timerWidget = computed(() => {
   const cfg = AppConfig()
@@ -227,11 +247,36 @@ const timer = computed(() => {
 // Campaign areas and towns only, while the route is awake and has steps left
 // (the Epilogue still shows it, finished). Maps, hideouts and the lab hide it.
 const dockShow = computed(() => !s.value.asleep && areaAct.value != null && (current.value != null || areaAct.value === 11))
+// Ticks only while the card is open, or the icon shows a pinned time.
+onUnmounted(tickWhile(() => cardShown.value || (dockShow.value && pinsTick(props.config.pins)), () => { now.value = Date.now() }, 1000))
 const dockTone = computed(() => {
   const d = timer.value?.delta
   return d == null ? 'accent' : d <= 0 ? 'up' : 'down'
 })
 const dockRef = shallowRef<InstanceType<typeof DockItem> | null>(null)
+const expanded = computed(() => dockRef.value?.clickPinned ?? false)
+
+// Only this button makes the overlay clickable: the card stays see-through,
+// so hovering it to read a step never opens the overlay.
+const pinBtn = shallowRef<HTMLElement | null>(null)
+useHoverZone(pinBtn, { enabled: () => cardShown.value, activate: () => true })
+
+const readouts = computed(() => {
+  const w = timerWidget.value
+  const run = w?.run ?? null
+  return pinnedReadouts({
+    pins: props.config.pins,
+    run,
+    // No run yet can also mean the timer widget hasn't filled itself in.
+    cmp: w && run ? comparisonRun(w) : null,
+    now: now.value,
+    delta: timer.value?.delta ?? null,
+    actMs: timer.value?.act ?? null,
+    level: s.value.level,
+    xp: xp.value,
+    step: current.value ? current.value.parts.map(p => p.text).join('') : null
+  })
+})
 
 function peekStep () {
   const step = current.value
@@ -333,7 +378,7 @@ const hotkeys = MainProcess.onEvent('MAIN->CLIENT::widget-action', (e) => {
   const parsed = parseHotkeyTarget(e.target)
   if (!parsed || parsed.wmId !== props.config.wmId) return
   if (parsed.action === 'card') dockRef.value?.togglePin()
-  else move(parsed.action === 'next' ? 1 : -1)
+  else if (!props.config.state.asleep) move(parsed.action === 'next' ? 1 : -1)
   saveConfig()
 })
 
@@ -371,6 +416,7 @@ onUnmounted(() => {
   overflow: hidden;
 }
 .prog i { display: block; height: 100%; background: var(--w-accent); }
+.pinBtn { align-self: flex-end; margin-bottom: 2px; }
 .textBtn { width: auto; padding: 0 6px; gap: 4px; font-size: var(--w-fs-sm); }
 .body {
   display: flex;

@@ -30,6 +30,8 @@ export interface DockItemProps {
   // Widget to open when the icon is clicked with the overlay open.
   wmId?: number
   cardWidth?: string
+  // Values kept on screen beside the icon.
+  readouts?: Array<{ id: string, text: string, tone: 'up' | 'down' | 'dim' | null }>
   // A ring around the icon, 0 to 1.
   progress?: number | null
   // With the overlay open, a click keeps the card open until the next click.
@@ -148,6 +150,11 @@ export function registerDockEntry (props: DockItemProps, slots: Slots, onOpen: (
   })
   dockEntries.value = [...dockEntries.value, entry]
   return entry
+}
+
+// Whether a module's icon is actually in the row right now.
+export function dockIconShowing (id: string): boolean {
+  return !dockConfig().hidden.includes(id) && dockEntries.value.some(e => e.props.id === id && e.props.show)
 }
 
 export function unregisterDockEntry (entry: DockEntry) {

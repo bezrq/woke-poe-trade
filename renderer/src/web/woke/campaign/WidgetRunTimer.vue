@@ -175,7 +175,7 @@ import { formatClock } from '../ui/format'
 import { useVisibleClock } from '../shared/visible-clock'
 import { WPanel, WTabs, WChip, WEmpty, toast } from '../ui'
 import DockItem from '../dock/DockItem.vue'
-import { hideWhilePlaying, tickWhile } from '../dock/dock'
+import { dockIconShowing, hideWhilePlaying, tickWhile } from '../dock/dock'
 import { actLabel } from './log-parse'
 import {
   applyRunEvent, comparisonRun, endRun, formatDelta, headlineDelta, isComplete,
@@ -213,7 +213,8 @@ if (!props.config.lastLogAt) props.config.lastLogAt = Date.now()
 // shows the splits panel.
 const docked = computed(() => {
   const cfg = AppConfig()
-  return isWidgetTypeOn(cfg, CAMPAIGN_TYPE) && cfg.widgets.some(w => w.wmType === CAMPAIGN_TYPE && w.wmWants === 'show')
+  // Only while its icon is there to reach the run from, not in maps or asleep.
+  return isWidgetTypeOn(cfg, CAMPAIGN_TYPE) && cfg.widgets.some(w => w.wmType === CAMPAIGN_TYPE) && dockIconShowing('campaign')
 })
 
 const tab = shallowRef<'splits' | 'history'>('splits')

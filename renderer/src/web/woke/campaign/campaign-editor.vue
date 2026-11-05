@@ -33,6 +33,14 @@
       </div>
     </div>
 
+    <div>
+      <div class="mb-1">On screen while levelling</div>
+      <div class="w-dim text-sm mb-1">Off by default. These widen the campaign icon, and never show in maps, hideouts or on a character past the campaign. Times need the Run timer.</div>
+      <div class="flex flex-col gap-1">
+        <w-toggle v-for="o in PIN_OPTIONS" :key="o.id" :model-value="configWidget.pins.includes(o.id)" @update:model-value="togglePin(o.id)">{{ o.label }}</w-toggle>
+      </div>
+    </div>
+
     <div class="grid gap-2 items-center" style="grid-template-columns: auto 1fr;">
       <span>Hotkey: keep the card open</span>
       <w-hotkey-cell v-model="hotkeyCard" />
@@ -88,6 +96,8 @@ import WHotkeyCell from '../ui/WHotkeyCell.vue'
 import { configProp, configModelValue } from '@/web/settings/utils'
 import { nextId } from '../shared/library'
 import { actLabel } from './log-parse'
+import { PIN_OPTIONS } from './pins'
+import type { PinId } from './pins'
 import { migrateCampaign } from './widget'
 import type { CampaignWidget } from './widget'
 import { bundledRoute } from './route-data'
@@ -107,6 +117,11 @@ export default defineComponent({
     }
     return {
       BANDITS,
+      PIN_OPTIONS,
+      togglePin (id: PinId) {
+        const pins = props.configWidget.pins
+        props.configWidget.pins = pins.includes(id) ? pins.filter(p => p !== id) : [...pins, id]
+      },
       acts: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
       actLabel,
       total: computed(() => bundledRoute(props.configWidget.route).steps.length),

@@ -52,11 +52,23 @@ test('nothing from the tracker on screen with the overlay open but the icon, and
   await overlay.page.mouse.move(5, 5)
   await overlay.page.waitForTimeout(500)
   await expect(icon).toContainText('Step done')
-  await icon.getByRole('button', { name: 'Settings' }).waitFor()
+  await icon.getByRole('button', { name: 'Step back' }).waitFor()
 
   await icon.locator('span').first().click()
   await overlay.page.mouse.move(5, 5)
   await expect(icon).not.toContainText('Step done')
+})
+
+test('pinned values stay on the icon and go when the route sleeps; the card opens settings', async ({ overlay, fakeApp }) => {
+  await overlay.boot({ widgets: [{ ...CAMPAIGN, pins: ['level'] }], overlayActive: true })
+  await overlay.replayLog('client-logs/campaign-act1.txt')
+  const icon = overlay.dockIcon('campaign')
+  await expect(icon).toContainText('Lv 13')
+  await overlay.snap('pinned level in the icon')
+
+  await icon.hover()
+  await icon.getByRole('button', { name: 'Pin to screen' }).click()
+  await expect(overlay.page.getByText('On screen while levelling')).toBeVisible()
 })
 
 test('run timer splits act 1 when act 2 starts, with the run time on the tracker card', async ({ overlay, fakeApp }) => {

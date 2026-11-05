@@ -1,6 +1,6 @@
 <template>
   <span ref="rootEl" :class="$style.root" :data-dock="host.props.id">
-    <span ref="iconEl" :class="[$style.icon, { [$style.peek]: peekText, [$style.hot]: cardOpen }]"
+    <span ref="iconEl" :class="[$style.icon, { [$style.peek]: peekText, [$style.hot]: cardOpen, [$style.withRead]: readouts.length }]"
       :title="wm.active.value ? `${host.props.title}${host.props.wmId != null ? ' · click to open' : ''}` : undefined"
       @click="click">
       <svg v-if="host.props.progress != null" :class="$style.ring" width="36" height="36" viewBox="0 0 36 36" aria-hidden="true">
@@ -12,6 +12,9 @@
         <i v-else :class="dockIcon(host.props)" />
       </span>
       <span v-if="peekText" :class="$style.peekText">{{ peekText }}</span>
+      <template v-else>
+        <span v-for="r in readouts" :key="r.id" :class="[$style.read, r.tone && $style['read-' + r.tone]]">{{ r.text }}</span>
+      </template>
       <span v-if="badge != null && badge !== ''" :class="[$style.badge, $style['tone-' + (host.props.tone ?? 'accent')]]">{{ badge }}</span>
       <span v-if="host.props.led" :class="[$style.led, $style['led-' + host.props.led]]" />
     </span>
@@ -32,7 +35,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, defineComponent, inject, onUnmounted, shallowRef, useCssModule, watch } from 'vue'
+import { computed, defineComponent, inject, onMounted, onUnmounted, shallowRef, useCssModule, watch } from 'vue'
 import type { PropType } from 'vue'
 import type { WidgetManager } from '@/web/overlay/interfaces'
 import { AppConfig } from '@/web/Config'
@@ -54,6 +57,7 @@ const iconEl = shallowRef<HTMLElement | null>(null)
 const cardEl = shallowRef<HTMLElement | null>(null)
 
 const badge = computed(() => props.host.props.badge)
+const readouts = computed(() => props.host.props.readouts ?? [])
 
 // Game art, with the Font Awesome icon as fallback if it doesn't load.
 const artFailed = shallowRef(false)
@@ -104,6 +108,12 @@ function tellOpen (open: boolean) {
 watch(cardOpen, (open) => {
   if (open) place()
   tellOpen(open)
+})
+// Back after being unmounted (settings open) with a pinned card: nothing changed to trigger the watch.
+onMounted(() => {
+  if (!cardOpen.value) return
+  place()
+  tellOpen(true)
 })
 watch(() => [props.host, ...props.extras], () => { tellOpen(cardOpen.value) })
 onUnmounted(() => {
@@ -170,6 +180,11 @@ const styles = useCssModule()
 .ringFill { fill: none; stroke: var(--w-accent); stroke-width: 2.5; }
 .glyph { width: 28px; display: grid; place-items: center; font-size: 13px; }
 .art { width: 20px; height: 20px; object-fit: contain; }
+.withRead { opacity: 0.85; gap: 8px; padding-right: 12px; background: var(--w-panel); }
+.read { font-size: 12px; color: var(--w-fg); white-space: nowrap; max-width: 18rem; overflow: hidden; text-overflow: ellipsis; }
+.read-up { color: var(--w-up); }
+.read-down { color: var(--w-down); }
+.read-dim { color: var(--w-dim); }
 .peekText { font-size: 12px; color: var(--w-fg); white-space: nowrap; max-width: 30rem; overflow: hidden; text-overflow: ellipsis; }
 .badge {
   position: absolute;
