@@ -153,7 +153,8 @@ export function applyStyle (block: FilterBlock, patch: StylePatch): void {
   if (patch.sound !== undefined) {
     const custom = patch.sound != null && /\.(mp3|wav|ogg)$/i.test(patch.sound.id)
     const all = ['PlayAlertSound', 'PlayAlertSoundPositional', 'CustomAlertSound', 'CustomAlertSoundOptional']
-    const key = custom ? 'CustomAlertSound' : 'PlayAlertSound'
+    // woke: Optional, because the game refuses a whole filter over a missing file.
+    const key = custom ? 'CustomAlertSoundOptional' : 'PlayAlertSound'
     actions = setAction(actions, key, patch.sound ? [patch.sound.id, String(patch.sound.volume)] : null, all.filter(k => k !== key))
   }
   if (patch.effect !== undefined) {

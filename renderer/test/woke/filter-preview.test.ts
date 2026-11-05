@@ -118,12 +118,12 @@ describe('loot shower', () => {
 })
 
 describe('custom sounds', () => {
-  it('a sound file is written as CustomAlertSound, a number as PlayAlertSound', () => {
+  it('a sound file is written as CustomAlertSoundOptional, a number as PlayAlertSound', () => {
     const doc = parseFilter(SOURCE)
     const b = doc.blocks.find(x => x.tier === 't1exalted')!
     applyStyle(b, { sound: { id: '2currency.mp3', volume: 250 } })
-    expect(b.actions.filter(a => a.key.includes('AlertSound')).map(a => [a.key, ...a.args])).toEqual([['CustomAlertSound', '2currency.mp3', '250']])
-    expect(serializeFilter(doc)).toContain('CustomAlertSound "2currency.mp3" 250')
+    expect(b.actions.filter(a => a.key.includes('AlertSound')).map(a => [a.key, ...a.args])).toEqual([['CustomAlertSoundOptional', '2currency.mp3', '250']])
+    expect(serializeFilter(doc)).toContain('CustomAlertSoundOptional "2currency.mp3" 250')
     expect(readStyle(b.actions).sound).toEqual({ id: '2currency.mp3', volume: 250 })
     expect(customSoundsIn(doc)).toEqual(['2currency.mp3'])
 

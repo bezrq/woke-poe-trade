@@ -6,7 +6,8 @@ import path from 'path'
 import { app, net } from 'electron'
 import ini from 'ini'
 
-const RAW = 'https://raw.githubusercontent.com/NeverSinkDev/NeverSink-Filter/master/'
+const RAW = 'https://raw.githubusercontent.com/NeverSinkDev/NeverSink-Filter/'
+const LATEST_RELEASE = 'https://api.github.com/repos/NeverSinkDev/NeverSink-Filter/releases/latest'
 
 export const LEVELS = ['0-SOFT', '1-REGULAR', '2-SEMI-STRICT', '3-STRICT', '4-VERY-STRICT', '5-UBER-STRICT', '6-UBER-PLUS-STRICT']
 
@@ -37,11 +38,24 @@ function checkVersion (v: unknown): string {
   return v
 }
 
-function remoteName (level: number, style: string): string {
+function remoteName (ref: string, level: number, style: string): string {
   const file = style
     ? `(STYLE) ${style}/NeverSink's filter - ${LEVELS[level]} (${style.toLowerCase()}) .filter`
     : `NeverSink's filter - ${LEVELS[level]}.filter`
-  return RAW + file.split('/').map(encodeURIComponent).join('/')
+  return `${RAW}${encodeURIComponent(ref)}/${file.split('/').map(encodeURIComponent).join('/')}`
+}
+
+// woke: the latest release, not whatever master holds right now, so an unfinished
+// commit never reaches a player. With no answer about releases, master.
+async function releaseRef (): Promise<string> {
+  try {
+    const res = await net.fetch(LATEST_RELEASE, { headers: { ...HEADERS, Accept: 'application/vnd.github+json' } })
+    if (!res.ok) return 'master'
+    const tag = (await res.json() as { tag_name?: unknown }).tag_name
+    return typeof tag === 'string' && tag ? tag : 'master'
+  } catch {
+    return 'master'
+  }
 }
 
 function localFile (version: string, style: string, level: number): string {
@@ -62,12 +76,13 @@ export function versionOf (text: string): string | null {
 
 // The newest version on GitHub and the top of its changelog.
 export async function latestNeverSink (): Promise<{ version: string, changes: string }> {
-  const head = await get(remoteName(1, ''), 'bytes=0-4095')
+  const ref = await releaseRef()
+  const head = await get(remoteName(ref, 1, ''), 'bytes=0-4095')
   const version = versionOf(head)
   if (!version) throw new Error('No version line in NeverSink\'s filter')
   let changes = ''
   try {
-    const log = await get(RAW + 'CHANGELOG.md', 'bytes=0-6143')
+    const log = await get(`${RAW}${encodeURIComponent(ref)}/CHANGELOG.md`, 'bytes=0-6143')
     // The first version section only.
     const parts = log.split(/^-{10,}\s*$/m)
     const at = parts.findIndex(p => p.includes(`VERSION ${version}`))
@@ -80,7 +95,8 @@ export async function latestNeverSink (): Promise<{ version: string, changes: st
 // version actually downloaded (master can move on between check and download).
 export async function downloadNeverSink (args: { style?: string }): Promise<{ version: string }> {
   const style = checkStyle(args?.style ?? '')
-  const texts = await Promise.all(LEVELS.map((_, i) => get(remoteName(i, style))))
+  const ref = await releaseRef()
+  const texts = await Promise.all(LEVELS.map((_, i) => get(remoteName(ref, i, style))))
   const version = versionOf(texts[1])
   if (!version) throw new Error('Downloaded filter has no version line')
   if (texts.some(t => versionOf(t) !== version)) throw new Error('GitHub changed while downloading, try again')

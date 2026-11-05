@@ -9,8 +9,11 @@
 // Guards so labels don't change for bad reasons:
 //  - items with gaps in their price history (thin, easy to fake) never move;
 //  - items you moved yourself are locked;
-//  - an item has to clear a boundary by a buffer (20%) before it moves, so a
-//    price sitting on a line doesn't flip back and forth every day;
+//  - an item has to clear a boundary by a buffer before it moves, so a price
+//    sitting on a line doesn't flip back and forth every day. Going down takes
+//    a bigger move (50%) than going up (20%): a wrong step down can hide a
+//    drop, and a wrong step up only costs a click;
+//  - a price that jumped or crashed this week (volatile) waits;
 //  - groups whose tiers aren't ordered by price are left alone.
 import type { FilterBlock, FilterDoc } from './parse'
 import { applyEdits, blockHasBase, blocksOf } from './edits'
@@ -51,6 +54,8 @@ export const ECONOMY_GROUPS: EconomyGroup[] = [
 export interface PricePoint {
   chaos: number
   thin: boolean
+  // Jumped or crashed lately: a fixer's listing as often as a real move.
+  volatile?: boolean
   // For uniques: which unique set the price.
   note?: string
 }
@@ -119,7 +124,7 @@ export function priceLookup (
   return (group, base) => {
     if (!group.unique) {
       const hit = find(group.ninja, base)
-      return hit ? { chaos: hit.chaos, thin: isThin(hit) } : null
+      return hit ? { chaos: hit.chaos, thin: isThin(hit), volatile: isVolatile(hit) } : null
     }
     // Replicas have their own NeverSink blocks above the unique tiers, so
     // they never land in them and must not set the base's price.
@@ -131,8 +136,14 @@ export function priceLookup (
     // "max": the base is worth what its best unique is worth, so a valuable
     // unique is never hidden because it shares a base with junk.
     const pick = priced.reduce((a, b) => (rule === 'max' ? b.chaos > a.chaos : b.chaos < a.chaos) ? b : a)
-    return { chaos: pick.chaos, thin: isThin(pick), note: priced.length > 1 ? `${pick.name}, 1 of ${priced.length}` : pick.name }
+    return { chaos: pick.chaos, thin: isThin(pick), volatile: isVolatile(pick), note: priced.length > 1 ? `${pick.name}, 1 of ${priced.length}` : pick.name }
   }
+}
+
+// Tripled or fell to a third within the week, or doubled or halved in a day.
+export function isVolatile (i: { chaos: number, d1?: number, d7?: number }): boolean {
+  const moved = (from: number | undefined, by: number) => from != null && from > 0 && (i.chaos / from >= by || i.chaos / from <= 1 / by)
+  return moved(i.d7, 3) || moved(i.d1, 2)
 }
 
 // What the net and the health list judge by: always a base's best unique, and
@@ -179,6 +190,8 @@ export interface PriceMove {
   to: string
   chaos: number
   note?: string
+  // The tier it goes to is hidden at this strictness.
+  hides?: boolean
 }
 
 export interface PriceSkip {
@@ -188,7 +201,7 @@ export interface PriceSkip {
   chaos: number
   // Where the price alone would have put it.
   wanted: string
-  reason: 'thin' | 'locked'
+  reason: 'thin' | 'locked' | 'volatile'
 }
 
 export interface GroupReport {
@@ -208,6 +221,7 @@ export interface PlanOptions {
   // `${type}|${base}` keys of items the user placed by hand.
   locked?: Set<string>
   buffer?: number
+  bufferDown?: number
   groups?: EconomyGroup[]
 }
 
@@ -221,6 +235,7 @@ function median (values: number[]): number {
 
 export function planRetier (doc: FilterDoc, lookup: PriceLookup, opts: PlanOptions = {}): RetierPlan {
   const buffer = opts.buffer ?? 0.2
+  const bufferDown = opts.bufferDown ?? opts.buffer ?? 0.5
   const locked = opts.locked ?? new Set<string>()
   const plan: RetierPlan = { moves: [], skipped: [], groups: [] }
 
@@ -285,7 +300,7 @@ export function planRetier (doc: FilterDoc, lookup: PriceLookup, opts: PlanOptio
       const cur = anchors.indexOf(band)
       if (cur < 0) continue
       const up = bandFor(price.chaos / (1 + buffer))
-      const down = bandFor(price.chaos * (1 + buffer))
+      const down = bandFor(price.chaos * (1 + bufferDown))
       const target = up < cur ? up : (down > cur ? down : cur)
       if (target === cur) continue
       const to = anchors[target].tier
@@ -293,8 +308,12 @@ export function planRetier (doc: FilterDoc, lookup: PriceLookup, opts: PlanOptio
         plan.skipped.push({ type: group.type, base, tier: band.tier, chaos: price.chaos, wanted: to, reason: 'locked' })
       } else if (price.thin) {
         plan.skipped.push({ type: group.type, base, tier: band.tier, chaos: price.chaos, wanted: to, reason: 'thin' })
+      } else if (price.volatile) {
+        plan.skipped.push({ type: group.type, base, tier: band.tier, chaos: price.chaos, wanted: to, reason: 'volatile' })
       } else {
-        plan.moves.push({ type: group.type, base, from: band.tier, to, chaos: price.chaos, note: price.note })
+        const toBlocks = blocks.filter(b => b.tier === to)
+        const hides = toBlocks.length > 0 && toBlocks.every(b => b.visibility === 'Hide')
+        plan.moves.push({ type: group.type, base, from: band.tier, to, chaos: price.chaos, note: price.note, ...(hides ? { hides } : {}) })
       }
     }
   }
@@ -318,11 +337,12 @@ export function mergeMoves (stored: PriceMove[], next: PriceMove[]): PriceMove[]
   return out
 }
 
-// Applies stored price moves to a fresh parse. Moves whose base or tier is
-// gone (a NeverSink update) are dropped quietly: the next plan redoes them.
+// Applies stored price moves to a fresh parse. A move only holds while the item
+// is still where it moved it from: when NeverSink has re-tiered it (an update),
+// NeverSink's newer call wins and the next plan looks at it again.
 export function applyPriceMoves (doc: FilterDoc, moves: PriceMove[]): number {
   const edits: FilterEdit[] = moves
-    .filter(m => blocksOf(doc, m.type).some(b => blockHasBase(b, m.base)))
+    .filter(m => blocksOf(doc, m.type).some(b => (b.tier === m.from || b.tier === m.to) && blockHasBase(b, m.base)))
     .map((m, i) => ({ id: -1 - i, kind: 'move', type: m.type, base: m.base, from: m.from, to: m.to }))
   return applyEdits(doc, edits).filter(s => s.ok).length
 }

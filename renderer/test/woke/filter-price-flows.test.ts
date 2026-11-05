@@ -1,0 +1,281 @@
+// Prices over time: the store with prices that arrive, age and change league,
+// against a fake folder. Every result is checked in what was written.
+import { describe, it, expect, vi, beforeAll, beforeEach, afterEach } from 'vitest'
+import { nextTick, reactive, ref, shallowRef } from 'vue'
+import { parseFilter } from '@/web/woke/loot-filter/parse'
+import { useLootFilter } from '@/web/woke/loot-filter/store'
+import { initLootFilterWidget } from '@/web/woke/loot-filter/widget'
+import type { LootFilterWidget } from '@/web/woke/loot-filter/widget'
+import { SAFETY_RULE_TYPE } from '@/web/woke/loot-filter/safety'
+import { ECONOMY_GROUPS, applyPriceMoves, isVolatile, planRetier } from '@/web/woke/loot-filter/economy'
+import type { PriceLookup, PriceMove } from '@/web/woke/loot-filter/economy'
+import { loadGameData } from '../helpers/game-data'
+import { LEVELS, neverSink } from '../helpers/neversink'
+import { fakeHost } from '../helpers/filter-host'
+import type { FakeHost } from '../helpers/filter-host'
+
+const sent = vi.hoisted(() => ({ chat: [] as string[], log: null as null | ((lines: unknown[]) => void), host: null as FakeHost | null, toasts: [] as string[] }))
+
+vi.mock('@/web/woke/shared/host', () => ({ hostRequest: (name: string, args: Record<string, unknown>) => sent.host!.request(name, args) }))
+vi.mock('@/web/background/IPC', () => ({
+  MainProcess: {
+    sendEvent: (e: { payload: { text: string } }) => { sent.chat.push(e.payload.text) },
+    onEvent: () => ({ abort () {} })
+  },
+  Host: {}
+}))
+vi.mock('@/web/woke/shared/game-log', () => ({ onGameLog: (fn: (lines: unknown[]) => void) => { sent.log = fn; return () => {} } }))
+vi.mock('@/web/woke/loot-filter/build-input', () => ({ useBuildRuleInput: () => ref(null) }))
+vi.mock('@/web/woke/loot-filter/prices', () => ({ useFilterPrices: () => P }))
+vi.mock('@/web/woke/loot-filter/active-filter', () => ({ publishActiveFilter () {} }))
+vi.mock('@/web/woke/loot-filter/sounds', () => ({ customSoundsIn: () => [], installPackSounds: async () => 0 }))
+vi.mock('@/web/woke/ui', () => ({ toast: (text: string) => { sent.toasts.push(text) } }))
+
+const P = {
+  lookup: shallowRef<PriceLookup | null>(null),
+  safety: shallowRef<PriceLookup | null>(null),
+  currentLeague: shallowRef<string | null>('Allflame'),
+  updatedAt: shallowRef<number | null>(null),
+  wantPrices () {}
+}
+
+const OUTPUT = 'NeverSink (woke).filter'
+const SOURCE = [
+  'Show # $type->divination $tier->t1',
+  '\tClass == "Divination Cards"',
+  '\tBaseType == "Top One" "Top Two"',
+  '\tSetFontSize 45',
+  '',
+  'Show # $type->divination $tier->t2',
+  '\tClass == "Divination Cards"',
+  '\tBaseType == "Mid One" "Mid Two"',
+  '\tSetFontSize 40',
+  '',
+  'Hide # $type->divination $tier->t3',
+  '\tClass == "Divination Cards"',
+  '\tBaseType == "Low One" "Low Two"',
+  ''
+].join('\n')
+
+const prices = (list: Record<string, number>): PriceLookup => (_, base) => list[base] != null ? { chaos: list[base], thin: false } : null
+const VALUABLE = prices({ 'Top One': 1000, 'Top Two': 900, 'Mid One': 50, 'Mid Two': 40, 'Low One': 300, 'Low Two': 1 })
+
+let host: FakeHost
+beforeAll(loadGameData)
+beforeEach(() => {
+  host = fakeHost()
+  sent.host = host
+  sent.chat = []
+  sent.toasts = []
+  P.lookup.value = null
+  P.safety.value = null
+  P.currentLeague.value = 'Allflame'
+  P.updatedAt.value = null
+})
+afterEach(() => { vi.useRealTimers() })
+
+function widget (over: Partial<LootFilterWidget> = {}): LootFilterWidget {
+  const w = { wmId: 1, wmType: 'woke-loot-filter', wmTitle: '', wmWants: 'show', wmZorder: null, wmFlags: [] } as unknown as LootFilterWidget
+  initLootFilterWidget(w)
+  return reactive(Object.assign(w, over)) as LootFilterWidget
+}
+
+async function opened (over: Partial<LootFilterWidget> = {}) {
+  host.files.set('NeverSink.filter', SOURCE)
+  const config = widget({ sourceName: 'NeverSink.filter', ...over })
+  const store = useLootFilter(() => config)
+  await store.listFiles()
+  await store.load()
+  return { store, config }
+}
+
+const written = () => parseFilter(host.files.get(OUTPUT)!)
+const netBases = () => written().blocks.filter(b => b.type === SAFETY_RULE_TYPE).flatMap(b => b.conditions.find(c => c.key === 'BaseType')!.values)
+const settled = async () => { await nextTick(); await nextTick(); await new Promise(resolve => setTimeout(resolve, 0)) }
+
+describe('the net follows prices into the file', () => {
+  it('writes a new list by itself when nothing of yours is unsaved', async () => {
+    const { store } = await opened()
+    await store.save()
+    expect(netBases()).toEqual([])
+    P.safety.value = VALUABLE
+    await settled()
+    expect(netBases()).toEqual(['Low One'])
+    expect(store.dirty.value).toBe(false)
+  })
+
+  it('waits while you have unsaved changes', async () => {
+    const { store } = await opened()
+    await store.save()
+    store.edit({ kind: 'visibility', type: 'divination', tier: 't2', visibility: 'Hide' })
+    P.safety.value = VALUABLE
+    await settled()
+    expect(netBases()).toEqual([])
+    await store.save()
+    expect(netBases()).toEqual(['Low One', 'Mid One', 'Mid Two'])
+  })
+
+  it('never starts a file you have not saved yet', async () => {
+    await opened()
+    P.safety.value = VALUABLE
+    await settled()
+    expect(host.files.has(OUTPUT)).toBe(false)
+  })
+
+  it('keeps the last list when prices go away, and says so', async () => {
+    const { store, config } = await opened()
+    await store.save()
+    P.safety.value = VALUABLE
+    await settled()
+    expect(config.safetyNet.last?.plain).toEqual(['Low One'])
+    P.safety.value = null
+    await settled()
+    expect(store.netWithoutPrices.value).toBe(true)
+    await store.save()
+    expect(netBases()).toEqual(['Low One'])
+  })
+
+  it('holds a dismissed item back from the file', async () => {
+    const { store, config } = await opened()
+    await store.save()
+    P.safety.value = VALUABLE
+    await settled()
+    config.healthDismissed = { 'divination|Low One': 300 }
+    await settled()
+    expect(netBases()).toEqual([])
+    expect(store.dirty.value).toBe(false)
+  })
+})
+
+const MOVE: PriceMove = { type: 'divination', base: 'Mid One', from: 't2', to: 't1', chaos: 500 }
+const inTier = (tier: string) => written().blocks.find(b => b.tier === tier)!.conditions.find(c => c.key === 'BaseType')!.values
+
+describe('moves belong to a league', () => {
+  const moved = (league: string | null) => ({ priceTiers: { on: true, moves: [MOVE], prev: null, locks: [], appliedAt: 1, league, uniqueRule: 'max' as const } })
+
+  it('applies moves in their own league', async () => {
+    const { store } = await opened(moved('Allflame'))
+    await store.save()
+    expect(inTier('t1')).toContain('Mid One')
+    expect(store.movesFromOtherLeague.value).toBe(0)
+  })
+
+  it('leaves them out of the file in another league, and counts them', async () => {
+    const { store } = await opened(moved('Mirage'))
+    await store.save()
+    expect(inTier('t2')).toContain('Mid One')
+    expect(store.movesFromOtherLeague.value).toBe(1)
+  })
+
+  it('new moves start over instead of building on the old league', async () => {
+    P.lookup.value = VALUABLE
+    const { store, config } = await opened(moved('Mirage'))
+    store.applyPrices([{ ...MOVE, base: 'Mid Two' }])
+    expect(config.priceTiers.moves.map(m => m.base)).toEqual(['Mid Two'])
+    expect(config.priceTiers.league).toBe('Allflame')
+  })
+
+  it('takes a config from before leagues as this league\'s', async () => {
+    const { store, config } = await opened(moved(null))
+    await store.save()
+    expect(config.priceTiers.league).toBe('Allflame')
+    expect(inTier('t1')).toContain('Mid One')
+  })
+})
+
+describe('old prices', () => {
+  const hours = (n: number) => Date.now() - n * 3600000
+
+  it('warns from a day old, and offers no moves from three days old', async () => {
+    P.lookup.value = VALUABLE
+    P.updatedAt.value = hours(30)
+    const { store } = await opened()
+    expect(store.pricesStale.value).toBe(true)
+    expect(store.plan.value).not.toBeNull()
+    P.updatedAt.value = hours(80)
+    expect(store.pricesTooOld.value).toBe(true)
+    expect(store.plan.value).toBeNull()
+  })
+
+  it('fresh prices warn about nothing', async () => {
+    P.updatedAt.value = hours(1)
+    const { store } = await opened()
+    expect(store.pricesStale.value).toBe(false)
+  })
+})
+
+describe('auto strictness and your unsaved changes', () => {
+  const github = () => {
+    for (let i = 0; i < 7; i++) host.neversink.set(`8.20.2//${i}`, neverSink(LEVELS[i]))
+    return widget({ neversink: { on: true, version: '8.20.2', prevVersion: null, style: '', level: 1, latest: null, latestChanges: '', checkedAt: Date.now() } })
+  }
+  const enter = (areaId: string, areaLevel: number) => sent.log!([{ ev: { kind: 'area', areaId, areaLevel } }])
+
+  it('waits, says so, and switches once you have saved', async () => {
+    const config = github()
+    const store = useLootFilter(() => config)
+    await store.load()
+    await store.save()
+    store.edit({ kind: 'visibility', type: 'currency', tier: 't1exalted', visibility: 'Hide' })
+    vi.useFakeTimers()
+    enter('MapWorldsBeach', 83)
+    enter('HideoutLuxurious', 1)
+    await vi.advanceTimersByTimeAsync(4100)
+    expect(config.neversink.level).toBe(1)
+    expect(sent.toasts.join(' ')).toMatch(/waits until you save/)
+    expect(written().blocks.find(b => b.tier === 't1exalted')?.visibility).not.toBe('Hide')
+    vi.useRealTimers()
+    await store.save()
+    vi.useFakeTimers()
+    enter('MapWorldsBeach', 83)
+    enter('HideoutLuxurious', 1)
+    await vi.advanceTimersByTimeAsync(4100)
+    vi.useRealTimers()
+    await vi.waitFor(() => expect(config.neversink.level).toBe(4))
+  })
+})
+
+describe('planning moves', () => {
+  const DIV = ECONOMY_GROUPS.find(g => g.type === 'divination')!
+  const doc = () => parseFilter(SOURCE)
+  const base = { 'Top One': 1000, 'Top Two': 1000, 'Mid One': 100, 'Mid Two': 100, 'Low One': 10, 'Low Two': 10 }
+
+  it('going down takes a bigger drop than going up takes a rise', () => {
+    const up = planRetier(doc(), prices({ ...base, 'Mid One': 1000 }), { groups: [DIV] }).moves
+    expect(up.map(m => m.base)).toEqual(['Mid One'])
+    // At 130c it's under the line by more than 20%, but not by 50%.
+    expect(planRetier(doc(), prices({ ...base, 'Top One': 130 }), { groups: [DIV], bufferDown: 0.2 }).moves.map(m => m.base)).toEqual(['Top One'])
+    expect(planRetier(doc(), prices({ ...base, 'Top One': 130 }), { groups: [DIV] }).moves).toEqual([])
+    expect(planRetier(doc(), prices({ ...base, 'Top One': 100 }), { groups: [DIV] }).moves.map(m => m.base)).toEqual(['Top One'])
+  })
+
+  it('marks a move into a tier this strictness hides', () => {
+    const moves = planRetier(doc(), prices({ ...base, 'Mid One': 2 }), { groups: [DIV] }).moves
+    expect(moves[0]).toMatchObject({ base: 'Mid One', to: 't3', hides: true })
+  })
+
+  it('holds a price that jumped, and says why', () => {
+    const jumpy: PriceLookup = (group, b) => {
+      const p = prices({ ...base, 'Mid One': 1000 })(group, b)
+      return p && b === 'Mid One' ? { ...p, volatile: true } : p
+    }
+    const plan = planRetier(doc(), jumpy, { groups: [DIV] })
+    expect(plan.moves).toEqual([])
+    expect(plan.skipped[0]).toMatchObject({ base: 'Mid One', reason: 'volatile' })
+  })
+
+  it('reads a jump from the week and the day', () => {
+    expect(isVolatile({ chaos: 300, d7: 100 })).toBe(true)
+    expect(isVolatile({ chaos: 30, d7: 100 })).toBe(true)
+    expect(isVolatile({ chaos: 200, d1: 100 })).toBe(true)
+    expect(isVolatile({ chaos: 150, d1: 100, d7: 100 })).toBe(false)
+    expect(isVolatile({ chaos: 150 })).toBe(false)
+  })
+
+  it('gives way to NeverSink when it has re-tiered the item since', () => {
+    const d = doc()
+    // Stored from t3, but this version has the item in t2 already.
+    expect(applyPriceMoves(d, [{ type: 'divination', base: 'Mid One', from: 't3', to: 't1', chaos: 500 }])).toBe(0)
+    expect(d.blocks.find(b => b.tier === 't2')!.conditions.find(c => c.key === 'BaseType')!.values).toContain('Mid One')
+  })
+})

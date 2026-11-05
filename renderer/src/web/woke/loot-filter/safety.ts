@@ -39,7 +39,9 @@ export const SAFETY_LOOK: StylePatch = {
   border: [255, 255, 255, 255],
   background: [140, 20, 20, 255],
   effect: { color: 'Red', temp: true },
-  icon: { size: 1, color: 'Red', shape: 'Diamond' }
+  icon: { size: 1, color: 'Red', shape: 'Diamond' },
+  // A valuable catch shouldn't be silent.
+  sound: { id: '6', volume: 200 }
 }
 
 export type ItemState = 'hidden' | 'small' | 'ok'
@@ -202,6 +204,7 @@ function block (tier: string, conditions: FilterBlock['conditions']): FilterBloc
       { key: 'SetTextColor', args: rgba(s.text!) },
       { key: 'SetBorderColor', args: rgba(s.border!) },
       { key: 'SetBackgroundColor', args: rgba(s.background!) },
+      { key: 'PlayAlertSound', args: [s.sound!.id, String(s.sound!.volume)] },
       { key: 'PlayEffect', args: [s.effect!.color, 'Temp'] },
       { key: 'MinimapIcon', args: [String(s.icon!.size), s.icon!.color, s.icon!.shape] }
     ],

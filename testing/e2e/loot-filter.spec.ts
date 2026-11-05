@@ -72,7 +72,7 @@ test('style editor: NeverSink sound pack, beam and minimap pickers; a pack sound
   await expect.poll(() => {
     const out = path.join(folder, 'NeverSink (woke).filter')
     return fs.existsSync(out) ? fs.readFileSync(out, 'utf8') : ''
-  }).toContain('CustomAlertSound "2currency.mp3" 300')
+  }).toContain('CustomAlertSoundOptional "2currency.mp3" 300')
 })
 
 test('rule builder, drag and drop between tiers, and presets end up in the saved filter', async ({ overlay, fakeApp }) => {

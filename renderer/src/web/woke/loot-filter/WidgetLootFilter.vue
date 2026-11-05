@@ -222,7 +222,7 @@ const sortedLadder = computed(() => [...props.config.strictAuto.ladder].sort((a,
 const allNotes = computed<Notice[]>(() => {
   const out: Notice[] = []
   const ready = store.updateReady.value
-  if (ready) out.push({ id: 'update', value: ready.version, tab: 'neversink', text: `NeverSink ${ready.version} is ready: ${ready.ok} of ${ready.total} changes fit. Update in the editor.` })
+  if (ready) out.push({ id: 'update', value: ready.version, tab: 'neversink', text: `NeverSink ${ready.version} is ready: ${ready.ok} of ${ready.total} changes fit${ready.movesTotal > ready.movesFit ? `, and ${ready.movesTotal - ready.movesFit} price moves will go back to NeverSink's tiers` : ''}. Update in the editor.` })
   const moves = store.plan.value?.moves.length ?? 0
   if (moves) out.push({ id: 'prices', value: moves, tab: 'prices', text: `${moves} item${moves > 1 ? 's' : ''} would move to match today's prices.` })
   if (store.safetyCount.value) out.push({ id: 'safety', value: store.safetyCount.value, tab: 'prices', text: `Safety net shows ${store.safetyCount.value} valuable item${store.safetyCount.value > 1 ? 's' : ''} the filter hides.` })
@@ -236,6 +236,13 @@ const allNotes = computed<Notice[]>(() => {
         ? `No poe.ninja prices for this league yet. The safety net is using its last list of ${store.safetyCount.value}.`
         : 'No poe.ninja prices for this league yet, so the safety net is empty.'
     })
+  } else if (store.pricesStale.value) {
+    const hours = Math.round(store.priceAgeHours.value ?? 0)
+    out.push({ id: 'prices-old', value: Math.floor(hours / 24), warn: true, tab: 'prices', text: `Prices are ${hours >= 48 ? `${Math.round(hours / 24)} days` : `${hours} hours`} old, so the safety net and price moves may be off.` })
+  }
+  if (store.movesFromOtherLeague.value) {
+    const n = store.movesFromOtherLeague.value
+    out.push({ id: 'moves-league', value: n, warn: true, tab: 'prices', text: `${n} price move${n > 1 ? 's' : ''} from ${props.config.priceTiers.league} ${n > 1 ? 'are' : 'is'} off in this league.` })
   }
   if (store.gameFilter.value.loaded === false) out.push({ id: 'load', value: 1, warn: true, tab: 'changes', text: 'The game couldn\'t load your filter. Open the editor and save again.' })
   else if (store.wrongFilterInGame.value) out.push({ id: 'wrong', value: store.gameFilter.value.name ?? '', warn: true, text: `The game is using "${store.gameFilter.value.name}", not your saved copy.` })
