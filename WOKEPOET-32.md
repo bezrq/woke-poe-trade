@@ -1,0 +1,47 @@
+---
+id: WOKEPOET-32
+title: 'Campaign tracker: dock icon only, sleep on endgame characters'
+status: Grooming
+priority: None
+effort: None
+assignee: unassigned
+tags:
+  - ui
+  - campaign
+createdBy: Agent
+updatedBy: Agent
+history:
+  - type: activity
+    user: Agent
+    date: '2026-11-05T06:01:42.517Z'
+    comment: Created ticket.
+    id: a-2026-11-05t06-01-42-517z
+  - type: comment
+    user: Agent
+    comment: >-
+      Pick A (quiet icon), B (live icon: act ring, badge coloured against best
+      run) or C (whole-act checklist card). Recommendation: B. Mocks:
+      https://claude.ai/artifact/6tMUj9A4ss2A1RZLxsAhdr
+    date: '2026-11-05T06:01:53.079Z'
+    id: c-2026-11-05t06-01-53-079z
+  - type: swimlane_change
+    swimlane: require-input
+    action: set
+    user: Agent
+    date: '2026-11-05T06:01:53.079Z'
+    comment: >-
+      Pick A (quiet icon), B (live icon: act ring, badge coloured against best
+      run) or C (whole-act checklist card). Recommendation: B. Mocks:
+      https://claude.ai/artifact/6tMUj9A4ss2A1RZLxsAhdr
+swimlane: require-input
+needsAction: null
+---
+Tracker panel showed in Guy's hideout on an endgame character with the overlay open, and its header disagreed with its steps (A1 vs Act 4).
+
+Causes:
+- Route only counts as done at its end, the Epilogue, or a finished run, so endgame characters never hide it.
+- `state.act` is the last campaign area seen; `config.step` is a separate route position that town hops advance on any character.
+
+All options: remove the strip and guide panel; route sleeps after a map entry and wakes on a non-town campaign zone; sleeping route doesn't advance; badge and heading use the route step's act.
+
+Mocks: https://claude.ai/artifact/6tMUj9A4ss2A1RZLxsAhdr
