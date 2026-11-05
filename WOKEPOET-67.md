@@ -1,7 +1,7 @@
 ---
 id: WOKEPOET-67
 title: 'Price check: make confidence and Sell fast honest'
-status: In Progress
+status: Ready
 priority: High
 effort: M
 assignee: unassigned
@@ -26,6 +26,21 @@ history:
     to: In Progress
     user: Agent
     date: '2026-11-05T09:21:57.454Z'
+  - type: comment
+    user: Agent
+    comment: >-
+      **PR #139 is reviewed, fixed and checked, and sent for merge after #138.**
+      Confidence counts sellers, thin markets get bait checks, Sell fast follows
+      the market and flags bargains, and the headline says "Asking around".
+      Branch claude/pc-honest-confidence is in a separate clone. No docs needed.
+    date: '2026-11-05T09:35:10.013Z'
+    completionComment: true
+    id: c-2026-11-05t09-35-10-013z
+  - type: status_change
+    from: In Progress
+    to: Ready
+    user: Agent
+    date: '2026-11-05T09:35:10.013Z'
 needsAction: null
 ---
 > TL;DR: One merchant's 10 rows reads SOLID, a 1c bait in a thin market survives, and Sell fast undercuts a single outlier. Count sellers, cap rows per seller, check bait on thin markets, base Sell fast on a trusted floor, and say asking price rather than "Likely sells for".
