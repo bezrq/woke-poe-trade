@@ -17,6 +17,8 @@ import { perfRecord } from '../woke/perf'
 type UiohookKeyT = keyof typeof UiohookKey
 // woke: the heist gem OCR worker shuts down after this long unused.
 const OCR_IDLE_MS = 5 * 60 * 1000
+const FOCUS_SETTLE_MS = 120
+const FOCUS_WAIT_MS = 600
 const UiohookToName = Object.fromEntries(Object.entries(UiohookKey).map(([k, v]) => ([v, k])))
 
 export class Shortcuts {
@@ -31,6 +33,30 @@ export class Shortcuts {
       else setTimeout(tick, Math.max(100, idleMs - idle))
     }
     tick()
+  }
+
+  // woke: injected keys go to whichever window has focus, so a command asked for
+  // from the overlay must never type into Discord or a browser. Dropped if
+  // neither the game nor the overlay has focus, or the game never takes it.
+  private typeIntoGame (what: string, type: () => void) {
+    const dropped = () => this.logger.write(`warn [Shortcuts] Dropped a ${what}: the game doesn't have focus.`)
+    if (this.poeWindow.hasFocus && !this.overlay.isInteractable) {
+      type()
+      return
+    }
+    if (!this.overlay.isInteractable || !this.overlay.isFocused) {
+      dropped()
+      return
+    }
+    this.overlay.assertGameActive()
+    const started = Date.now()
+    const tick = () => {
+      // Give the game a moment after it has focus before typing into it.
+      if (this.poeWindow.hasFocus && Date.now() - started >= FOCUS_SETTLE_MS) type()
+      else if (Date.now() - started >= FOCUS_WAIT_MS) dropped()
+      else setTimeout(tick, 20)
+    }
+    setTimeout(tick, 20)
   }
 
   private actions: ShortcutAction[] = []
@@ -77,17 +103,12 @@ export class Shortcuts {
 
     this.server.onEventAnyClient('CLIENT->MAIN::user-action', (e) => {
       if (e.action === 'stash-search') {
-        stashSearch(e.text, this.clipboard, this.overlay)
+        this.typeIntoGame('stash search', () => { stashSearch(e.text, this.clipboard, this.overlay) })
       } else if (e.action === 'paste-in-chat') {
         // woke: wait for a pause in typing so the command never lands in the
         // middle of a chat message or a key you're holding.
         this.whenKeysIdle(() => {
-          // A click in the overlay: give the game focus a moment to arrive
-          // before typing into it.
-          const wasOverlay = this.overlay.isInteractable
-          this.overlay.assertGameActive()
-          if (wasOverlay) setTimeout(() => typeInChat(e.text, true, this.clipboard), 120)
-          else typeInChat(e.text, true, this.clipboard)
+          this.typeIntoGame('chat command', () => { typeInChat(e.text, true, this.clipboard) })
         }, e.immediate ? 0 : undefined)
       }
     })

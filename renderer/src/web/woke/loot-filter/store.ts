@@ -103,8 +103,9 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
   const inSafeZone = ref<boolean | null>(null)
   // A reload held until the next town/hideout visit.
   const pendingReload = ref(false)
-  // The area line is written while the loading screen is still up, when the
-  // game drops the keys we'd type; wait until the zone has loaded.
+  const RELOAD_READY = 'Loot filter saved. Press Reload now in the filter window to use it.'
+  // The area line is written while the loading screen is still up; wait until
+  // the zone has loaded.
   const RELOAD_AFTER_LOAD_MS = 4000
   let reloadTimer: ReturnType<typeof setTimeout> | undefined
   // Area levels of the last few maps (or campaign zones), for the strictness ladder.
@@ -124,9 +125,9 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
           if (inSafeZone.value !== true) return
           // The ladder switches only here, in town or hideout, never mid-map.
           if (followLadder()) return
-          if (!pendingReload.value) return
-          pendingReload.value = false
-          sendReload()
+          // A reminder only. GGG's macro rules need every command to come from
+          // a key press or click, so a log line or timer must never send one.
+          if (pendingReload.value) toast(RELOAD_READY)
         }, RELOAD_AFTER_LOAD_MS)
       }
     }
@@ -460,7 +461,7 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
   }
 
   // Switches strictness, saves, and reloads in game (when safe). Returns Undo.
-  async function setLevel (level: number): Promise<(() => void) | null> {
+  async function setLevel (level: number, opts: { auto?: boolean } = {}): Promise<(() => void) | null> {
     const ns = cfg().neversink
     if (!ns.on) return null
     const before = ns.level
@@ -470,7 +471,7 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
     await load()
     // A newer switch (a second key press) saves its own level.
     if (cfg().neversink.level !== next) return null
-    if (doc.value) await save()
+    if (doc.value) await save({ auto: opts.auto })
     return () => { setLevel(before).catch(() => {}) }
   }
 
@@ -500,17 +501,17 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
   }
 
   // In town or hideout: switch to what the ladder says for recent maps.
-  // Returns true when it started a switch (which reloads on its own).
+  // Returns true when it started a switch. It saves the file; the reload waits
+  // for you to press Reload now.
   function followLadder (): boolean {
     const ns = cfg().neversink
     if (!ns.on || !doc.value || saving.value) return false
     const target = ladderTarget(cfg().strictAuto, recentAreas)
     if (target == null || target === ns.level) return false
     const top = Math.max(...recentAreas)
-    pendingReload.value = false
-    setLevel(target).then(undo => {
+    setLevel(target, { auto: true }).then(undo => {
       if (!undo) return
-      toast(`Loot filter: ${LEVEL_NAMES[target]}, for area level ${top} maps`, {
+      toast(`Loot filter: ${LEVEL_NAMES[target]}, for area level ${top} maps. Press Reload now in the filter window to use it.`, {
         undo: () => { cfg().strictAuto.paused = true; undo() }
       })
     }).catch(() => {})
@@ -749,17 +750,18 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
   }
 
   // reloadNow: you pressed Save + reload, so it reloads wherever you are. Saves
-  // you didn't ask to reload (quick fixes) follow reloadWhenSafe.
+  // you didn't ask to reload (quick fixes) follow reloadWhenSafe. auto: nobody
+  // pressed anything (the ladder), so it never sends; see the log handler above.
   // Saves run one at a time: two quick fixes in a row must not race for the
   // same temp file, and the last one writes the latest edits.
   let saveQueue: Promise<unknown> = Promise.resolve()
-  function save (opts: { reloadNow?: boolean } = {}): Promise<boolean> {
+  function save (opts: { reloadNow?: boolean, auto?: boolean } = {}): Promise<boolean> {
     const run = saveQueue.then(() => saveNow(opts))
     saveQueue = run.catch(() => {})
     return run
   }
 
-  async function saveNow (opts: { reloadNow?: boolean }): Promise<boolean> {
+  async function saveNow (opts: { reloadNow?: boolean, auto?: boolean }): Promise<boolean> {
     if (!doc.value || baseText.value == null) return false
     problems.value = validateFilter(doc.value)
     if (problems.value.length) {
@@ -793,7 +795,10 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
       pushHistory(written.edits, written.moves)
       cfg().lastVersion = written.version
       lastSaved.value = Date.now()
-      if (cfg().reloadViaChat) reloadInGame(opts.reloadNow === true)
+      if (cfg().reloadViaChat) {
+        if (opts.auto) pendingReload.value = true
+        else reloadInGame(opts.reloadNow === true)
+      }
       setTimeout(() => { readGameFilter().catch(() => {}) }, 8000)
       return true
     } catch (e) {
@@ -804,8 +809,8 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
     }
   }
 
-  // One chat command, sent because you saved. Unless forced, reloadWhenSafe
-  // holds it until town/hideout.
+  // One chat command, sent because you pressed something. Unless forced,
+  // reloadWhenSafe holds it outside town/hideout until you press Reload now.
   function reloadInGame (force = false) {
     if (!force && cfg().reloadWhenSafe && inSafeZone.value !== true) {
       pendingReload.value = true

@@ -176,7 +176,8 @@ describe('reloading in game', () => {
     expect(store.pendingReload.value).toBe(false)
   })
 
-  it('a save nobody asked to reload waits for town, then reloads once', async () => {
+  // GGG's macro rules: a log line or timer must never send a command.
+  it('a held reload never sends by itself, in town or later', async () => {
     vi.useFakeTimers()
     try {
       const { store } = await opened()
@@ -185,32 +186,23 @@ describe('reloading in game', () => {
       expect(sent.chat).toEqual([])
       expect(store.pendingReload.value).toBe(true)
       area('HideoutFelled', 1)
+      await vi.advanceTimersByTimeAsync(60000)
       expect(sent.chat).toEqual([])
-      await vi.advanceTimersByTimeAsync(5000)
+      expect(store.pendingReload.value).toBe(true)
+      store.reloadInGame(true)
       expect(sent.chat).toEqual(['/itemfilter NeverSink (woke)'])
       expect(store.pendingReload.value).toBe(false)
-      await vi.advanceTimersByTimeAsync(20000)
-      expect(sent.chat).toHaveLength(1)
     } finally {
       vi.useRealTimers()
     }
   })
 
-  it('leaving town again before the wait ends holds the reload', async () => {
-    vi.useFakeTimers()
-    try {
-      const { store } = await opened()
-      area('MapWorldsCemetery', 83)
-      await store.save()
-      area('HideoutFelled', 1)
-      await vi.advanceTimersByTimeAsync(1000)
-      area('MapWorldsCemetery', 83)
-      await vi.advanceTimersByTimeAsync(10000)
-      expect(sent.chat).toEqual([])
-      expect(store.pendingReload.value).toBe(true)
-    } finally {
-      vi.useRealTimers()
-    }
+  it('a quick fix made in town sends at once: you pressed something', async () => {
+    const { store } = await opened()
+    area('HideoutFelled', 1)
+    await store.save()
+    expect(sent.chat).toEqual(['/itemfilter NeverSink (woke)'])
+    expect(store.pendingReload.value).toBe(false)
   })
 
   it('sends nothing with chat reload off', async () => {
