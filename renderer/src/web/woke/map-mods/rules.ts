@@ -4,12 +4,24 @@ import type { MinStat } from './regex'
 
 export type ModRating = 'deadly' | 'warn' | 'good' | 'ok'
 
+// The Map mods tabs. Each has its own ratings and its own search: a rating on
+// one never reaches another, even for a mod that rolls on both.
+export type ModMode = 'maps' | 'heist' | 'charts'
+
+export interface ModSearchOptions {
+  highlight: 'good' | 'bad'
+  autoTrim: boolean
+}
+
 export interface MapModProfile {
   id: number
   name: string
   // Map mod matcher string (as APT translates it, e.g.
   // "Players cannot Regenerate Life, Mana or Energy Shield") -> rating.
   ratings: Record<string, ModRating>
+  // The same, for heist contracts and blueprints, and for charts.
+  heistRatings?: Record<string, ModRating>
+  chartRatings?: Record<string, ModRating>
   // Stash regex settings: minimum map stats and what to highlight.
   mins: Partial<Record<MinStat, number>>
   highlight: 'good' | 'bad'
@@ -17,6 +29,11 @@ export interface MapModProfile {
   minsAny?: boolean
   // When the search is over 250 characters, leave out the least important mods.
   autoTrim?: boolean
+  // Highlight and auto-trim for the Heist and Charts searches.
+  tabSearch?: Partial<Record<ModMode, ModSearchOptions>>
+  // The T17 switch is off: T17 mods leave the Maps list and the stash regex.
+  // Their ratings stay, and a check of a T17 map still flags them.
+  hideT17?: boolean
 }
 
 export interface JuiceWeights {
@@ -175,6 +192,53 @@ export function nextPresetRating (r: ModRating): ModRating {
   return 'ok'
 }
 
+export function modRatings (profile: MapModProfile, mode: ModMode): Record<string, ModRating> {
+  if (mode === 'heist') return profile.heistRatings ?? {}
+  if (mode === 'charts') return profile.chartRatings ?? {}
+  return profile.ratings
+}
+
+export function setModRatings (profile: MapModProfile, mode: ModMode, ratings: Record<string, ModRating>) {
+  if (mode === 'heist') profile.heistRatings = ratings
+  else if (mode === 'charts') profile.chartRatings = ratings
+  else profile.ratings = ratings
+}
+
+export function searchOptions (profile: MapModProfile, mode: ModMode): ModSearchOptions {
+  if (mode === 'maps') return { highlight: profile.highlight, autoTrim: !!profile.autoTrim }
+  return { highlight: 'good', autoTrim: false, ...profile.tabSearch?.[mode] }
+}
+
+export function setSearchOption (profile: MapModProfile, mode: ModMode, patch: Partial<ModSearchOptions>) {
+  const next = { ...searchOptions(profile, mode), ...patch }
+  if (mode === 'maps') {
+    profile.highlight = next.highlight
+    profile.autoTrim = next.autoTrim
+  } else {
+    profile.tabSearch = { ...profile.tabSearch, [mode]: next }
+  }
+}
+
+export type ModListRow =
+  | { kind: 'head', rating: ModRating, count: number }
+  | { kind: 'mod', matcher: string }
+
+// The Map mods list: picked mods on top, by rating, then the rest, with a
+// heading over each group. `ratings` is the order to sort by, not always the
+// live ratings, so a row doesn't jump away while it's being rated.
+export function modListRows (mods: string[], ratings: Record<string, ModRating>): ModListRow[] {
+  const groups: Record<ModRating, string[]> = { deadly: [], warn: [], good: [], ok: [] }
+  for (const m of mods) groups[ratings[m] ?? 'ok'].push(m)
+  if (groups.ok.length === mods.length) return mods.map(matcher => ({ kind: 'mod', matcher }))
+  const rows: ModListRow[] = []
+  for (const rating of ['deadly', 'warn', 'good', 'ok'] as ModRating[]) {
+    if (!groups[rating].length) continue
+    rows.push({ kind: 'head', rating, count: groups[rating].length })
+    for (const matcher of groups[rating]) rows.push({ kind: 'mod', matcher })
+  }
+  return rows
+}
+
 // Rating cycle when clicking a mod in the popup.
 export function nextModRating (r: ModRating): ModRating {
   switch (r) {
@@ -285,7 +349,16 @@ export function shortLabel (matcher: string): string {
 
 // A new profile with everything this one has, under its own id and name.
 export function copyOfProfile (profile: MapModProfile, id: number): MapModProfile {
-  return { ...profile, id, name: `${profile.name} copy`, ratings: { ...profile.ratings }, mins: { ...profile.mins } }
+  return {
+    ...profile,
+    id,
+    name: `${profile.name} copy`,
+    ratings: { ...profile.ratings },
+    heistRatings: { ...profile.heistRatings },
+    chartRatings: { ...profile.chartRatings },
+    tabSearch: { ...profile.tabSearch },
+    mins: { ...profile.mins }
+  }
 }
 
 export function defaultProfile (): MapModProfile {
