@@ -1,17 +1,24 @@
 <template>
   <span ref="rootEl" :class="$style.root" :data-dock="host.props.id">
-    <span ref="iconEl" :class="[$style.icon, { [$style.peek]: peekText, [$style.hot]: showCard }]"
+    <span ref="iconEl" :class="[$style.icon, { [$style.peek]: peekText, [$style.hot]: cardOpen, [$style.withRead]: readouts.length }]"
       :title="wm.active.value ? `${host.props.title}${host.props.wmId != null ? ' · click to open' : ''}` : undefined"
       @click="click">
+      <svg v-if="host.props.progress != null" :class="$style.ring" width="36" height="36" viewBox="0 0 36 36" aria-hidden="true">
+        <circle cx="18" cy="18" r="16" :class="$style.ringTrack" />
+        <circle cx="18" cy="18" r="16" :class="$style.ringFill" pathLength="100" :stroke-dasharray="`${Math.min(1, Math.max(0, host.props.progress)) * 100} 100`" transform="rotate(-90 18 18)" />
+      </svg>
       <span :class="$style.glyph">
         <img v-if="dockArt(host.props) && !artFailed" :src="dockArt(host.props)!" alt="" draggable="false" :class="$style.art" @error="artFailed = true">
         <i v-else :class="dockIcon(host.props)" />
       </span>
       <span v-if="peekText" :class="$style.peekText">{{ peekText }}</span>
+      <template v-else>
+        <span v-for="r in readouts" :key="r.id" class="w-num" :class="[$style.read, r.tone && $style['read-' + r.tone]]">{{ r.text }}</span>
+      </template>
       <span v-if="badge != null && badge !== ''" :class="[$style.badge, $style['tone-' + (host.props.tone ?? 'accent')]]">{{ badge }}</span>
       <span v-if="host.props.led" :class="[$style.led, $style['led-' + host.props.led]]" />
     </span>
-    <div v-if="showCard" ref="cardEl" :class="[$style.card, placement]"
+    <div v-if="cardOpen" ref="cardEl" :class="[$style.card, placement]"
       :style="{ width: host.props.cardWidth ?? '20rem' }">
       <div :class="$style.cardHead">
         <i :class="dockIcon(host.props)" class="w-accent" />
@@ -28,7 +35,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, defineComponent, inject, onUnmounted, shallowRef, useCssModule, watch } from 'vue'
+import { computed, defineComponent, inject, onMounted, onUnmounted, shallowRef, useCssModule, watch } from 'vue'
 import type { PropType } from 'vue'
 import type { WidgetManager } from '@/web/overlay/interfaces'
 import { AppConfig } from '@/web/Config'
@@ -50,6 +57,7 @@ const iconEl = shallowRef<HTMLElement | null>(null)
 const cardEl = shallowRef<HTMLElement | null>(null)
 
 const badge = computed(() => props.host.props.badge)
+const readouts = computed(() => props.host.props.readouts ?? [])
 
 // Game art, with the Font Awesome icon as fallback if it doesn't load.
 const artFailed = shallowRef(false)
@@ -67,12 +75,14 @@ watch(() => props.host.peek, (p) => {
 })
 
 const showCard = shallowRef(false)
+// Open from hovering, or held open by a pin.
+const cardOpen = computed(() => showCard.value || props.host.pinned != null)
 
 // Hover works while the game has focus (main process watches the mouse).
 // Both take the mouse while it's over them, so a click lands here instead of
 // walking the character there.
 const overIcon = useHoverZone(iconEl, { enabled: () => true, activate: () => true, onClick: openCard })
-const overCard = useHoverZone(cardEl, { enabled: () => showCard.value, activate: () => true })
+const overCard = useHoverZone(cardEl, { enabled: () => cardOpen.value, activate: () => true })
 const hovering = computed(() => overIcon.value || overCard.value)
 
 // Opens once the mouse rests on the icon, so sweeping past it doesn't pop the
@@ -97,11 +107,17 @@ function tellOpen (open: boolean) {
   for (const e of told) if (!now.includes(e)) { e.onOpen(false); told.delete(e) }
   for (const e of now) if (!told.has(e)) { e.onOpen(true); told.add(e) }
 }
-watch(showCard, (open) => {
+watch(cardOpen, (open) => {
   if (open) place()
   tellOpen(open)
 })
-watch(() => [props.host, ...props.extras], () => { tellOpen(showCard.value) })
+// Back after being unmounted (settings open) with a pinned card: nothing changed to trigger the watch.
+onMounted(() => {
+  if (!cardOpen.value) return
+  place()
+  tellOpen(true)
+})
+watch(() => [props.host, ...props.extras], () => { tellOpen(cardOpen.value) })
 onUnmounted(() => {
   if (timer) clearTimeout(timer)
   tellOpen(false)
@@ -126,7 +142,9 @@ function place () {
 
 function click () {
   openCard()
-  if (wm.active.value) props.host.onClick()
+  if (!wm.active.value) return
+  if (props.host.props.pinnable) props.host.pinned = props.host.pinned ? null : 'click'
+  props.host.onClick()
 }
 
 // Renders an item's card slot here; the slot still reads its widget's state.
@@ -159,8 +177,18 @@ const styles = useCssModule()
 .icon:hover, .hot, .peek { opacity: 1; }
 .hot { box-shadow: 0 0 0 2px color-mix(in srgb, var(--w-accent) 35%, transparent); }
 .peek { background: var(--w-panel); padding-right: 10px; }
+.ring { position: absolute; left: -4px; top: -4px; pointer-events: none; }
+.ringTrack { fill: none; stroke: var(--w-line); stroke-width: 2.5; }
+.ringFill { fill: none; stroke: var(--w-accent); stroke-width: 2.5; }
 .glyph { width: 28px; display: grid; place-items: center; font-size: 13px; }
 .art { width: 20px; height: 20px; object-fit: contain; }
+.icon.withRead { opacity: 0.85; }
+.icon.withRead:hover, .icon.withRead.hot, .icon.withRead.peek { opacity: 1; }
+.withRead { gap: 8px; padding-right: 12px; background: var(--w-panel); }
+.read { font-size: 12px; color: var(--w-fg); white-space: nowrap; max-width: 18rem; overflow: hidden; text-overflow: ellipsis; }
+.read-up { color: var(--w-up); }
+.read-down { color: var(--w-down); }
+.read-dim { color: var(--w-dim); }
 .peekText { font-size: 12px; color: var(--w-fg); white-space: nowrap; max-width: 30rem; overflow: hidden; text-overflow: ellipsis; }
 .badge {
   position: absolute;

@@ -6,7 +6,7 @@
     <WSegmented :model-value="visibility" :options="visibilityOptions" @update:model-value="emit('visibility', $event as Visibility)" />
 
     <div :class="$style.grid">
-      <span class="w-dim">Font size</span>
+      <span class="w-dim">Size</span>
       <span class="flex items-center gap-2">
         <input type="range" min="18" max="45" :value="look.fontSize ?? DEFAULT_FONT" class="grow"
           @change="emit('patch', { fontSize: Number(($event.target as HTMLInputElement).value) })">
@@ -26,11 +26,10 @@
 
     <!-- One extra line at a time keeps the rest in view. -->
     <button type="button" class="w-focusable" :class="$style.fold" :aria-expanded="open === 'sound'" @click="toggle('sound')">
-      <i :class="open === 'sound' ? 'fas fa-chevron-down' : 'fas fa-chevron-right'" />Sound
+      <i aria-hidden="true" :class="open === 'sound' ? 'fas fa-chevron-down' : 'fas fa-chevron-right'" />Sound
       <span class="grow" /><span class="w-dim text-xs w-trunc">{{ look.sound ? `${soundLabel(look.sound.id)}, ${look.sound.volume}` : 'None' }}</span>
     </button>
-    <div v-if="open === 'sound'" :class="$style.grid">
-      <span />
+    <div v-if="open === 'sound'" :class="$style.foldBody">
       <span class="flex flex-col gap-1" style="min-width: 0;">
         <select :value="look.sound?.id ?? ''" :class="$style.select" style="width: 100%; min-width: 0;" aria-label="Alert sound"
           @change="setSound(($event.target as HTMLSelectElement).value, look.sound?.volume ?? 300)">
@@ -60,11 +59,10 @@
     </div>
 
     <button type="button" class="w-focusable" :class="$style.fold" :aria-expanded="open === 'beam'" @click="toggle('beam')">
-      <i :class="open === 'beam' ? 'fas fa-chevron-down' : 'fas fa-chevron-right'" />Beam
+      <i aria-hidden="true" :class="open === 'beam' ? 'fas fa-chevron-down' : 'fas fa-chevron-right'" />Beam
       <span class="grow" /><span v-if="look.effect" :class="$style.beam" :style="{ background: poeColour(look.effect.color) }" /><span class="w-dim text-xs">{{ look.effect ? `${look.effect.color}${look.effect.temp ? ', on drop' : ''}` : 'None' }}</span>
     </button>
-    <div v-if="open === 'beam'" :class="$style.grid">
-      <span />
+    <div v-if="open === 'beam'" :class="$style.foldBody">
       <span class="flex items-center gap-1 flex-wrap">
         <button type="button" :class="[$style.dot, $style.none, { [$style.picked]: !look.effect }]" title="No beam" aria-label="No beam"
           @click="setEffect('', false)"><i class="fas fa-ban" /></button>
@@ -80,11 +78,10 @@
     </div>
 
     <button type="button" class="w-focusable" :class="$style.fold" :aria-expanded="open === 'icon'" @click="toggle('icon')">
-      <i :class="open === 'icon' ? 'fas fa-chevron-down' : 'fas fa-chevron-right'" />Map icon
+      <i aria-hidden="true" :class="open === 'icon' ? 'fas fa-chevron-down' : 'fas fa-chevron-right'" />Map icon
       <span class="grow" /><span v-if="look.icon" :style="{ color: poeColour(look.icon.color) }">{{ shapeGlyph(look.icon.shape) }}</span><span class="w-dim text-xs">{{ look.icon ? `${['Large', 'Medium', 'Small'][look.icon.size] ?? ''} ${look.icon.color.toLowerCase()}` : 'None' }}</span>
     </button>
-    <div v-if="open === 'icon'" :class="$style.grid">
-      <span />
+    <div v-if="open === 'icon'" :class="$style.foldBody">
       <span class="flex flex-col gap-1">
         <span class="flex items-center gap-1">
           <button type="button" :class="[$style.dot, $style.none, { [$style.picked]: !look.icon }]" title="No minimap icon" aria-label="No minimap icon"
@@ -245,12 +242,16 @@ function copy (tier: string) {
 }
 .grid {
   display: grid;
-  grid-template-columns: 6.5rem minmax(0, 1fr);
+  grid-template-columns: 3.5rem minmax(0, 1fr);
   gap: 8px 10px;
   align-items: center;
   font-size: var(--w-text-sm);
 }
 .colours { gap: 4px 10px; }
+.foldBody {
+  padding: 2px 6px 6px;
+  font-size: var(--w-text-sm);
+}
 .fold {
   display: flex;
   align-items: center;

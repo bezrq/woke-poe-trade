@@ -1,16 +1,17 @@
 <template>
   <div :class="$style.wrap">
-    <WField v-model="query" type="search" icon="fas fa-plus" placeholder="Add an item to this tier" aria-label="Add an item to this tier"
+    <WField v-model="query" type="search" icon="fas fa-plus" placeholder="Add an item to this tier"
       @keydown.enter.prevent="pick(results[hl])" @keydown.down.prevent="step(1)" @keydown.up.prevent="step(-1)" @keydown.esc="query = ''" />
-    <div v-if="results.length" :class="$style.list" role="listbox">
+    <div v-if="results.length" ref="listEl" :class="$style.list" role="listbox">
       <button v-for="(r, i) in results" :key="r.base" type="button" role="option" :aria-selected="i === hl" :class="[$style.row, { [$style.hl]: i === hl }]"
         @mouseenter="hl = i" @click="pick(r)">
         <img v-if="baseIcon(r.base)" :src="baseIcon(r.base)!" :class="$style.art" alt="">
         <span v-else :class="$style.art" />
-        <LabelPreview v-if="r.block" :text="r.base" :actions="r.block.actions" :visibility="r.block.visibility" :extras="false" style="min-width: 0; overflow: hidden;" />
-        <span v-else class="w-trunc text-sm">{{ r.base }}</span>
-        <span class="grow" />
-        <span class="w-dim text-xs w-trunc" :class="$style.where">{{ r.block ? `now in ${ruleLabel(r.block.type, r.block.tier)}` : 'in no rule yet' }}</span>
+        <span :class="$style.text">
+          <LabelPreview v-if="r.block" :text="r.base" :actions="r.block.actions" :visibility="r.block.visibility" :extras="false" style="max-width: 100%; overflow: hidden;" />
+          <span v-else class="w-trunc text-sm">{{ r.base }}</span>
+          <span class="w-dim text-xs w-trunc" :title="r.block ? ruleLabel(r.block.type, r.block.tier) : ''">{{ r.block ? `now in ${ruleLabel(r.block.type, r.block.tier)}` : 'in no rule yet' }}</span>
+        </span>
         <span class="text-xs w-accent" :class="$style.act">{{ r.sameGroup ? 'Move here' : 'Add here' }}</span>
       </button>
     </div>
@@ -19,7 +20,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import { ITEMS_ITERATOR } from '@/assets/data'
 import type { BaseType } from '@/assets/data'
 import { WField } from '../ui'
@@ -48,7 +49,13 @@ function allGameBases (): string[] {
 }
 
 const results = computed(() => query.value.trim().length < 2 ? [] : addSearch(props.doc, props.type, props.tier, query.value, allGameBases()))
-watch(results, () => { hl.value = 0 })
+const listEl = ref<HTMLElement | null>(null)
+watch(results, async () => {
+  hl.value = 0
+  // The box sits low in the column: bring the results into view.
+  await nextTick()
+  listEl.value?.scrollIntoView({ block: 'nearest' })
+})
 
 function step (dir: 1 | -1) {
   const n = results.value.length
@@ -87,7 +94,7 @@ function pick (r: AddResult | undefined) {
 }
 .hl { background: var(--w-accent-soft); }
 .art { width: 18px; height: 18px; object-fit: contain; flex: none; }
-.where { max-width: 45%; }
+.text { display: flex; flex-direction: column; gap: 1px; flex: 1; min-width: 0; align-items: flex-start; }
 .act { flex: none; white-space: nowrap; }
 .none { padding: 2px 4px; }
 </style>

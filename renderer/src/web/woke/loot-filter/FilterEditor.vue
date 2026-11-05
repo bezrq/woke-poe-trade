@@ -137,16 +137,18 @@
           <template v-if="!isOwnGroup && (tier.bases.length || targets.includes(tier.tier))">
             <div class="w-group-label" style="padding: 8px 0 2px;">Items in this tier · {{ tier.bases.length }}</div>
             <div class="flex flex-wrap gap-1">
-              <WChip v-for="b in tier.bases" :key="b" clickable :active="picked.includes(b)" draggable="true"
-                title="Right-click to move it. Drag onto a tier, or shift-click to pick several."
-                @click="pickBase(b, $event)" @contextmenu="baseMenu($event, b)" @dragstart="onDragStart(b, $event)" @dragend="dragOver = null">
-                <span class="flex items-center gap-1">
-                  <img v-if="baseIcon(b)" :src="baseIcon(b)!" :class="$style.chipArt" alt="">
-                  <span>{{ b }}</span>
-                  <i v-if="movedHere(b)" class="fas fa-lock w-faint" style="font-size: 0.75em;" title="You put it here, so prices won't move it" />
-                  <button type="button" :class="$style.chipX" :title="movedHere(b) ? 'Back to where it was' : 'Take it off this tier'" :aria-label="`Take ${b} off this tier`" @click.stop="takeOff(b)"><i class="fas fa-times" /></button>
-                </span>
-              </WChip>
+              <span v-for="b in tier.bases" :key="b" :class="$style.chipWrap">
+                <WChip clickable :active="picked.includes(b)" draggable="true"
+                  title="Right-click to move it. Drag onto a tier, or shift-click to pick several."
+                  @click="pickBase(b, $event)" @contextmenu="baseMenu($event, b)" @dragstart="onDragStart(b, $event)" @dragend="dragOver = null">
+                  <span class="flex items-center gap-1">
+                    <img v-if="baseIcon(b)" :src="baseIcon(b)!" :class="$style.chipArt" alt="">
+                    <span>{{ b }}</span>
+                    <i v-if="movedHere(b)" class="fas fa-lock w-faint" style="font-size: 0.75em;" title="You put it here, so prices won't move it" />
+                  </span>
+                </WChip>
+                <button type="button" :class="$style.chipX" :title="movedHere(b) ? 'Back to where it was' : 'Take it off this tier'" :aria-label="`Take ${b} off this tier`" @click="takeOff(b)"><i aria-hidden="true" class="fas fa-times" /></button>
+              </span>
             </div>
             <AddItemField v-if="store.doc.value && selType && targets.includes(tier.tier)" :doc="store.doc.value" :type="selType" :tier="tier.tier" @add="addItem" />
             <div v-if="picked.length && targets.length > 1" class="flex items-center gap-2 text-sm" style="margin-top: 6px;">
@@ -201,12 +203,12 @@
           <WButton v-if="p.block.type && p.block.tier" size="sm" variant="ghost" @click="jumpTo(p.block.type!, p.block.tier!)">Open rule</WButton>
         </div>
       </div>
-      <div v-if="config.priceTiers.moves.length" :class="$style.changeRow">
+      <div v-if="activePriceMoves" :class="$style.changeRow">
         <i class="fas fa-chart-line w-dim" />
-        <span class="grow min-w-0">{{ config.priceTiers.moves.length }} item{{ config.priceTiers.moves.length === 1 ? '' : 's' }} moved by prices</span>
+        <span class="grow min-w-0">{{ activePriceMoves }} item{{ activePriceMoves === 1 ? '' : 's' }} moved by prices</span>
         <WButton size="sm" variant="ghost" @click="tab = 'prices'">See them</WButton>
       </div>
-      <WEmpty v-if="!config.edits.length && !config.priceTiers.moves.length" icon="fas fa-pen">No changes yet. Sample an item with <WKbd v-if="config.sampleHotkey" :keys="config.sampleHotkey" /> or edit a tier here.</WEmpty>
+      <WEmpty v-if="!config.edits.length && !activePriceMoves" icon="fas fa-pen">No changes yet. Sample an item with <WKbd v-if="config.sampleHotkey" :keys="config.sampleHotkey" /> or edit a tier here.</WEmpty>
       <div v-for="s in store.statuses.value" :key="s.edit.id" :class="[$style.changeRow, { [$style.failed]: !s.ok }]">
         <i :class="iconFor(s.edit.kind)" class="w-dim" />
         <span class="grow min-w-0">
@@ -314,7 +316,7 @@ const props = defineProps<{
   openTab?: { tab: 'prices' | 'neversink' | 'changes' } | null
 }>()
 
-const emit = defineEmits<{ (e: 'close'): void, (e: 'paste-item', text: string): void }>()
+const emit = defineEmits<{ (e: 'close' | 'tab-opened'): void, (e: 'paste-item', text: string): void }>()
 
 // Pasting a copied item finds its rule, like the hotkey does in game.
 function onSearchPaste (e: ClipboardEvent) {
@@ -344,6 +346,9 @@ const results = computed(() => props.store.doc.value ? findBase(props.store.doc.
 const targets = computed(() => props.store.doc.value && selType.value ? moveTargets(props.store.doc.value, selType.value) : [])
 const outName = computed(() => props.config.sourceName ? outputName(props.config) : '—')
 
+// Stored moves only count while re-tiering is on: otherwise they aren't applied.
+const activePriceMoves = computed(() => props.config.priceTiers.on ? props.config.priceTiers.moves.length : 0)
+
 const tabOptions = computed(() => [
   { value: 'rules', label: 'Rules' },
   { value: 'preview', label: 'Preview' },
@@ -352,7 +357,7 @@ const tabOptions = computed(() => [
   { value: 'neversink', label: props.config.neversink.on ? `NeverSink · ${LEVEL_NAMES[props.config.neversink.level]}` : 'NeverSink', count: props.store.updateReady.value ? 1 : undefined },
   { value: 'build', label: 'Build', count: props.store.buildBlockCount.value || undefined },
   // Price moves are changes to your filter too.
-  { value: 'changes', label: 'Changes', count: props.config.edits.length + props.config.priceTiers.moves.length }
+  { value: 'changes', label: 'Changes', count: props.config.edits.length + activePriceMoves.value }
 ])
 
 // ---- build rules ----
@@ -514,7 +519,10 @@ watch(() => props.focus, (f) => {
 }, { immediate: true })
 
 watch(() => props.openTab, (t) => {
-  if (t) tab.value = t.tab
+  if (!t) return
+  tab.value = t.tab
+  // Once: the editor is rebuilt each time it opens, and must not come back here.
+  emit('tab-opened')
 }, { immediate: true })
 
 // Default selection once the filter loads.
@@ -905,10 +913,11 @@ function openFolder () {
 }
 .rowArt { width: 18px; height: 18px; object-fit: contain; flex: none; }
 .chipArt { width: 16px; height: 16px; object-fit: contain; flex: none; }
+.chipWrap { display: inline-flex; align-items: center; }
 .chipX {
   background: none;
   border: 0;
-  padding: 0 0 0 2px;
+  padding: 0 4px 0 2px;
   color: var(--w-faint);
   font-size: 0.75em;
   cursor: pointer;

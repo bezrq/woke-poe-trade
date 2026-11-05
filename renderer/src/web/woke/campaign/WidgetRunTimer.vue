@@ -18,8 +18,7 @@
       </template>
     </DockItem>
     <div class="flex flex-col items-start gap-1" data-w-panel>
-      <!-- HUD strip: always on while the run is going. The campaign tracker
-           shows run time in its own strip, so the timer docks under it. -->
+      <!-- HUD strip: with the campaign tracker placed, its card has the run time. -->
       <div v-if="!docked" data-widget-drag :class="$style.strip">
         <template v-if="run">
           <span :class="$style.where" class="w-head-font w-accent w-trunc">
@@ -56,8 +55,7 @@
       </div>
 
       <!-- Splits panel -->
-      <div v-if="docked && !config.expanded && wm.active.value" data-widget-drag :class="$style.strip" class="w-faint">Run timer · shown in the campaign tracker strip</div>
-      <WPanel v-if="config.expanded" ref="panel" width="21rem" max-height="60vh" :style="docked ? 'margin-top: 2.4rem' : ''">
+      <WPanel v-if="config.expanded" ref="panel" width="21rem" max-height="60vh">
         <template #title>
           <template v-if="run">Run<template v-if="run.charName"> · {{ run.charName }}<span class="w-dim"> ({{ run.className }})</span></template></template>
           <template v-else>Campaign runs</template>
@@ -177,13 +175,14 @@ import { formatClock } from '../ui/format'
 import { useVisibleClock } from '../shared/visible-clock'
 import { WPanel, WTabs, WChip, WEmpty, toast } from '../ui'
 import DockItem from '../dock/DockItem.vue'
-import { hideWhilePlaying, tickWhile } from '../dock/dock'
+import { dockIconShowing, hideWhilePlaying, tickWhile } from '../dock/dock'
 import { actLabel } from './log-parse'
 import {
   applyRunEvent, comparisonRun, endRun, formatDelta, headlineDelta, isComplete,
   migrateRunTimer, parseHotkeyTarget, pauseRun, personalBest, resumeRun, runElapsed, runTotal, splitRows, startRun, sumOfBest
 } from './run-timer'
 import { CAMPAIGN_TYPE } from './widget'
+import type { CampaignWidget } from './widget'
 import { isWidgetTypeOn } from '../modules'
 import { followGameLog } from '../shared/game-log'
 import type { LogLine } from '../shared/game-log'
@@ -215,7 +214,12 @@ if (!props.config.lastLogAt) props.config.lastLogAt = Date.now()
 // shows the splits panel.
 const docked = computed(() => {
   const cfg = AppConfig()
-  return isWidgetTypeOn(cfg, CAMPAIGN_TYPE) && cfg.widgets.some(w => w.wmType === CAMPAIGN_TYPE && w.wmWants === 'show')
+  if (!isWidgetTypeOn(cfg, CAMPAIGN_TYPE)) return false
+  const campaign = cfg.widgets.find(w => w.wmType === CAMPAIGN_TYPE) as CampaignWidget | undefined
+  if (!campaign) return false
+  // Past the campaign: nothing from the timer either. While levelling, it shows
+  // on its own only where the campaign icon doesn't (hideouts, maps).
+  return campaign.state?.asleep === true || dockIconShowing('campaign')
 })
 
 const tab = shallowRef<'splits' | 'history'>('splits')

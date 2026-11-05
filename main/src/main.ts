@@ -20,7 +20,8 @@ import { initWoke, initWokeOverlay, registerWokeHandler } from './woke'
 import { gameFilterSetting } from './woke/neversink'
 import { perfMark } from './woke/perf'
 import { startCrashReporting, attachCrashLogger } from './woke/crash-reports'
-import { initSetup, maybeOpenSetup, openSetupWindow } from './woke/setup'
+import { initSetup, maybeOpenSetup, openSetupWindow, refreshSetupIcon, savedAppIcon } from './woke/setup'
+import { setAppIcon } from './woke/app-icon'
 
 if (!app.requestSingleInstanceLock()) {
   app.exit()
@@ -38,6 +39,7 @@ let tray: AppTray
 
 app.on('ready', async () => {
   perfMark('app ready')
+  setAppIcon(savedAppIcon())
   tray = new AppTray(eventPipe)
   const logger = new Logger(eventPipe)
   attachCrashLogger(logger)
@@ -67,6 +69,11 @@ app.on('ready', async () => {
         gameConfig.readConfig(cfg.gameConfig ?? '')
         appUpdater.checkAtStartup()
         tray.overlayKey = cfg.overlayKey
+        if (setAppIcon(cfg.appIcon)) {
+          tray.refreshIcon()
+          overlay.refreshIcon()
+          refreshSetupIcon()
+        }
       })
       uIOhook.start()
       const port = await startServer(appUpdater, logger)

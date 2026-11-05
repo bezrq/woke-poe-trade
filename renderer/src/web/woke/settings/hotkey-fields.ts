@@ -37,7 +37,7 @@ function field (w: W, prop: string): Pick<HotkeyField, 'get' | 'set'> {
 
 // Per woke widget type: [prop, label] for each simple hotkey prop.
 const WOKE_KEYS: Record<string, { page: string, keys: Array<[string, string]> }> = {
-  'woke-campaign': { page: 'campaign', keys: [['hotkeyCard', 'Show / hide the campaign guide'], ['hotkeyNext', 'Campaign: step done'], ['hotkeyPrev', 'Campaign: step back']] },
+  'woke-campaign': { page: 'campaign', keys: [['hotkeyCard', 'Campaign: keep the card open'], ['hotkeyNext', 'Campaign: step done'], ['hotkeyPrev', 'Campaign: step back']] },
   'woke-run-timer': { page: 'campaign', keys: [['hotkeyPause', 'Run timer: pause / resume'], ['hotkeySplits', 'Run timer: show / hide splits']] },
   'woke-lab': { page: 'lab', keys: [['hotkeyOverlay', 'Lab layout in the overlay'], ['hotkeyExternal', 'Lab layout in your browser']] },
   'woke-challenges': { page: 'challenges', keys: [['hotkey', 'Show / hide the challenge guide']] },
