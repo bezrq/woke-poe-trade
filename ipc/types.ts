@@ -227,7 +227,7 @@ type IpcWokeResponse =
 // Hover zones: lets a woke widget react to the mouse while the game has
 // focus (the overlay is click-through then, so the DOM sees no hover).
 type IpcWokeHoverZones =
-  Event<'OVERLAY->MAIN::woke-hover-keep', undefined> |
+  Event<'OVERLAY->MAIN::woke-open-overlay', undefined> |
   Event<'OVERLAY->MAIN::woke-hover-zones', {
     // Replaces all zones owned by `owner`. Rects in CSS pixels, screen space.
     owner: string

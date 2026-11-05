@@ -25,7 +25,9 @@ export function useHoverZone (
   const domInside = shallowRef(false)
   const inside = shallowRef(false)
 
-  const sync = () => { inside.value = hostInside.value || domInside.value }
+  // In the app the main process always knows. The DOM doesn't: the window stops
+  // seeing the mouse as it goes click-through, so a mouseleave can go missing.
+  const sync = () => { inside.value = Host.isElectron ? hostInside.value : domInside.value }
 
   function send () {
     const node = el.value

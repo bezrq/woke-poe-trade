@@ -4,7 +4,7 @@
          one arrives (A1); resting on it opens the offers with buttons (B1). -->
     <DockItem ref="dockRef" id="trade" title="Trades" :show="shown.length > 0"
       :badge="sellCount || null" :tone="anyInArea ? 'up' : 'accent'" :led="book.afk ? 'warn' : null" :wm-id="config.wmId"
-      card-width="23rem" interactive @open-change="onCard">
+      card-width="23rem" @open-change="onCard">
       <template #card>
         <div v-if="book.afk" class="text-xs" style="padding: 2px var(--w-pad); color: var(--w-warn);">You're AFK: buyers get your autoreply.</div>
         <OfferRow v-for="o in shown" :key="o.id" :offer="o" :expanded="o.id === expandedId" :now="now"

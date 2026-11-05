@@ -12,7 +12,7 @@ test('tracker follows zones, act and level from Client.txt while you play', asyn
 
   await overlay.replayLog('client-logs/campaign-act1.txt')
   await expect(icon).toBeVisible()
-  await icon.hover()
+  await overlay.hoverDockIcon('campaign')
   await expect(icon).toContainText('The Southern Forest')
   await expect(icon).toContainText('Lv 13')
   await overlay.snap('campaign card in act 2')
@@ -66,7 +66,7 @@ test('pinned values stay on the icon and go when the route sleeps; the card open
   await expect(icon).toContainText('Lv 13')
   await overlay.snap('pinned level in the icon')
 
-  await icon.hover()
+  await overlay.hoverDockIcon('campaign')
   await icon.getByRole('button', { name: 'Pin to screen' }).click()
   await expect(overlay.page.getByText('On screen while levelling')).toBeVisible()
   await overlay.page.keyboard.press('Escape')
@@ -78,7 +78,7 @@ test('pinned values stay on the icon and go when the route sleeps; the card open
 test('run timer splits act 1 when act 2 starts, with the run time on the tracker card', async ({ overlay, fakeApp }) => {
   await overlay.boot({ widgets: [CAMPAIGN, RUN_TIMER] })
   await overlay.replayLog('client-logs/campaign-act1.txt')
-  await overlay.dockIcon('campaign').hover()
+  await overlay.hoverDockIcon('campaign')
   await expect(overlay.dockIcon('campaign')).toContainText('Run')
 
   const timer = () => overlay.savedWidget('woke-run-timer')

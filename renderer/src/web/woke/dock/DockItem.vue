@@ -24,7 +24,6 @@ const props = withDefaults(defineProps<{
   into?: string
   wmId?: number
   cardWidth?: string
-  interactive?: boolean
   progress?: number | null
   pinnable?: boolean
   readouts?: Array<{ id: string, text: string, tone: 'up' | 'down' | 'dim' | null }>
@@ -37,7 +36,6 @@ const props = withDefaults(defineProps<{
   into: undefined,
   wmId: undefined,
   cardWidth: undefined,
-  interactive: false,
   progress: null,
   pinnable: false,
   readouts: undefined
@@ -80,9 +78,8 @@ watch(() => props.show, (show) => { if (!show) entry.pinned = null })
 watch(() => wm?.active.value, (active) => { if (!active && entry.pinned === 'click') entry.pinned = null })
 
 const clickPinned = computed(() => entry.pinned === 'click')
-const keyPinned = computed(() => entry.pinned === 'key')
 
-defineExpose({ peek, togglePin, clickPinned, keyPinned })
+defineExpose({ peek, togglePin, clickPinned })
 </script>
 
 <template>

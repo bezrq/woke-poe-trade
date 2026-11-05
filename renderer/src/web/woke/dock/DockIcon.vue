@@ -79,8 +79,10 @@ const showCard = shallowRef(false)
 const cardOpen = computed(() => showCard.value || props.host.pinned != null)
 
 // Hover works while the game has focus (main process watches the mouse).
-const overIcon = useHoverZone(iconEl, { enabled: () => true, onClick: openCard })
-const overCard = useHoverZone(cardEl, { enabled: () => cardOpen.value, activate: () => !!props.host.props.interactive })
+// Both take the mouse while it's over them, so a click lands here instead of
+// walking the character there.
+const overIcon = useHoverZone(iconEl, { enabled: () => true, activate: () => true, onClick: openCard })
+const overCard = useHoverZone(cardEl, { enabled: () => cardOpen.value, activate: () => true })
 const hovering = computed(() => overIcon.value || overCard.value)
 
 // Opens once the mouse rests on the icon, so sweeping past it doesn't pop the

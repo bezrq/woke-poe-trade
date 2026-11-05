@@ -36,9 +36,6 @@ export interface DockItemProps {
   progress?: number | null
   // With the overlay open, a click keeps the card open until the next click.
   pinnable?: boolean
-  // The card has buttons: resting on it makes the overlay clickable (and
-  // hands focus back to the game when the mouse leaves).
-  interactive?: boolean
 }
 
 export interface DockEntry {

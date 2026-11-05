@@ -6,7 +6,7 @@
       pinnable card-width="24rem" @open-change="cardShown = $event">
       <template #card>
         <div :class="$style.body">
-          <button ref="pinBtn" class="w-icon-btn" :class="[$style.textBtn, $style.pinBtn]" title="Choose what stays on screen" @click="openSettings"><i class="fas fa-thumbtack text-xs" /> Pin to screen</button>
+          <button class="w-icon-btn" :class="[$style.textBtn, $style.pinBtn]" title="Choose what stays on screen" @click="openSettings"><i class="fas fa-thumbtack text-xs" /> Pin to screen</button>
           <div class="flex items-baseline gap-2">
             <span class="w-head-font w-accent w-trunc" :title="s.charName ? `Following ${s.charName}'s level-ups` : undefined">{{ s.zone || 'Waiting for a zone change' }}</span>
             <span v-if="s.level != null" class="ml-auto w-num whitespace-nowrap" :title="xpTitle">Lv {{ s.level }}
@@ -32,9 +32,8 @@
             <span v-if="timer.paused" style="color: var(--w-warn);">paused</span>
             <span v-if="timer.act" class="ml-auto w-dim">act {{ formatClock(timer.act) }}</span>
           </div>
-          <!-- Pinned by a click: the overlay is open, so show what can be clicked.
-               Not on overlay-open alone: resting on the pin button opens the
-               overlay, and a card changing height would move the button away. -->
+          <!-- Pinned by a click with the overlay open: the card grows to hold the
+               step buttons and the full build. -->
           <CampaignBuild :config="config" :tickable="expanded" :show-tree="expanded" :max-links="expanded ? 2 : 1" />
           <div v-if="expanded" class="flex flex-wrap items-center gap-1" :class="$style.build">
             <button class="w-icon-btn" :class="$style.textBtn" @click="move(-1)"><i class="fas fa-chevron-left text-xs" /> Step back</button>
@@ -75,7 +74,6 @@ import RouteParts from './RouteParts.vue'
 import DockItem from '../dock/DockItem.vue'
 import { hideWhilePlaying, tickWhile } from '../dock/dock'
 import { reportProblem } from '../dock/health'
-import { useHoverZone } from '../shared/hover'
 import { pinnedReadouts, pinsTick } from './pins'
 import { actFromAreaId, actLabel } from './log-parse'
 import CampaignBuild from './CampaignBuild.vue'
@@ -158,8 +156,8 @@ function toggleSplits () {
 function openSettings () {
   const settings = wm.widgets.value.find(w => w.wmType === 'settings')
   if (!settings) return
-  // The overlay may be open only because the mouse rests on this button.
-  Host.sendEvent({ name: 'OVERLAY->MAIN::woke-hover-keep', payload: undefined })
+  // A click on a card doesn't open the overlay, and settings need it.
+  Host.sendEvent({ name: 'OVERLAY->MAIN::woke-open-overlay', payload: undefined })
   wm.setFlag(settings.wmId, 'settings::page=Campaign & run timer', true)
   wm.show(settings.wmId)
 }
@@ -255,12 +253,6 @@ const dockTone = computed(() => {
 })
 const dockRef = shallowRef<InstanceType<typeof DockItem> | null>(null)
 const expanded = computed(() => dockRef.value?.clickPinned ?? false)
-
-// Only this button makes the overlay clickable: the card stays see-through,
-// so hovering it to read a step never opens the overlay.
-const pinBtn = shallowRef<HTMLElement | null>(null)
-// Held open by the hotkey while you play, it must not take focus as you pass.
-useHoverZone(pinBtn, { enabled: () => cardShown.value && !dockRef.value?.keyPinned, activate: () => true })
 
 const readouts = computed(() => {
   const w = timerWidget.value

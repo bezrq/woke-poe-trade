@@ -2,7 +2,7 @@
   <Widget :config="config" move-handles="corners" :inline-edit="false">
     <!-- In the hideout, while you set up the map device: the strategy you picked. -->
     <DockItem id="atlas" :title="selected?.name || 'Atlas strategy'" :show="!!selected && zone.kind === 'hideout'"
-      :wm-id="config.wmId" card-width="21rem" interactive>
+      :wm-id="config.wmId" card-width="21rem">
       <template #card>
         <div v-if="selected" style="padding: 4px var(--w-pad) 6px;" class="flex flex-col gap-0.5">
           <div v-for="(p, i) in pricedScarabs" :key="i" class="flex justify-between gap-2">
@@ -15,8 +15,8 @@
           <div v-if="selected.regex" class="flex items-center gap-1 text-xs">
             <span class="w-dim">Map regex</span>
             <code class="w-trunc" style="font-family: var(--w-num);">{{ selected.regex }}</code>
-            <button v-if="wm.active.value" class="w-icon-btn" title="Copy" @click="copy(selected.regex)"><i :class="copied === selected.regex ? 'fas fa-check' : 'far fa-copy'" /></button>
-            <button v-if="wm.active.value" class="w-icon-btn" title="Save to the Regex library"
+            <button class="w-icon-btn" title="Copy" @click="copy(selected.regex)"><i :class="copied === selected.regex ? 'fas fa-check' : 'far fa-copy'" /></button>
+            <button class="w-icon-btn" title="Save to the Regex library"
               @click="toast(SAVE_MESSAGE[saveToRegexLibrary({ name: selected.name, text: selected.regex, category: 'Atlas' })])"><i class="far fa-bookmark" /></button>
           </div>
         </div>
