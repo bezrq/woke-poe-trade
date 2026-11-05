@@ -1,7 +1,7 @@
 ---
 id: WOKEPOET-15
 title: 'Scarab flip module: EV of the vendor recipe'
-status: Grooming
+status: Ready
 priority: None
 effort: M
 assignee: Agent
@@ -51,8 +51,32 @@ history:
       Guy approved the mockups ("looks good"), so A Buy list with C Odds as a
       second tab. Added: mark exceptionally rare scarabs that are cheap, since
       they may balloon in price.
+  - type: activity
+    user: Agent
+    date: '2026-11-05T03:44:07.274Z'
+    comment: Updated implementation link.
+    id: a-2026-11-05t03-44-07-274z
+  - type: comment
+    user: Agent
+    comment: >-
+      PR 91 is open: https://github.com/guybnd/woke-poe-trade/pull/91. Panel has
+      Buy list, Odds and Rare & cheap tabs. Unit tests, type checks and the new
+      fake-game test pass locally. toolkit.spec would not load on my Windows run
+      (Named export 'MODULES' not found), so CI needs to confirm the rest of the
+      fake-game suite. Not yet tried in the real app. Work is in the clone
+      E:\Git\woke-poe-trade-scarab on claude/scarab-flip, since the main
+      checkout has another thread's uncommitted work.
+    date: '2026-11-05T03:44:07.305Z'
+    completionComment: true
+    id: c-2026-11-05t03-44-07-305z
+  - type: status_change
+    from: Grooming
+    to: Ready
+    user: Agent
+    date: '2026-11-05T03:44:07.305Z'
 swimlane: null
 needsAction: null
+implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/91'
 ---
 > **TL;DR:** A new economy panel that says whether vendoring cheap scarabs pays right now, using poe.ninja prices and community drop weights.
 

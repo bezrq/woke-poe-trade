@@ -1,7 +1,7 @@
 ---
 id: WOKEPOET-18
 title: Make the chosen PoB loadout shared across every window
-status: Grooming
+status: In Progress
 priority: Medium
 effort: M
 assignee: unassigned
@@ -14,6 +14,13 @@ history:
     user: Agent
     date: '2026-11-05T03:42:51.336Z'
     comment: Created ticket.
+    id: a-2026-11-05t03-42-51-336z
+  - type: status_change
+    from: Grooming
+    to: In Progress
+    user: Agent
+    date: '2026-11-05T03:44:23.371Z'
+needsAction: null
 ---
 > **TL;DR:** Picking a skill or item set chip in the PoB panel only changed that one panel's view. Make the pick one saved choice per build that the panel tabs, campaign card, price chip and filter rules all read. The level-based pick stays the default until a set is picked by hand.
 
