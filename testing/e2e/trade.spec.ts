@@ -137,7 +137,7 @@ test('two-line rows have no next step button and close on click too', async ({ o
   await overlay.snap('two-line rows')
 })
 
-test('the bubble stays past the old five seconds and through a hover, then ends on the set time', async ({ overlay, fakeApp }) => {
+test('the bubble stays past the old five seconds and through a hover', async ({ overlay, fakeApp }) => {
   clearHistory(fakeApp.opts.userData)
   await overlay.boot({ widgets: [TRADE] })
   await overlay.log(upTo('Kaltenhalt: Hi, I would like to buy your Headhunter'))

@@ -252,8 +252,8 @@ function announce (o: Offer) {
 }
 
 // --- The bubble: the icon grown into one line naming an offer. It stays until
-// the time in the settings has passed since the last whisper or reply, and the
-// icon stays that long too, so you can get back to what you just closed. ---
+// no offers are open, or with a time in the settings, until that long after the
+// last whisper or reply (the icon stays that long too, for what you just closed). ---
 const BUBBLE_HOLD_MS = 24 * 3_600_000
 const lingering = shallowRef(false)
 const bubbleId = shallowRef<string | null>(null)
@@ -270,7 +270,7 @@ function endBubble () {
 }
 function touched () {
   clearTimeout(lingerTimer)
-  const seconds = props.config.bubbleSeconds ?? 60
+  const seconds = props.config.bubbleSeconds ?? 0
   lingering.value = seconds > 0
   if (seconds <= 0) return
   lingerTimer = setTimeout(() => {
