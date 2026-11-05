@@ -114,7 +114,7 @@
       </div>
 
       <!-- the rail's own layout and size -->
-      <div v-if="popup?.kind === 'layout'" ref="popupEl" :class="$style.menu" :style="popupStyle" data-rail-layout @contextmenu.prevent>
+      <div v-if="popup?.kind === 'layout'" ref="popupEl" :class="[$style.menu, $style.layoutMenu]" :style="popupStyle" data-rail-layout @contextmenu.prevent>
         <div :class="$style.chipHead">Layout</div>
         <div :class="$style.chips">
           <button :class="[$style.chip, { [$style.chipOn]: !flat }]" @click="setFlat(false)">Vertical</button>
@@ -122,7 +122,7 @@
         </div>
         <div :class="$style.chipHead">Size</div>
         <div :class="$style.chips">
-          <button v-for="s in RAIL_SIZES" :key="s" :class="[$style.chip, { [$style.chipOn]: (config.railSize ?? 'm') === s }]" @click="config.railSize = s">{{ s.toUpperCase() }}</button>
+          <button v-for="s in RAIL_SIZES" :key="s" :class="[$style.chip, { [$style.chipOn]: (config.railSize ?? 'm') === s }]" @click="setSize(s)">{{ s.toUpperCase() }}</button>
         </div>
         <hr :class="$style.rule">
         <button :class="$style.item" @click="resetRail(); closePopup()"><i class="fas fa-undo" />Reset position and size</button>
@@ -139,8 +139,8 @@
           <i class="fas fa-thumbtack" />{{ menuTab.pinned ? 'Unpin from the rail' : 'Pin to the rail' }}
         </button>
         <template v-if="menuTab.pinned && !menuTab.iconOnly">
-          <button :class="$style.item" :disabled="!canShift(menuTab, -1)" @click="shift(menuTab, -1)"><i class="fas fa-chevron-up" />Move up</button>
-          <button :class="$style.item" :disabled="!canShift(menuTab, 1)" @click="shift(menuTab, 1)"><i class="fas fa-chevron-down" />Move down</button>
+          <button :class="$style.item" :disabled="!canShift(menuTab, -1)" @click="shift(menuTab, -1)"><i class="fas" :class="flat ? 'fa-chevron-left' : 'fa-chevron-up'" />{{ flat ? 'Move left' : 'Move up' }}</button>
+          <button :class="$style.item" :disabled="!canShift(menuTab, 1)" @click="shift(menuTab, 1)"><i class="fas" :class="flat ? 'fa-chevron-right' : 'fa-chevron-down'" />{{ flat ? 'Move right' : 'Move down' }}</button>
         </template>
         <hr :class="$style.rule">
         <button v-if="menuTab.hasAnchor" :class="$style.item" @click="resetPosition(menuTab); closePopup()">
@@ -183,7 +183,7 @@ import { useI18n } from 'vue-i18n'
 import { useHotkeyHealth } from '../switchboard/hotkey-health'
 import ToolIcon from './ToolIcon.vue'
 import { ICON_TOOL_NAMES, RAIL_SIZES, RAIL_ZOOM, movePin, railAnchor, railDropEdge, stepRailSize, artFor, iconFor, allowsCopies, groupByModule, launcherEntries, looksLikeItem, migrateToRail, parseWidgetTitle } from './tools'
-import type { LauncherEntry, LauncherState, TabBarConfig } from './tools'
+import type { LauncherEntry, LauncherState, RailSize, TabBarConfig } from './tools'
 import { WIcon, WPrice, ninjaIcon } from '../ui'
 import { holdPricesForSearch, useSearchSnapshot } from '../market/price-index'
 import { groupKey, rarityClass, searchPrices } from '../search/search'
@@ -371,12 +371,15 @@ function setLabel (wmId: number, label: string) {
 // Names on hover. Drawn on body so a window can't cover them.
 const railEl = ref<HTMLElement | null>(null)
 const tip = ref<{ text: string, open: boolean, x: number, y: number, left: boolean } | null>(null)
+const TIP_ROOM = 100
 function showTip (text: string, open: boolean, e: MouseEvent) {
   const r = (e.currentTarget as HTMLElement).getBoundingClientRect()
   const rail = railEl.value?.getBoundingClientRect() ?? r
   if (flat.value) {
     const below = rail.top < window.innerHeight / 2
-    tip.value = { text, open, left: !below, x: r.left + r.width / 2, y: below ? rail.bottom + 18 : rail.top - 18 }
+    // It's centred on the icon: keep it off the screen's edges.
+    const x = Math.max(TIP_ROOM, Math.min(window.innerWidth - TIP_ROOM, r.left + r.width / 2))
+    tip.value = { text, open, left: !below, x, y: below ? rail.bottom + 18 : rail.top - 18 }
     return
   }
   tip.value = {
@@ -447,24 +450,51 @@ function openLayout () { openBesideRail('layout') }
 // Where the buff row ends: lying along the top, the rail sits just under it.
 const BELOW_BUFFS = railAnchor().y
 
-// Keeps its top-left corner, then comes back on screen if the new shape runs off.
-function setFlat (on: boolean, place?: { x?: number, y?: number, right?: boolean, bottom?: boolean }) {
-  const r = railEl.value?.getBoundingClientRect()
-  if (!r) return
+// Lays out the rail's new shape and puts it where asked, kept on screen. How long
+// the rail can be depends on where it's anchored, so it's measured from the start
+// of the screen before it's placed. Before the next paint, so nothing flickers.
+function reshape (change: () => void, place: { x: number, y: number, right: boolean, bottom: boolean }) {
   const c = props.config
-  c.railFlat = on
-  c.anchor = {
-    pos: 'tl',
-    x: place?.x ?? r.left / window.innerWidth * 100,
-    y: place?.y ?? r.top / window.innerHeight * 100
-  }
+  change()
+  const w = window.innerWidth
+  const h = window.innerHeight
+  c.anchor = { pos: 'tl', x: flat.value ? 0 : place.x, y: flat.value ? place.y : 0 }
   nextTick(() => {
     const n = railEl.value?.getBoundingClientRect()
     if (!n) return
-    if (place?.right || n.right > window.innerWidth) c.anchor.x = Math.max(0, (window.innerWidth - n.width) / window.innerWidth * 100)
-    if (place?.bottom || n.bottom > window.innerHeight) c.anchor.y = Math.max(0, (window.innerHeight - n.height) / window.innerHeight * 100)
+    const x = Math.min(place.x / 100 * w, w - n.width)
+    const y = Math.min(place.y / 100 * h, h - n.height)
+    c.anchor = {
+      pos: 'tl',
+      x: Math.max(0, place.right ? w - n.width : x) / w * 100,
+      y: Math.max(0, place.bottom ? h - n.height : y) / h * 100
+    }
     // Open popups sit beside the old shape.
-    if (popup.value?.kind === 'layout') openLayout()
+    if (popup.value?.kind === 'layout') nextTick(openLayout)
+  })
+}
+
+// Keeps its top-left corner unless told otherwise.
+function setFlat (on: boolean, place: { x?: number, y?: number, right?: boolean, bottom?: boolean } = {}) {
+  const r = railEl.value?.getBoundingClientRect()
+  if (!r) return
+  reshape(() => { props.config.railFlat = on }, {
+    x: place.x ?? r.left / window.innerWidth * 100,
+    y: place.y ?? r.top / window.innerHeight * 100,
+    right: place.right === true,
+    bottom: place.bottom === true
+  })
+}
+
+// A rail against the right or bottom edge stays against it.
+function setSize (size: RailSize) {
+  const r = railEl.value?.getBoundingClientRect()
+  if (!r || size === (props.config.railSize ?? 'm')) return
+  reshape(() => { props.config.railSize = size }, {
+    x: r.left / window.innerWidth * 100,
+    y: r.top / window.innerHeight * 100,
+    right: r.left > window.innerWidth / 2 && r.right >= window.innerWidth - 2,
+    bottom: r.top > window.innerHeight / 2 && r.bottom >= window.innerHeight - 2
   })
 }
 
@@ -478,7 +508,7 @@ function resetRail () {
 function onRailWheel (e: WheelEvent) {
   if (e.ctrlKey) {
     e.preventDefault()
-    props.config.railSize = stepRailSize(props.config.railSize, e.deltaY < 0 ? 1 : -1)
+    setSize(stepRailSize(props.config.railSize, e.deltaY < 0 ? 1 : -1))
   } else if (flat.value && railEl.value) {
     // Scrolling reads as along the row.
     railEl.value.scrollLeft += e.deltaY
@@ -489,6 +519,8 @@ function onRailWheel (e: WheelEvent) {
 // lie along that edge. This runs before the widget's own mouseup.
 function watchRailDrop (start: MouseEvent) {
   if (start.button !== 0 || (start.target as Element).closest('button')) return
+  // Choosing an anchor corner in the widget's Move mode isn't a drag of the rail.
+  if (railEl.value?.closest('.opacity-75')) return
   const onUp = (e: MouseEvent) => {
     document.removeEventListener('mouseup', onUp)
     if (Math.hypot(e.clientX - start.clientX, e.clientY - start.clientY) < DRAG_PX) return
@@ -955,6 +987,7 @@ onBeforeUnmount(() => document.removeEventListener('paste', onOverlayPaste))
 }
 .chip:hover { background: var(--w-accent-soft); }
 .chipOn { background: var(--w-accent-soft); border-color: var(--w-accent); }
+.layoutMenu { box-sizing: border-box; width: 240px; }
 .hint { padding: 3px 8px 5px; font-size: var(--w-fs-xs); color: var(--w-faint); }
 .tipFlat { transform: translate(-50%, -50%); }
 .renameRow { display: flex; gap: 4px; padding: 2px; }

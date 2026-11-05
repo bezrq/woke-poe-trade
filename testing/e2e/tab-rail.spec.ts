@@ -319,6 +319,20 @@ test('the settings button appears on hover, and flips and resizes the rail with 
   await expect.poll(async () => { const b = await rail.boundingBox(); return b!.height > b!.width }).toBe(true)
 })
 
+test('a rail on the far right lays flat at full length, on screen', async ({ overlay }) => {
+  const rail = await boot(overlay, (menu) => { menu.anchor = { pos: 'tl', x: 97, y: 10.5 } })
+  const cfg = overlay.widget('menu').getByRole('button', { name: 'Rail layout and size' })
+  await rail.hover()
+  await cfg.click()
+  const menu = overlay.page.locator('[data-rail-layout]')
+  await menu.getByRole('button', { name: 'Horizontal' }).click()
+  await expect.poll(async () => { const b = await rail.boundingBox(); return b!.width > b!.height }).toBe(true)
+  const fits = await rail.evaluate(el => el.scrollWidth <= el.clientWidth + 1)
+  expect(fits).toBe(true)
+  const b = (await rail.boundingBox())!
+  expect(b.x + b.width).toBeLessThanOrEqual(overlay.page.viewportSize()!.width + 1)
+})
+
 test('dropping the rail on the top edge lays it flat under the buffs, and on a side stands it up', async ({ overlay }) => {
   const rail = await boot(overlay)
   const grip = rail.locator('[title^="Drag to move the rail"]')
