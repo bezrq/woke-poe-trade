@@ -50,6 +50,9 @@ export interface FilterBlock {
   dirty: boolean
   // Added by the editor (own rule for one item), not in the source file.
   added?: boolean
+  // Its conditions were copied from a block in the source file, so a keyword
+  // the save check doesn't know is the game's business, not a mistake.
+  inherited?: boolean
 }
 
 export interface FilterRaw {
@@ -119,6 +122,7 @@ export function parseCondition (key: string, rest: string): FilterCondition {
     op = opMatch[1]
     text = text.slice(op.length)
   }
+  text = text.trimStart()
   let count: number | null = null
   // `HasExplicitMod >=2 "A"`: the number right after the operator is a count.
   const countMatch = /^(\d+)\s+(?=")/.exec(text)
@@ -136,12 +140,23 @@ function parseTags (comment: string): { type: string | null, tier: string | null
 }
 
 function isBlockLine (line: string, disabled: boolean): boolean {
+  // `Import` is a statement of its own and ends the block, as a header does.
+  if (/^\s*Import\b/.test(line)) return false
+  if (!disabled && HEADER_RE.test(line) && !line.trimStart().startsWith('#')) return false
   // Rule lines are indented; commented-out blocks keep the indent after `#`.
   if (/^\s+\S/.test(line)) return true
   // Hand-written filters often don't indent; any non-header keyword line
   // still belongs to the block above it.
   if (!disabled && /^[A-Z][A-Za-z]+\b/.test(line) && !HEADER_RE.test(line)) return true
   return disabled && /^#(\t|\s{2,})[A-Z][A-Za-z]+\b/.test(line)
+}
+
+// The game keeps reading a block past blank lines and comments, until the next
+// header: does a rule of this block still follow the gap starting at `from`?
+function ruleAfterGap (lines: string[], from: number): boolean {
+  let i = from
+  while (i < lines.length && (!lines[i].trim() || lines[i].trimStart().startsWith('#'))) i++
+  return i > from && i < lines.length && isBlockLine(lines[i], false)
 }
 
 export function parseFilter (text: string): FilterDoc {
@@ -201,7 +216,8 @@ export function parseFilter (text: string): FilterDoc {
       dirty: false
     }
     i++
-    while (i < lines.length && isBlockLine(lines[i], disabled)) {
+    const inBlock = (at: number) => at < lines.length && (isBlockLine(lines[at], disabled) || (!disabled && ruleAfterGap(lines, at)))
+    while (inBlock(i)) {
       const ruleLine = disabled ? lines[i].replace(/^#/, '') : lines[i]
       block.raw.push(lines[i])
       i++
@@ -274,7 +290,6 @@ export function formatBlock (b: FilterBlock): string[] {
 
 export function serializeFilter (doc: FilterDoc, header?: string[]): string {
   const out: string[] = []
-  if (header?.length) out.push(...header)
   for (const chunk of doc.chunks) {
     if (chunk.kind === 'raw') out.push(...chunk.lines)
     else {
@@ -283,7 +298,9 @@ export function serializeFilter (doc: FilterDoc, header?: string[]): string {
       if (chunk.added) out.push('')
     }
   }
-  return out.join(doc.eol)
+  const body = out.join(doc.eol)
+  // A byte order mark only belongs at the very start of the file.
+  return header?.length ? [...header, body.replace(/^\uFEFF/, '')].join(doc.eol) : body
 }
 
 export function blockKey (b: Pick<FilterBlock, 'type' | 'tier'>): string {
