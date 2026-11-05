@@ -1,6 +1,7 @@
 <template>
-  <Widget :config="{ ...config, anchor }" move-handles="none" :removable="false" :inline-edit="false">
-    <template v-if="item">
+  <Widget :config="widgetConfig" move-handles="none" :removable="false" :hideable="!lookup" :inline-edit="false">
+    <ItemLookup v-if="lookup" :key="lookupKey" :request="lookup" @close="closeLookup" />
+    <template v-else-if="item">
       <!-- woke: Map mods replaces APT's map check for the items it rates. -->
       <WokeMapVerdictCard v-if="wokeMap"
         :result="wokeMap.result" :config="wokeMap.config" />
@@ -33,6 +34,8 @@ export default {
         poedbKey: null,
         craftOfExileKey: null,
         stashSearchKey: null,
+        bookmarksKey: null,
+        bookmarks: [],
         maps: {
           profile: 1,
           showNewStats: false,
@@ -55,11 +58,14 @@ import { MainProcess } from '@/web/background/IPC'
 import { ItemCategory, ItemRarity, parseClipboard, ParsedItem } from '@/parser'
 import { registerActions } from './hotkeyable-actions'
 import type { WidgetManager } from '../overlay/interfaces'
+import type { Anchor } from '../overlay/widgets'
 
 import Widget from '../overlay/Widget.vue'
 import MapCheck from '../map-check/MapCheck.vue'
 import ItemInfo from './ItemInfo.vue'
 import WokeMapVerdictCard from '@/web/woke/map-mods/MapVerdictCard.vue'
+import ItemLookup from '@/web/woke/item-lookup/ItemLookup.vue'
+import { lookupRequest as lookup } from '@/web/woke/item-lookup/lookup'
 import { wokeMapCheck, ensureMapModsConfig, isMapLike as wokeIsMapLike } from '@/web/woke/map-mods/check'
 
 const props = defineProps<{
@@ -76,6 +82,7 @@ registerActions()
 MainProcess.onEvent('MAIN->CLIENT::item-text', (e) => {
   if (e.target !== 'item-check') return
 
+  lookup.value = null
   checkPosition.value = e.position
   item.value = parseClipboard(e.clipboard).unwrapOr(null)
   if (item.value) {
@@ -85,6 +92,23 @@ MainProcess.onEvent('MAIN->CLIENT::item-text', (e) => {
 
 props.config.wmWants = 'hide'
 
+// woke: the wiki, poedb and Craft of Exile keys open a page in this widget. It
+// goes when the widget does, so nothing stays loaded over the game.
+const lookupKey = ref(0)
+watch(lookup, (request) => {
+  if (!request) return
+  lookupKey.value++
+  if (request.position) checkPosition.value = request.position
+  wm.show(props.config.wmId)
+})
+watch(() => props.config.wmWants, (wants) => {
+  if (wants === 'hide') lookup.value = null
+})
+function closeLookup () {
+  lookup.value = null
+  wm.hide(props.config.wmId)
+}
+
 const anchor = computed(() => {
   const width = wm.size.value.width
   const poePanelWidth = wm.poePanelWidth.value
@@ -92,6 +116,18 @@ const anchor = computed(() => {
   const side = checkPosition.value.x > (window.screenX + width / 2)
     ? 'inventory'
     : 'stash'
+
+  // woke: the lookup panel hangs from the top, so its bottom edge follows a
+  // resize drag, where a centred panel's would move at half speed.
+  if (lookup.value) {
+    return {
+      pos: side === 'stash' ? 'tl' : 'tr',
+      y: 6,
+      x: side === 'stash'
+        ? (poePanelWidth / width) * 100
+        : ((width - poePanelWidth) / width) * 100
+    }
+  }
 
   return {
     pos: side === 'stash' ? 'cl' : 'cr',
@@ -101,6 +137,13 @@ const anchor = computed(() => {
       : ((width - poePanelWidth) / width) * 100
   }
 })
+
+// The computed anchor over the real config, so a panel's saved size sticks.
+const widgetConfig = computed(() => new Proxy(props.config as ItemCheckWidget & { anchor: Anchor }, {
+  get: (target, key, receiver) => key === 'anchor' ? anchor.value : Reflect.get(target, key, receiver),
+  // No receiver: Vue only notifies when the write arrives on its own proxy.
+  set: (target, key, value) => Reflect.set(target, key, value)
+}))
 
 // Sets Map mods up (with APT's ratings brought over) the first time a map is checked.
 watch(item, (it) => { if (it && wokeIsMapLike(it)) ensureMapModsConfig() })

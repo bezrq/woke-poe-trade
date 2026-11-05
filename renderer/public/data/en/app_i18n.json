@@ -90,6 +90,7 @@
     "identification": "You are trying to price check unidentified Unique item with base type \"{0}\". Which one?",
     "complexity_hint": "Price-checking this item will most likely require you to enable the built-in browser and log in to your account.",
     "open_on_wiki": "Open item on wiki",
+    "open_bookmarks": "Open bookmarks",
     "open_on_poedb": "Open item on PoEDB",
     "open_on_craftofexile": "Open base item on Craft of Exile",
     "info": "Item info",

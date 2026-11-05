@@ -88,6 +88,7 @@ export type IpcEvent =
   IpcWokeRequest |
   IpcWokeResponse |
   IpcWokeEvent |
+  IpcWokePanelKeys |
   IpcWokeHoverZones |
   IpcWokeHover |
   IpcWokeHoverClick
@@ -228,6 +229,12 @@ type IpcWokeResponse =
 
 // Hover zones: lets a woke widget react to the mouse while the game has
 // focus (the overlay is click-through then, so the DOM sees no hover).
+// Keys an open panel wants while the overlay has focus: the game's hotkeys are
+// off then, and the page gets the keyboard.
+type IpcWokePanelKeys =
+  Event<'OVERLAY->MAIN::woke-panel-keys', { keys: string[] }> |
+  Event<'MAIN->OVERLAY::woke-panel-key', { key: string }>
+
 type IpcWokeHoverZones =
   Event<'OVERLAY->MAIN::woke-open-overlay', undefined> |
   Event<'OVERLAY->MAIN::woke-hover-zones', {

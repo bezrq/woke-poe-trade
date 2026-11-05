@@ -12,6 +12,7 @@ import { moveStashSearchToLibrary } from './woke/regex-library/apt-import'
 import { movePopupsToNewSpot } from './woke/ui/window-anchor'
 import type { WokeModulesConfig } from './woke/modules'
 import type { ItemCheckWidget } from './item-check/widget'
+import { BOOKMARKS_TARGET } from './woke/item-lookup/lookup'
 import type { ItemSearchWidget } from './item-search/widget'
 import { registry as widgetRegistry } from './overlay/widget-registry.js'
 
@@ -447,6 +448,12 @@ function upgradeConfig (_config: Config): Config {
 
     config.configVersion = 18
   }
+  // woke: item lookup bookmarks.
+  {
+    const itemCheck = config.widgets.find(w => w.wmType === 'item-check') as ItemCheckWidget
+    itemCheck.bookmarksKey ??= null
+    itemCheck.bookmarks ??= []
+  }
   // woke: single-instance windows are only created on a fresh config.
   if (!config.widgets.some(w => w.wmType === MAP_CHECK_TYPE)) {
     config.widgets.push(initMapCheckWidget(Math.max(0, ...config.widgets.map(w => w.wmId)) + 1))
@@ -498,19 +505,25 @@ export function getConfigForHost (): HostConfig {
   if (itemCheck.wikiKey) {
     actions.push({
       shortcut: itemCheck.wikiKey,
-      action: { type: 'copy-item', target: 'open-wiki' }
+      action: { type: 'copy-item', target: 'open-wiki', focusOverlay: true }
     })
   }
   if (itemCheck.craftOfExileKey) {
     actions.push({
       shortcut: itemCheck.craftOfExileKey,
-      action: { type: 'copy-item', target: 'open-craft-of-exile' }
+      action: { type: 'copy-item', target: 'open-craft-of-exile', focusOverlay: true }
     })
   }
   if (itemCheck.poedbKey) {
     actions.push({
       shortcut: itemCheck.poedbKey,
-      action: { type: 'copy-item', target: 'open-poedb' }
+      action: { type: 'copy-item', target: 'open-poedb', focusOverlay: true }
+    })
+  }
+  if (itemCheck.bookmarksKey) {
+    actions.push({
+      shortcut: itemCheck.bookmarksKey,
+      action: { type: 'trigger-event', target: BOOKMARKS_TARGET, focusOverlay: true }
     })
   }
   if (itemCheck.stashSearchKey) {
