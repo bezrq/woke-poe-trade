@@ -117,6 +117,18 @@ const anchor = computed(() => {
     ? 'inventory'
     : 'stash'
 
+  // woke: the lookup panel hangs from the top, so its bottom edge follows a
+  // resize drag, where a centred panel's would move at half speed.
+  if (lookup.value) {
+    return {
+      pos: side === 'stash' ? 'tl' : 'tr',
+      y: 6,
+      x: side === 'stash'
+        ? (poePanelWidth / width) * 100
+        : ((width - poePanelWidth) / width) * 100
+    }
+  }
+
   return {
     pos: side === 'stash' ? 'cl' : 'cr',
     y: 50,
@@ -128,7 +140,9 @@ const anchor = computed(() => {
 
 // The computed anchor over the real config, so a panel's saved size sticks.
 const widgetConfig = computed(() => new Proxy(props.config as ItemCheckWidget & { anchor: Anchor }, {
-  get: (target, key, receiver) => key === 'anchor' ? anchor.value : Reflect.get(target, key, receiver)
+  get: (target, key, receiver) => key === 'anchor' ? anchor.value : Reflect.get(target, key, receiver),
+  // No receiver: Vue only notifies when the write arrives on its own proxy.
+  set: (target, key, value) => Reflect.set(target, key, value)
 }))
 
 // Sets Map mods up (with APT's ratings brought over) the first time a map is checked.

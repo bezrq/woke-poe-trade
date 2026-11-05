@@ -68,7 +68,7 @@ const props = defineProps<{
 }>()
 const emit = defineEmits<{ (e: 'close'): void }>()
 
-type ViewEl = HTMLElement & { getURL?: () => string, getTitle?: () => string }
+type ViewEl = HTMLElement & { src: string, getURL?: () => string, getTitle?: () => string }
 
 const tab = shallowRef<PanelTab>(props.request.tab)
 const opened = shallowRef<PanelTab[]>(props.request.tab === 'bookmarks' ? [] : [props.request.tab])
@@ -153,6 +153,9 @@ function toggleStar () {
 }
 
 function openBookmark (b: Bookmark) {
+  // The same link doesn't reload the view, so one you've browsed away from needs telling.
+  const view = page.value?.id === b.id ? views.get('page') : undefined
+  if (view && viewUrl('page') !== b.url) view.src = b.url
   page.value = b
   currentUrls.value = { ...currentUrls.value, page: undefined }
   selectTab('page')
@@ -160,11 +163,15 @@ function openBookmark (b: Bookmark) {
 
 // No "are you sure": remove now, offer Undo.
 function remove (b: Bookmark) {
-  const before = bookmarks.value
-  widget.value.bookmarks = before.filter(o => o.id !== b.id)
+  const at = bookmarks.value.findIndex(o => o.id === b.id)
+  widget.value.bookmarks = bookmarks.value.filter(o => o.id !== b.id)
   toast(`Removed "${b.name}"`, {
     anchor: panel.value?.el,
-    undo: () => { widget.value.bookmarks = before }
+    undo: () => {
+      const list = bookmarks.value
+      if (list.some(o => o.url === b.url)) return
+      widget.value.bookmarks = [...list.slice(0, at), b, ...list.slice(at)]
+    }
   })
 }
 

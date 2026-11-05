@@ -70,7 +70,7 @@ export class OverlayWindow {
 
     this.window.webContents.on('before-input-event', this.handleExtraCommands)
     // woke: a reload takes any open panel with it, without it saying so.
-    this.window.webContents.on('did-start-loading', () => { this.panelKeys.clear() })
+    this.window.webContents.on('did-navigate', () => { this.panelKeys.clear() })
     this.window.webContents.on('did-attach-webview', (_, webviewWebContents) => {
       webviewWebContents.on('before-input-event', this.handleExtraCommands)
     })
