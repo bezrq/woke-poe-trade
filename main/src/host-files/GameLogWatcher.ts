@@ -1,4 +1,4 @@
-import { promises as fs, watchFile, unwatchFile } from 'fs'
+import { promises as fs, watchFile, unwatchFile, type Stats } from 'fs'
 import { execFile } from 'child_process'
 import path from 'path'
 import { app } from 'electron'
@@ -38,7 +38,9 @@ export class GameLogWatcher {
   private _state: {
     offset: number
     path: string
-    file: fs.FileHandle
+    // null: the file was deleted, and we're waiting for a new one.
+    file: fs.FileHandle | null
+    ino: number
     isReading: boolean
     readBuff: Buffer
   } | null = null
@@ -91,7 +93,7 @@ export class GameLogWatcher {
     unwatchFile(this._state.path)
     const { file } = this._state
     this._state = null
-    await file.close()
+    await file?.close()
   }
 
   private async open (logFile: string) {
@@ -115,6 +117,7 @@ export class GameLogWatcher {
       this._state = {
         path: logFile,
         file: file,
+        ino: stats.ino,
         offset: stats.size,
         isReading: false,
         readBuff: Buffer.allocUnsafe(64 * 1024),
@@ -124,11 +127,49 @@ export class GameLogWatcher {
     }
   }
 
-  private handleFileChange () {
-    if (this._state && !this._state.isReading) {
-      this._state.isReading = true
+  private handleFileChange (curr: Stats) {
+    const state = this._state
+    if (!state) return
+
+    // woke: a stale handle reads nothing forever, so the log appeared to stop
+    // until a restart. Deleted: let go of it so the game can make a new one.
+    // Cleared or swapped: start from the top of what's there now.
+    if (curr.nlink === 0) {
+      if (state.file) this.reopen(state, false)
+      return
+    }
+    const swapped = state.ino !== 0 && curr.ino !== 0 && curr.ino !== state.ino
+    if (!state.file || curr.size < state.offset || swapped) {
+      this.reopen(state, true)
+      return
+    }
+
+    if (!state.isReading) {
+      state.isReading = true
       this.readToEOF()
     }
+  }
+
+  // A read still going on the old state notices it's been replaced and stops.
+  private reopen (state: NonNullable<GameLogWatcher['_state']>, openAgain: boolean) {
+    const next: typeof state = { ...state, file: null, offset: 0, ino: 0, isReading: openAgain }
+    this._state = next
+    state.file?.close().catch(() => {})
+    if (!openAgain) return
+    this.logger.write(`info [GameLogWatcher] ${state.path} changed, following the new file.`)
+    fs.open(state.path, 'r').then(async (file) => {
+      const stats = await file.stat()
+      if (this._state !== next) {
+        await file.close()
+        return
+      }
+      next.file = file
+      next.ino = stats.ino
+      this.readToEOF()
+    }).catch(() => {
+      // Gone again already. The next change tries again.
+      if (this._state === next) next.isReading = false
+    })
   }
 
   private async readToEOF () {
@@ -136,6 +177,10 @@ export class GameLogWatcher {
     if (!state) return
 
     const { file, readBuff, offset } = state
+    if (!file) {
+      state.isReading = false
+      return
+    }
     let bytesRead: number
     try {
       ({ bytesRead } = await file.read(readBuff, 0, readBuff.length, offset))
