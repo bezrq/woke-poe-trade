@@ -41,6 +41,17 @@ history:
     date: '2026-11-05T11:20:31.457Z'
     selfAttested: true
     id: c-2026-11-05t11-20-31-457z
+  - type: comment
+    user: Agent
+    comment: >-
+      Guy: drop the link-colour regex from the Gear tab, since it's redundant
+      after the last patch's colouring changes. Removed from all mock options.
+      When building, remove the regex row, its hint and its Save button from
+      this tab; check whether socketRegex still has other callers before
+      deleting it.
+    date: '2026-11-05T11:21:12.051Z'
+    selfAttested: true
+    id: c-2026-11-05t11-21-12-051z
 swimlane: require-input
 needsAction: null
 ---
