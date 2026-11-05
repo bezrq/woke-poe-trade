@@ -1,0 +1,2055 @@
+{
+ "_note": "Sample history for the demo. A negative time (keys ending in At, or at) is that many ms before the page loads.",
+ "sessions-list": [
+  {
+   "id": "demo-0",
+   "league": "Testleague",
+   "strategy": "Breach + Legion",
+   "startedAt": -518400000,
+   "endedAt": -515172628,
+   "durationMs": 3227372,
+   "maps": 9,
+   "costPerMapChaos": 15,
+   "loot": [],
+   "extraChaos": 0,
+   "divine": 180,
+   "runs": [
+    {
+     "areaId": "MapWorldsStrand",
+     "name": "Strand",
+     "level": 83,
+     "enteredAt": -518400000,
+     "mapMs": 332774,
+     "otherMs": 43801,
+     "loot": [
+      {
+       "type": "Currency",
+       "name": "Chaos Orb",
+       "variant": "",
+       "qty": 8,
+       "chaos": 1
+      },
+      {
+       "type": "Scarab",
+       "name": "Breach Scarab of Lordship",
+       "variant": "",
+       "qty": 1,
+       "chaos": 9
+      }
+     ]
+    },
+    {
+     "areaId": "MapWorldsCity",
+     "name": "City Square",
+     "level": 83,
+     "enteredAt": -518023425,
+     "mapMs": 203779,
+     "otherMs": 76113,
+     "loot": [
+      {
+       "type": "Currency",
+       "name": "Divine Orb",
+       "variant": "",
+       "qty": 1,
+       "chaos": 180
+      },
+      {
+       "type": "Fragment",
+       "name": "Timeless Karui Splinter",
+       "variant": "",
+       "qty": 2,
+       "chaos": 1.2
+      },
+      {
+       "type": "Currency",
+       "name": "Chaos Orb",
+       "variant": "",
+       "qty": 7,
+       "chaos": 1
+      }
+     ]
+    },
+    {
+     "areaId": "MapWorldsTowerB",
+     "name": "Tower",
+     "level": 83,
+     "enteredAt": -517743533,
+     "mapMs": 332829,
+     "otherMs": 44054,
+     "loot": [
+      {
+       "type": "Currency",
+       "name": "Divine Orb",
+       "variant": "",
+       "qty": 1,
+       "chaos": 180
+      },
+      {
+       "type": "Fragment",
+       "name": "Splinter of Chayula",
+       "variant": "",
+       "qty": 3,
+       "chaos": 3.5
+      },
+      {
+       "type": "Currency",
+       "name": "Chaos Orb",
+       "variant": "",
+       "qty": 25,
+       "chaos": 1
+      },
+      {
+       "type": "Scarab",
+       "name": "Breach Scarab of Lordship",
+       "variant": "",
+       "qty": 5,
+       "chaos": 9
+      }
+     ]
+    },
+    {
+     "areaId": "MapWorldsCity",
+     "name": "City Square",
+     "level": 83,
+     "enteredAt": -517366650,
+     "mapMs": 255919,
+     "otherMs": 67468,
+     "loot": [
+      {
+       "type": "Currency",
+       "name": "Chaos Orb",
+       "variant": "",
+       "qty": 22,
+       "chaos": 1
+      }
+     ]
+    },
+    {
+     "areaId": "MapWorldsStrand",
+     "name": "Strand",
+     "level": 83,
+     "enteredAt": -517043263,
+     "mapMs": 332462,
+     "otherMs": 77434,
+     "loot": [
+      {
+       "type": "Fragment",
+       "name": "Splinter of Chayula",
+       "variant": "",
+       "qty": 3,
+       "chaos": 3.5
+      },
+      {
+       "type": "Fragment",
+       "name": "Timeless Karui Splinter",
+       "variant": "",
+       "qty": 1,
+       "chaos": 1.2
+      },
+      {
+       "type": "Currency",
+       "name": "Chaos Orb",
+       "variant": "",
+       "qty": 10,
+       "chaos": 1
+      }
+     ]
+    },
+    {
+     "areaId": "MapWorldsStrand",
+     "name": "Strand",
+     "level": 83,
+     "enteredAt": -516633367,
+     "mapMs": 342269,
+     "otherMs": 53497,
+     "loot": [
+      {
+       "type": "Fragment",
+       "name": "Splinter of Chayula",
+       "variant": "",
+       "qty": 3,
+       "chaos": 3.5
+      },
+      {
+       "type": "Fragment",
+       "name": "Timeless Karui Splinter",
+       "variant": "",
+       "qty": 5,
+       "chaos": 1.2
+      },
+      {
+       "type": "Currency",
+       "name": "Chaos Orb",
+       "variant": "",
+       "qty": 23,
+       "chaos": 1
+      }
+     ]
+    },
+    {
+     "areaId": "MapWorldsTowerB",
+     "name": "Tower",
+     "level": 83,
+     "enteredAt": -516237601,
+     "mapMs": 274786,
+     "otherMs": 59645,
+     "loot": [
+      {
+       "type": "Fragment",
+       "name": "Splinter of Chayula",
+       "variant": "",
+       "qty": 2,
+       "chaos": 3.5
+      },
+      {
+       "type": "Fragment",
+       "name": "Timeless Karui Splinter",
+       "variant": "",
+       "qty": 1,
+       "chaos": 1.2
+      },
+      {
+       "type": "Currency",
+       "name": "Chaos Orb",
+       "variant": "",
+       "qty": 23,
+       "chaos": 1
+      },
+      {
+       "type": "Scarab",
+       "name": "Breach Scarab of Lordship",
+       "variant": "",
+       "qty": 2,
+       "chaos": 9
+      }
+     ]
+    },
+    {
+     "areaId": "MapWorldsStrand",
+     "name": "Strand",
+     "level": 83,
+     "enteredAt": -515903170,
+     "mapMs": 317677,
+     "otherMs": 72447,
+     "loot": [
+      {
+       "type": "Fragment",
+       "name": "Splinter of Chayula",
+       "variant": "",
+       "qty": 5,
+       "chaos": 3.5
+      },
+      {
+       "type": "Currency",
+       "name": "Chaos Orb",
+       "variant": "",
+       "qty": 23,
+       "chaos": 1
+      },
+      {
+       "type": "Scarab",
+       "name": "Breach Scarab of Lordship",
+       "variant": "",
+       "qty": 1,
+       "chaos": 9
+      }
+     ]
+    },
+    {
+     "areaId": "MapWorldsCemetery",
+     "name": "Cemetery",
+     "level": 83,
+     "enteredAt": -515513046,
+     "mapMs": 289608,
+     "otherMs": 50810,
+     "loot": [
+      {
+       "type": "Fragment",
+       "name": "Splinter of Chayula",
+       "variant": "",
+       "qty": 1,
+       "chaos": 3.5
+      },
+      {
+       "type": "Fragment",
+       "name": "Timeless Karui Splinter",
+       "variant": "",
+       "qty": 3,
+       "chaos": 1.2
+      },
+      {
+       "type": "Currency",
+       "name": "Chaos Orb",
+       "variant": "",
+       "qty": 8,
+       "chaos": 1
+      },
+      {
+       "type": "Scarab",
+       "name": "Breach Scarab of Lordship",
+       "variant": "",
+       "qty": 3,
+       "chaos": 9
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "demo-1",
+   "league": "Testleague",
+   "strategy": "Essence",
+   "startedAt": -345600000,
+   "endedAt": -342955169,
+   "durationMs": 2644831,
+   "maps": 8,
+   "costPerMapChaos": 15,
+   "loot": [],
+   "extraChaos": 0,
+   "divine": 180,
+   "runs": [
+    {
+     "areaId": "MapWorldsTowerB",
+     "name": "Tower",
+     "level": 83,
+     "enteredAt": -345600000,
+     "mapMs": 262247,
+     "otherMs": 62290,
+     "loot": [
+      {
+       "type": "Essence",
+       "name": "Deafening Essence of Misery",
+       "variant": "",
+       "qty": 2,
+       "chaos": 6
+      },
+      {
+       "type": "Essence",
+       "name": "Essence of Delirium",
+       "variant": "",
+       "qty": 5,
+       "chaos": 30
+      },
+      {
+       "type": "Currency",
+       "name": "Chaos Orb",
+       "variant": "",
+       "qty": 22,
+       "chaos": 1
+      }
+     ]
+    },
+    {
+     "areaId": "MapWorldsCemetery",
+     "name": "Cemetery",
+     "level": 83,
+     "enteredAt": -345275463,
+     "mapMs": 250762,
+     "otherMs": 71070,
+     "loot": [
+      {
+       "type": "Essence",
+       "name": "Deafening Essence of Misery",
+       "variant": "",
+       "qty": 3,
+       "chaos": 6
+      },
+      {
+       "type": "Essence",
+       "name": "Essence of Horror",
+       "variant": "",
+       "qty": 2,
+       "chaos": 45
+      },
+      {
+       "type": "Essence",
+       "name": "Essence of Delirium",
+       "variant": "",
+       "qty": 3,
+       "chaos": 30
+      },
+      {
+       "type": "Currency",
+       "name": "Chaos Orb",
+       "variant": "",
+       "qty": 7,
+       "chaos": 1
+      }
+     ]
+    },
+    {
+     "areaId": "MapWorldsJungleValley",
+     "name": "Jungle Valley",
+     "level": 83,
+     "enteredAt": -344953631,
+     "mapMs": 358582,
+     "otherMs": 69205,
+     "loot": [
+      {
+       "type": "Essence",
+       "name": "Essence of Horror",
+       "variant": "",
+       "qty": 5,
+       "chaos": 45
+      },
+      {
+       "type": "Essence",
+       "name": "Essence of Delirium",
+       "variant": "",
+       "qty": 5,
+       "chaos": 30
+      },
+      {
+       "type": "Currency",
+       "name": "Chaos Orb",
+       "variant": "",
+       "qty": 25,
+       "chaos": 1
+      }
+     ]
+    },
+    {
+     "areaId": "MapWorldsCemetery",
+     "name": "Cemetery",
+     "level": 83,
+     "enteredAt": -344525844,
+     "mapMs": 273182,
+     "otherMs": 51013,
+     "loot": [
+      {
+       "type": "Essence",
+       "name": "Deafening Essence of Misery",
+       "variant": "",
+       "qty": 5,
+       "chaos": 6
+      },
+      {
+       "type": "Essence",
+       "name": "Essence of Horror",
+       "variant": "",
+       "qty": 2,
+       "chaos": 45
+      },
+      {
+       "type": "Essence",
+       "name": "Essence of Delirium",
+       "variant": "",
+       "qty": 5,
+       "chaos": 30
+      },
+      {
+       "type": "Currency",
+       "name": "Chaos Orb",
+       "variant": "",
+       "qty": 5,
+       "chaos": 1
+      }
+     ]
+    },
+    {
+     "areaId": "MapWorldsCity",
+     "name": "City Square",
+     "level": 83,
+     "enteredAt": -344201649,
+     "mapMs": 244910,
+     "otherMs": 66076,
+     "loot": [
+      {
+       "type": "Essence",
+       "name": "Essence of Horror",
+       "variant": "",
+       "qty": 2,
+       "chaos": 45
+      },
+      {
+       "type": "Currency",
+       "name": "Chaos Orb",
+       "variant": "",
+       "qty": 14,
+       "chaos": 1
+      },
+      {
+       "type": "Currency",
+       "name": "Divine Orb",
+       "variant": "",
+       "qty": 1,
+       "chaos": 180
+      }
+     ]
+    },
+    {
+     "areaId": "MapWorldsTowerB",
+     "name": "Tower",
+     "level": 83,
+     "enteredAt": -343890663,
+     "mapMs": 215894,
+     "otherMs": 68214,
+     "loot": [
+      {
+       "type": "Essence",
+       "name": "Deafening Essence of Misery",
+       "variant": "",
+       "qty": 2,
+       "chaos": 6
+      },
+      {
+       "type": "Currency",
+       "name": "Chaos Orb",
+       "variant": "",
+       "qty": 17,
+       "chaos": 1
+      }
+     ]
+    },
+    {
+     "areaId": "MapWorldsCity",
+     "name": "City Square",
+     "level": 83,
+     "enteredAt": -343606555,
+     "mapMs": 219563,
+     "otherMs": 45438,
+     "loot": [
+      {
+       "type": "Essence",
+       "name": "Deafening Essence of Misery",
+       "variant": "",
+       "qty": 1,
+       "chaos": 6
+      },
+      {
+       "type": "Essence",
+       "name": "Essence of Horror",
+       "variant": "",
+       "qty": 5,
+       "chaos": 45
+      },
+      {
+       "type": "Essence",
+       "name": "Essence of Delirium",
+       "variant": "",
+       "qty": 2,
+       "chaos": 30
+      },
+      {
+       "type": "Currency",
+       "name": "Chaos Orb",
+       "variant": "",
+       "qty": 17,
+       "chaos": 1
+      }
+     ]
+    },
+    {
+     "areaId": "MapWorldsStrand",
+     "name": "Strand",
+     "level": 83,
+     "enteredAt": -343341554,
+     "mapMs": 334435,
+     "otherMs": 51950,
+     "loot": [
+      {
+       "type": "Essence",
+       "name": "Essence of Delirium",
+       "variant": "",
+       "qty": 5,
+       "chaos": 30
+      },
+      {
+       "type": "Currency",
+       "name": "Chaos Orb",
+       "variant": "",
+       "qty": 5,
+       "chaos": 1
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "demo-2",
+   "league": "Testleague",
+   "strategy": "Strongbox",
+   "startedAt": -259200000,
+   "endedAt": -256366608,
+   "durationMs": 2833392,
+   "maps": 9,
+   "costPerMapChaos": 15,
+   "loot": [],
+   "extraChaos": 0,
+   "divine": 180,
+   "runs": [
+    {
+     "areaId": "MapWorldsJungleValley",
+     "name": "Jungle Valley",
+     "level": 83,
+     "enteredAt": -259200000,
+     "mapMs": 212896,
+     "otherMs": 85252,
+     "loot": [
+      {
+       "type": "Currency",
+       "name": "Exalted Orb",
+       "variant": "",
+       "qty": 2,
+       "chaos": 12
+      },
+      {
+       "type": "Currency",
+       "name": "Chaos Orb",
+       "variant": "",
+       "qty": 16,
+       "chaos": 1
+      },
+      {
+       "type": "DivinationCard",
+       "name": "The Apothecary",
+       "variant": "",
+       "qty": 3,
+       "chaos": 10
+      }
+     ]
+    },
+    {
+     "areaId": "MapWorldsCity",
+     "name": "City Square",
+     "level": 83,
+     "enteredAt": -258901852,
+     "mapMs": 358408,
+     "otherMs": 76652,
+     "loot": [
+      {
+       "type": "Currency",
+       "name": "Orb of Annulment",
+       "variant": "",
+       "qty": 3,
+       "chaos": 6
+      },
+      {
+       "type": "Currency",
+       "name": "Exalted Orb",
+       "variant": "",
+       "qty": 5,
+       "chaos": 12
+      },
+      {
+       "type": "Currency",
+       "name": "Chaos Orb",
+       "variant": "",
+       "qty": 6,
+       "chaos": 1
+      },
+      {
+       "type": "DivinationCard",
+       "name": "The Apothecary",
+       "variant": "",
+       "qty": 2,
+       "chaos": 10
+      }
+     ]
+    },
+    {
+     "areaId": "MapWorldsTowerB",
+     "name": "Tower",
+     "level": 83,
+     "enteredAt": -258466792,
+     "mapMs": 196317,
+     "otherMs": 52491,
+     "loot": [
+      {
+       "type": "Currency",
+       "name": "Orb of Annulment",
+       "variant": "",
+       "qty": 2,
+       "chaos": 6
+      },
+      {
+       "type": "Currency",
+       "name": "Exalted Orb",
+       "variant": "",
+       "qty": 2,
+       "chaos": 12
+      },
+      {
+       "type": "Currency",
+       "name": "Chaos Orb",
+       "variant": "",
+       "qty": 8,
+       "chaos": 1
+      },
+      {
+       "type": "DivinationCard",
+       "name": "The Apothecary",
+       "variant": "",
+       "qty": 2,
+       "chaos": 10
+      }
+     ]
+    },
+    {
+     "areaId": "MapWorldsJungleValley",
+     "name": "Jungle Valley",
+     "level": 83,
+     "enteredAt": -258217984,
+     "mapMs": 206838,
+     "otherMs": 40015,
+     "loot": [
+      {
+       "type": "Currency",
+       "name": "Exalted Orb",
+       "variant": "",
+       "qty": 2,
+       "chaos": 12
+      },
+      {
+       "type": "Currency",
+       "name": "Chaos Orb",
+       "variant": "",
+       "qty": 8,
+       "chaos": 1
+      },
+      {
+       "type": "DivinationCard",
+       "name": "The Apothecary",
+       "variant": "",
+       "qty": 1,
+       "chaos": 10
+      }
+     ]
+    },
+    {
+     "areaId": "MapWorldsCity",
+     "name": "City Square",
+     "level": 83,
+     "enteredAt": -257971131,
+     "mapMs": 234513,
+     "otherMs": 80243,
+     "loot": [
+      {
+       "type": "Currency",
+       "name": "Exalted Orb",
+       "variant": "",
+       "qty": 3,
+       "chaos": 12
+      },
+      {
+       "type": "Currency",
+       "name": "Chaos Orb",
+       "variant": "",
+       "qty": 16,
+       "chaos": 1
+      },
+      {
+       "type": "DivinationCard",
+       "name": "The Apothecary",
+       "variant": "",
+       "qty": 3,
+       "chaos": 10
+      },
+      {
+       "type": "Currency",
+       "name": "Divine Orb",
+       "variant": "",
+       "qty": 1,
+       "chaos": 180
+      }
+     ]
+    },
+    {
+     "areaId": "MapWorldsTowerB",
+     "name": "Tower",
+     "level": 83,
+     "enteredAt": -257656375,
+     "mapMs": 212202,
+     "otherMs": 47559,
+     "loot": [
+      {
+       "type": "Currency",
+       "name": "Exalted Orb",
+       "variant": "",
+       "qty": 5,
+       "chaos": 12
+      },
+      {
+       "type": "Currency",
+       "name": "Chaos Orb",
+       "variant": "",
+       "qty": 16,
+       "chaos": 1
+      },
+      {
+       "type": "DivinationCard",
+       "name": "The Apothecary",
+       "variant": "",
+       "qty": 3,
+       "chaos": 10
+      }
+     ]
+    },
+    {
+     "areaId": "MapWorldsTowerB",
+     "name": "Tower",
+     "level": 83,
+     "enteredAt": -257396614,
+     "mapMs": 269819,
+     "otherMs": 88519,
+     "loot": [
+      {
+       "type": "Currency",
+       "name": "Orb of Annulment",
+       "variant": "",
+       "qty": 2,
+       "chaos": 6
+      },
+      {
+       "type": "Currency",
+       "name": "Exalted Orb",
+       "variant": "",
+       "qty": 2,
+       "chaos": 12
+      },
+      {
+       "type": "Currency",
+       "name": "Chaos Orb",
+       "variant": "",
+       "qty": 14,
+       "chaos": 1
+      },
+      {
+       "type": "Currency",
+       "name": "Divine Orb",
+       "variant": "",
+       "qty": 1,
+       "chaos": 180
+      }
+     ]
+    },
+    {
+     "areaId": "MapWorldsCemetery",
+     "name": "Cemetery",
+     "level": 83,
+     "enteredAt": -257038276,
+     "mapMs": 318479,
+     "otherMs": 63707,
+     "loot": [
+      {
+       "type": "Currency",
+       "name": "Orb of Annulment",
+       "variant": "",
+       "qty": 2,
+       "chaos": 6
+      },
+      {
+       "type": "Currency",
+       "name": "Exalted Orb",
+       "variant": "",
+       "qty": 5,
+       "chaos": 12
+      },
+      {
+       "type": "Currency",
+       "name": "Chaos Orb",
+       "variant": "",
+       "qty": 21,
+       "chaos": 1
+      },
+      {
+       "type": "Currency",
+       "name": "Divine Orb",
+       "variant": "",
+       "qty": 1,
+       "chaos": 180
+      }
+     ]
+    },
+    {
+     "areaId": "MapWorldsStrand",
+     "name": "Strand",
+     "level": 83,
+     "enteredAt": -256656090,
+     "mapMs": 203857,
+     "otherMs": 85625,
+     "loot": [
+      {
+       "type": "Currency",
+       "name": "Orb of Annulment",
+       "variant": "",
+       "qty": 5,
+       "chaos": 6
+      },
+      {
+       "type": "Currency",
+       "name": "Exalted Orb",
+       "variant": "",
+       "qty": 3,
+       "chaos": 12
+      },
+      {
+       "type": "Currency",
+       "name": "Chaos Orb",
+       "variant": "",
+       "qty": 21,
+       "chaos": 1
+      },
+      {
+       "type": "DivinationCard",
+       "name": "The Apothecary",
+       "variant": "",
+       "qty": 1,
+       "chaos": 10
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "demo-3",
+   "league": "Testleague",
+   "strategy": "Breach + Legion",
+   "startedAt": -172800000,
+   "endedAt": -168898242,
+   "durationMs": 3901758,
+   "maps": 11,
+   "costPerMapChaos": 20,
+   "loot": [],
+   "extraChaos": 0,
+   "divine": 180,
+   "runs": [
+    {
+     "areaId": "MapWorldsCemetery",
+     "name": "Cemetery",
+     "level": 83,
+     "enteredAt": -172800000,
+     "mapMs": 266419,
+     "otherMs": 81709,
+     "loot": [
+      {
+       "type": "Fragment",
+       "name": "Splinter of Chayula",
+       "variant": "",
+       "qty": 1,
+       "chaos": 3.5
+      },
+      {
+       "type": "Currency",
+       "name": "Chaos Orb",
+       "variant": "",
+       "qty": 22,
+       "chaos": 1
+      },
+      {
+       "type": "Scarab",
+       "name": "Breach Scarab of Lordship",
+       "variant": "",
+       "qty": 3,
+       "chaos": 9
+      }
+     ]
+    },
+    {
+     "areaId": "MapWorldsStrand",
+     "name": "Strand",
+     "level": 83,
+     "enteredAt": -172451872,
+     "mapMs": 315695,
+     "otherMs": 72294,
+     "loot": [
+      {
+       "type": "Currency",
+       "name": "Chaos Orb",
+       "variant": "",
+       "qty": 12,
+       "chaos": 1
+      }
+     ]
+    },
+    {
+     "areaId": "MapWorldsCemetery",
+     "name": "Cemetery",
+     "level": 83,
+     "enteredAt": -172063883,
+     "mapMs": 338633,
+     "otherMs": 62562,
+     "loot": [
+      {
+       "type": "Fragment",
+       "name": "Timeless Karui Splinter",
+       "variant": "",
+       "qty": 1,
+       "chaos": 1.2
+      },
+      {
+       "type": "Currency",
+       "name": "Chaos Orb",
+       "variant": "",
+       "qty": 13,
+       "chaos": 1
+      }
+     ]
+    },
+    {
+     "areaId": "MapWorldsTowerB",
+     "name": "Tower",
+     "level": 83,
+     "enteredAt": -171662688,
+     "mapMs": 206779,
+     "otherMs": 54866,
+     "loot": [
+      {
+       "type": "Fragment",
+       "name": "Splinter of Chayula",
+       "variant": "",
+       "qty": 5,
+       "chaos": 3.5
+      },
+      {
+       "type": "Fragment",
+       "name": "Timeless Karui Splinter",
+       "variant": "",
+       "qty": 1,
+       "chaos": 1.2
+      },
+      {
+       "type": "Currency",
+       "name": "Chaos Orb",
+       "variant": "",
+       "qty": 7,
+       "chaos": 1
+      }
+     ]
+    },
+    {
+     "areaId": "MapWorldsTowerB",
+     "name": "Tower",
+     "level": 83,
+     "enteredAt": -171401043,
+     "mapMs": 305691,
+     "otherMs": 82793,
+     "loot": [
+      {
+       "type": "Currency",
+       "name": "Divine Orb",
+       "variant": "",
+       "qty": 1,
+       "chaos": 180
+      },
+      {
+       "type": "Fragment",
+       "name": "Timeless Karui Splinter",
+       "variant": "",
+       "qty": 2,
+       "chaos": 1.2
+      },
+      {
+       "type": "Currency",
+       "name": "Chaos Orb",
+       "variant": "",
+       "qty": 24,
+       "chaos": 1
+      }
+     ]
+    },
+    {
+     "areaId": "MapWorldsCemetery",
+     "name": "Cemetery",
+     "level": 83,
+     "enteredAt": -171012559,
+     "mapMs": 232250,
+     "otherMs": 71328,
+     "loot": [
+      {
+       "type": "Fragment",
+       "name": "Timeless Karui Splinter",
+       "variant": "",
+       "qty": 5,
+       "chaos": 1.2
+      },
+      {
+       "type": "Currency",
+       "name": "Chaos Orb",
+       "variant": "",
+       "qty": 17,
+       "chaos": 1
+      },
+      {
+       "type": "Scarab",
+       "name": "Breach Scarab of Lordship",
+       "variant": "",
+       "qty": 5,
+       "chaos": 9
+      }
+     ]
+    },
+    {
+     "areaId": "MapWorldsStrand",
+     "name": "Strand",
+     "level": 83,
+     "enteredAt": -170708981,
+     "mapMs": 285221,
+     "otherMs": 88716,
+     "loot": [
+      {
+       "type": "Fragment",
+       "name": "Splinter of Chayula",
+       "variant": "",
+       "qty": 5,
+       "chaos": 3.5
+      },
+      {
+       "type": "Fragment",
+       "name": "Timeless Karui Splinter",
+       "variant": "",
+       "qty": 1,
+       "chaos": 1.2
+      },
+      {
+       "type": "Currency",
+       "name": "Chaos Orb",
+       "variant": "",
+       "qty": 17,
+       "chaos": 1
+      },
+      {
+       "type": "Scarab",
+       "name": "Breach Scarab of Lordship",
+       "variant": "",
+       "qty": 2,
+       "chaos": 9
+      }
+     ]
+    },
+    {
+     "areaId": "MapWorldsJungleValley",
+     "name": "Jungle Valley",
+     "level": 83,
+     "enteredAt": -170335044,
+     "mapMs": 301989,
+     "otherMs": 82982,
+     "loot": [
+      {
+       "type": "Currency",
+       "name": "Chaos Orb",
+       "variant": "",
+       "qty": 9,
+       "chaos": 1
+      },
+      {
+       "type": "Scarab",
+       "name": "Breach Scarab of Lordship",
+       "variant": "",
+       "qty": 3,
+       "chaos": 9
+      }
+     ]
+    },
+    {
+     "areaId": "MapWorldsStrand",
+     "name": "Strand",
+     "level": 83,
+     "enteredAt": -169950073,
+     "mapMs": 323827,
+     "otherMs": 75932,
+     "loot": [
+      {
+       "type": "Fragment",
+       "name": "Splinter of Chayula",
+       "variant": "",
+       "qty": 3,
+       "chaos": 3.5
+      },
+      {
+       "type": "Fragment",
+       "name": "Timeless Karui Splinter",
+       "variant": "",
+       "qty": 2,
+       "chaos": 1.2
+      },
+      {
+       "type": "Currency",
+       "name": "Chaos Orb",
+       "variant": "",
+       "qty": 16,
+       "chaos": 1
+      }
+     ]
+    },
+    {
+     "areaId": "MapWorldsStrand",
+     "name": "Strand",
+     "level": 83,
+     "enteredAt": -169550314,
+     "mapMs": 216503,
+     "otherMs": 68430,
+     "loot": [
+      {
+       "type": "Currency",
+       "name": "Divine Orb",
+       "variant": "",
+       "qty": 1,
+       "chaos": 180
+      },
+      {
+       "type": "Fragment",
+       "name": "Splinter of Chayula",
+       "variant": "",
+       "qty": 5,
+       "chaos": 3.5
+      },
+      {
+       "type": "Fragment",
+       "name": "Timeless Karui Splinter",
+       "variant": "",
+       "qty": 5,
+       "chaos": 1.2
+      },
+      {
+       "type": "Currency",
+       "name": "Chaos Orb",
+       "variant": "",
+       "qty": 21,
+       "chaos": 1
+      },
+      {
+       "type": "Scarab",
+       "name": "Breach Scarab of Lordship",
+       "variant": "",
+       "qty": 5,
+       "chaos": 9
+      }
+     ]
+    },
+    {
+     "areaId": "MapWorldsStrand",
+     "name": "Strand",
+     "level": 83,
+     "enteredAt": -169265381,
+     "mapMs": 311376,
+     "otherMs": 55763,
+     "loot": [
+      {
+       "type": "Currency",
+       "name": "Chaos Orb",
+       "variant": "",
+       "qty": 11,
+       "chaos": 1
+      },
+      {
+       "type": "Scarab",
+       "name": "Breach Scarab of Lordship",
+       "variant": "",
+       "qty": 1,
+       "chaos": 9
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "demo-4",
+   "league": "Testleague",
+   "strategy": "Essence",
+   "startedAt": -86400000,
+   "endedAt": -83535290,
+   "durationMs": 2864710,
+   "maps": 9,
+   "costPerMapChaos": 20,
+   "loot": [],
+   "extraChaos": 0,
+   "divine": 180,
+   "runs": [
+    {
+     "areaId": "MapWorldsCemetery",
+     "name": "Cemetery",
+     "level": 83,
+     "enteredAt": -86400000,
+     "mapMs": 353663,
+     "otherMs": 78230,
+     "loot": [
+      {
+       "type": "Essence",
+       "name": "Deafening Essence of Misery",
+       "variant": "",
+       "qty": 3,
+       "chaos": 6
+      },
+      {
+       "type": "Essence",
+       "name": "Essence of Horror",
+       "variant": "",
+       "qty": 2,
+       "chaos": 45
+      },
+      {
+       "type": "Currency",
+       "name": "Chaos Orb",
+       "variant": "",
+       "qty": 16,
+       "chaos": 1
+      }
+     ]
+    },
+    {
+     "areaId": "MapWorldsCity",
+     "name": "City Square",
+     "level": 83,
+     "enteredAt": -85968107,
+     "mapMs": 184903,
+     "otherMs": 68844,
+     "loot": [
+      {
+       "type": "Essence",
+       "name": "Deafening Essence of Misery",
+       "variant": "",
+       "qty": 2,
+       "chaos": 6
+      },
+      {
+       "type": "Essence",
+       "name": "Essence of Horror",
+       "variant": "",
+       "qty": 3,
+       "chaos": 45
+      },
+      {
+       "type": "Currency",
+       "name": "Chaos Orb",
+       "variant": "",
+       "qty": 9,
+       "chaos": 1
+      }
+     ]
+    },
+    {
+     "areaId": "MapWorldsStrand",
+     "name": "Strand",
+     "level": 83,
+     "enteredAt": -85714360,
+     "mapMs": 211545,
+     "otherMs": 76469,
+     "loot": [
+      {
+       "type": "Essence",
+       "name": "Deafening Essence of Misery",
+       "variant": "",
+       "qty": 3,
+       "chaos": 6
+      },
+      {
+       "type": "Currency",
+       "name": "Chaos Orb",
+       "variant": "",
+       "qty": 9,
+       "chaos": 1
+      }
+     ]
+    },
+    {
+     "areaId": "MapWorldsJungleValley",
+     "name": "Jungle Valley",
+     "level": 83,
+     "enteredAt": -85426346,
+     "mapMs": 207815,
+     "otherMs": 76719,
+     "loot": [
+      {
+       "type": "Essence",
+       "name": "Deafening Essence of Misery",
+       "variant": "",
+       "qty": 1,
+       "chaos": 6
+      },
+      {
+       "type": "Essence",
+       "name": "Essence of Horror",
+       "variant": "",
+       "qty": 5,
+       "chaos": 45
+      },
+      {
+       "type": "Essence",
+       "name": "Essence of Delirium",
+       "variant": "",
+       "qty": 3,
+       "chaos": 30
+      },
+      {
+       "type": "Currency",
+       "name": "Chaos Orb",
+       "variant": "",
+       "qty": 22,
+       "chaos": 1
+      }
+     ]
+    },
+    {
+     "areaId": "MapWorldsJungleValley",
+     "name": "Jungle Valley",
+     "level": 83,
+     "enteredAt": -85141812,
+     "mapMs": 327253,
+     "otherMs": 41826,
+     "loot": [
+      {
+       "type": "Essence",
+       "name": "Essence of Delirium",
+       "variant": "",
+       "qty": 1,
+       "chaos": 30
+      },
+      {
+       "type": "Currency",
+       "name": "Chaos Orb",
+       "variant": "",
+       "qty": 8,
+       "chaos": 1
+      }
+     ]
+    },
+    {
+     "areaId": "MapWorldsJungleValley",
+     "name": "Jungle Valley",
+     "level": 83,
+     "enteredAt": -84772733,
+     "mapMs": 252662,
+     "otherMs": 69644,
+     "loot": [
+      {
+       "type": "Essence",
+       "name": "Deafening Essence of Misery",
+       "variant": "",
+       "qty": 2,
+       "chaos": 6
+      },
+      {
+       "type": "Essence",
+       "name": "Essence of Horror",
+       "variant": "",
+       "qty": 1,
+       "chaos": 45
+      },
+      {
+       "type": "Essence",
+       "name": "Essence of Delirium",
+       "variant": "",
+       "qty": 3,
+       "chaos": 30
+      },
+      {
+       "type": "Currency",
+       "name": "Chaos Orb",
+       "variant": "",
+       "qty": 24,
+       "chaos": 1
+      }
+     ]
+    },
+    {
+     "areaId": "MapWorldsCity",
+     "name": "City Square",
+     "level": 83,
+     "enteredAt": -84450427,
+     "mapMs": 248050,
+     "otherMs": 76668,
+     "loot": [
+      {
+       "type": "Essence",
+       "name": "Deafening Essence of Misery",
+       "variant": "",
+       "qty": 3,
+       "chaos": 6
+      },
+      {
+       "type": "Essence",
+       "name": "Essence of Horror",
+       "variant": "",
+       "qty": 2,
+       "chaos": 45
+      },
+      {
+       "type": "Essence",
+       "name": "Essence of Delirium",
+       "variant": "",
+       "qty": 3,
+       "chaos": 30
+      },
+      {
+       "type": "Currency",
+       "name": "Chaos Orb",
+       "variant": "",
+       "qty": 21,
+       "chaos": 1
+      }
+     ]
+    },
+    {
+     "areaId": "MapWorldsStrand",
+     "name": "Strand",
+     "level": 83,
+     "enteredAt": -84125709,
+     "mapMs": 199017,
+     "otherMs": 83984,
+     "loot": [
+      {
+       "type": "Essence",
+       "name": "Deafening Essence of Misery",
+       "variant": "",
+       "qty": 2,
+       "chaos": 6
+      },
+      {
+       "type": "Essence",
+       "name": "Essence of Delirium",
+       "variant": "",
+       "qty": 2,
+       "chaos": 30
+      },
+      {
+       "type": "Currency",
+       "name": "Chaos Orb",
+       "variant": "",
+       "qty": 17,
+       "chaos": 1
+      }
+     ]
+    },
+    {
+     "areaId": "MapWorldsStrand",
+     "name": "Strand",
+     "level": 83,
+     "enteredAt": -83842708,
+     "mapMs": 220487,
+     "otherMs": 86931,
+     "loot": [
+      {
+       "type": "Essence",
+       "name": "Deafening Essence of Misery",
+       "variant": "",
+       "qty": 2,
+       "chaos": 6
+      },
+      {
+       "type": "Currency",
+       "name": "Chaos Orb",
+       "variant": "",
+       "qty": 14,
+       "chaos": 1
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "demo-5",
+   "league": "Testleague",
+   "strategy": "Breach + Legion",
+   "startedAt": -18000000,
+   "endedAt": -14184728,
+   "durationMs": 3815272,
+   "maps": 12,
+   "costPerMapChaos": 12,
+   "loot": [],
+   "extraChaos": 0,
+   "divine": 180,
+   "runs": [
+    {
+     "areaId": "MapWorldsCemetery",
+     "name": "Cemetery",
+     "level": 83,
+     "enteredAt": -18000000,
+     "mapMs": 307732,
+     "otherMs": 50668,
+     "loot": [
+      {
+       "type": "Currency",
+       "name": "Divine Orb",
+       "variant": "",
+       "qty": 1,
+       "chaos": 180
+      },
+      {
+       "type": "Fragment",
+       "name": "Timeless Karui Splinter",
+       "variant": "",
+       "qty": 2,
+       "chaos": 1.2
+      },
+      {
+       "type": "Currency",
+       "name": "Chaos Orb",
+       "variant": "",
+       "qty": 8,
+       "chaos": 1
+      },
+      {
+       "type": "Scarab",
+       "name": "Breach Scarab of Lordship",
+       "variant": "",
+       "qty": 2,
+       "chaos": 9
+      }
+     ]
+    },
+    {
+     "areaId": "MapWorldsStrand",
+     "name": "Strand",
+     "level": 83,
+     "enteredAt": -17641600,
+     "mapMs": 231313,
+     "otherMs": 63371,
+     "loot": [
+      {
+       "type": "Currency",
+       "name": "Divine Orb",
+       "variant": "",
+       "qty": 1,
+       "chaos": 180
+      },
+      {
+       "type": "Fragment",
+       "name": "Splinter of Chayula",
+       "variant": "",
+       "qty": 2,
+       "chaos": 3.5
+      },
+      {
+       "type": "Fragment",
+       "name": "Timeless Karui Splinter",
+       "variant": "",
+       "qty": 3,
+       "chaos": 1.2
+      },
+      {
+       "type": "Currency",
+       "name": "Chaos Orb",
+       "variant": "",
+       "qty": 15,
+       "chaos": 1
+      },
+      {
+       "type": "Scarab",
+       "name": "Breach Scarab of Lordship",
+       "variant": "",
+       "qty": 2,
+       "chaos": 9
+      }
+     ]
+    },
+    {
+     "areaId": "MapWorldsCemetery",
+     "name": "Cemetery",
+     "level": 83,
+     "enteredAt": -17346916,
+     "mapMs": 295463,
+     "otherMs": 86081,
+     "loot": [
+      {
+       "type": "Currency",
+       "name": "Divine Orb",
+       "variant": "",
+       "qty": 1,
+       "chaos": 180
+      },
+      {
+       "type": "Fragment",
+       "name": "Splinter of Chayula",
+       "variant": "",
+       "qty": 1,
+       "chaos": 3.5
+      },
+      {
+       "type": "Currency",
+       "name": "Chaos Orb",
+       "variant": "",
+       "qty": 22,
+       "chaos": 1
+      },
+      {
+       "type": "Scarab",
+       "name": "Breach Scarab of Lordship",
+       "variant": "",
+       "qty": 2,
+       "chaos": 9
+      }
+     ]
+    },
+    {
+     "areaId": "MapWorldsJungleValley",
+     "name": "Jungle Valley",
+     "level": 83,
+     "enteredAt": -16965372,
+     "mapMs": 209582,
+     "otherMs": 54978,
+     "loot": [
+      {
+       "type": "Fragment",
+       "name": "Splinter of Chayula",
+       "variant": "",
+       "qty": 3,
+       "chaos": 3.5
+      },
+      {
+       "type": "Fragment",
+       "name": "Timeless Karui Splinter",
+       "variant": "",
+       "qty": 3,
+       "chaos": 1.2
+      },
+      {
+       "type": "Currency",
+       "name": "Chaos Orb",
+       "variant": "",
+       "qty": 21,
+       "chaos": 1
+      }
+     ]
+    },
+    {
+     "areaId": "MapWorldsJungleValley",
+     "name": "Jungle Valley",
+     "level": 83,
+     "enteredAt": -16700812,
+     "mapMs": 290691,
+     "otherMs": 84300,
+     "loot": [
+      {
+       "type": "Currency",
+       "name": "Divine Orb",
+       "variant": "",
+       "qty": 1,
+       "chaos": 180
+      },
+      {
+       "type": "Fragment",
+       "name": "Splinter of Chayula",
+       "variant": "",
+       "qty": 1,
+       "chaos": 3.5
+      },
+      {
+       "type": "Currency",
+       "name": "Chaos Orb",
+       "variant": "",
+       "qty": 13,
+       "chaos": 1
+      }
+     ]
+    },
+    {
+     "areaId": "MapWorldsCemetery",
+     "name": "Cemetery",
+     "level": 83,
+     "enteredAt": -16325821,
+     "mapMs": 265733,
+     "otherMs": 45862,
+     "loot": [
+      {
+       "type": "Fragment",
+       "name": "Splinter of Chayula",
+       "variant": "",
+       "qty": 3,
+       "chaos": 3.5
+      },
+      {
+       "type": "Fragment",
+       "name": "Timeless Karui Splinter",
+       "variant": "",
+       "qty": 3,
+       "chaos": 1.2
+      },
+      {
+       "type": "Currency",
+       "name": "Chaos Orb",
+       "variant": "",
+       "qty": 20,
+       "chaos": 1
+      },
+      {
+       "type": "Scarab",
+       "name": "Breach Scarab of Lordship",
+       "variant": "",
+       "qty": 5,
+       "chaos": 9
+      }
+     ]
+    },
+    {
+     "areaId": "MapWorldsCemetery",
+     "name": "Cemetery",
+     "level": 83,
+     "enteredAt": -16014226,
+     "mapMs": 184412,
+     "otherMs": 81578,
+     "loot": [
+      {
+       "type": "Currency",
+       "name": "Divine Orb",
+       "variant": "",
+       "qty": 1,
+       "chaos": 180
+      },
+      {
+       "type": "Fragment",
+       "name": "Splinter of Chayula",
+       "variant": "",
+       "qty": 5,
+       "chaos": 3.5
+      },
+      {
+       "type": "Currency",
+       "name": "Chaos Orb",
+       "variant": "",
+       "qty": 7,
+       "chaos": 1
+      },
+      {
+       "type": "Scarab",
+       "name": "Breach Scarab of Lordship",
+       "variant": "",
+       "qty": 1,
+       "chaos": 9
+      }
+     ]
+    },
+    {
+     "areaId": "MapWorldsJungleValley",
+     "name": "Jungle Valley",
+     "level": 83,
+     "enteredAt": -15748236,
+     "mapMs": 211897,
+     "otherMs": 69738,
+     "loot": [
+      {
+       "type": "Fragment",
+       "name": "Timeless Karui Splinter",
+       "variant": "",
+       "qty": 3,
+       "chaos": 1.2
+      },
+      {
+       "type": "Currency",
+       "name": "Chaos Orb",
+       "variant": "",
+       "qty": 7,
+       "chaos": 1
+      },
+      {
+       "type": "Scarab",
+       "name": "Breach Scarab of Lordship",
+       "variant": "",
+       "qty": 1,
+       "chaos": 9
+      }
+     ]
+    },
+    {
+     "areaId": "MapWorldsJungleValley",
+     "name": "Jungle Valley",
+     "level": 83,
+     "enteredAt": -15466601,
+     "mapMs": 191326,
+     "otherMs": 74531,
+     "loot": [
+      {
+       "type": "Fragment",
+       "name": "Splinter of Chayula",
+       "variant": "",
+       "qty": 3,
+       "chaos": 3.5
+      },
+      {
+       "type": "Fragment",
+       "name": "Timeless Karui Splinter",
+       "variant": "",
+       "qty": 2,
+       "chaos": 1.2
+      },
+      {
+       "type": "Currency",
+       "name": "Chaos Orb",
+       "variant": "",
+       "qty": 24,
+       "chaos": 1
+      }
+     ]
+    },
+    {
+     "areaId": "MapWorldsStrand",
+     "name": "Strand",
+     "level": 83,
+     "enteredAt": -15200744,
+     "mapMs": 261786,
+     "otherMs": 81200,
+     "loot": [
+      {
+       "type": "Fragment",
+       "name": "Timeless Karui Splinter",
+       "variant": "",
+       "qty": 1,
+       "chaos": 1.2
+      },
+      {
+       "type": "Currency",
+       "name": "Chaos Orb",
+       "variant": "",
+       "qty": 10,
+       "chaos": 1
+      }
+     ]
+    },
+    {
+     "areaId": "MapWorldsCemetery",
+     "name": "Cemetery",
+     "level": 83,
+     "enteredAt": -14857758,
+     "mapMs": 226635,
+     "otherMs": 57728,
+     "loot": [
+      {
+       "type": "Fragment",
+       "name": "Timeless Karui Splinter",
+       "variant": "",
+       "qty": 1,
+       "chaos": 1.2
+      },
+      {
+       "type": "Currency",
+       "name": "Chaos Orb",
+       "variant": "",
+       "qty": 21,
+       "chaos": 1
+      },
+      {
+       "type": "Scarab",
+       "name": "Breach Scarab of Lordship",
+       "variant": "",
+       "qty": 5,
+       "chaos": 9
+      }
+     ]
+    },
+    {
+     "areaId": "MapWorldsCemetery",
+     "name": "Cemetery",
+     "level": 83,
+     "enteredAt": -14573395,
+     "mapMs": 312554,
+     "otherMs": 76113,
+     "loot": [
+      {
+       "type": "Fragment",
+       "name": "Splinter of Chayula",
+       "variant": "",
+       "qty": 1,
+       "chaos": 3.5
+      },
+      {
+       "type": "Currency",
+       "name": "Chaos Orb",
+       "variant": "",
+       "qty": 5,
+       "chaos": 1
+      },
+      {
+       "type": "Scarab",
+       "name": "Breach Scarab of Lordship",
+       "variant": "",
+       "qty": 5,
+       "chaos": 9
+      }
+     ]
+    }
+   ]
+  }
+ ],
+ "trades-list": [
+  {
+   "id": "demo-t0",
+   "dir": "sell",
+   "who": "Kaltenhalt",
+   "item": "Headhunter Leather Belt",
+   "qty": 1,
+   "price": {
+    "amount": 120,
+    "currency": "Divine Orb"
+   },
+   "chaos": 21600,
+   "divine": 120.0,
+   "league": "Testleague",
+   "at": -72000000
+  },
+  {
+   "id": "demo-t1",
+   "dir": "sell",
+   "who": "xXLeagueStartXx",
+   "item": "Kaom's Heart Glorious Plate",
+   "qty": 1,
+   "price": {
+    "amount": 1,
+    "currency": "Divine Orb"
+   },
+   "chaos": 170,
+   "divine": 0.94,
+   "league": "Testleague",
+   "at": -172800000
+  },
+  {
+   "id": "demo-t2",
+   "dir": "sell",
+   "who": "Ozzy_Seller",
+   "item": "10 Divine Orb",
+   "qty": 1,
+   "price": {
+    "amount": 1450,
+    "currency": "Chaos Orb"
+   },
+   "chaos": 1450,
+   "divine": 8.06,
+   "league": "Testleague",
+   "at": -259200000
+  },
+  {
+   "id": "demo-t3",
+   "dir": "buy",
+   "who": "MapGoblin",
+   "item": "Mageblood Heavy Belt",
+   "qty": 1,
+   "price": {
+    "amount": 310,
+    "currency": "Divine Orb"
+   },
+   "chaos": 55800,
+   "divine": 310.0,
+   "league": "Testleague",
+   "at": -345600000
+  },
+  {
+   "id": "demo-t4",
+   "dir": "sell",
+   "who": "TradeBot",
+   "item": "Tabula Rasa Simple Robe",
+   "qty": 1,
+   "price": {
+    "amount": 5,
+    "currency": "Chaos Orb"
+   },
+   "chaos": 5,
+   "divine": 0.03,
+   "league": "Testleague",
+   "at": -432000000
+  },
+  {
+   "id": "demo-t5",
+   "dir": "sell",
+   "who": "Ess_Hunter",
+   "item": "Essence of Horror",
+   "qty": 1,
+   "price": {
+    "amount": 45,
+    "currency": "Chaos Orb"
+   },
+   "chaos": 45,
+   "divine": 0.25,
+   "league": "Testleague",
+   "at": -108000000
+  }
+ ]
+}
