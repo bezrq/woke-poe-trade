@@ -3,7 +3,7 @@
     <div class="w-dim" :class="$style.intro">
       While you play, the toolkit shows only a row of small icons, each one only where it's useful
       (campaign zones, hideout, maps, the lab, boss arenas). Rest the mouse on an icon for its card.
-      With the overlay open, drag the row by its grip and click an icon for the full window.
+      With the overlay open, drag the row by its grip and click an icon for the full window. Right-click an icon for its menu, and the grip to bring back dismissed icons.
     </div>
     <w-setting-row label="Peek" hint="An icon grows into one line for 5 seconds when something happens: new zone, live search hit, map counted.">
       <w-toggle v-model="dock.peeks" />
@@ -44,7 +44,7 @@ const props = defineProps<{ config: Config }>()
 
 function ensureDock (): DockConfig {
   const woke = ensureWokeConfig(props.config).woke
-  woke.dock ??= { ...DEFAULT_DOCK, noPeek: [], hidden: [] }
+  woke.dock ??= { ...DEFAULT_DOCK, noPeek: [], hidden: [], dismissed: {} }
   woke.dock.noPeek ??= []
   woke.dock.hidden ??= []
   return woke.dock

@@ -1,7 +1,7 @@
 <template>
   <Widget :config="config" move-handles="corners" :inline-edit="false" :readonly="true">
     <!-- The verdict on hover, so a quick check doesn't open the panel. -->
-    <DockItem id="scarab-flip" title="Scarab flip" :show="dockShow" :wm-id="config.wmId">
+    <DockItem :menu="dockMenu" id="scarab-flip" title="Scarab flip" :show="dockShow" :wm-id="config.wmId">
       <template #card>
         <div v-if="model" class="flex flex-col gap-0.5" style="padding: 2px var(--w-pad) 6px;">
           <span class="w-num">{{ verdict }} · {{ verdictSub }}</span>
@@ -145,6 +145,8 @@ import { useMarketCollector } from '../market/collector'
 import { latestSnapshots } from '../market/db'
 import type { Snapshot } from '../market/types'
 import DockItem from '../dock/DockItem.vue'
+import { dockIconEl } from '../dock/dock'
+import type { DockMenuAction } from '../dock/dock'
 import { useZone } from '../shared/zone'
 import { RARE_SHARE, UNTRADED_CHAOS, JACKPOT_CHAOS, buyList, flipModel, flipOdds, parseExchange, rareCheapList, scarabQuotes, shortScarab } from './calc'
 import type { ExchangeQuotes, ScarabRow } from './calc'
@@ -288,6 +290,18 @@ function pct (p: number) {
   const v = p * 100
   return `${v < 1 ? Number(v.toFixed(2)) : Math.round(v)}%`
 }
+
+// The icon's right-click menu.
+const dockMenu = computed<DockMenuAction[]>(() => [{
+  label: buy.value[0] ? `Copy best supply: ${shortScarab(buy.value[0].name)}` : 'Copy best supply',
+  icon: 'far fa-copy',
+  disabled: !buy.value[0],
+  action: () => {
+    const name = buy.value[0]?.name
+    const el = dockIconEl('scarab-flip')
+    if (name) copyText(name).then(ok => { if (ok) toast(`Copied ${name}`, { anchor: el, ms: 1800 }) }).catch(() => {})
+  }
+}])
 </script>
 
 <style module>

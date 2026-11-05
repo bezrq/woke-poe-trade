@@ -2,7 +2,7 @@
   <span ref="rootEl" :class="$style.root" :data-dock="host.props.id">
     <span ref="iconEl" :class="[$style.icon, { [$style.peek]: peekText, [$style.hot]: cardOpen, [$style.withRead]: readouts.length }]"
       :title="wm.active.value ? `${host.props.title}${host.props.wmId != null ? ' · click to open' : ''}` : undefined"
-      @click="click">
+      @click="click" @contextmenu.prevent="openIconMenu">
       <svg v-if="host.props.progress != null" :class="$style.ring" width="36" height="36" viewBox="0 0 36 36" aria-hidden="true">
         <circle cx="18" cy="18" r="16" :class="$style.ringTrack" />
         <circle cx="18" cy="18" r="16" :class="$style.ringFill" pathLength="100" :stroke-dasharray="`${Math.min(1, Math.max(0, host.props.progress)) * 100} 100`" transform="rotate(-90 18 18)" />
@@ -18,6 +18,9 @@
       <span v-if="badge != null && badge !== ''" :class="[$style.badge, $style['tone-' + (host.props.tone ?? 'accent')]]">{{ badge }}</span>
       <span v-if="host.props.led" :class="[$style.led, $style['led-' + host.props.led]]" />
     </span>
+    <div v-if="menuOpen" ref="menuEl" :class="[$style.card, placement]">
+      <DockMenu :host="host" :extras="extras" @close="menuOpen = false" />
+    </div>
     <div v-if="cardOpen" ref="cardEl" :class="[$style.card, placement]"
       :style="{ width: host.props.cardWidth ?? '20rem' }">
       <div :class="$style.cardHead">
@@ -42,6 +45,7 @@ import { AppConfig } from '@/web/Config'
 import { useHoverZone } from '../shared/hover'
 import type { DockEntry } from './dock'
 import { dockArt, dockIcon } from './dock'
+import DockMenu from './DockMenu.vue'
 
 const props = defineProps<{
   host: DockEntry
@@ -55,6 +59,7 @@ const overlayKey = computed(() => AppConfig().overlayKey)
 const rootEl = shallowRef<HTMLElement | null>(null)
 const iconEl = shallowRef<HTMLElement | null>(null)
 const cardEl = shallowRef<HTMLElement | null>(null)
+const menuEl = shallowRef<HTMLElement | null>(null)
 
 const badge = computed(() => props.host.props.badge)
 const readouts = computed(() => props.host.props.readouts ?? [])
@@ -75,15 +80,18 @@ watch(() => props.host.peek, (p) => {
 })
 
 const showCard = shallowRef(false)
+// The right-click menu takes the card's place while it's open.
+const menuOpen = shallowRef(false)
 // Open from hovering, or held open by a pin.
-const cardOpen = computed(() => showCard.value || props.host.pinned != null)
+const cardOpen = computed(() => !menuOpen.value && (showCard.value || props.host.pinned != null))
 
 // Hover works while the game has focus (main process watches the mouse).
 // Both take the mouse while it's over them, so a click lands here instead of
 // walking the character there.
-const overIcon = useHoverZone(iconEl, { enabled: () => true, activate: () => true, onClick: openCard })
+const overIcon = useHoverZone(iconEl, { enabled: () => true, activate: () => true, onClick: openCard, onRightClick: openIconMenu })
 const overCard = useHoverZone(cardEl, { enabled: () => cardOpen.value, activate: () => true })
-const hovering = computed(() => overIcon.value || overCard.value)
+const overMenu = useHoverZone(menuEl, { enabled: () => menuOpen.value, activate: () => true })
+const hovering = computed(() => overIcon.value || overCard.value || overMenu.value)
 
 // Opens once the mouse rests on the icon, so sweeping past it doesn't pop the
 // card (a click opens it at once); closes a moment after leaving so moving
@@ -98,7 +106,22 @@ watch(hovering, (on) => {
 })
 function openCard () {
   if (timer) { clearTimeout(timer); timer = null }
+  menuOpen.value = false
   showCard.value = true
+}
+
+// Goes when the mouse leaves it, like the card: nothing stays on screen.
+let menuTimer: ReturnType<typeof setTimeout> | null = null
+watch(hovering, (on) => {
+  if (menuTimer) { clearTimeout(menuTimer); menuTimer = null }
+  if (!on && menuOpen.value) menuTimer = setTimeout(() => { menuOpen.value = false }, CLOSE_AFTER_MS)
+})
+function openIconMenu () {
+  if (timer) { clearTimeout(timer); timer = null }
+  if (menuTimer) { clearTimeout(menuTimer); menuTimer = null }
+  showCard.value = false
+  place()
+  menuOpen.value = true
 }
 // Entries told the card is open; extras can join or leave while it is.
 const told = new Set<DockEntry>()
@@ -120,6 +143,7 @@ onMounted(() => {
 watch(() => [props.host, ...props.extras], () => { tellOpen(cardOpen.value) })
 onUnmounted(() => {
   if (timer) clearTimeout(timer)
+  if (menuTimer) clearTimeout(menuTimer)
   tellOpen(false)
 })
 

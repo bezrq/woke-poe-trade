@@ -47,7 +47,8 @@ export function toast (text: string, opts: { undo?: () => void, anchor?: Element
     id: nextId++,
     text,
     undo: opts.undo,
-    x: r ? r.left + r.width / 2 : window.innerWidth / 2,
+    // A note is at most 360 px wide and centred here: keep it on screen.
+    x: Math.max(180, Math.min(window.innerWidth - 180, r ? r.left + r.width / 2 : window.innerWidth / 2)),
     y: r ? r.bottom - 10 : window.innerHeight - 80
   }
   toasts.value = [...toasts.value.filter(o => Math.abs(o.y - t.y) > 4 || Math.abs(o.x - t.x) > 4), t]

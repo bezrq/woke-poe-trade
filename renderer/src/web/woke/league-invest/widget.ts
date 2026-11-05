@@ -4,6 +4,8 @@ export const LEAGUE_INVEST_TYPE = 'woke-league-invest'
 
 export interface LeagueInvestWidget extends Widget {
   anchor: Anchor
+  // League whose dock icon you've finished with.
+  doneLeague?: string
   // Spare currency to invest, in divines.
   budgetDiv: number
   // How many different items to spread the budget over.

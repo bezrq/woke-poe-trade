@@ -18,17 +18,14 @@
   <div v-for="(g, i) in guides" :key="`g${i}`" :class="[$style.guide, g.axis === 'x' ? $style.gx : $style.gy]"
     :style="g.axis === 'x' ? { left: `${g.at}px` } : { top: `${g.at}px` }" />
 
-  <div v-for="t in list" :key="t.id" :class="[$style.toast, 'w-enter']" :style="{ left: `${t.x / scale}px`, top: `${t.y / scale}px` }" role="status">
-    <span class="w-trunc">{{ t.text }}</span>
-    <button v-if="t.undo" type="button" :class="$style.undo" @click="undoToast(t.id)">Undo</button>
-    <WKbd v-if="t.undo" keys="Ctrl + Z" />
-  </div>
+  <ToastRow v-for="t in list" :key="t.id" :toast="t" :style="{ left: `${t.x / scale}px`, top: `${t.y / scale}px` }" />
 </template>
 
 <script setup lang="ts">
 // Mounted once in the overlay. Renders the shared menu and done/undo notes.
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import WKbd from './WKbd.vue'
+import ToastRow from './ToastRow.vue'
 import { closeMenu, menuState, toasts, undoToast, type MenuEntry } from './layer'
 import { snapGuides } from './snap'
 
@@ -126,17 +123,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKey))
 .keys { margin-left: var(--w-s3); }
 .danger, .danger .ic { color: var(--w-down); }
 .sep { height: 1px; margin: var(--w-s1) 2px; background: var(--w-line); }
-.toast {
-  position: fixed; z-index: 1002; transform: translate(-50%, -100%);
-  display: flex; align-items: center; gap: var(--w-s2); max-width: 360px;
-  padding: 5px 6px 5px 10px; font-family: var(--w-body); font-size: var(--w-fs-sm); color: var(--w-fg);
-  background: var(--w-panel-3); border: 1px solid var(--w-line-strong); border-radius: var(--w-r-md);
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5); pointer-events: auto;
-  zoom: var(--w-ui-scale, 1);
-}
 .guide { position: fixed; z-index: 999; pointer-events: none; }
 .gx { top: 0; bottom: 0; width: 0; border-left: 1px dashed var(--w-info); }
 .gy { left: 0; right: 0; height: 0; border-top: 1px dashed var(--w-info); }
-.undo { color: var(--w-accent); font-weight: 600; padding: 0 4px; }
-.undo:hover { text-decoration: underline; }
 </style>

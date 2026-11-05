@@ -1,7 +1,7 @@
 <template>
   <Widget :config="config" move-handles="corners" :inline-edit="false">
     <!-- In the hideout, while you set up the map device: the strategy you picked. -->
-    <DockItem id="atlas" :title="selected?.name || 'Atlas strategy'" :show="!!selected && zone.kind === 'hideout'"
+    <DockItem :menu="dockMenu" id="atlas" :title="selected?.name || 'Atlas strategy'" :show="!!selected && zone.kind === 'hideout'"
       :wm-id="config.wmId" card-width="21rem">
       <template #card>
         <div v-if="selected" style="padding: 4px var(--w-pad) 6px;" class="flex flex-col gap-0.5">
@@ -173,6 +173,7 @@ import { useWidgetVisible } from '../shared/visible-clock'
 import { parseGuideText, parseScarabs, priceScarabs } from './guide'
 import { usePriceIndex } from '../market/price-index'
 import DockItem from '../dock/DockItem.vue'
+import type { DockMenuAction } from '../dock/dock'
 import { useZone } from '../shared/zone'
 import { formatChaos } from '../ui/format'
 import { FARMING_TYPE, strategyStats, withScarabCosts } from '../farming/farming'
@@ -345,6 +346,22 @@ function pasteSearch (text: string) {
     payload: { action: 'stash-search', text }
   })
 }
+
+// The icon's right-click menu.
+const dockMenu = computed<DockMenuAction[]>(() => selected.value?.regex
+  ? [
+      { label: 'Search stash with its regex', icon: 'fas fa-search', action: () => { if (selected.value) pasteSearch(selected.value.regex) } },
+      { label: 'Copy map regex', icon: 'far fa-copy', action: () => { if (selected.value) copy(selected.value.regex).catch(() => {}) } },
+      {
+        label: 'Save to the Regex library',
+        icon: 'far fa-bookmark',
+        action: () => {
+          const s = selected.value
+          if (s) toast(SAVE_MESSAGE[saveToRegexLibrary({ name: s.name, text: s.regex, category: 'Atlas' })])
+        }
+      }
+    ]
+  : [])
 </script>
 
 <style module>
