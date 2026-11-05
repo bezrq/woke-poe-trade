@@ -181,6 +181,38 @@ test('history: a change shows before and after, a dot resets it, Ctrl + Z and th
   await expect(slider).toHaveValue(start)
 })
 
+test('rules: pick several chips, move them together, hide them together, and see prices', async ({ overlay, fakeApp }) => {
+  const folder = filterFolder()
+  await overlay.boot({ widgets: [lootFilter(folder)] })
+  await openEditor(overlay, fakeApp)
+  const page = overlay.page
+  await page.getByRole('tab', { name: 'Rules' }).click()
+  await page.getByRole('button', { name: /Tier 3/ }).first().click()
+
+  // A price on a priced item, highest first.
+  await expect(page.locator('[title^="Click to pick"]').first()).toContainText('c')
+  await overlay.snap('chips with prices')
+
+  await page.getByText('Chaos Orb', { exact: true }).last().click()
+  await page.getByText('Orb of Alchemy', { exact: true }).last().click()
+  await expect(page.getByText('2 picked')).toBeVisible()
+  await overlay.snap('bulk bar')
+
+  await page.getByRole('toolbar', { name: 'Picked items' }).getByRole('button', { name: 'Move to' }).click()
+  await page.getByRole('menuitem', { name: 'Tier 2' }).click()
+  await expect(page.getByText('Moved 2 items to Tier 2')).toBeVisible()
+
+  // Now in Tier 2: hide one by its own rule.
+  await page.getByText('Chaos Orb', { exact: true }).last().click()
+  await page.getByRole('toolbar', { name: 'Picked items' }).getByRole('button', { name: 'Hide' }).click()
+  await expect(page.getByText('Hid 1 item')).toBeVisible()
+
+  await page.getByRole('button', { name: /^Save/ }).click()
+  const out = path.join(folder, 'NeverSink (woke).filter')
+  await expect.poll(() => fs.existsSync(out) ? fs.readFileSync(out, 'utf8') : '').toMatch(/\$tier->t2divine[^\n]*\n(\t[^\n]*\n)*\tBaseType == [^\n]*"Orb of Alchemy"/)
+  expect(fs.readFileSync(out, 'utf8')).toMatch(/Hide # \$type->woke->own [^\n]*\n(\t[^\n]*\n)*\tBaseType == "Chaos Orb"/)
+})
+
 test('pasting a copied item into the search box opens its rule card', async ({ overlay, fakeApp }) => {
   const folder = filterFolder()
   await overlay.boot({ widgets: [lootFilter(folder)] })
