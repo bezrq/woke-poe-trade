@@ -37,6 +37,27 @@ history:
       hide flakes.
     pin: true
     id: a-2026-11-05t14-54-01-313z
+  - type: comment
+    user: Agent
+    comment: >-
+      Master CI is green (runs on a38e48d1 and bb81b36b). Should both Tests jobs
+      become required checks? Recommended: yes, on master, without "branches up
+      to date". Cost: merges wait about 7 minutes for CI, instead of going in on
+      local checks alone.
+    date: '2026-11-05T15:34:17.963Z'
+    id: c-2026-11-05t15-34-17-963z
+  - type: swimlane_change
+    swimlane: require-input
+    action: set
+    user: Agent
+    date: '2026-11-05T15:34:17.963Z'
+    comment: >-
+      Master CI is green (runs on a38e48d1 and bb81b36b). Should both Tests jobs
+      become required checks? Recommended: yes, on master, without "branches up
+      to date". Cost: merges wait about 7 minutes for CI, instead of going in on
+      local checks alone.
+swimlane: require-input
+needsAction: null
 ---
 Master CI (Tests workflow) has been red and merges went past it. Goal: fix root causes, no skips, make real flakes deterministic, then propose CI as a required check.
 
