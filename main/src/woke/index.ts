@@ -1,5 +1,6 @@
 // Main-process side of woke modules: one request/response channel,
 // with handlers registered by op name.
+import { net } from 'electron'
 import type { ServerEvents } from '../server'
 import type { Logger } from '../RemoteLogger'
 import type { GameWindow } from '../windowing/GameWindow'
@@ -19,6 +20,7 @@ import { sessionHandlers } from './session-store'
 import { tradeLogHandlers } from './trade-log'
 import { docHandlers } from './data-files'
 import { browsePath, pathStat } from './settings-files'
+import { cachedLiveData, checkLiveData } from './live-data'
 
 type Handler = (args: any) => Promise<unknown> // eslint-disable-line @typescript-eslint/no-explicit-any
 
@@ -45,6 +47,8 @@ const handlers: Record<string, Handler> = {
   'hotkey-failures': async () => hotkeyFailures(),
   'lab-layout-image': labLayoutImage,
   'path-stat': pathStat,
+  'live-data-cached': cachedLiveData,
+  'live-data-check': async (args) => await checkLiveData(args, async (url, signal) => await net.fetch(url, { signal })),
   'browse-path': browsePath,
   ...marketHandlers,
   ...sessionHandlers,
