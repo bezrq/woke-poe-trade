@@ -27,14 +27,15 @@ describe('text scale', () => {
     expect(parse(null)).toBe(100)
     expect(parse('junk')).toBe(100)
     expect(parse('125')).toBe(125)
-    expect(parse('10')).toBe(90)
+    expect(parse('10')).toBe(100)
     expect(parse('900')).toBe(150)
   })
 
-  it('leaves no literal font size behind', () => {
-    const literal = /font-size:\s*[0-9.]+(px|rem)/
+  it('leaves no literal font size or line height behind', () => {
+    const scaled = /calc\([0-9.]+(px|rem) \* var\(--w-text-scale, 1\)\)/g
+    const literal = /(font-size|line-height):\s*[0-9.]+(px|rem)|\bfont:[^;{}]*[0-9](px|rem)|\btext-\[[0-9]/
     const offenders = sources(path.resolve(__dirname, '../../src/web'))
-      .filter(f => literal.test(readFileSync(f, 'utf8')))
+      .filter(f => literal.test(readFileSync(f, 'utf8').replace(scaled, 'scaled')))
     expect(offenders).toEqual([])
   })
 })

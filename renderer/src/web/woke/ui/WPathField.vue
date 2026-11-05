@@ -60,7 +60,7 @@ async function browse () {
 <style module>
 .wrap { display: flex; align-items: center; gap: var(--w-s2); width: 100%; min-width: 0; }
 .field {
-  flex: 1; min-width: 0; height: 26px; padding: 0 8px;
+  flex: 1; min-width: 0; height: calc(26px * var(--w-text-scale, 1)); padding: 0 8px;
   font-family: var(--w-mono); font-size: var(--w-fs-sm); color: var(--w-fg);
   background: var(--w-panel-2); border: 1px solid var(--w-line); border-radius: var(--w-r-sm);
 }

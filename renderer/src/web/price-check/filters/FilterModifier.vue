@@ -411,7 +411,7 @@ export default defineComponent({
   background: var(--w-pc-well, theme('colors.gray.900'));
   @apply text-gray-300;
   @apply text-center;
-  @apply w-12;
+  width: calc(3rem * (1 + (var(--w-text-scale, 1) - 1) / 2)); /* half the text growth: mod names need the room */
   @apply px-1;
   @apply border border-transparent;
 

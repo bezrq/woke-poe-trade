@@ -198,7 +198,7 @@ const styles = useCssModule()
   height: 16px;
   padding: 0 4px;
   border-radius: 8px;
-  font: 600 10px/16px var(--w-num);
+  font: 600 calc(10px * var(--w-text-scale, 1))/calc(16px * var(--w-text-scale, 1)) var(--w-num);
   text-align: center;
   white-space: nowrap;
   color: var(--w-accent-fg);

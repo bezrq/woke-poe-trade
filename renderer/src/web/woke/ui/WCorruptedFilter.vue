@@ -29,7 +29,7 @@ const TITLES: Record<CorruptedFilter, string> = {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  height: 26px;
+  height: calc(26px * var(--w-text-scale, 1));
   min-width: 28px;
   justify-content: center;
   padding: 0 6px;

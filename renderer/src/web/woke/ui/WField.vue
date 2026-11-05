@@ -31,7 +31,7 @@ function onInput (e: Event) {
 .field {
   width: 100%;
   min-width: 0;
-  height: 26px;
+  height: calc(26px * var(--w-text-scale, 1));
   padding: 0 8px;
   font-size: calc(12.5px * var(--w-text-scale, 1));
   color: var(--w-fg);

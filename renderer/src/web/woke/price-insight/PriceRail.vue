@@ -28,7 +28,7 @@ function labelStyle (m: RailMark) {
 </script>
 
 <style module>
-.rail { position: relative; height: 46px; }
+.rail { position: relative; height: calc(46px * var(--w-text-scale, 1)); }
 .track { position: absolute; left: 0; right: 0; top: 5px; height: 2px; background: var(--w-line); }
 .mark { position: absolute; top: 0; width: 12px; height: 12px; border-radius: 50%; background: var(--w-dim); border: 2px solid var(--w-pc-well, var(--w-panel-solid)); }
 .mark.likely { background: var(--w-accent); }

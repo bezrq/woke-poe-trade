@@ -33,7 +33,7 @@
               <div class="px-2">{{ t(':price') }}</div>
             </th>
             <th :class="$style.tableHeading">
-              <div class="w-pc-ratio-head pl-1 pr-2 flex text-xs" style="line-height: calc(1.3125rem * var(--w-text-scale, 1));"><span class="min-w-[2rem] inline-block text-right -ml-px mr-px">{{ (selectedCurr === 'xchgChaos') ? 'chaos' : 'div' }}</span><span>{{ '\u2009' }}/{{ '\u2009' }}</span><span class="min-w-[2rem] inline-block">{{ t(':bulk') }}</span></div>
+              <div class="w-pc-ratio-head pl-1 pr-2 flex text-xs" style="line-height: calc(1.3125rem * var(--w-text-scale, 1));"><span :class="$style.ratioCell" class="text-right -ml-px mr-px">{{ (selectedCurr === 'xchgChaos') ? 'chaos' : 'div' }}</span><span>{{ '\u2009' }}/{{ '\u2009' }}</span><span :class="$style.ratioCell">{{ t(':bulk') }}</span></div>
             </th>
             <th :class="$style.tableHeading">
               <div class="px-1">{{ t(':stock') }}</div>
@@ -59,7 +59,7 @@
             <tr v-for="result in selectedResults" :key="result.id"
               :class="{ [$style.marketRatioRow]: ('marketRatio' in result) }">
               <td class="px-2">{{ Number((result.exchangeAmount / result.itemAmount).toFixed(4)) }}</td>
-              <td class="pl-1 whitespace-nowrap"><span class="w-8 inline-block text-right">{{ Number(result.exchangeAmount.toFixed(1)) }}</span><span>{{ '\u2009' }}/{{ '\u2009' }}</span><span class="w-8 inline-block">{{ Number(result.itemAmount.toFixed(1)) }}</span></td>
+              <td class="pl-1 whitespace-nowrap"><span :class="$style.ratioCell" class="text-right">{{ Number(result.exchangeAmount.toFixed(1)) }}</span><span>{{ '\u2009' }}/{{ '\u2009' }}</span><span :class="$style.ratioCell">{{ Number(result.itemAmount.toFixed(1)) }}</span></td>
               <template v-if="'marketRatio' in result">
                 <td class="pl-1 pr-2 whitespace-nowrap text-center" :colspan="showSeller ? 4 : 3">{{ t(':market_ratio') }}</td>
               </template>
@@ -383,9 +383,14 @@ export default defineComponent({
   &.afk { @apply bg-orange-500; }
 }
 
+.ratioCell {
+  display: inline-block;
+  width: calc(2rem * (1 + (var(--w-text-scale, 1) - 1) / 2)); /* half the text growth: the table must fit the window */
+}
+
 .currencyIcon {
   width: 1.75rem;
-  height: calc(1.75rem * var(--w-text-grow, 1));
+  height: 1.75rem;
   margin: -0.4375rem;
   margin-right: 0.125rem;
   filter: grayscale(1);

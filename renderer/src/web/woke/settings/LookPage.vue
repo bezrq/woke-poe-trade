@@ -13,7 +13,7 @@
     </w-setting-section>
 
     <w-setting-section title="Overlay">
-      <w-setting-row label="Price check window size" hint="Sizes price check, map check and this settings window, text included.">
+      <w-setting-row label="Price check window size" hint="Mainly sizes price check, map check and this settings window, text included.">
         <span class="w-num w-dim">{{ windowPct }}%</span>
         <input id="woke-window-size" type="range" min="10" max="32" step="1" :class="$style.range"
           :value="windowPx" @input="draftPx = Number(($event.target as HTMLInputElement).value)"

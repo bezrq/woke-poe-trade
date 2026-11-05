@@ -75,11 +75,9 @@
   --w-body: Inter, system-ui, sans-serif;
   --w-num: Inter, system-ui, sans-serif;
   --w-mono: "JetBrains Mono", ui-monospace, monospace;
-  /* The Text size setting (ui/text-scale.ts). Rows and one-line controls grow
-   * with bigger text, and keep their size when text is smaller. */
-  --w-text-grow: max(1, var(--w-text-scale, 1));
-  --w-fs-xs: max(11px, calc(11px * var(--w-text-scale, 1)));    /* column labels, key caps */
-  --w-fs-sm: max(11px, calc(11.5px * var(--w-text-scale, 1)));  /* meta, ages, hints */
+  /* All times the Text size setting (ui/text-scale.ts). */
+  --w-fs-xs: calc(11px * var(--w-text-scale, 1));    /* column labels, key caps */
+  --w-fs-sm: calc(11.5px * var(--w-text-scale, 1));  /* meta, ages, hints */
   --w-fs-md: calc(13px * var(--w-text-scale, 1));    /* rows, body, buttons */
   --w-fs-lg: calc(15px * var(--w-text-scale, 1));    /* titles, key values */
   --w-fs-xl: calc(18px * var(--w-text-scale, 1));    /* the verdict (P7) */
@@ -102,7 +100,7 @@
   --w-radius-sm: var(--w-r-sm);
 
   /* Density (P16): comfortable by default, compact via data-woke-density */
-  --w-row-h: calc(28px * var(--w-text-grow, 1));
+  --w-row-h: calc(28px * var(--w-text-scale, 1));
   --w-pad: 12px;
 
   /* Motion (P15): quick fade + short rise in, faster out */
@@ -117,7 +115,7 @@
   --w-icon-lg: 24px;
 }
 
-:root[data-woke-density="compact"] { --w-row-h: calc(24px * var(--w-text-grow, 1)); }
+:root[data-woke-density="compact"] { --w-row-h: calc(24px * var(--w-text-scale, 1)); }
 @media (prefers-reduced-motion: reduce) {
   :root { --w-dur-in: 0ms; --w-dur-out: 0ms; --w-rise: 0px; }
 }
@@ -144,7 +142,7 @@
   --w-num: Fontin, FrizQuadrataC, Georgia, serif;
   --w-r-sm: 1px;
   --w-r-md: 1px;
-  --w-row-h: calc(30px * var(--w-text-grow, 1));
+  --w-row-h: calc(30px * var(--w-text-scale, 1));
 }
 
 :root[data-woke-theme="modern"] {

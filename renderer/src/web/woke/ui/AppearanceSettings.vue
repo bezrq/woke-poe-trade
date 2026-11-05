@@ -10,7 +10,7 @@
         </span>
       </label>
     </div>
-    <w-setting-row label="Text size" hint="Makes text bigger or smaller everywhere. Windows keep their size.">
+    <w-setting-row label="Text size" hint="Makes text bigger everywhere. Windows keep their width.">
       <span class="w-num w-dim">{{ textScale }}%</span>
       <input id="woke-text-scale" type="range" :min="MIN_TEXT_SCALE" :max="MAX_TEXT_SCALE" step="5" :class="$style.range"
         :value="textScale" @input="textScale = Number(($event.target as HTMLInputElement).value)">
