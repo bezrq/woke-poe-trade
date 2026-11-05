@@ -112,6 +112,13 @@ describe('loadouts', () => {
     expect(l.tree?.title).toBe(day2)
   })
 
+  it('an item set pick changes only the gear', () => {
+    const l = loadoutOf(d, 90, null, { itemSet: day2 })
+    expect(l.skillSet?.item.title).toBe(day1)
+    expect(l.itemSet?.item.title).toBe(day2)
+    expect(l.tree?.title).toBe(day1)
+  })
+
   it('feeds the helpers from the pick', () => {
     expect(relevantGems(d, 90, null, { skillSet: day2 })).toEqual(['Cyclone'])
     expect(buildFacts(d, 90, null).bases.map(b => b.base)).toEqual(['Plate Vest'])

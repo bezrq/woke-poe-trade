@@ -99,7 +99,9 @@ export interface Loadout {
 
 // The sets in use: the same answer for every window that asks.
 export function loadoutOf (d: PobDetails, level: number | null, act: number | null, pick?: LoadoutPick): Loadout {
-  const skillTitle = pick?.skillSet ?? pick?.itemSet
+  // A skill set pick takes its same-named item set and tree along. An item
+  // set pick changes only the gear.
+  const skillTitle = pick?.skillSet
   return {
     skillSet: pickStage(skillSetsOf(d), level, act, skillTitle),
     itemSet: pickStage(itemSetsOf(d), level, act, pick?.itemSet ?? pick?.skillSet),

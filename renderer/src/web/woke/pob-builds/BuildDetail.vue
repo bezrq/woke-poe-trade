@@ -32,7 +32,7 @@
         </div>
         <div v-if="skillSets.length > 1" class="flex flex-wrap gap-1 pt-1">
           <WChip v-if="pick" clickable :title="AUTO_HINT" @click="clearPick">Auto</WChip>
-          <WChip v-for="(set, i) in skillSets" :key="i" clickable :active="set === shownSet" :title="pickHint(set === shownSet)" @click="chooseSkillSet(set.title)">
+          <WChip v-for="(set, i) in skillSets" :key="i" clickable :active="set === shownSet" :title="pickHint(set === shownSet, pick?.skillSet === set.title, loadout?.skillSet?.byStage)" @click="chooseSkillSet(set.title)">
             <i v-if="pick && set === shownSet" class="fas fa-thumbtack text-xs" /> {{ set.title }}<span v-if="set === shownSet" class="w-accent"> · now</span>
           </WChip>
         </div>
@@ -85,7 +85,7 @@
 
         <div v-if="itemSets.length > 1" class="flex flex-wrap gap-1 pt-2">
           <WChip v-if="pick" clickable :title="AUTO_HINT" @click="clearPick">Auto</WChip>
-          <WChip v-for="(set, i) in itemSets" :key="i" clickable :active="set === shownItemSet" :title="pickHint(set === shownItemSet)" @click="chooseItemSet(set.title)">
+          <WChip v-for="(set, i) in itemSets" :key="i" clickable :active="set === shownItemSet" :title="pickHint(set === shownItemSet, pick?.itemSet === set.title, loadout?.itemSet?.byStage)" @click="chooseItemSet(set.title)">
             <i v-if="pick && set === shownItemSet" class="fas fa-thumbtack text-xs" /> {{ set.title }}<span v-if="set === shownItemSet" class="w-accent"> · now</span>
           </WChip>
         </div>
@@ -258,20 +258,27 @@ function clearPick () {
   setPick(null)
 }
 
-function pickHint (inUse: boolean) {
+function pickHint (inUse: boolean, byHand: boolean, byStage?: boolean) {
   if (!inUse) return 'Use this loadout in every window'
-  return pick.value ? 'Picked by hand. Click to go back to following your level' : 'Picked from your level. Click to keep this one'
+  if (byHand) return 'Picked by hand. Click to go back to following your level'
+  return byStage ? 'Picked from your level. Click to keep this one' : 'The set active in PoB. Click to keep this one'
 }
 
-// Clicking the set in use: a pick goes back to auto, an auto choice is kept.
-// A skill set takes its same-named item set and tree along.
+// Drops one kind from the pick; nothing left means auto.
+function withoutKind (kind: keyof LoadoutPick): LoadoutPick | null {
+  const next: LoadoutPick = { ...pick.value, [kind]: undefined }
+  return next.skillSet || next.itemSet ? next : null
+}
+
+// Clicking the set you picked by hand unpicks just that one; any other click
+// pins it. A skill set takes its same-named item set and tree along.
 function chooseSkillSet (title: string) {
-  setPick(pick.value && title === shownSet.value?.title ? null : { skillSet: title })
+  setPick(pick.value?.skillSet === title ? withoutKind('skillSet') : { skillSet: title })
 }
 
-// Item sets can differ from the skill set, so that stays as it was.
+// Item sets can differ from the skill set, so the skill set stays as it was.
 function chooseItemSet (title: string) {
-  setPick(pick.value && title === shownItemSet.value?.title ? null : { ...pick.value, itemSet: title })
+  setPick(pick.value?.itemSet === title ? withoutKind('itemSet') : { ...pick.value, itemSet: title })
 }
 
 // ---- leveling ----
