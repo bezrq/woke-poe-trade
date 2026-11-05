@@ -46,8 +46,13 @@ fn main() {
     let _ = std::fs::create_dir_all(data_dir.join("apt-data"));
     let cfg = data_dir.join("apt-data").join("config.json");
     if !cfg.exists() {
-        let real = appdata().join("woke-poe-trade").join("apt-data").join("config.json");
-        let _ = std::fs::copy(real, &cfg);
+        // The toolkit's own folder, or the one builds before 0.1.0 used.
+        for dir in ["woke-poe-trade", "awakened-poe-trade"] {
+            let real = appdata().join(dir).join("apt-data").join("config.json");
+            if std::fs::copy(real, &cfg).is_ok() {
+                break;
+            }
+        }
     }
     let h = hub::init(data_dir.clone(), exe_dir.join("web"), data_dir.join("test-log.txt"));
     let _ = std::fs::remove_file(&h.log_file);
