@@ -15,7 +15,19 @@ history:
   - type: activity
     user: Agent
     date: '2026-11-05T08:09:57.494Z'
+    comment: Created ticket.
+    id: a-2026-11-05t08-09-57-494z
+  - type: activity
+    user: Agent
+    date: '2026-11-05T08:09:57.494Z'
     comment: Created as subtask of WOKEPOET-36.
+    id: a-2026-11-05t08-09-57-494z
+  - type: activity
+    user: Agent
+    date: '2026-11-05T08:51:16.281Z'
+    comment: Updated implementation link.
+    id: a-2026-11-05t08-51-16-281z
+implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/133'
 ---
 > **TL;DR** C7. GameLogWatcher never compares its offset to file size and keeps the old handle, so a cleared or replaced log stops silently and every log-based feature stops with it.
 

@@ -15,7 +15,19 @@ history:
   - type: activity
     user: Agent
     date: '2026-11-05T08:09:35.046Z'
+    comment: Created ticket.
+    id: a-2026-11-05t08-09-35-046z
+  - type: activity
+    user: Agent
+    date: '2026-11-05T08:09:35.046Z'
     comment: Created as subtask of WOKEPOET-36.
+    id: a-2026-11-05t08-09-35-046z
+  - type: activity
+    user: Agent
+    date: '2026-11-05T08:51:16.101Z'
+    comment: Updated implementation link.
+    id: a-2026-11-05t08-51-16-101z
+implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/129'
 ---
 > **TL;DR** F4, the known bug. "Change saved" only updates memory. The disk write happens when Settings hides, and saveConfig refuses while Settings is open, so Quit, tray Quit, Restart now, a crash or a power cut lose the changes.
 

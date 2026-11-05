@@ -15,7 +15,19 @@ history:
   - type: activity
     user: Agent
     date: '2026-11-05T08:09:29.065Z'
+    comment: Created ticket.
+    id: a-2026-11-05t08-09-29-065z
+  - type: activity
+    user: Agent
+    date: '2026-11-05T08:09:29.065Z'
     comment: Created as subtask of WOKEPOET-36.
+    id: a-2026-11-05t08-09-29-065z
+  - type: activity
+    user: Agent
+    date: '2026-11-05T08:51:16.042Z'
+    comment: Updated implementation link.
+    id: a-2026-11-05t08-51-16-042z
+implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/128'
 ---
 > **TL;DR** F2. The websocket and HTTP server on fixed port 8585 check no Origin or Host, so any page in the player's browser can act as the overlay: type chat, overwrite settings, call handlers, and start a program through pob-open.
 

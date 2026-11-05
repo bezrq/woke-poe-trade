@@ -15,7 +15,19 @@ history:
   - type: activity
     user: Agent
     date: '2026-11-05T08:09:40.796Z'
+    comment: Created ticket.
+    id: a-2026-11-05t08-09-40-796z
+  - type: activity
+    user: Agent
+    date: '2026-11-05T08:09:40.796Z'
     comment: Created as subtask of WOKEPOET-36.
+    id: a-2026-11-05t08-09-40-796z
+  - type: activity
+    user: Agent
+    date: '2026-11-05T08:51:16.200Z'
+    comment: Updated implementation link.
+    id: a-2026-11-05t08-51-16-200z
+implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/133'
 ---
 > **TL;DR** F6. item-text-failed is sent by main, but only the loot filter's sample key listens. Every other copy-item hotkey does nothing visible on failure.
 

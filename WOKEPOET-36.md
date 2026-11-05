@@ -1,7 +1,7 @@
 ---
 id: WOKEPOET-36
 title: 'Overlay core critique: pick which fixes to start'
-status: Grooming
+status: In Progress
 priority: High
 effort: None
 assignee: unassigned
@@ -35,7 +35,26 @@ history:
       press, focus check), 2 (lock the local server) and 3 (safe settings). Fix
       1 needs a mock for where "filter ready, reload?" shows; 2 and 3 need no
       UI. Report: https://claude.ai/artifact/Du1efrqGyeBo1LyyHQHtTw
-swimlane: require-input
+  - type: comment
+    user: Agent
+    comment: >-
+      Guy asked to ticket everything and fix the important and easy ones. All 23
+      findings are WOKEPOET-40 to 62. In PRs now: #126 (40, 42), #128 (41, 55),
+      #129 (43, 44, 58), #133 (45, 47, 48, 52). The rest stay in Grooming.
+      WOKEPOET-60 is partly covered by #127.
+    date: '2026-11-05T08:51:15.947Z'
+    id: c-2026-11-05t08-51-15-947z
+  - type: swimlane_change
+    swimlane: require-input
+    action: cleared
+    user: Agent
+    date: '2026-11-05T08:51:15.947Z'
+  - type: status_change
+    from: Grooming
+    to: In Progress
+    user: Agent
+    date: '2026-11-05T08:51:15.947Z'
+swimlane: null
 needsAction: null
 subtasks:
   - WOKEPOET-40

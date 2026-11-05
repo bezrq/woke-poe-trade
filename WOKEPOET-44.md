@@ -15,7 +15,19 @@ history:
   - type: activity
     user: Agent
     date: '2026-11-05T08:09:38.191Z'
+    comment: Created ticket.
+    id: a-2026-11-05t08-09-38-191z
+  - type: activity
+    user: Agent
+    date: '2026-11-05T08:09:38.191Z'
     comment: Created as subtask of WOKEPOET-36.
+    id: a-2026-11-05t08-09-38-191z
+  - type: activity
+    user: Agent
+    date: '2026-11-05T08:51:16.133Z'
+    comment: Updated implementation link.
+    id: a-2026-11-05t08-51-16-133z
+implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/129'
 ---
 > **TL;DR** F5. A damaged or empty config loads defaults with no message; later saves go to config.json.tmp for the session, so they are lost too. There is no backup and no flush to disk, and a failed write quits the app.
 

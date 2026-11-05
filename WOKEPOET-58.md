@@ -15,7 +15,19 @@ history:
   - type: activity
     user: Agent
     date: '2026-11-05T08:10:12.997Z'
+    comment: Created ticket.
+    id: a-2026-11-05t08-10-12-997z
+  - type: activity
+    user: Agent
+    date: '2026-11-05T08:10:12.997Z'
     comment: Created as subtask of WOKEPOET-36.
+    id: a-2026-11-05t08-10-12-997z
+  - type: activity
+    user: Agent
+    date: '2026-11-05T08:51:16.165Z'
+    comment: Updated implementation link.
+    id: a-2026-11-05t08-51-16-165z
+implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/129'
 ---
 > **TL;DR** C13. No check for a config newer than the app (still a TODO), and if upgradeConfig throws, nothing catches it and the page stays blank.
 
