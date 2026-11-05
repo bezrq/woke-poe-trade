@@ -57,9 +57,18 @@
         <label :class="$style.find">
           <i class="fas fa-search" />
           <textarea ref="searchInput" v-model="query" :class="$style.findInput" rows="1" spellcheck="false"
-            aria-label="Find a tool, or paste an item" placeholder="Find a tool, or paste an item (Ctrl V)"
+            aria-label="Find a tool or an item, or paste an item" placeholder="Find a tool or an item, or paste an item (Ctrl V)"
             @paste="onBoxPaste" @keydown.enter.prevent="openFirstMatch" />
         </label>
+        <div v-if="priceGroups.length" :class="$style.prices">
+          <div :class="$style.head">Prices</div>
+          <button v-for="g in priceGroups" :key="groupKey(g)" :class="$style.priceRow" @click="openSearch(g.name)">
+            <WIcon :src="ninjaIcon(g.type, g.name) ?? undefined" size="md" />
+            <span :class="[$style.rowName, rarityClass(g.type)]">{{ g.name }}</span>
+            <span :class="$style.priceSub">{{ g.variants.length > 1 ? `${g.variants.length} prices` : g.variants[0].variant }}</span>
+            <span :class="$style.priceNow"><template v-if="g.low !== g.high"><WPrice :chaos="g.low" :divine="divine" /> to </template><WPrice :chaos="g.high" :divine="divine" /></span>
+          </button>
+        </div>
         <div :class="$style.cols">
           <div v-for="(col, i) in launcherColumns" :key="i">
             <template v-for="group in col" :key="group.label">
@@ -80,7 +89,7 @@
             </template>
           </div>
         </div>
-        <div v-if="!launcherHasMatch" :class="$style.none">No tool matches "{{ launcherQuery }}"</div>
+        <div v-if="!launcherHasMatch && !priceGroups.length" :class="$style.none">Nothing matches "{{ launcherQuery }}"</div>
         <div :class="$style.foot">
           <span>Gold means open. Pin a tool to keep it on the rail.</span>
           <button :class="$style.footBtn" @click="openAdd"><i class="fas fa-plus" /> Add another tool</button>
@@ -157,6 +166,11 @@ import { useHotkeyHealth } from '../switchboard/hotkey-health'
 import ToolIcon from './ToolIcon.vue'
 import { ICON_TOOL_NAMES, artFor, iconFor, allowsCopies, groupByModule, groupTypes, looksLikeItem, migrateToRail, parseWidgetTitle } from './tools'
 import type { TabBarConfig } from './tools'
+import { WIcon, WPrice, ninjaIcon } from '../ui'
+import { isModuleOn } from '@/web/woke/modules'
+import { holdPricesForSearch, usePriceIndexReadonly } from '../market/price-index'
+import { groupKey, rarityClass, searchPrices } from '../search/search'
+import { searchRequest } from '../search/widget'
 
 const props = defineProps<{ config: TabBarConfig }>()
 const emit = defineEmits<{ (e: 'paste', text: string, from: DOMRect): void }>()
@@ -248,6 +262,11 @@ function openHotkeyList () {
 
 function toggle (tab: Tab) {
   hideTip()
+  // The old item search's icon opens the search that replaced it.
+  if (tab.wmType === 'item-search') {
+    openSearch('')
+    return
+  }
   if (tab.open) wm.hide(tab.wmId)
   else wm.show(tab.wmId)
 }
@@ -383,7 +402,10 @@ function openBesideRail (kind: 'launcher' | 'add') {
   query.value = ''
   nextTick(() => searchInput.value?.focus())
 }
-function openLauncher () { openBesideRail('launcher') }
+function openLauncher () {
+  if (isModuleOn(AppConfig(), 'market')) holdPricesForSearch()
+  openBesideRail('launcher')
+}
 function openAdd () { openBesideRail('add') }
 function closePopup () {
   popup.value = null
@@ -424,9 +446,24 @@ function onRowClick (tab: Tab) {
 function openFirstMatch () {
   if (!launcherQuery.value) return
   const first = launcherColumns.value.flat().flatMap(g => g.items)[0]
-  if (!first) return
+  if (!first) {
+    if (priceGroups.value.length) openSearch(priceGroups.value[0].name)
+    return
+  }
   wm.show(first.wmId)
   closePopup()
+}
+
+// Prices for what's typed. Clicking one opens the full search on it.
+const prices = usePriceIndexReadonly()
+const divine = computed(() => prices.snapshot.value?.divine ?? null)
+const priceGroups = computed(() => {
+  if (popup.value?.kind !== 'launcher') return []
+  return searchPrices(prices.snapshot.value?.items ?? [], launcherQuery.value, { limit: 5 })
+})
+function openSearch (text: string) {
+  closePopup()
+  searchRequest.value = { query: text }
 }
 
 // An item pasted into the box, or anywhere in the overlay outside a text
@@ -641,6 +678,11 @@ function addFirstMatch () {
   font: var(--w-text)/18px var(--w-body);
 }
 .findInput::placeholder { color: var(--w-dim); }
+.prices { margin-bottom: 8px; padding-bottom: 6px; border-bottom: 1px solid var(--w-line); }
+.priceRow { display: flex; align-items: center; gap: 9px; width: 100%; height: 32px; padding: 0 7px; border-radius: var(--w-r-sm); text-align: left; }
+.priceRow:hover { background: var(--w-accent-soft); }
+.priceSub { color: var(--w-dim); font-size: var(--w-text-sm); white-space: nowrap; }
+.priceNow { margin-left: auto; display: inline-flex; align-items: center; gap: 4px; }
 .cols { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px 10px; align-items: start; }
 .row {
   display: flex;

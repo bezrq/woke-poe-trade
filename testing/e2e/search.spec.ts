@@ -1,0 +1,130 @@
+// Search: the palette on its hotkey, prices in the launcher, and the Market
+// tracker's search row with the corrupted filter, on recorded poe.ninja prices.
+import { test, expect } from './harness'
+import type { Overlay } from './harness'
+
+const SEARCH_KEY = 'Alt + P'
+
+// Prices are saved a moment after they load.
+async function waitForPrices (overlay: Overlay) {
+  const panel = overlay.widget('woke-search')
+  const box = panel.getByRole('textbox', { name: 'Search' })
+  await expect(async () => {
+    await box.fill('headhunter')
+    await expect(panel.getByRole('button', { name: /Headhunter/ }).first()).toBeVisible({ timeout: 500 })
+  }).toPass({ timeout: 20_000 })
+  return { panel, box }
+}
+
+function bootOptions () {
+  return {
+    widgets: [{ wmType: 'woke-market-tracker', wmTitle: 'Market tracker', anchor: { pos: 'tl', x: 40, y: 30 } }]
+  }
+}
+
+test('the hotkey opens the palette ready to type, and Esc leaves it', async ({ overlay }) => {
+  await overlay.page.setViewportSize({ width: 2560, height: 1440 })
+  await overlay.boot(bootOptions())
+  await overlay.showScreen('screens/map-real-01.png')
+  expect(overlay.app.registeredHotkeys()).toContain('Alt+P')
+
+  await overlay.pressHotkey(SEARCH_KEY)
+  const palette = overlay.widget('woke-search')
+  const box = palette.getByRole('textbox', { name: 'Search' })
+  await expect(box).toBeVisible()
+  await expect(box).toBeFocused()
+  await overlay.snap('search-opened')
+
+  // Keys go straight to the box.
+  await overlay.page.keyboard.type('headh')
+  await expect(box).toHaveValue('headh')
+
+  await box.press('Escape')
+  await expect(box).toBeHidden()
+})
+
+test('prices are grouped, and the detail shows every variant and its actions', async ({ overlay }) => {
+  await overlay.page.setViewportSize({ width: 2560, height: 1440 })
+  await overlay.boot(bootOptions())
+  await overlay.showScreen('screens/map-real-01.png')
+  await overlay.pressHotkey(SEARCH_KEY)
+  const { panel, box } = await waitForPrices(overlay)
+
+  await expect(panel.getByText('Trade site')).toBeVisible()
+  await expect(panel.getByText('Wiki')).toBeVisible()
+  await expect(panel.getByText('Live listings')).toBeVisible()
+  await overlay.snap('search-unique')
+
+  // A gem: the Vaal orb button narrows it to corrupted variants.
+  await box.fill('enlighten')
+  await expect(panel.getByText('4/20c').first()).toBeVisible()
+  await panel.getByRole('button', { name: /Corrupted gems are shown/ }).click()
+  await expect(panel.getByText('4/20c').first()).toBeVisible()
+  await panel.getByRole('button', { name: /Only corrupted gems/ }).click()
+  await expect(panel.getByText('4/20c').first()).toBeHidden()
+  await panel.getByRole('button', { name: /Corrupted gems are hidden/ }).click()
+  await expect(panel.getByText('4/20c').first()).toBeVisible()
+
+  // Tools and settings are found too, and an item with no price gets links.
+  await box.fill('market')
+  await expect(panel.getByRole('button', { name: /Market tracker\s*Tool/ })).toBeVisible()
+  await expect(panel.getByRole('button', { name: /Market & investments/ })).toBeVisible()
+  await overlay.snap('search-tools')
+
+  await box.fill('astral plate')
+  await expect(panel.getByRole('button', { name: /Astral Plate/ })).toBeVisible()
+  await expect(panel.getByText('poe.ninja has no price')).toBeVisible()
+  await overlay.snap('search-no-price')
+
+  expect(overlay.errors).toEqual([])
+})
+
+test('the launcher lists prices, and a click opens the palette on them', async ({ overlay }) => {
+  await overlay.page.setViewportSize({ width: 2560, height: 1440 })
+  await overlay.boot({ ...bootOptions(), overlayActive: true })
+  const rail = overlay.widget('menu')
+  await rail.getByRole('button', { name: 'All tools' }).click()
+  const box = overlay.page.getByRole('textbox', { name: 'Find a tool or an item, or paste an item' })
+  await expect(async () => {
+    await box.fill('headhunter')
+    await expect(overlay.page.getByRole('button', { name: /Headhunter/ })).toBeVisible({ timeout: 500 })
+  }).toPass({ timeout: 20_000 })
+  await overlay.snap('search-launcher')
+
+  await overlay.page.getByRole('button', { name: /Headhunter/ }).click()
+  const palette = overlay.widget('woke-search')
+  await expect(palette.getByRole('textbox', { name: 'Search' })).toHaveValue('Headhunter')
+  await expect(palette.getByText('Trade site')).toBeVisible()
+  expect(overlay.errors).toEqual([])
+})
+
+test('Market tracker searches every price, whatever the filters', async ({ overlay }) => {
+  await overlay.page.setViewportSize({ width: 2560, height: 1440 })
+  await overlay.boot({
+    ...bootOptions(),
+    overlayActive: true,
+    widgets: [{ wmType: 'woke-market-tracker', wmTitle: 'Market tracker', wmWants: 'show', anchor: { pos: 'tl', x: 40, y: 30 } }]
+  })
+  const panel = overlay.widget('woke-market-tracker')
+  const box = panel.getByPlaceholder('Search every price')
+  await expect(box).toBeVisible()
+  await expect(async () => {
+    await box.fill('enlighten')
+    await expect(panel.getByText('Enlighten Support')).toBeVisible({ timeout: 500 })
+  }).toPass({ timeout: 20_000 })
+  await expect(panel.getByText(/prices? for "enlighten"/)).toBeVisible()
+  await expect(panel.getByText('c min', { exact: true })).toBeHidden()
+  await overlay.snap('market-search')
+
+  await panel.getByRole('button', { name: /Corrupted gems are shown/ }).click()
+  await expect(panel.getByRole('button', { name: /Only corrupted gems/ })).toBeVisible()
+  await overlay.snap('market-search-corrupted')
+
+  // Watching from a result.
+  await panel.getByTitle('Add to watchlist').first().click()
+  await box.fill('')
+  await expect(panel.getByText('c min', { exact: true })).toBeVisible()
+  await panel.getByRole('tab', { name: /Watchlist/ }).click()
+  await expect(panel.getByText('Enlighten Support')).toBeVisible()
+  expect(overlay.errors).toEqual([])
+})

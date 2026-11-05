@@ -27,33 +27,28 @@
       </template>
 
       <template #toolbar>
-        <template v-if="config.view === 'movers'">
+        <div :class="$style.searchRow"><WField v-model="query" icon="fas fa-search" placeholder="Search every price" class="w-full" /></div>
+        <template v-if="config.view === 'movers' || searching">
           <WSegmented v-model="config.period" :options="[
             { value: '6h', label: '6h' }, { value: '24h', label: '24h' }, { value: '7d', label: '7d' }
           ]" />
-          <WSelect v-model="config.typeFilter" :options="typeOptions" style="max-width: 11rem;" />
-          <WField v-model="config.minChaos" type="number" suffix="c min" style="width: 7rem;" />
+          <WSelect v-if="!searching" v-model="config.typeFilter" :options="typeOptions" style="max-width: 11rem;" />
+          <WField v-if="!searching" v-model="config.minChaos" type="number" suffix="c min" style="width: 7rem;" />
           <WSegmented v-model="unit" title="Measure moves in chaos or in divines" :options="[
             { value: 'chaos', label: 'c' }, { value: 'div', label: 'div' }
           ]" />
-          <WChip clickable :active="!!config.showThin" title="Include items poe.ninja barely saw trade on (easy to price-fix)"
+          <WCorruptedFilter v-model="corrupted" />
+          <WChip v-if="!searching" clickable :active="!!config.showThin" title="Include items poe.ninja barely saw trade on (easy to price-fix)"
             @click="config.showThin = !config.showThin">Thin</WChip>
         </template>
-        <div v-else class="relative grow">
-          <WField v-model="addQuery" icon="fas fa-plus" placeholder="Add item to watchlist…" class="w-full" />
-          <div v-if="addResults.length" class="w-surface absolute left-0 right-0 z-10 mt-1 py-1">
-            <button v-for="item in addResults" :key="key(item)" @click="addWatch(item)"
-              class="w-row w-full text-left" style="grid-template-columns: minmax(0,1fr) auto;">
-              <span class="w-trunc">{{ item.name }}<span v-if="item.variant" class="w-dim ml-1">{{ item.variant }}</span>
-                <span class="w-faint"> · {{ item.type }}</span></span>
-              <WPrice :chaos="item.chaos" :divine="latest?.divine" />
-            </button>
-          </div>
-        </div>
       </template>
 
       <template #meta>
-        <template v-if="latest">
+        <template v-if="searching && latest">
+          <span>{{ searchCount }} {{ searchCount === 1 ? 'price' : 'prices' }} for "{{ query.trim() }}"</span><span class="w-faint">·</span>
+          <span>Category, c min and Thin don't apply to a search</span>
+        </template>
+        <template v-else-if="latest">
           <span>{{ latest.league }}</span><span class="w-faint">·</span>
           <span>{{ latest.items.length }} items</span>
           <template v-if="latest.divine"><span class="w-faint">·</span>
@@ -62,14 +57,42 @@
         </template>
         <span v-else-if="league">Waiting for the first poe.ninja snapshot for {{ league }} (refreshes about every 30 min)…</span>
         <span v-else>Select a league in APT's price check settings to start collecting.</span>
-        <template v-if="config.view === 'movers' && divMove != null">
+        <template v-if="config.view === 'movers' && !searching && divMove != null">
           <span class="w-faint">·</span>
           <span :title="unit === 'chaos' ? 'Moves below include this divine swing. Switch to div to remove it.' : 'Moves below are measured in divines.'">
             divine {{ divMove >= 0 ? '+' : '' }}{{ (divMove * 100).toFixed(1) }}% over {{ config.period }}</span>
         </template>
       </template>
 
-      <template v-if="config.view === 'movers'">
+      <template v-if="searching">
+        <WSkeleton v-if="!latest && league" :rows="8" />
+        <WEmpty v-else-if="!searchGroups.length" icon="fas fa-search">Nothing on poe.ninja matches "{{ query.trim() }}". Rares, bases, flasks and cluster jewels have no saved price.</WEmpty>
+        <template v-else>
+          <div class="w-row w-row--head" :class="$style.grid"><span /><span>Item</span><span>Then</span><span class="text-right">Now</span><span class="text-right">%</span></div>
+          <template v-for="g in searchGroups" :key="groupKey(g)">
+            <div v-if="g.variants.length > 1" class="w-row" :class="$style.grid">
+              <span />
+              <span class="w-trunc inline-flex items-center gap-1.5" :class="rarityClass(g.type)" :title="g.type">
+                <WIcon :src="ninjaIcon(g.type, g.name) ?? undefined" />{{ g.name }}</span>
+            </div>
+            <div v-for="v in g.variants" :key="key(v)" class="w-row" :class="$style.grid" tabindex="0"
+              @contextmenu="rowMenu($event, v)" @keydown.w.prevent="toggleWatch(v)" @keydown.c.ctrl.prevent="copyName(v)">
+              <button @click="toggleWatch(v)" :title="isWatched(v) ? 'Remove from watchlist' : 'Add to watchlist'"
+                class="w-icon-btn" :class="{ 'w-icon-btn--on': isWatched(v) }">
+                <i :class="isWatched(v) ? 'fas fa-star' : 'far fa-star'" />
+              </button>
+              <span v-if="g.variants.length > 1" class="w-trunc" :title="v.variant"><i v-if="isThin(v)" class="fas fa-exclamation-circle w-faint mr-1" :title="thinTitle(v)" />{{ v.variant }}</span>
+              <span v-else class="w-trunc inline-flex items-center gap-1.5" :class="rarityClass(v.type)" :title="v.type">
+                <WIcon :src="ninjaIcon(v.type, v.name) ?? undefined" /><i v-if="isThin(v)" class="fas fa-exclamation-circle w-faint mr-1" :title="thinTitle(v)" />{{ v.name }}<span v-if="v.variant" class="w-dim ml-1">{{ v.variant }}</span></span>
+              <WPrice :chaos="searchThen(v)" :divine="latest?.divine" :unit="unitFor({ name: v.name, now: v.chaos })" class="w-dim" />
+              <WPrice :chaos="v.chaos" :divine="latest?.divine" :unit="unitFor({ name: v.name, now: v.chaos })" />
+              <WDelta :value="searchChange(v)" class="text-right" />
+            </div>
+          </template>
+        </template>
+      </template>
+
+      <template v-else-if="config.view === 'movers'">
         <WSkeleton v-if="!latest && league" :rows="8" />
         <WEmpty v-else-if="moversNote" :art="{ currency: 'divine' }">{{ moversNote }}</WEmpty>
         <template v-else>
@@ -146,12 +169,14 @@ import { useLeagues } from '@/web/background/Leagues'
 import { useMarketCollector } from './collector'
 import { dailyHistory, dailyRowsForDate, latestSnapshots, snapshotAtOrBefore } from './db'
 import { computeMovers, trendBaseline } from './analysis'
+import { groupKey, rarityClass, searchPrices } from '../search/search'
+import WCorruptedFilter from '../ui/WCorruptedFilter.vue'
 import { WPanel, WTabs, WSegmented, WSelect, WField, WPrice, WDelta, WSpark, WEmpty, WChip, WIcon, WKbd, WSkeleton, WBanner, ninjaIcon, openMenu, toast } from '../ui'
 import { copyText } from '../ui/copy'
 import type { Mover } from './analysis'
 import { isThin, itemKey, thinTitle, utcDate } from './types'
-import type { PriceItem, Snapshot } from './types'
-import { PERIOD_MS, checkAlert } from './widget'
+import type { CorruptedFilter, PriceItem, Snapshot } from './types'
+import { PERIOD_MS, checkAlert, marketSearchRequest } from './widget'
 import type { WatchedItem } from './widget'
 import DockItem from '../dock/DockItem.vue'
 import { useZone } from '../shared/zone'
@@ -189,7 +214,36 @@ const unit = computed({
   get: () => props.config.unit ?? 'chaos',
   set: (v: string) => { props.config.unit = v === 'div' ? 'div' : 'chaos' }
 })
-const addQuery = shallowRef('')
+const corrupted = computed({
+  get: () => props.config.corrupted ?? 'any',
+  set: (v: CorruptedFilter) => { props.config.corrupted = v }
+})
+
+// ---- search: every saved price, whatever the filters ----
+const query = shallowRef('')
+const searching = computed(() => query.value.trim().length >= 2)
+const searchGroups = computed(() => searching.value
+  ? searchPrices(latest.value?.items ?? [], query.value, { corrupted: corrupted.value })
+  : [])
+const searchCount = computed(() => searchGroups.value.reduce((n, g) => n + g.variants.length, 0))
+// Prices a period ago, kept from the last Movers load.
+const thenPrices = shallowRef(new Map<string, number>())
+const divThenPrice = shallowRef<number | null>(null)
+function searchThen (item: PriceItem) {
+  return thenPrices.value.get(itemKey(item)) ?? null
+}
+function searchChange (item: PriceItem) {
+  const prev = searchThen(item)
+  if (!prev) return null
+  const divNow = latest.value?.divine
+  const ratio = unit.value === 'div' && divNow && divThenPrice.value ? divThenPrice.value / divNow : 1
+  return (item.chaos / prev) * ratio - 1
+}
+watch(marketSearchRequest, (text) => {
+  if (text == null) return
+  query.value = text
+  marketSearchRequest.value = null
+}, { immediate: true })
 
 const types = computed(() => Array.from(new Set(latest.value?.items.map(i => i.type) ?? [])).sort())
 const typeOptions = computed(() => [{ value: '', label: 'All categories' }, ...types.value.map(t => ({ value: t, label: t }))])
@@ -198,14 +252,6 @@ const typeOptions = computed(() => [{ value: '', label: 'All categories' }, ...t
 function unitFor (m: { name: string, now: number }) {
   const div = latest.value?.divine
   return div && m.name !== 'Divine Orb' && m.now >= div ? 'div' : 'chaos'
-}
-
-// poe.ninja category -> PoE item colour
-function rarityClass (type: string) {
-  if (/^Unique/.test(type)) return 'w-rarity-unique'
-  if (/Gem/.test(type)) return 'w-rarity-gem'
-  if (type === 'DivinationCard') return 'w-rarity-divination'
-  return 'w-rarity-currency'
 }
 
 let latestSeq = 0
@@ -226,7 +272,7 @@ let watchSeq = 0
 async function loadMovers () {
   const seq = ++moversSeq
   const snap = latest.value
-  if (!snap) { movers.value = []; moversNote.value = ''; return }
+  if (!snap) { movers.value = []; moversNote.value = ''; thenPrices.value = new Map(); divThenPrice.value = null; return }
   const from = snap.ts - PERIOD_MS[props.config.period]
   let then: PriceItem[] = []
   let divThen: number | null = null
@@ -249,6 +295,8 @@ async function loadMovers () {
     divThen = trend.divThen
   }
   divMove.value = (snap.divine && divThen) ? snap.divine / divThen - 1 : null
+  thenPrices.value = new Map(then.map(i => [itemKey(i), i.chaos]))
+  divThenPrice.value = divThen
   if (!then.length) {
     movers.value = []
     moversNote.value = `Not enough history yet for ${props.config.period}. Keep the app running and check back later.`
@@ -262,7 +310,8 @@ async function loadMovers () {
     unit: unit.value as 'chaos' | 'div',
     divNow: snap.divine,
     divThen,
-    hideThin: !props.config.showThin
+    hideThin: !props.config.showThin,
+    corrupted: corrupted.value
   })
   if (!movers.value.length) moversNote.value = 'No items match these filters.'
 }
@@ -346,17 +395,9 @@ function priceNow (w: WatchedItem) {
 
 watch([league, collector.revision], loadLatest, { immediate: true })
 watch(latest, (snap) => { if (snap) checkAlerts(snap) })
-watch([latest, () => props.config.period, () => props.config.minChaos, () => props.config.typeFilter, unit, () => props.config.showThin],
+watch([latest, () => props.config.period, () => props.config.minChaos, () => props.config.typeFilter, unit, () => props.config.showThin, corrupted],
   () => { loadMovers().catch(() => {}) })
 watch([latest, () => props.config.watchlist.length], () => { loadWatchlist().catch(() => {}) })
-
-const addResults = computed(() => {
-  const q = addQuery.value.trim().toLowerCase()
-  if (q.length < 2 || !latest.value) return []
-  return latest.value.items
-    .filter(i => i.name.toLowerCase().includes(q) && !isWatched(i))
-    .slice(0, 8)
-})
 
 function key (item: { type: string, name: string, variant: string }) {
   return itemKey(item)
@@ -393,14 +434,10 @@ function rowMenu (e: MouseEvent, item: { type: string, name: string, variant: st
     { label: 'Show only this category', icon: 'fas fa-filter', action: () => { props.config.view = 'movers'; props.config.typeFilter = item.type } }
   ])
 }
-
-function addWatch (item: PriceItem) {
-  toggleWatch(item)
-  addQuery.value = ''
-}
 </script>
 
 <style module>
+.searchRow { flex: 1 1 100%; display: flex; min-width: 0; }
 .grid {
   grid-template-columns: 22px minmax(0, 1fr) 64px 72px 52px;
 }

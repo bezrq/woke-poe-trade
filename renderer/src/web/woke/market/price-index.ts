@@ -48,6 +48,16 @@ const usePriceIndexState = createGlobalState(() => {
   return { snapshot, price, search }
 })
 
+// The search boxes read prices without holding anything open, so an unused box
+// costs nothing at startup. The first search starts saving prices for good.
+export const usePriceIndexReadonly = usePriceIndexState
+let heldForSearch = false
+export function holdPricesForSearch (): void {
+  if (heldForSearch) return
+  heldForSearch = true
+  useMarketCollector()
+}
+
 // Holds the collector (saving only, no polling) while the caller is mounted.
 export function usePriceIndex () {
   useMarketCollector()

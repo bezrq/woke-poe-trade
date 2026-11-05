@@ -219,6 +219,7 @@ const typeFilter = shallowRef<'gem' | 'replica'>('gem')
 
 Host.onEvent('MAIN->CLIENT::ocr-text', (e) => {
   if (e.target !== 'heist-gems') return
+  wm.show(props.config.wmId)
 
   for (const para of e.paragraphs) {
     const res = fuzzyFindHeistGem(para)
@@ -280,10 +281,13 @@ function clearSelectedItems () {
   props.config.wmFlags = ['invisible-on-blur']
 }
 
-const showSearch = wm.active
+// The search itself moved to the search palette. This window only shows the
+// gems the heist reader found.
+const showSearch = shallowRef(false)
 
 function makeInvisible () {
-  props.config.wmFlags = ['invisible-on-blur']
+  clearSelectedItems()
+  wm.hide(props.config.wmId)
 }
 
 function selectedItemClick (e: MouseEvent, item: SelectedItem) {
