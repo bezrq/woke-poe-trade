@@ -1,6 +1,6 @@
 // Turns the flat block list into the editor's tree:
 // section (NeverSink's [[0000]] chapters) → group ($type) → tier ($tier).
-import { UNTAGGED_PREFIX } from './parse'
+import { EDITOR_GROUPS, UNTAGGED_PREFIX } from './parse'
 import type { FilterBlock, FilterDoc, Visibility } from './parse'
 import { OWN_RULE_TYPE } from './edits'
 import { BUILD_RULE_TYPE } from './build-rules'
@@ -8,9 +8,9 @@ import { SAFETY_RULE_TYPE } from './safety'
 
 // Rule groups the editor adds on top of NeverSink's, by display name.
 const OWN_GROUPS: Record<string, string> = {
-  [OWN_RULE_TYPE]: 'Your own rules',
-  [BUILD_RULE_TYPE]: 'Your build',
-  [SAFETY_RULE_TYPE]: 'Safety net'
+  [OWN_RULE_TYPE]: EDITOR_GROUPS[OWN_RULE_TYPE],
+  [BUILD_RULE_TYPE]: EDITOR_GROUPS[BUILD_RULE_TYPE],
+  [SAFETY_RULE_TYPE]: EDITOR_GROUPS[SAFETY_RULE_TYPE]
 }
 
 export interface TierNode {

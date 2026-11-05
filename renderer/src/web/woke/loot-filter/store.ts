@@ -553,8 +553,30 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
     }
   }
 
+  // How many tiers of its group list each base in the filter as it came, to
+  // tell moves apart from a chain of one move.
+  let listings: { text: string, tiers: Map<string, Set<string>> } | null = null
+  function separateMoves (e: NewFilterEdit | FilterEdit): boolean {
+    if (e.kind !== 'move' || baseText.value == null) return false
+    if (listings?.text !== baseText.value) {
+      const tiers = new Map<string, Set<string>>()
+      for (const b of parseFilter(baseText.value).blocks) {
+        for (const c of b.conditions) {
+          if (c.key !== 'BaseType' || c.op !== '==' || !b.type || !b.tier) continue
+          for (const v of c.values) {
+            const key = `${b.type}|${v}`
+            if (!tiers.has(key)) tiers.set(key, new Set())
+            tiers.get(key)!.add(b.tier)
+          }
+        }
+      }
+      listings = { text: baseText.value, tiers }
+    }
+    return (listings.tiers.get(`${e.type}|${e.base}`)?.size ?? 0) > 1
+  }
+
   function edit (e: NewFilterEdit | FilterEdit) {
-    cfg().edits = addEdit(cfg().edits, { ...e, id: nextEditId() } as FilterEdit)
+    cfg().edits = addEdit(cfg().edits, { ...e, id: nextEditId() } as FilterEdit, { separateMoves: separateMoves(e) })
     rebuild()
   }
 
@@ -569,7 +591,7 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
   function editsWithUndo (list: Array<NewFilterEdit | FilterEdit>): () => void {
     const before = cfg().edits
     let edits = before
-    for (const e of list) edits = addEdit(edits, { ...e, id: nextEditId() } as FilterEdit)
+    for (const e of list) edits = addEdit(edits, { ...e, id: nextEditId() } as FilterEdit, { separateMoves: separateMoves(e) })
     cfg().edits = edits
     rebuild()
     return () => { cfg().edits = before; rebuild() }

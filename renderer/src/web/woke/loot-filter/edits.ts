@@ -219,9 +219,12 @@ function applyOne (doc: FilterDoc, edit: FilterEdit): EditStatus {
       }
       for (const b of targets) {
         const c = baseTypeCondition(b)!
-        // A tier commented out for being empty is back now it has an item. One
-        // the strictness level turned off, with items of its own, stays off.
-        if (b.disabled && !c.values.length) { b.disabled = false; b.dirty = true }
+        // A tier commented out for being empty, or emptied by a move, is back now
+        // it has an item. One the strictness level turned off stays off.
+        if (b.disabled && !c.values.length && (!b.raw[0]?.trimStart().startsWith('#') || !b.raw.some(l => /BaseType\s*==\s*"/.test(l)))) {
+          b.disabled = false
+          b.dirty = true
+        }
         if (!c.values.includes(edit.base)) {
           c.values = [...c.values, edit.base].sort((a, z) => a.localeCompare(z))
           b.dirty = true
@@ -252,10 +255,10 @@ function applyOne (doc: FilterDoc, edit: FilterEdit): EditStatus {
         index: -1,
         line: source.line,
         disabled: false,
-        comment: `$type->${OWN_RULE_TYPE} $tier->${slug(edit.base)}-${slug(edit.tier)} woke: own rule for ${edit.base} (from ${edit.type} ${edit.tier})`,
+        comment: `$type->${OWN_RULE_TYPE} $tier->${slug(edit.base)}-${edit.id} woke: own rule for ${edit.base} (from ${edit.type} ${edit.tier})`,
         type: OWN_RULE_TYPE,
-        // With the source tier: a rare and a magic of one base are two rules.
-        tier: `${slug(edit.base)}-${slug(edit.tier)}`,
+        // Its own key: a rare and a magic of one base are two rules.
+        tier: `${slug(edit.base)}-${edit.id}`,
         conditions,
         actions: source.actions.map(a => ({ ...a, args: [...a.args] })),
         continue: false,
@@ -279,10 +282,11 @@ function applyOne (doc: FilterDoc, edit: FilterEdit): EditStatus {
 }
 
 // Mutates `doc` (a fresh parse of the source filter).
-// Own rules go last, whatever order you made them in, so each one sits above
-// wherever the moves left its item.
+// Moves go first, whatever order you made them in, so an own rule sits above
+// wherever they left its item. The rest keep their order: an own rule keeps the
+// look it had when you made it, even if you hide the tier afterwards.
 export function applyEdits (doc: FilterDoc, edits: FilterEdit[]): EditStatus[] {
-  const order = [...edits.filter(e => e.kind !== 'item'), ...edits.filter(e => e.kind === 'item')]
+  const order = [...edits.filter(e => e.kind === 'move'), ...edits.filter(e => e.kind !== 'move')]
   const results = new Map(order.map(e => [e, applyOne(doc, e)]))
   return edits.map(e => results.get(e)!)
 }
@@ -295,14 +299,18 @@ export function nextEditId (): number {
   return lastId
 }
 
-// Adds an edit, folding it into an earlier one with the same target.
-export function addEdit (list: FilterEdit[], edit: FilterEdit): FilterEdit[] {
+// Adds an edit, folding it into an earlier one with the same target. A base
+// listed in several tiers of its group (by stack size) has `separateMoves`: its
+// moves don't chain, because the middle tier has that base of its own. Only
+// moving straight back takes one out.
+export function addEdit (list: FilterEdit[], edit: FilterEdit, opts: { separateMoves?: boolean } = {}): FilterEdit[] {
   const same = (e: FilterEdit): boolean => {
     if (e.kind !== edit.kind || e.type !== edit.type) return false
     switch (edit.kind) {
       // A chain of moves of one base is one move; a base listed in several
       // tiers (by stack size) can have a separate move for each.
-      case 'move': return (e as typeof edit).base === edit.base && (e as typeof edit).to === edit.from
+      case 'move': return (e as typeof edit).base === edit.base && (e as typeof edit).to === edit.from &&
+        (!opts.separateMoves || (e as typeof edit).from === edit.to)
       // One own rule per tier: a rare and a magic of one base can differ.
       case 'item': return (e as typeof edit).base === edit.base && (e as typeof edit).tier === edit.tier
       case 'style': return (e as typeof edit).tier === edit.tier
@@ -389,6 +397,13 @@ const pretty = (type: string) => ruleLabel(type, null)
 
 // Where a failed edit could go in this filter version, best guesses first.
 export function rehomeOptions (doc: FilterDoc, edit: FilterEdit): RehomeOption[] {
+  // Rules with no tags all read the same by group, so say what each one is.
+  const place = (t: string, tier: string) => {
+    if (!tier.startsWith('#')) return ruleLabel(t, tier)
+    const b = blocksOf(doc, t, tier)[0]
+    const what = b?.conditions.slice(0, 2).map(c => `${c.key} ${c.values.slice(0, 2).join(' ')}`).join(', ')
+    return `${ruleLabel(t, tier)}: ${what || 'every item'}`
+  }
   const types = (preferBase?: string) => {
     const list = [edit.type, ...similarTypes(doc, edit.type)]
     if (preferBase) list.unshift(...typesWithBase(doc, preferBase).filter(t => !list.includes(t)))
@@ -401,13 +416,13 @@ export function rehomeOptions (doc: FilterDoc, edit: FilterEdit): RehomeOption[]
       break
     case 'style':
     case 'visibility':
-      for (const t of types()) for (const tier of tiersOf(doc, t)) out.push({ type: t, tier, label: ruleLabel(t, tier) })
+      for (const t of types()) for (const tier of tiersOf(doc, t)) out.push({ type: t, tier, label: place(t, tier) })
       break
     case 'move':
-      for (const t of types(edit.base)) for (const tier of tiersOf(doc, t, true)) out.push({ type: t, tier, label: ruleLabel(t, tier) })
+      for (const t of types(edit.base)) for (const tier of tiersOf(doc, t, true)) if (!tier.startsWith('#')) out.push({ type: t, tier, label: ruleLabel(t, tier) })
       break
     case 'item':
-      for (const t of types(edit.base)) for (const tier of tiersOf(doc, t)) out.push({ type: t, tier, label: ruleLabel(t, tier) })
+      for (const t of types(edit.base)) for (const tier of tiersOf(doc, t)) out.push({ type: t, tier, label: place(t, tier) })
       break
   }
   return out

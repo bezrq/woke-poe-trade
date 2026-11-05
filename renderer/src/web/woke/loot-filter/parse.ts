@@ -182,14 +182,30 @@ export function untaggedTier (conditions: FilterCondition[]): string {
 
 export const UNTAGGED_PREFIX = 'untagged:'
 
+// Rule groups the editor adds to a filter, by display name.
+export const EDITOR_GROUPS: Record<string, string> = {
+  'woke->own': 'Your own rules',
+  'woke->build': 'Your build',
+  'woke->safety': 'Safety net',
+  'woke->rule': 'Rules you made',
+  'woke->preset': 'Presets'
+}
+
 // A group and tier the way a person reads them; a rule with no tags has no
 // tier name worth showing.
 export function ruleLabel (type: string | null, tier: string | null): string {
   if (!type) return 'no rule'
-  const group = type.startsWith(UNTAGGED_PREFIX)
+  const group = EDITOR_GROUPS[type] ?? (type.startsWith(UNTAGGED_PREFIX)
     ? (type.slice(UNTAGGED_PREFIX.length) || 'Rule')
-    : type.split('->').map(part => part.charAt(0).toUpperCase() + part.slice(1)).join(' › ')
-  return tier && !tier.startsWith('#') ? `${group} › ${tier}` : group
+    : type.split('->').map(part => part.charAt(0).toUpperCase() + part.slice(1)).join(' › '))
+  return tier && !tier.startsWith('#') && type !== 'woke->own' ? `${group} › ${tier}` : group
+}
+
+// A tier's name for a person: an own rule goes by its item, an untagged rule
+// has no name.
+export function tierName (b: Pick<FilterBlock, 'tier' | 'editId' | 'conditions'>): string {
+  if (b.editId != null) return b.conditions.find(c => c.key === 'BaseType')?.values[0] ?? 'own rule'
+  return !b.tier || b.tier.startsWith('#') ? 'rule' : b.tier
 }
 
 export function parseFilter (source: string): FilterDoc {

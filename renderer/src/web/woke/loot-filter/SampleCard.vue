@@ -39,7 +39,7 @@
           <div class="flex items-center gap-2">
             <span>{{ groupName(final.type) }}</span>
             <span class="w-faint">›</span>
-            <span class="w-accent">{{ final.tier?.startsWith('#') ? 'rule' : final.tier }}</span>
+            <span class="w-accent">{{ tierName(final) }}</span>
             <span class="grow" />
             <span class="w-num w-faint text-xs">{{ final.added ? 'added' : `line ${final.line}` }}</span>
           </div>
@@ -75,7 +75,7 @@
             <span class="text-xs" :class="t.tier === final.tier ? 'w-accent' : 'w-faint'">{{ t.tier === final.tier ? 'current' : (t.off ? 'off at this strictness' : `${t.count} items`) }}</span>
           </button>
         </div>
-        <div v-else-if="!isOwn" class="text-xs w-dim">
+        <div v-else-if="!isOwn && !final.tier?.startsWith('#')" class="text-xs w-dim">
           This rule doesn't list items by name, so moving to another tier isn't possible. Restyle it, or give this item its own rule.
         </div>
 
@@ -114,7 +114,7 @@ import type { LootFilterStore } from './store'
 import type { LootFilterWidget } from './widget'
 import type { ItemFacts } from './item-facts'
 import type { BlockMatch, MatchResult, Tri } from './match'
-import { formatCondition } from './parse'
+import { formatCondition, ruleLabel, tierName } from './parse'
 import type { FilterCondition, Visibility } from './parse'
 import { OWN_RULE_TYPE, blocksOf, conditionSignature, moveTargets, readStyle } from './edits'
 import type { StylePatch } from './edits'
@@ -143,10 +143,7 @@ const areaLevelModel = computed({
   }
 })
 
-// A group and tier in words; a rule with no tags has no tier name to show.
-function placeOf (r: { type: string | null, tier: string | null }): string {
-  return r.tier && !r.tier.startsWith('#') ? `${groupName(r.type)} › ${r.tier}` : groupName(r.type)
-}
+const placeOf = (r: { type: string | null, tier: string | null }) => ruleLabel(r.type, r.tier)
 
 const final = computed(() => props.match.final!.block)
 const isOwn = computed(() => final.value.type === OWN_RULE_TYPE)
@@ -269,16 +266,16 @@ const quick = computed(() => {
     {
       key: '2',
       label: 'Lower',
-      title: lower ? `Move to ${lower.tier}` : 'Already in the lowest tier, or this rule doesn\'t list items by name',
+      title: lower ? `Move to ${lower.tier}${lower.off ? ' (off at this strictness, so it goes where that tier\'s items go, usually hidden)' : ''}` : 'Already in the lowest tier, or this rule doesn\'t list items by name',
       disabled: !lower,
-      run: () => lower && afterFix(`${name.value}: ${final.value.tier} → ${lower.tier}`, props.store.editWithUndo({ kind: 'move', type: origin.value.type, base: base.value, from: final.value.tier ?? '', to: lower.tier }))
+      run: () => lower && afterFix(`${name.value}: ${final.value.tier} → ${lower.tier}${lower.off ? ' (off at this strictness)' : ''}`, props.store.editWithUndo({ kind: 'move', type: origin.value.type, base: base.value, from: final.value.tier ?? '', to: lower.tier }))
     },
     {
       key: '3',
       label: 'Raise',
-      title: higher ? `Move to ${higher.tier}` : 'Already in the top tier, or this rule doesn\'t list items by name',
+      title: higher ? `Move to ${higher.tier}${higher.off ? ' (off at this strictness, so it goes where that tier\'s items go, usually hidden)' : ''}` : 'Already in the top tier, or this rule doesn\'t list items by name',
       disabled: !higher,
-      run: () => higher && afterFix(`${name.value}: ${final.value.tier} → ${higher.tier}`, props.store.editWithUndo({ kind: 'move', type: origin.value.type, base: base.value, from: final.value.tier ?? '', to: higher.tier }))
+      run: () => higher && afterFix(`${name.value}: ${final.value.tier} → ${higher.tier}${higher.off ? ' (off at this strictness)' : ''}`, props.store.editWithUndo({ kind: 'move', type: origin.value.type, base: base.value, from: final.value.tier ?? '', to: higher.tier }))
     },
     {
       key: '4',

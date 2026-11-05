@@ -101,7 +101,7 @@
           <button v-for="t in group.tiers" :key="t.tier" class="w-focusable" :class="[$style.tierRow, { [$style.active]: t.tier === selTier, [$style.off]: t.disabled, [$style.dropOk]: dragOver === t.tier }]"
             @click="selTier = t.tier; picked = []" @contextmenu="tierMenu($event, t)"
             @dragover="onDragOver(t, $event)" @dragleave="dragOver = dragOver === t.tier ? null : dragOver" @drop="onDrop(t, $event)">
-            <span :class="$style.tierName" :title="t.tier">{{ t.tier.startsWith('#') ? 'rule' : t.tier }}</span>
+            <span :class="$style.tierName" :title="tierName(firstLive(t))">{{ tierName(firstLive(t)) }}</span>
             <LabelPreview :text="t.bases[0] ?? previewName(t)" :actions="firstLive(t).actions" :visibility="t.disabled ? 'Hide' : t.visibility" style="max-width: 100%; overflow: hidden;" />
             <span :class="$style.bases" class="w-trunc">
               <template v-if="t.bases.length">{{ t.bases.slice(0, 5).join(' · ') }}<span v-if="t.bases.length > 5" class="w-faint"> · +{{ t.bases.length - 5 }}</span></template>
@@ -118,7 +118,7 @@
           <WEmpty v-else icon="fas fa-sliders-h">Pick a rule to change it, or make a new one.</WEmpty>
         </template>
         <template v-else-if="tier">
-          <div :class="$style.groupTitle">{{ tier.tier.startsWith('#') ? 'Rule' : tier.tier }}</div>
+          <div :class="$style.groupTitle">{{ tierName(firstLive(tier)) }}</div>
           <div class="text-xs w-faint">{{ tier.blocks.length > 1 ? `${tier.blocks.length} rules` : `line ${tier.blocks[0].line}` }}<span v-if="tier.disabled"> · commented out in the filter</span></div>
           <StyleEditor :look="readStyle(firstLive(tier).actions)" :visibility="firstLive(tier).visibility"
             :preview-text="tier.bases[0] ?? previewName(tier)" :copy-from="copyFrom"
@@ -131,8 +131,8 @@
                 :title="'Drag onto a tier to move it. Shift-click to pick several.'"
                 @click="pickBase(b, $event)" @dragstart="onDragStart(b, $event)" @dragend="dragOver = null">{{ b }}</WChip>
             </div>
-            <div v-if="!picked.length" class="w-faint text-xs" style="margin-top: 4px;">Drag an item onto a tier in the middle to move it; shift-click to pick several.</div>
-            <div v-if="picked.length" class="flex items-center gap-2 text-sm" style="margin-top: 6px;">
+            <div v-if="!picked.length && targets.length > 1" class="w-faint text-xs" style="margin-top: 4px;">Drag an item onto a tier in the middle to move it; shift-click to pick several.</div>
+            <div v-if="picked.length && targets.length > 1" class="flex items-center gap-2 text-sm" style="margin-top: 6px;">
               <span class="w-dim">Move {{ picked.length > 1 ? `${picked.length} items` : picked[0] }} to</span>
               <select :class="$style.select" value="" aria-label="Target tier" @change="moveBase(($event.target as HTMLSelectElement).value)">
                 <option value="" disabled>tier…</option>
@@ -270,6 +270,7 @@ import type { LootFilterWidget } from './widget'
 import { OWN_RULE_TYPE, describeEdit, moveTargets, nextEditId, readStyle, rehome, rehomeOptions } from './edits'
 import type { RehomeOption } from './edits'
 import type { FilterEdit, StylePatch } from './edits'
+import { tierName } from './parse'
 import type { Visibility } from './parse'
 import { buildTree, findBase, groupName } from './groups'
 import type { GroupNode, TierNode } from './groups'
@@ -670,8 +671,13 @@ function tierMenu (ev: MouseEvent, t: TierNode) {
   if (!selType.value) return
   const type = selType.value
   const shown = firstLive(t).visibility !== 'Hide' && !t.disabled
+  const own = isOwnGroup.value ? ownEditFor(t) : undefined
   openMenu(ev, [
-    { label: shown ? 'Hide this tier' : 'Show this tier', icon: shown ? 'fas fa-eye-slash' : 'fas fa-eye', action: () => props.store.edit({ kind: 'visibility', type, tier: t.tier, visibility: shown ? 'Hide' : 'Show' }) },
+    {
+      label: shown ? (own ? 'Hide this item' : 'Hide this tier') : (own ? 'Show this item' : 'Show this tier'),
+      icon: shown ? 'fas fa-eye-slash' : 'fas fa-eye',
+      action: () => props.store.edit(own ? { ...own, visibility: shown ? 'Hide' : 'Show', patch: {} } : { kind: 'visibility', type, tier: t.tier, visibility: shown ? 'Hide' : 'Show' })
+    },
     ...(t.bases.length ? [{ label: 'Copy item names', icon: 'far fa-copy', action: () => { copyText(t.bases.join('\n')) } }] : [])
   ])
 }
