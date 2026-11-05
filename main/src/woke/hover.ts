@@ -67,6 +67,7 @@ export class WokeHoverTracker {
     // The same zone is somewhere else in screen pixels after a scale change.
     const convertAgain = () => {
       for (const zone of this.flat) zone.rect = toScreenRect(zone.dip)
+      if (this.listening && this.mouseX != null) this.update(this.mouseX, this.mouseY)
     }
     screen.on('display-metrics-changed', convertAgain)
     screen.on('display-added', convertAgain)
@@ -74,7 +75,6 @@ export class WokeHoverTracker {
     // A button let go while the hook was down would keep the dock from ever
     // catching the mouse again.
     powerMonitor.on('resume', () => { this.heldButtons.clear() })
-    this.overlay.onGameInactive = () => { this.heldButtons.clear() }
     // A button on a card opened something that needs the real overlay (settings).
     this.server.onEventAnyClient('OVERLAY->MAIN::woke-open-overlay', () => {
       this.overlay.assertOverlayActive()

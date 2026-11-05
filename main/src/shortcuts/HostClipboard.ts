@@ -115,6 +115,8 @@ export class HostClipboard {
 
 // woke: a screenshot on the clipboard used to be lost, as only text was kept.
 function keepImage (): NativeImage | null {
+  // Reading an image is slow; asking what's there isn't.
+  if (!clipboard.availableFormats().some(f => f.startsWith('image/'))) return null
   const image = clipboard.readImage()
   return image.isEmpty() ? null : image
 }

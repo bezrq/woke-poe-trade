@@ -84,10 +84,18 @@ app.on('ready', async () => {
       uIOhook.start()
       // woke: after sleep the keyboard and mouse hook can be dead, which stops
       // the dock, Alt to hide and everything else watching input.
+      const restartHook = (triesLeft: number) => {
+        try {
+          uIOhook.stop()
+          uIOhook.start()
+        } catch (e) {
+          logger.write(`error [main] Couldn't restart the input hook: ${String(e)}`)
+          if (triesLeft > 0) setTimeout(() => { restartHook(triesLeft - 1) }, 5000)
+        }
+      }
       powerMonitor.on('resume', () => {
         logger.write('info [main] Back from sleep, restarting the input hook.')
-        uIOhook.stop()
-        uIOhook.start()
+        restartHook(3)
       })
       const port = await startServer(appUpdater, logger)
       perfMark('server listening')

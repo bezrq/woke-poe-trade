@@ -15,7 +15,6 @@ export class OverlayWindow {
   // The game got focus: the hover tracker takes the mouse again if it's resting
   // on an icon, so the next click doesn't need the mouse to move first.
   public onGameActive?: () => void
-  public onGameInactive?: () => void
   public wasUsedRecently = true
   private window?: BrowserWindow
   private overlayKey: string = 'Shift + Space'
@@ -247,10 +246,7 @@ export class OverlayWindow {
   }
 
   private handlePoeWindowActiveChange = (isActive: boolean) => {
-    if (!isActive) {
-      this.giveMouse()
-      this.onGameInactive?.()
-    }
+    if (!isActive) this.giveMouse()
     if (isActive && this.isInteractable) {
       this.isCardActive = false
       this.isInteractable = false
