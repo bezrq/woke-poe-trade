@@ -61,6 +61,13 @@ history:
     to: Done
     user: Agent
     date: '2026-11-05T08:41:18.410Z'
+  - type: activity
+    user: Agent
+    date: '2026-11-05T09:58:31.547Z'
+    comment: >-
+      Follow-up PR #145 from Guy's reports: tooltips follow the cursor, and
+      unique-tier bases list their uniques with price and grade.
+    id: a-2026-11-05t09-58-31-547z
 needsAction: null
 implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/132'
 baselineCommit: d3529ea34cc3eb9250af781a7d862751daf8ef90
