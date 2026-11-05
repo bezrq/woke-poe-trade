@@ -210,12 +210,12 @@ export function listingStatValue (item: ListingItem | undefined, column: StatCol
   const stats = listingStats(item, category)
   const total = source.kind === 'total'
     ? sum(stats.flatMap(stat => {
-      const info = source.stats.find(s => s.ref === stat.ref)
-      return info ? [stat.value * (info.multiplier ?? 1)] : []
-    }))
+        const info = source.stats.find(s => s.ref === stat.ref)
+        return info ? [stat.value * (info.multiplier ?? 1)] : []
+      }))
     : sum(stats
-      .filter(stat => stat.ref === source.ref && domainMatches(source.domains, stat.domain))
-      .map(stat => stat.value))
+        .filter(stat => stat.ref === source.ref && domainMatches(source.domains, stat.domain))
+        .map(stat => stat.value))
   // A "reduced" filter shows its number as positive, so the listing's must match.
   return (total != null && source.negated) ? -total : total
 }
