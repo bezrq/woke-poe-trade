@@ -1,4 +1,4 @@
-import { clipboard, Clipboard } from 'electron'
+import { clipboard, Clipboard, NativeImage } from 'electron'
 import type { Logger } from '../RemoteLogger'
 
 // woke: 48 → 24. The wait between PoE writing the item text and us noticing
@@ -10,7 +10,9 @@ const POLL_LIMIT = 500
 // after that we restore clipboard.
 // If game lagged for some reason, it will read
 // wrong content (= restored clipboard, potentially containing password).
-const RESTORE_AFTER = 120
+// woke: 120 → 250. The game does lag past 120 ms, and then it pastes your own
+// text and presses Enter. This also spaces chat commands apart a little more.
+const RESTORE_AFTER = 250
 
 export class HostClipboard {
   private pollPromise?: Promise<string>
@@ -36,6 +38,11 @@ export class HostClipboard {
     }
 
     let textBefore = clipboard.readText()
+    const imageBefore = this.shouldRestore && !textBefore ? keepImage() : null
+    const restore = () => {
+      if (imageBefore) clipboard.writeImage(imageBefore)
+      else clipboard.writeText(textBefore)
+    }
     if (isPoeItem(textBefore)) {
       textBefore = ''
       if (process.platform !== 'linux') {
@@ -56,7 +63,7 @@ export class HostClipboard {
 
         if (isPoeItem(textAfter)) {
           if (this.shouldRestore) {
-            clipboard.writeText(textBefore)
+            restore()
           }
           this.pollPromise = undefined
           resolve(textAfter)
@@ -66,7 +73,7 @@ export class HostClipboard {
             setTimeout(poll, POLL_DELAY)
           } else {
             if (this.shouldRestore) {
-              clipboard.writeText(textBefore)
+              restore()
             }
             this.pollPromise = undefined
 
@@ -94,14 +101,22 @@ export class HostClipboard {
 
     this.isRestored = false
     const saved = clipboard.readText()
+    const savedImage = this.shouldRestore && !saved ? keepImage() : null
     cb(clipboard)
     setTimeout(() => {
       if (this.shouldRestore) {
-        clipboard.writeText(saved)
+        if (savedImage) clipboard.writeImage(savedImage)
+        else clipboard.writeText(saved)
       }
       this.isRestored = true
     }, RESTORE_AFTER)
   }
+}
+
+// woke: a screenshot on the clipboard used to be lost, as only text was kept.
+function keepImage (): NativeImage | null {
+  const image = clipboard.readImage()
+  return image.isEmpty() ? null : image
 }
 
 function isPoeItem (text: string) {

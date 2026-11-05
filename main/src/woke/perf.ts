@@ -8,12 +8,17 @@ import { performance } from 'perf_hooks'
 const SAMPLES = 50
 const PROCESS_SAMPLE_MS = 15_000
 const PROCESS_SAMPLES = 40 // 10 minutes
+// A long session: one reading every 5 minutes for a day, to show a slow climb.
+const HISTORY_EVERY = 20
+const HISTORY_SAMPLES = 288
 
 interface Series { count: number, max: number, recent: number[] }
 
 const marks: Array<{ name: string, ms: number }> = []
 const series = new Map<string, Series>()
 const processSamples: ProcessSample[] = []
+const history: LongSample[] = []
+let samplesTaken = 0
 
 export interface ProcessSample {
   at: number
@@ -22,6 +27,13 @@ export interface ProcessSample {
   cpuPercent: number
   memoryMb: number
   byType: Array<{ type: string, cpuPercent: number, memoryMb: number }>
+}
+
+export interface LongSample {
+  at: number
+  cpuPercent: number
+  memoryMb: number
+  overlayMb: number
 }
 
 // Milliseconds since the main process started.
@@ -75,6 +87,16 @@ export function startProcessSampler (isGameFocused: () => boolean): void {
       byType: list
     })
     if (processSamples.length > PROCESS_SAMPLES) processSamples.shift()
+    if (samplesTaken++ % HISTORY_EVERY === 0) {
+      const newest = processSamples[processSamples.length - 1]
+      history.push({
+        at: newest.at,
+        cpuPercent: newest.cpuPercent,
+        memoryMb: newest.memoryMb,
+        overlayMb: list.find(p => p.type === 'Tab')?.memoryMb ?? 0
+      })
+      if (history.length > HISTORY_SAMPLES) history.shift()
+    }
   }, PROCESS_SAMPLE_MS)
   sampler.unref?.()
 }
@@ -84,6 +106,7 @@ export interface PerfSnapshot {
   marks: Array<{ name: string, ms: number }>
   timings: Array<{ name: string, count: number, last: number, median: number, p95: number, max: number }>
   processes: ProcessSample[]
+  history: LongSample[]
 }
 
 export function perfSnapshot (): PerfSnapshot {
@@ -91,7 +114,8 @@ export function perfSnapshot (): PerfSnapshot {
     startedAt: Math.round(performance.timeOrigin),
     marks: [...marks],
     timings: [...series].map(([name, s]) => summarize(name, s)),
-    processes: [...processSamples]
+    processes: [...processSamples],
+    history: [...history]
   }
 }
 

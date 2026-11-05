@@ -5,7 +5,7 @@
 // zone, so clicks land there instead of in the game. The game keeps the keyboard
 // until such a click, and gets it back when the mouse leaves. None of this opens
 // the overlay: see OverlayWindow.assertCardActive.
-import { screen } from 'electron'
+import { powerMonitor, screen } from 'electron'
 import type { Rectangle } from 'electron'
 import { uIOhook } from 'uiohook-napi'
 import type { UiohookMouseEvent } from 'uiohook-napi'
@@ -16,6 +16,9 @@ const LEFT_BUTTON = 1
 
 interface Zone {
   id: string
+  // Where the overlay said it is, and the same in screen pixels. Kept apart so
+  // a display change can convert it again.
+  dip: Rectangle
   rect: Rectangle
   activate: boolean
   inside?: boolean
@@ -41,12 +44,16 @@ export class WokeHoverTracker {
     }
     this.server.onEventAnyClient('OVERLAY->MAIN::woke-hover-zones', ({ owner, zones }) => {
       const prev = this.zones.get(owner) ?? []
-      const converted: Zone[] = zones.map(z => ({
-        id: z.id,
-        activate: Boolean(z.activate),
-        rect: toScreenRect({ x: z.x, y: z.y, width: z.width, height: z.height }),
-        inside: prev.find(p => p.id === z.id)?.inside ?? false
-      }))
+      const converted: Zone[] = zones.map(z => {
+        const dip = { x: z.x, y: z.y, width: z.width, height: z.height }
+        return {
+          id: z.id,
+          activate: Boolean(z.activate),
+          dip,
+          rect: toScreenRect(dip),
+          inside: prev.find(p => p.id === z.id)?.inside ?? false
+        }
+      })
       for (const p of prev) {
         if (p.inside && !converted.some(z => z.id === p.id)) this.emit(p.id, false)
       }
@@ -57,6 +64,17 @@ export class WokeHoverTracker {
       // A zone can appear or vanish under a mouse that isn't moving.
       if (this.listening && this.mouseX != null) this.update(this.mouseX, this.mouseY)
     })
+    // The same zone is somewhere else in screen pixels after a scale change.
+    const convertAgain = () => {
+      for (const zone of this.flat) zone.rect = toScreenRect(zone.dip)
+    }
+    screen.on('display-metrics-changed', convertAgain)
+    screen.on('display-added', convertAgain)
+    screen.on('display-removed', convertAgain)
+    // A button let go while the hook was down would keep the dock from ever
+    // catching the mouse again.
+    powerMonitor.on('resume', () => { this.heldButtons.clear() })
+    this.overlay.onGameInactive = () => { this.heldButtons.clear() }
     // A button on a card opened something that needs the real overlay (settings).
     this.server.onEventAnyClient('OVERLAY->MAIN::woke-open-overlay', () => {
       this.overlay.assertOverlayActive()

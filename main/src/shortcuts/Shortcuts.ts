@@ -2,6 +2,7 @@ import { screen, globalShortcut } from 'electron'
 import { uIOhook, UiohookKey, UiohookWheelEvent } from 'uiohook-napi'
 import { noteHotkeyFailures } from '../woke/hotkey-failures'
 import { pickActions } from './pick-actions'
+import { makeRepeatGuard } from './repeat-guard'
 import { isModKey, KeyToElectron, mergeTwoHotkeys } from '../../../ipc/KeyToCode'
 import { typeInChat, stashSearch } from './text-box'
 import { WidgetAreaTracker } from '../windowing/WidgetAreaTracker'
@@ -78,6 +79,7 @@ export class Shortcuts {
     setTimeout(tick, 20)
   }
 
+  private isKeyRepeat = makeRepeatGuard()
   private actions: ShortcutAction[] = []
   private stashScroll = false
   private logKeys = false
@@ -234,6 +236,8 @@ export class Shortcuts {
     const failed: string[] = []
     for (const entry of this.actions) {
       const isOk = globalShortcut.register(shortcutToElectron(entry.shortcut), () => {
+        if (this.isKeyRepeat(entry.shortcut)) return
+
         if (this.logKeys) {
           this.logger.write(`debug [Shortcuts] Action type: ${entry.action.type}`)
         }
