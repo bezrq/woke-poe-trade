@@ -157,6 +157,14 @@ describe('bestFlip', () => {
     const best = bestFlip(items, exchanges, PLAIN, 30)
     expect(best?.family.id).toBe('delirium')
     expect(best?.name).toBe("Armoursmith's Delirium Orb")
+    expect(best?.item).toBe("Armoursmith's Delirium Orb")
+  })
+
+  it('names the item to buy when the best flip is a recipe', () => {
+    const exchanges: Exchanges = new Map([['Oil', feed('Black Oil', 10, 100)]])
+    const best = bestFlip([item('Oil', 'Black Oil', 10), item('Oil', 'Opalescent Oil', 100)], exchanges, PLAIN, 30)
+    expect(best?.name).toBe('Black to Opalescent Oil')
+    expect(best?.item).toBe('Black Oil')
   })
 
   it('never picks a low-confidence family', () => {

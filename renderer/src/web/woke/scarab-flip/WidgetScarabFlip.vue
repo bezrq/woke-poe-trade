@@ -1,7 +1,7 @@
 <template>
   <Widget :config="config" move-handles="corners" :inline-edit="false" :readonly="true">
     <!-- The best flip on hover, so a quick check doesn't open the panel. -->
-    <DockItem id="scarab-flip" title="Flips" :show="dockShow" :wm-id="config.wmId">
+    <DockItem :menu="dockMenu" id="scarab-flip" title="Flips" :show="dockShow" :wm-id="config.wmId">
       <template #card>
         <div v-if="best" class="flex flex-col gap-0.5" style="padding: 2px var(--w-pad) 6px;">
           <span class="w-num">Best supply: {{ shortName(best.name) }}</span>
@@ -153,6 +153,8 @@ import { useMarketCollector } from '../market/collector'
 import { latestSnapshots } from '../market/db'
 import type { Snapshot } from '../market/types'
 import DockItem from '../dock/DockItem.vue'
+import { dockIconEl } from '../dock/dock'
+import type { DockMenuAction } from '../dock/dock'
 import { useZone } from '../shared/zone'
 import { UNTRADED_CHAOS, JACKPOT_CHAOS, buyList, flipOdds, parseExchange, rareCheapList } from './calc'
 import type { FlipRow, UpgradeRow } from './calc'
@@ -360,6 +362,18 @@ function pct (p: number) {
   const v = p * 100
   return `${v < 1 ? Number(v.toFixed(2)) : Math.round(v)}%`
 }
+
+// The icon's right-click menu.
+const dockMenu = computed<DockMenuAction[]>(() => [{
+  label: best.value ? `Copy best supply: ${shortName(best.value.name)}` : 'Copy best supply',
+  icon: 'far fa-copy',
+  disabled: !best.value,
+  action: () => {
+    const name = best.value?.item
+    const el = dockIconEl('scarab-flip')
+    if (name) copyText(name).then(ok => { if (ok) toast(`Copied ${name}`, { anchor: el, dock: true, ms: 1800 }) }).catch(() => {})
+  }
+}])
 </script>
 
 <style module>

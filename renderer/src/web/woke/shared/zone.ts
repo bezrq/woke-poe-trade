@@ -13,6 +13,8 @@ export type ZoneKind = 'campaign' | 'town' | 'hideout' | 'map' | 'lab' | 'boss' 
 export interface ZoneState {
   areaId: string
   areaLevel: number | null
+  // The instance's seed: the same one again when you return through a portal.
+  seed: string
   // Display name from "You have entered …".
   name: string
   kind: ZoneKind | null
@@ -39,13 +41,14 @@ export function zoneKind (areaId: string, name: string): ZoneKind {
   return 'other'
 }
 
-export const zone = shallowReactive<ZoneState>({ areaId: '', areaLevel: null, name: '', kind: null, enteredAt: 0 })
+export const zone = shallowReactive<ZoneState>({ areaId: '', areaLevel: null, seed: '', name: '', kind: null, enteredAt: 0 })
 
 function apply (ev: LogEvent | null, at: number) {
   if (!ev) return
   if (ev.kind === 'area') {
     zone.areaId = ev.areaId
     zone.areaLevel = ev.areaLevel
+    zone.seed = ev.seed ?? ''
     zone.name = ''
     zone.enteredAt = at
     zone.kind = zoneKind(ev.areaId, '')

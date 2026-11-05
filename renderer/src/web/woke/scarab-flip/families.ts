@@ -200,6 +200,8 @@ export interface BestFlip {
   family: FlipFamily
   method: FlipMethod
   name: string
+  // The item to buy, when the name describes a recipe.
+  item: string
   profit: number
   profitPerDay: number
 }
@@ -216,7 +218,7 @@ export function bestFlip (items: PriceItem[], exchanges: Exchanges, options: Fli
       const rows = flip.kind === 'pool' ? flip.model.rows : flip.rows
       const top = buyList<FlipRow | UpgradeRow>(rows, true)[0]
       if (top?.profitPerDay && (!best || top.profitPerDay > best.profitPerDay)) {
-        best = { family, method, name: top.name, profit: top.profit, profitPerDay: top.profitPerDay }
+        best = { family, method, name: top.name, item: 'from' in top ? top.from : top.name, profit: top.profit, profitPerDay: top.profitPerDay }
       }
     }
   }
