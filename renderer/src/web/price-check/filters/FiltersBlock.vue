@@ -81,9 +81,9 @@
       <div class="flex gap-x-4">
         <button @click="statsVisibility.disabled = !statsVisibility.disabled" class="bg-gray-700 px-2 py-1 text-gray-400 leading-none rounded-b w-40"
           >{{ t('filters.collapse') }} <i class="fas fa-chevron-up pl-1 text-xs text-gray-600"></i></button>
-        <ui-toggle v-if="filteredStats.length !== stats.length" title="Also list the filters the price check keeps out of the way, such as rolls that can't vary. Doesn't change the search."
+        <ui-toggle v-if="filteredStats.length !== stats.length" title="List the filters the price check keeps out of the way, such as rolls that can't vary, in place of the others. Doesn't change the search."
           v-model="showHidden" class="text-gray-400 pt-2">{{ t('filters.hidden_toggle') }}</ui-toggle>
-        <ui-toggle title="Under each filter, show the item's mods behind it: prefix or suffix, name, tier and what each adds. Doesn't change the search."
+        <ui-toggle title="Under the filters, show the item's mods behind them where known: prefix or suffix, name, tier and what each adds. Doesn't change the search."
           v-model="showFilterSources" class="ml-auto text-gray-400 pt-2">{{ t('filters.mods_toggle') }}</ui-toggle>
       </div>
     </div>
