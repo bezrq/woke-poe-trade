@@ -2,7 +2,6 @@
 // set fit your level or act, the link colours you need, the gems to buy in
 // this town, and the facts the price check and the loot filter use.
 // Pure functions; no Vue, no app data imports.
-import { MAX_SEARCH_LENGTH } from '../shared/library'
 import { baseClass, CLASS_NAMES, gemData } from './gems'
 import type { GemColour, GemSource } from './gems'
 import type { LoadoutPick, PobDetails, PobGem, PobItem, PobItemSet, PobSkillGroup, PobSkillSet, PobTreeSpec } from './widget'
@@ -155,54 +154,6 @@ export function linkColours (group: PobSkillGroup): GemColour[] {
   return orderedGems(group).map(g => gemData(g.name)?.colour ?? 'w')
 }
 
-function permutations (letters: string[]): string[] {
-  if (letters.length <= 1) return [letters.join('')]
-  const out = new Set<string>()
-  letters.forEach((l, i) => {
-    const rest = [...letters.slice(0, i), ...letters.slice(i + 1)]
-    for (const p of permutations(rest)) out.add(l + p)
-  })
-  return [...out]
-}
-
-function exactRegex (colours: GemColour[]): string | null {
-  if (colours.some(c => c === 'w')) return null
-  return permutations(colours).map(p => p.split('').join('-')).join('|')
-}
-
-function looseRegex (colours: GemColour[]): string {
-  const coloured = colours.filter(c => c !== 'w')
-  const cls = coloured.length ? `[${[...new Set(coloured)].sort().join('')}w]` : '.'
-  return Array.from({ length: colours.length }, () => cls).join('-')
-}
-
-export interface SocketSearch {
-  regex: string
-  // How many linked sockets it looks for.
-  size: number
-  // Exact colour orderings; otherwise "only these colours or white".
-  exact: boolean
-}
-
-// Regex for vendor or stash search that finds linked sockets in the colours
-// of the first gems (active skill first). Tries 4 links, then 3; exact
-// orderings when they fit in the box, otherwise a looser pattern as long as
-// it still narrows the colours down. Colourless gems fit any socket.
-export function socketRegex (colours: GemColour[]): SocketSearch | null {
-  if (colours.length < 2) return null
-  const top = Math.min(colours.length, 4)
-  for (let n = top; n >= Math.min(3, top); n--) {
-    const exact = exactRegex(colours.slice(0, n))
-    if (exact && exact.length <= MAX_SEARCH_LENGTH) return { regex: exact, size: n, exact: true }
-  }
-  for (let n = top; n >= Math.min(3, top); n--) {
-    const part = colours.slice(0, n)
-    if (new Set(part.filter(c => c !== 'w')).size < 3) return { regex: looseRegex(part), size: n, exact: false }
-  }
-  const part = colours.slice(0, Math.min(3, top))
-  return { regex: looseRegex(part), size: part.length, exact: false }
-}
-
 export const COLOUR_NAME: Record<GemColour, string> = { r: 'red', g: 'green', b: 'blue', w: 'white' }
 
 // ---- gems to get ----
@@ -301,7 +252,9 @@ const SLOT_LABEL: Record<string, string> = {
   'Weapon 2': 'Offhand',
   'Body Armour': 'Body',
   'Ring 1': 'Ring',
-  'Ring 2': 'Ring 2'
+  'Ring 2': 'Ring 2',
+  'Weapon 1 Swap': 'Weapon swap',
+  'Weapon 2 Swap': 'Offhand swap'
 }
 
 export function slotLabel (slot: string): string {
@@ -318,9 +271,78 @@ export function gearOrder (slot: string): number {
   return i < 0 ? GEAR_ORDER.length : i
 }
 
-// Gear slots only: no weapon swap and no abyssal sockets.
+// Gear to look for: no weapon swap and no abyssal sockets.
 export function isGearSlot (slot: string): boolean {
   return !/Swap|Abyssal|Socket|Graft/i.test(slot)
+}
+
+// A gem group as drawn on the Gear tab: socketed gems in link order, then the
+// ones PoB has switched off, which sit in no socket.
+export function chainGems (group: PobSkillGroup): PobGem[] {
+  if (!group.enabled) return group.gems.filter(g => g.name)
+  return [...orderedGems(group), ...group.gems.filter(g => !g.enabled && g.name)]
+}
+
+export interface GearRow {
+  slot: string
+  // Null when the skill set uses a slot this item set leaves empty.
+  item: PobItem | null
+  groups: PobSkillGroup[]
+}
+
+export interface GearLayout {
+  // The item holding the build's main skill.
+  main: GearRow | null
+  // Other items with gems or sockets, most gems first.
+  linked: GearRow[]
+  // Items with neither: jewellery and flasks, mostly.
+  plain: GearRow[]
+  // Gem groups PoB doesn't tie to any item.
+  loose: PobSkillGroup[]
+}
+
+function linkedSockets (item: PobItem | null): boolean {
+  return socketGroups(item?.sockets ?? '').some(g => g.some(c => c !== 'a'))
+}
+
+function gemCount (row: GearRow): number {
+  return row.groups.reduce((n, g) => n + (g.enabled ? activeGems(g).length : 0), 0)
+}
+
+// Puts the gems on the items that hold them. PoB stores a slot per gem group
+// and nothing per socket, so a group is all we can place. Weapon swap only
+// shows when it holds gems, as most builds keep a stat stick there.
+export function gearLayout (slots: PobItemSet['slots'], groups: PobSkillGroup[]): GearLayout {
+  const shown = groups.filter(g => g.gems.some(x => x.name))
+  const mainGroup = mainGroupOf(groups)
+  const rows = new Map<string, GearRow>()
+  for (const { slot, item } of slots) {
+    if (/Abyssal|Socket|Graft/i.test(slot)) continue
+    rows.set(slot, { slot, item, groups: [] })
+  }
+  const loose: PobSkillGroup[] = []
+  for (const g of shown) {
+    if (!g.slot) {
+      // Granted by the tree or a mechanic: nothing for you to socket.
+      if (!g.source) loose.push(g)
+      continue
+    }
+    const row = rows.get(g.slot)
+    if (row) row.groups.push(g)
+    else rows.set(g.slot, { slot: g.slot, item: null, groups: [g] })
+  }
+  const all = [...rows.values()]
+    .filter(r => r.groups.length || !/Swap/i.test(r.slot))
+    .sort((a, b) => gearOrder(a.slot) - gearOrder(b.slot))
+  const main = all.find(r => mainGroup && r.groups.includes(mainGroup)) ?? null
+  if (main && mainGroup) main.groups = [mainGroup, ...main.groups.filter(g => g !== mainGroup)]
+  const rest = all.filter(r => r !== main)
+  return {
+    main,
+    linked: rest.filter(r => r.groups.length || linkedSockets(r.item)).sort((a, b) => gemCount(b) - gemCount(a)),
+    plain: rest.filter(r => !r.groups.length && !linkedSockets(r.item)),
+    loose
+  }
 }
 
 // For normal and magic items PoB only keeps the full name; the caller can

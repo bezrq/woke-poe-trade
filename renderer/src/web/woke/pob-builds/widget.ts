@@ -59,6 +59,8 @@ export interface PobSkillGroup {
   slot: string
   enabled: boolean
   isMain: boolean
+  // What grants it (an item, the tree) when no gem does. Older app versions don't send it.
+  source?: string
   gems: PobGem[]
 }
 

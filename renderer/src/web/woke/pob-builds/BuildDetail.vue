@@ -7,6 +7,7 @@
       <WButton size="sm" variant="primary" icon="fas fa-external-link-alt" @click="run(pobApi.open(config, entry.relPath))">Open in PoB</WButton>
       <WButton size="sm" @click="run(pobApi.show(config, entry.relPath))">Show file</WButton>
       <WButton size="sm" @click="setActive" :disabled="isActive">{{ isActive ? 'Active build' : 'Make active' }}</WButton>
+      <WButton v-if="treeUrl" size="sm" icon="fas fa-project-diagram" title="Open this loadout's passive tree" @click="openTree">Passive tree</WButton>
       <WButton v-if="charName" size="sm" variant="ghost" :icon="followsMe ? 'fas fa-link' : 'fas fa-unlink'"
         :title="followsMe ? `Stop switching to this build when ${charName} levels` : `Make this the active build whenever ${charName} levels up (from Client.txt)`"
         @click="toggleFollow">
@@ -65,76 +66,57 @@
 
       <!-- Gear -->
       <template v-else-if="tab === 'gear'">
-        <template v-if="mainLink">
-          <div :class="$style.heading">Links you need now</div>
-          <div :class="$style.link">
-            <SocketDots :colours="mainColours" />
-            <span class="w-dim whitespace-nowrap">{{ mainColours.length }}-link for</span>
-            <GemName v-if="orderedGems(mainLink)[0]" :name="orderedGems(mainLink)[0].name" />
-          </div>
-          <div v-if="regex" class="flex items-center gap-2 pt-1">
-            <code :class="$style.rx" :title="regex.exact ? 'Exact colour orders' : 'Only these colours or white'">{{ regex.regex }}</code>
-            <WButton size="sm" variant="primary" :icon="copied ? 'fas fa-check' : 'fas fa-copy'" @click="copyRegex">{{ copied ? 'Copied' : 'Copy regex' }}</WButton>
-            <WButton size="sm" variant="ghost" icon="far fa-bookmark" title="Keep this search in the Regex library"
-              @click="toast(SAVE_MESSAGE[saveToRegexLibrary({ name: `${entry.name}: link colours`, text: regex.regex, category: 'Builds' })])">Save</WButton>
-          </div>
-          <div v-if="regex" class="w-faint text-xs pt-0.5">
-            Paste into a vendor's or your stash's search box: highlights {{ regex.size }}-links in these colours{{ regex.exact ? '' : ' (or white)' }}.
-          </div>
-        </template>
-
-        <div v-if="itemSets.length > 1" class="flex flex-wrap gap-1 pt-2">
-          <WChip v-if="pick" clickable :title="AUTO_HINT" @click="clearPick">Auto</WChip>
-          <WChip v-for="(set, i) in itemSets" :key="i" clickable :active="set === shownItemSet" :title="pickHint(set === shownItemSet, pick?.itemSet === set.title, loadout?.itemSet?.byStage)" @click="chooseItemSet(set.title)">
-            <i v-if="pick && set === shownItemSet" class="fas fa-thumbtack text-xs" /> {{ set.title }}<span v-if="set === shownItemSet" class="w-accent"> · now</span>
+        <div v-for="row in setChips" :key="row.label" class="flex flex-wrap items-center gap-1 pt-1">
+          <span v-if="row.label" class="w-faint text-xs">{{ row.label }}</span>
+          <WChip v-if="pick && row.first" clickable :title="AUTO_HINT" @click="clearPick">Auto</WChip>
+          <WChip v-for="c in row.chips" :key="c.title" clickable :active="c.active" :title="c.hint" @click="c.choose()">
+            <i v-if="pick && c.active" class="fas fa-thumbtack text-xs" /> {{ c.title }}<span v-if="c.active" class="w-accent"> · now</span>
           </WChip>
         </div>
         <div v-if="!isActive" class="pt-1 text-xs" style="color: var(--w-warn);">Other windows use your active build. Press Make active to use this loadout there.</div>
-        <div :class="$style.heading">Gear<template v-if="shownItemSet && itemSets.length > 1"> · {{ shownItemSet.title }}</template></div>
-        <WEmpty v-if="!gear.length" icon="fas fa-tshirt">No items in this build. Add them in PoB's Items tab to see what to look for.</WEmpty>
-        <div v-for="(s, i) in gear" :key="i" :class="$style.gearRow"
-          @mouseenter="showTip($event, { kind: 'item', item: s.item })" @mouseleave="hideTip">
-          <span :class="[$style.cell, cellClass(s.item.rarity)]">
-            <img v-if="itemArt(s.item)" :src="itemArt(s.item)!" alt="" :class="['w-game-icon', $style.art]" loading="lazy" draggable="false">
-            <i v-else class="fas fa-question w-faint" />
-          </span>
-          <span class="min-w-0 flex flex-col">
-            <span class="w-trunc" :class="rarityClass(s.item.rarity)">{{ s.item.name }}</span>
-            <span class="w-dim text-xs w-trunc">
-              <span class="w-faint">{{ slotLabel(s.slot) }}</span>
-              <template v-if="s.item.base"> · {{ s.item.base }}</template>
-              <template v-if="keyMods(s.item).length"> · {{ keyMods(s.item).join(' · ') }}</template>
-            </span>
-          </span>
-          <span class="ml-auto flex items-center gap-1.5">
-            <SocketDots v-for="(grp, j) in socketDots(s.item.sockets)" :key="j" :colours="grp" />
-            <WButton v-if="tradeUrl(s.item)" size="sm" variant="ghost" icon="fas fa-search" :title="`Search the trade site for ${s.item.name}`" @click="openUrl(tradeUrl(s.item)!)" />
-          </span>
-        </div>
-      </template>
+        <WEmpty v-if="!hasGear" icon="fas fa-tshirt">No items or gems in this set. Add them in PoB to see what to look for.</WEmpty>
 
-      <!-- Setups -->
-      <template v-else-if="tab === 'setups'">
-        <div v-if="details.trees.length" class="pb-2">
+        <template v-if="layout.main">
+          <div :class="[$style.rowWrap, $style.main]">
+            <GearRowHead :row="layout.main" main />
+            <div :class="$style.chains">
+              <GemChain v-for="(g, i) in layout.main.groups" :key="i" :group="g" />
+            </div>
+          </div>
+        </template>
+
+        <template v-if="layout.loose.length">
+          <div :class="$style.heading">Gems PoB doesn't tie to an item</div>
+          <div v-for="(g, i) in layout.loose" :key="i" :class="$style.loose">
+            <div v-if="g.label || g === mainLink" class="w-dim text-xs">{{ g.label }}<span v-if="g === mainLink" class="w-accent"><template v-if="g.label"> · </template>Main skill</span></div>
+            <GemChain :group="g" />
+          </div>
+        </template>
+
+        <template v-if="layout.linked.length">
+          <div :class="$style.heading">{{ layout.main || layout.loose.length ? 'Other links' : 'Gear' }}<template v-if="shownItemSet && itemSets.length > 1"> · {{ shownItemSet.title }}</template></div>
+          <div v-for="r in layout.linked" :key="r.slot" :class="$style.rowWrap">
+            <GearRowHead :row="r" />
+            <div v-if="r.groups.length" :class="$style.chains">
+              <GemChain v-for="(g, i) in r.groups" :key="i" :group="g" />
+            </div>
+          </div>
+        </template>
+
+        <template v-if="layout.plain.length">
+          <div :class="$style.heading">Other gear</div>
+          <div :class="$style.plain">
+            <GearRowHead v-for="r in layout.plain" :key="r.slot" :row="r" small />
+          </div>
+        </template>
+
+        <template v-if="details.trees.length > 1">
           <div :class="$style.heading">Passive trees</div>
           <a v-for="t in details.trees" :key="t.title + t.url" :href="safeUrl(t.url)" target="_blank"
             class="block w-trunc py-0.5 hover:underline" :class="t === loadout?.tree ? '' : 'w-dim'">
             <i class="fas fa-external-link-alt text-xs w-faint" /> {{ t.title }}<span v-if="t === loadout?.tree" class="w-accent"> · now</span>
           </a>
-        </div>
-        <div v-for="(set, k) in skillSets" :key="k" class="pb-2">
-          <div :class="$style.heading">Gem setups<template v-if="skillSets.length > 1"> · {{ set.title }}<span v-if="set === shownSet" class="w-accent normal-case tracking-normal"> · now</span></template></div>
-          <div v-for="(s, i) in set.groups" :key="i" :class="[$style.setup, { 'opacity-50': !s.enabled }]">
-            <div class="w-dim text-xs">
-              {{ s.label || s.slot || `Group ${i + 1}` }}<span v-if="s.isMain" class="w-accent"> · main</span>
-            </div>
-            <div :class="$style.names">
-              <GemName v-for="(g, j) in s.gems" :key="j" :name="g.name" :level="g.level" :quality="g.quality" :off="!g.enabled" :struck="!g.enabled">
-                <span v-if="g.level != null" class="w-faint text-xs w-num">{{ g.level }}/{{ g.quality ?? 0 }}</span>
-              </GemName>
-            </div>
-          </div>
-        </div>
+        </template>
       </template>
 
       <!-- Filter -->
@@ -166,32 +148,28 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, shallowRef, useCssModule, watch } from 'vue'
-import { WPanel, WButton, WEmpty, WTabs, WChip, WKbd, toast } from '../ui'
-import { useCopy } from '../ui/copy'
-import { SAVE_MESSAGE, saveToRegexLibrary } from '../regex-library/save'
+import { computed, onBeforeUnmount, shallowRef, watch } from 'vue'
+import { WPanel, WButton, WEmpty, WTabs, WChip, WKbd } from '../ui'
 import { AppConfig, saveConfig } from '@/web/Config'
-import { useLeagues } from '@/web/background/Leagues'
 import { CAMPAIGN_TYPE } from '../campaign/widget'
 import type { CampaignWidget } from '../campaign/widget'
 import { LOOT_FILTER_TYPE } from '../loot-filter/widget'
 import type { LootFilterWidget } from '../loot-filter/widget'
 import type { BuildRuleSwitches } from '../loot-filter/build-rules'
+import GearRowHead from './GearRowHead.vue'
+import GemChain from './GemChain.vue'
 import GemName from './GemName.vue'
 import SocketDots from './SocketDots.vue'
 import { nextGems } from './gems'
-import type { GemColour, NextGem } from './gems'
+import type { NextGem } from './gems'
 import {
-  gearOrder, isGearSlot, itemSetsOf, linkColours, linkGroups, loadoutOf, mainGroupOf, noteRuns, orderedGems,
-  relevantGems, skillSetsOf, slotLabel, socketGroups, socketRegex
+  gearLayout, itemSetsOf, linkColours, linkGroups, loadoutOf, mainGroupOf, noteRuns, orderedGems,
+  relevantGems, skillSetsOf
 } from './build-model'
-import { itemArt } from './item-art'
-import { hideTip, showTip } from '../ui/tooltip/tooltip'
+import { hideTip } from '../ui/tooltip/tooltip'
 import { pobApi } from './widget'
-import type { LoadoutPick, PobBuildEntry, PobBuildsWidget, PobDetails, PobItem } from './widget'
+import type { LoadoutPick, PobBuildEntry, PobBuildsWidget, PobDetails } from './widget'
 import { useActiveBuild } from './active'
-
-const $style = useCssModule()
 
 const props = defineProps<{
   config: PobBuildsWidget
@@ -206,14 +184,13 @@ const act = build.act
 const charName = build.charName
 const error = shallowRef('')
 
-const tab = shallowRef<'leveling' | 'gear' | 'setups' | 'filter' | 'notes'>('leveling')
+const tab = shallowRef<'leveling' | 'gear' | 'filter' | 'notes'>('leveling')
 // The hovered row leaves with the tab, so no mouseleave comes.
 watch(tab, hideTip)
 onBeforeUnmount(hideTip)
 const tabOptions = [
   { value: 'leveling', label: 'Leveling' },
   { value: 'gear', label: 'Gear' },
-  { value: 'setups', label: 'Setups' },
   { value: 'filter', label: 'Filter' },
   { value: 'notes', label: 'Notes' }
 ]
@@ -313,63 +290,43 @@ function toggleGot (name: string) {
 
 const itemSets = computed(() => props.details ? itemSetsOf(props.details) : [])
 const shownItemSet = computed(() => loadout.value?.itemSet?.item ?? null)
-const gear = computed(() => (shownItemSet.value?.slots ?? []).filter(s => isGearSlot(s.slot))
-  .sort((a, b) => gearOrder(a.slot) - gearOrder(b.slot)))
-
 const mainLink = computed(() => shownSet.value ? mainGroupOf(shownSet.value.groups) : null)
-const mainColours = computed<GemColour[]>(() => mainLink.value ? linkColours(mainLink.value) : [])
-const regex = computed(() => socketRegex(mainColours.value))
+const layout = computed(() => gearLayout(shownItemSet.value?.slots ?? [], shownSet.value?.groups ?? []))
+const hasGear = computed(() => Boolean(layout.value.main || layout.value.loose.length || layout.value.linked.length || layout.value.plain.length))
 
-const { copied, copy } = useCopy(1500)
-async function copyRegex () {
-  if (!regex.value) return
-  if (!await copy(regex.value.regex)) error.value = "Couldn't copy to the clipboard"
-}
+// One row of chips while skill and item sets go together; two when PoB's names
+// differ or the two are showing different sets, as either can be picked alone.
+const setChips = computed(() => {
+  const skills = skillSets.value
+  const items = itemSets.value
+  const titles = (sets: Array<{ title: string }>) => sets.map(s => s.title).sort().join('\n')
+  const together = skills.length > 1 && titles(skills) === titles(items) && shownSet.value?.title === shownItemSet.value?.title
+  const skillChips = skills.map(set => ({
+    title: set.title,
+    active: set === shownSet.value,
+    hint: pickHint(set === shownSet.value, pick.value?.skillSet === set.title, loadout.value?.skillSet?.byStage),
+    choose: () => chooseSkillSet(set.title)
+  }))
+  if (together) return [{ label: '', first: true, chips: skillChips }]
+  const itemChips = items.map(set => ({
+    title: set.title,
+    active: set === shownItemSet.value,
+    hint: pickHint(set === shownItemSet.value, pick.value?.itemSet === set.title, loadout.value?.itemSet?.byStage),
+    choose: () => chooseItemSet(set.title)
+  }))
+  const rows: Array<{ label: string, first: boolean, chips: typeof skillChips }> = []
+  if (skills.length > 1) rows.push({ label: 'Gems', first: true, chips: skillChips })
+  if (items.length > 1) rows.push({ label: 'Gear', first: !rows.length, chips: itemChips })
+  return rows
+})
 
-function socketDots (sockets: string): GemColour[][] {
-  return socketGroups(sockets).map(g => g.filter((c): c is GemColour => ['r', 'g', 'b', 'w'].includes(c)))
-    .filter(g => g.length)
-}
+const treeUrl = computed(() => {
+  const tree = loadout.value?.tree ?? props.details?.trees[0]
+  return tree ? safeUrl(tree.url) : undefined
+})
 
-function rarityClass (rarity: PobItem['rarity']) {
-  switch (rarity) {
-    case 'UNIQUE':
-    case 'RELIC': return 'w-rarity-unique'
-    case 'RARE': return 'w-rarity-rare'
-    case 'MAGIC': return 'w-rarity-magic'
-    default: return 'w-rarity-normal'
-  }
-}
-
-function cellClass (rarity: PobItem['rarity']) {
-  switch (rarity) {
-    case 'UNIQUE':
-    case 'RELIC': return $style.cellUnique
-    case 'RARE': return $style.cellRare
-    case 'MAGIC': return $style.cellMagic
-    default: return undefined
-  }
-}
-
-// Mods worth reading at a glance on a rare: the first few explicit ones.
-function keyMods (item: PobItem): string[] {
-  if (item.rarity === 'UNIQUE' || item.rarity === 'RELIC') return []
-  return item.mods.slice(0, 2)
-}
-
-const leagues = useLeagues()
-function tradeUrl (item: PobItem): string | null {
-  const league = leagues.selectedId.value
-  if (!league || (item.rarity !== 'UNIQUE' && item.rarity !== 'RELIC')) return null
-  const query = {
-    query: { status: { option: 'online' }, name: item.name, ...(item.base ? { type: item.base } : {}) },
-    sort: { price: 'asc' }
-  }
-  return `https://www.pathofexile.com/trade/search/${encodeURIComponent(league)}?q=${encodeURIComponent(JSON.stringify(query))}`
-}
-
-function openUrl (url: string) {
-  window.open(url)
+function openTree () {
+  if (treeUrl.value) window.open(treeUrl.value)
 }
 
 // ---- filter ----
@@ -440,40 +397,33 @@ function run (p: Promise<unknown>) {
 .lvl { width: 1.6rem; text-align: right; flex: none; }
 .gemName { flex: none; max-width: 62%; }
 .src { min-width: 0; }
-.rx {
-  font-family: var(--w-num);
-  font-size: var(--w-fs-sm);
-  background: var(--w-panel-3);
+.rowWrap {
+  padding: 4px 0 5px;
+  border-bottom: 1px solid var(--w-line-soft);
+  min-width: 0;
+}
+.main {
+  margin-top: 6px;
+  padding: 6px;
+  background: var(--w-accent-soft);
+  border: 1px solid var(--w-line-strong);
   border-radius: var(--w-r-sm);
-  padding: 2px 6px;
-  overflow-wrap: anywhere;
-  min-width: 0;
 }
-.gearRow {
+/* Under the item's name, past its art. */
+.chains {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 4px 0;
-  border-bottom: 1px solid var(--w-line-soft);
+  flex-direction: column;
+  gap: 5px;
+  padding: 4px 0 0 52px;
   min-width: 0;
 }
-.gearRow:hover { background: var(--w-line-soft); }
-/* An inventory cell, tinted by rarity as the game tints a hovered item. */
-.cell {
-  width: 44px;
-  height: 44px;
-  flex: none;
-  display: grid;
-  place-items: center;
-  background: rgba(8, 10, 30, 0.75);
-  border: 1px solid var(--w-line);
-}
-.cellUnique { background: rgba(175, 96, 37, 0.2); border-color: rgba(175, 96, 37, 0.6); }
-.cellRare { background: rgba(255, 255, 119, 0.08); border-color: rgba(255, 255, 119, 0.35); }
-.cellMagic { background: rgba(136, 136, 255, 0.12); border-color: rgba(136, 136, 255, 0.45); }
-.art { max-width: 40px; max-height: 40px; object-fit: contain; }
-.setup {
-  padding: 4px 0;
+.loose {
+  padding: 4px 0 5px;
   border-bottom: 1px solid var(--w-line-soft);
+}
+.plain {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 2px 10px;
 }
 </style>

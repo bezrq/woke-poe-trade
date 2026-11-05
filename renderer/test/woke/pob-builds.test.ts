@@ -1,7 +1,7 @@
 // Reading items and notes from a PoB build for the build detail panel.
 import { describe, it, expect } from 'vitest'
 import { parseItemText } from '../../../main/src/woke/pob-parse'
-import { buildFacts, loadoutOf, noteRuns, pickStage, relevantGems, stageOf } from '@/web/woke/pob-builds/build-model'
+import { buildFacts, chainGems, gearLayout, loadoutOf, noteRuns, pickStage, relevantGems, stageOf } from '@/web/woke/pob-builds/build-model'
 import { nextGems } from '@/web/woke/pob-builds/gems'
 import type { PobDetails, PobItemSet, PobSkillSet } from '@/web/woke/pob-builds/widget'
 
@@ -184,5 +184,65 @@ describe('bug hunt: build details', () => {
     const d = { className: 'Witch', skills: [] } as unknown as PobDetails
     const list = nextGems(d, 10, 'Witch', ['Kinetic Blast of Clustering'])
     expect(list).toEqual([expect.objectContaining({ name: 'Kinetic Blast of Clustering', requiredLevel: 28, source: null, when: 'later' })])
+  })
+})
+
+describe('gear layout', () => {
+  const gem = (name: string, enabled = true) => ({ name, level: 20, quality: 0, enabled, support: false })
+  const group = (slot: string, names: string[], extra = {}) => ({ label: '', slot, enabled: true, isMain: false, gems: names.map(n => gem(n)), ...extra })
+  const item = (name: string, sockets = '') => ({ rarity: 'RARE' as const, name, base: '', sockets, implicits: [], mods: [] })
+
+  it('puts the main skill on top and sorts other items by gem count', () => {
+    const l = gearLayout(
+      [{ slot: 'Weapon 1', item: item('Blade', 'R-R-R') }, { slot: 'Helmet', item: item('Cap', 'R-R-R-R') }, { slot: 'Body Armour', item: item('Robe', 'R-R-R-R-R-R') }],
+      [group('Weapon 1', ['A', 'B']), group('Helmet', ['C', 'D', 'E']), group('Body Armour', ['Main', 'F'], { isMain: true })]
+    )
+    expect(l.main?.item?.name).toBe('Robe')
+    expect(l.linked.map(r => r.item?.name)).toEqual(['Cap', 'Blade'])
+  })
+
+  it('keeps two groups on one item, the main one first', () => {
+    const second = group('Gloves', ['Main', 'X'], { isMain: true })
+    const l = gearLayout([{ slot: 'Gloves', item: item('Mitts', 'R-R-R') }], [group('Gloves', ['A', 'B']), second])
+    expect(l.main?.groups).toHaveLength(2)
+    expect(l.main?.groups[0]).toBe(second)
+  })
+
+  it('lists groups with no slot apart, without the ones nothing socketed grants', () => {
+    const free = group('', ['Free'])
+    const l = gearLayout([], [free, group('', ['Explosion'], { source: 'Explode' })])
+    expect(l.loose).toEqual([free])
+  })
+
+  it('draws a slot with gems when this item set leaves it empty', () => {
+    const l = gearLayout([], [group('Boots', ['A', 'B'], { isMain: true }), group('Helmet', ['C'])])
+    expect(l.main).toMatchObject({ slot: 'Boots', item: null })
+    expect(l.linked[0]).toMatchObject({ slot: 'Helmet', item: null })
+  })
+
+  it('shows weapon swap only when it holds gems', () => {
+    const slots = [{ slot: 'Weapon 1 Swap', item: item('Horn', 'B-B-B') }, { slot: 'Weapon 2 Swap', item: item('Wand', 'B-B') }]
+    const l = gearLayout(slots, [group('Weapon 1 Swap', ['Enlighten', 'Empower'])])
+    expect([l.main, ...l.linked, ...l.plain].filter(Boolean).map(r => r!.slot)).toEqual(['Weapon 1 Swap'])
+  })
+
+  it('leaves out abyssal jewels, and keeps socketless items in the plain list', () => {
+    const l = gearLayout(
+      [{ slot: 'Boots Abyssal Socket 1', item: item('Eye') }, { slot: 'Belt', item: item('Vise', 'A') }, { slot: 'Gloves', item: item('Mitts', 'R-R') }],
+      []
+    )
+    expect(l.plain.map(r => r.item?.name)).toEqual(['Vise'])
+    expect(l.linked.map(r => r.item?.name)).toEqual(['Mitts'])
+  })
+
+  it('chains socketed gems first and switched-off gems last', () => {
+    const g = { ...group('Body Armour', []), gems: [gem('Off', false), gem('On'), gem('')] }
+    expect(chainGems(g).map(x => x.name)).toEqual(['On', 'Off'])
+  })
+
+  it('does not show a group with no named gems', () => {
+    const l = gearLayout([], [{ ...group('Helmet', []), gems: [gem('')] }])
+    expect(l.main).toBeNull()
+    expect(l.linked).toEqual([])
   })
 })
