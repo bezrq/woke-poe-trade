@@ -260,6 +260,12 @@ describe('share codes', () => {
     expect(() => applyEdits(parseFilter('Show # $type->c $tier->t\n\tBaseType == "X"\n'), back.edits)).not.toThrow()
   })
 
+  it('drops a rule with a broken look', async () => {
+    const bad = { ...rule({ conditions: [newCondition('Rarity')] }), patch: { text: 'red' } }
+    const back = await decodeChanges(`WOKEF0.${btoa(JSON.stringify({ v: 1, edits: [], rules: [bad], locks: [] }))}`)
+    expect(back.rules).toEqual([])
+  })
+
   it('a saved config with a broken edit opens anyway', () => {
     const w = { wmId: 1, wmType: 'woke-loot-filter', wmTitle: '', wmWants: 'hide', wmZorder: null, wmFlags: [] } as unknown as LootFilterWidget
     initLootFilterWidget(w)

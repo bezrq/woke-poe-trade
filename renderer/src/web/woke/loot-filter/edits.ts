@@ -59,7 +59,7 @@ export const OWN_RULE_TYPE = 'woke->own'
 
 const isColour = (v: unknown) => Array.isArray(v) && v.length >= 3 && v.length <= 4 && v.every(n => typeof n === 'number')
 
-function isPatch (p: unknown): boolean {
+export function isPatch (p: unknown): boolean {
   if (!p || typeof p !== 'object') return false
   const s = p as Record<string, unknown>
   const obj = (v: unknown, keys: string[]) => v == null || (typeof v === 'object' && keys.every(k => (v as Record<string, unknown>)[k] != null))

@@ -1,5 +1,5 @@
 import type { Widget, Anchor } from '@/web/overlay/widgets'
-import { isValidEdit } from './edits'
+import { isPatch, isValidEdit } from './edits'
 import type { FilterEdit } from './edits'
 import { DEFAULT_BUILD_RULES } from './build-rules'
 import type { BuildRuleSwitches } from './build-rules'
@@ -219,7 +219,7 @@ export function normalizeLootFilterWidget (w: LootFilterWidget) {
       : da.ladder
   }
   if (!Array.isArray(w.rules)) w.rules = []
-  w.rules = w.rules.filter(r => r && typeof r.id === 'number' && Array.isArray(r.conditions))
+  w.rules = w.rules.filter(r => r && typeof r.id === 'number' && Array.isArray(r.conditions) && isPatch(r.patch))
   w.presets = normalizePresets(w.presets)
   if (w.stricterHotkey === undefined) w.stricterHotkey = 'Alt + BracketRight'
   if (w.looserHotkey === undefined) w.looserHotkey = 'Alt + BracketLeft'

@@ -1,7 +1,7 @@
 // Your changes as a code to paste to a friend (or yourself on another PC):
 // edits, own rules, presets and locked price tiers, compressed. Folders,
 // hotkeys and the NeverSink download setting stay out of it.
-import { isValidEdit } from './edits'
+import { isPatch, isValidEdit } from './edits'
 import type { FilterEdit } from './edits'
 import type { OwnRule } from './rules'
 import { conditionKind } from './rules'
@@ -88,7 +88,7 @@ function isRule (r: unknown): r is OwnRule {
   const x = r as Partial<OwnRule> | null
   return Boolean(x && typeof x === 'object' && typeof x.id === 'number' && typeof x.name === 'string' &&
     Array.isArray(x.conditions) && x.conditions.every(c => c && conditionKind(c.key) && Array.isArray(c.values) && c.values.every(v => typeof v === 'string')) &&
-    ['Show', 'Hide', 'Minimal'].includes(x.visibility as string) && x.patch && typeof x.patch === 'object' && safeStrings(x))
+    ['Show', 'Hide', 'Minimal'].includes(x.visibility as string) && isPatch(x.patch) && safeStrings(x))
 }
 
 export function describeShared (c: SharedChanges): string {
