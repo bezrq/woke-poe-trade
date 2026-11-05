@@ -61,6 +61,41 @@ describe('run timer and other characters', () => {
   })
 })
 
+describe('run timer staying in step with its own character', () => {
+  const level = (w: W, name: string, at: number) => { applyRunEvent(w, parseLogLine(`2026/11/05 10:00:00 1 abc [INFO Client 1] : ${name} (Witch) is now level 40`)!, at) }
+
+  it('a run started by hand in a later act begins there', () => {
+    const w = widget()
+    startRun(w, 0)
+    enter(w, '1_3_town', MIN)
+    expect(w.run!.act).toBe(3)
+    expect(w.run!.splits).toEqual([])
+    enter(w, '1_4_town', 2 * MIN)
+    expect(w.run!.splits.map(s => s.act)).toEqual([3])
+  })
+
+  it('catches up when its own character levels in a later act', () => {
+    const w = widget()
+    enter(w, '1_1_1', 0)
+    level(w, 'Mine', MIN)
+    enter(w, '1_4_town', 60 * MIN)
+    expect(w.run!.act).toBe(1)
+    level(w, 'Mine', 61 * MIN)
+    expect(w.run!.act).toBe(4)
+    expect(w.run!.splits.map(s => s.act)).toEqual([1, 2, 3])
+    expect(isCleanRun(w.run!)).toBe(false)
+  })
+
+  it("another character's level-up in a later act moves nothing", () => {
+    const w = widget()
+    enter(w, '1_1_1', 0)
+    level(w, 'Mine', MIN)
+    enter(w, '1_4_town', 60 * MIN)
+    level(w, 'Alt', 61 * MIN)
+    expect(w.run!.act).toBe(1)
+  })
+})
+
 describe('personal best with broken runs saved earlier', () => {
   const clean = finished(1, Array<number>(10).fill(30))
   // What an alt used to cause: 8 acts in the same instant, a 2-minute "PB".

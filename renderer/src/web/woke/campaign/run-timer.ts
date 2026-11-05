@@ -226,14 +226,17 @@ export function applyRunEvent (
     if (ev.areaId === START_AREA_ID && w.autoStart &&
       (!w.run || w.run.finished || w.run.splits.length > 0)) {
       startRun(w, now)
+      w.run!.areaId = ev.areaId
       return true
     }
     const run = w.run
     if (!run || run.finished) return false
-    run.areaId = ev.areaId
     const act = actFromAreaId(ev.areaId)
+    // A run started by hand on a character already past act 1 begins where it is.
+    if (run.areaId === undefined && run.splits.length === 0 && act != null && act > 1 && act <= LAST_ACT) run.act = act
+    run.areaId = ev.areaId
     // A character can't skip an act, so a bigger jump is another character:
-    // the run stays where it is.
+    // the run stays where it is, until its own character levels up there.
     if (act === run.act + 1) {
       run.splits.push({ act: run.act, totalMs: runElapsed(run, now), level: run.level })
       if (act > LAST_ACT) {
@@ -266,6 +269,15 @@ export function applyRunEvent (
     run.charName = ev.charName
     run.className = ev.className
     run.level = ev.level
+    // Its own character levelling in a later act means the run really is
+    // there: lines were missed while the app was closed. The skipped acts get
+    // no time of their own, which keeps this run out of PB and sum of best.
+    const here = run.areaId ? actFromAreaId(run.areaId) : null
+    if (here != null && here > run.act && here <= LAST_ACT) {
+      const at = runElapsed(run, now)
+      for (let a = run.act; a < here; a++) run.splits.push({ act: a, totalMs: at, level: run.level })
+      run.act = here
+    }
     return true
   }
   return false
