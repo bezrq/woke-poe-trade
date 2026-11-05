@@ -254,3 +254,25 @@ test('right-clicking a tool that allows copies adds another one', async ({ overl
   await icon(overlay, 'All tools').click()
   await expect(launcher.getByRole('button', { name: /Pin .* to the rail|Unpin .* from the rail/ })).toHaveCount(before + 1)
 })
+
+test('a second Settings or Item search cannot be added', async ({ overlay }) => {
+  const { page } = overlay
+  await boot(overlay)
+  for (const name of ['Settings', 'Item search']) {
+    await icon(overlay, name).click({ button: 'right' })
+    await expect(page.getByRole('button', { name: 'Unpin from the rail' })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Add another copy' })).toHaveCount(0)
+    await page.mouse.click(1500, 1300)
+  }
+})
+
+test('a tool placed from the launcher gets its default hotkeys straight away', async ({ overlay }) => {
+  const { page } = overlay
+  await boot(overlay)
+  await icon(overlay, 'All tools').click()
+  await page.locator('[class*="launcher"]').getByRole('button', { name: 'Essence scan', exact: true }).click()
+  await expect(icon(overlay, 'Essence scan')).toBeVisible()
+  // Hotkeys only register while the game has focus.
+  overlay.app.focusGame(true)
+  await expect.poll(() => overlay.app.registeredHotkeys()).toContain('Alt + E')
+})

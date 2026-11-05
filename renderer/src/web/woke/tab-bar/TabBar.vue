@@ -121,7 +121,7 @@
           <button :class="$style.iconBtn" title="Save" @click="commitRename"><i class="fas fa-check" /></button>
         </div>
         <button v-else-if="!menuTab.iconOnly" :class="$style.item" @click="startRename"><i class="fas fa-pen" />Rename</button>
-        <button v-if="allowsCopies(menuTab.wmType)" :class="$style.item" @click="placeNew(menuTab.wmType); closePopup()">
+        <button v-if="canAddCopy(menuTab.wmType)" :class="$style.item" @click="placeNew(menuTab.wmType); closePopup()">
           <i class="fas fa-plus" />Add another copy
         </button>
         <template v-if="menuTab.removable">
@@ -463,7 +463,10 @@ function activate (entry: LauncherEntry<Tab>) {
 }
 function openFirstMatch () {
   if (!launcherQuery.value) return
-  const first = launcherColumns.value.flat().flatMap(g => g.items)[0]
+  const rows = launcherColumns.value.flat().flatMap(g => g.items)
+  // A tool that's placed beats a price. Typing "essence" to price one shouldn't
+  // switch on and place the Essence scan.
+  const first = priceGroups.value.length ? rows.find(row => row.tab) : rows[0]
   if (!first) {
     if (priceGroups.value.length) openSearch(priceGroups.value[0].name)
     return
@@ -477,8 +480,6 @@ function turnOn (wmType: string) {
   for (const m of MODULES) {
     if (m.widgetTypes.includes(wmType)) setModuleOn(config, m.id, true)
   }
-  // Its hotkeys were left out while it was off.
-  pushHostConfig()
 }
 // A dock-only tool has no window to open, so its settings are the way in.
 const DOCK_ONLY_PAGES: Record<string, string> = { 'woke-campaign': 'Campaign & run timer' }
@@ -488,14 +489,20 @@ function openModuleSettings (wmType: string) {
   wm.setFlag(settings.wmId, `settings::page=${DOCK_ONLY_PAGES[wmType] ?? typeName(wmType)}`, true)
   wm.show(settings.wmId)
 }
+// Once it's mounted: its default hotkeys are set then, and whether a running
+// module needs the game log depends on it being placed.
+function afterMount (fn: () => void) {
+  nextTick(() => nextTick(() => {
+    fn()
+    pushHostConfig()
+  }))
+}
 // One that's already placed (a module just turned back on) comes back as it was.
 function placeAndOpen (wmType: string) {
   const placed = AppConfig().widgets.find(w => w.wmType === wmType)
-  if (!placed) {
-    placeNew(wmType)
-    return
-  }
-  if (!placed.wmFlags.includes('menu::skip')) nextTick(() => nextTick(() => wm.show(placed.wmId)))
+  if (!placed) placeNew(wmType)
+  else if (placed.wmFlags.includes('menu::skip')) afterMount(() => openModuleSettings(wmType))
+  else afterMount(() => wm.show(placed.wmId))
 }
 function placeNew (wmType: string) {
   wm.create(wmType)
@@ -503,8 +510,12 @@ function placeNew (wmType: string) {
   // A window's own remove button leaves its id behind, and ids get reused.
   props.config.pinned = (props.config.pinned ?? []).filter(id => id !== created.wmId)
   setLabel(created.wmId, '')
-  // The widget initialises on mount; show it once that has happened.
-  nextTick(() => nextTick(() => wm.show(created.wmId)))
+  afterMount(() => wm.show(created.wmId))
+}
+// Only tools that can hold different content: a second Settings can't work.
+function canAddCopy (wmType: string) {
+  if (!allowsCopies(wmType) || wmType === 'stash-search') return false
+  return registry.widgets.some(({ widget }) => widget.type === wmType && widget.instances === 'multi')
 }
 
 // Prices for what's typed. Clicking one opens the full search on it.
