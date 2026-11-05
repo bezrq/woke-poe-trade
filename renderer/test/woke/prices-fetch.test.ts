@@ -213,4 +213,44 @@ describe('poe.ninja fetch', () => {
     expect(emitted).toEqual([])
     expect(divine()).toBe(null)
   })
+
+  it('stops loading when moving to a league with no prices during a stuck download', async () => {
+    const download = pendingDownload()
+    proxy.mockImplementation(download.started)
+    const { ninja } = await setup()
+    expect(ninja.initialLoading()).toBe(true)
+
+    league.selected.value = { id: 'My League (PL123)', realm: 'pc-ggg', isPopular: false }
+    league.selectedId.value = 'My League (PL123)'
+    await nextTick()
+    await vi.advanceTimersByTimeAsync(0)
+
+    expect(ninja.initialLoading()).toBe(false)
+    vi.useRealTimers()
+    await new Promise(resolve => setTimeout(resolve, 5))
+    expect(rejected).toEqual([])
+  })
+
+  it('ignores an old download that lands after a newer one started', async () => {
+    const finishers: Array<() => void> = []
+    const feeds = [FEED.replace('"chaos":400', '"chaos":111'), FEED]
+    proxy.mockImplementation(() => new Promise((resolve) => {
+      const body = feeds[finishers.length]
+      finishers.push(() => { resolve(reply(body)) })
+    }))
+    const { emitted, divine } = await setup()
+
+    league.selected.value = { id: 'Hardcore Allflame', realm: 'pc-ggg', isPopular: true }
+    league.selectedId.value = 'Hardcore Allflame'
+    await nextTick()
+    await vi.advanceTimersByTimeAsync(0)
+    finishers[0]()
+    await vi.advanceTimersByTimeAsync(0)
+    expect(emitted).toEqual([])
+    expect(divine()).toBe(null)
+
+    finishers[1]()
+    await vi.advanceTimersByTimeAsync(0)
+    expect(divine()).toBe(400)
+  })
 })

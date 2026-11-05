@@ -46,7 +46,13 @@ export const usePoeninja = createGlobalState(() => {
 
   async function load (force: boolean = false) {
     const league = leagues.selected.value
-    if (!league || !league.isPopular || league.realm !== 'pc-ggg') return
+    if (!league || !league.isPopular || league.realm !== 'pc-ggg') {
+      // woke: a download for the previous league must not keep the spinner up.
+      downloadController?.abort()
+      downloadController = undefined
+      isLoading.value = false
+      return
+    }
 
     if (!force && (
       (Date.now() - lastUpdateTime) < UPDATE_INTERVAL_MS ||
