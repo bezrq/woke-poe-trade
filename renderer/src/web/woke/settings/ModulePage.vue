@@ -7,7 +7,7 @@
       <div v-if="uses.length" :class="$style.uses">
         <span class="w-dim">Uses</span>
         <button v-for="u in uses" :key="u.label" type="button" :class="$style.use" :title="`Set in ${u.pageName}`" @click="emit('open', u.page)">
-          {{ u.label }}<span v-if="u.value" class="w-dim"> · {{ u.value }}</span> <i class="fas fa-arrow-right" />
+          {{ u.label }}<span v-if="u.value" :class="u.warn ? $style.warn : 'w-dim'"> · {{ u.value }}</span> <i class="fas fa-arrow-right" />
         </button>
       </div>
     </w-setting-section>
@@ -84,9 +84,13 @@ const blocks = computed(() => {
 // C1: shared settings this module runs on, linked to where they're set.
 const uses = computed(() => {
   const needs = new Set<ModuleNeed>(modules.value.flatMap(m => m.needs))
-  const out: Array<{ label: string, value: string | null, page: string, pageName: string }> = []
+  const out: Array<{ label: string, value: string | null, page: string, pageName: string, warn?: boolean }> = []
   const name = (id: string) => PAGE_BY_ID.get(id)?.name ?? id
   if (needs.has('poll') || needs.has('prices')) out.push({ label: 'League', value: props.config.leagueId ?? null, page: 'game', pageName: name('game') })
+  if (needs.has('account')) {
+    const account = props.config.accountName.trim()
+    out.push({ label: 'Account name', value: account || 'not set', warn: !account, page: 'game', pageName: name('game') })
+  }
   if (needs.has('log')) out.push({ label: 'Game log', value: props.config.clientLog ? 'set' : 'automatic', page: 'game', pageName: name('game') })
   if (needs.has('ocr')) out.push({ label: 'Screen reading', value: null, page: 'screen', pageName: name('screen') })
   if (needs.has('hotkeys')) out.push({ label: 'Hotkeys', value: null, page: 'hotkeys', pageName: name('hotkeys') })
@@ -96,6 +100,7 @@ const uses = computed(() => {
 
 <style module>
 .page { display: flex; flex-direction: column; gap: var(--w-s5); }
+.warn { color: var(--w-warn); }
 .uses { display: flex; align-items: center; gap: var(--w-s2); flex-wrap: wrap; padding-top: var(--w-s2); font-size: var(--w-fs-sm); }
 .use {
   display: inline-flex; align-items: center; gap: 4px; padding: 0 var(--w-s2); line-height: 20px;

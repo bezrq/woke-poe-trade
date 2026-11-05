@@ -208,6 +208,17 @@ export const PAGES: SettingsPage[] = [
     find: ['Lab layout', 'poelab', "Aspirants' Plaza", 'Lab notes', 'Lab gems']
   },
   {
+    id: 'challenges',
+    name: 'Challenge guide',
+    group: 'modules',
+    sub: 'Campaign & lab',
+    icon: modulePageIcon('challenges'),
+    description: 'The league challenge guide on a hotkey, ticked from your profile.',
+    modules: ['challenges'],
+    widgets: ['woke-challenges'],
+    find: ['Challenges', 'Challenge guide', 'Account name', 'Sync']
+  },
+  {
     id: 'map-mods',
     name: 'Map mods & map scan',
     group: 'modules',
