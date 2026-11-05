@@ -31,6 +31,7 @@ import WidgetEssenceScan from './essence-scan/WidgetEssenceScan.vue'
 import WidgetLabGems from './lab-gems/WidgetLabGems.vue'
 import WidgetLeagueInvest from './league-invest/WidgetLeagueInvest.vue'
 import WidgetBossRuns from './boss-runs/WidgetBossRuns.vue'
+import WidgetScarabFlip from './scarab-flip/WidgetScarabFlip.vue'
 import WidgetLootFilter from './loot-filter/WidgetLootFilter.vue'
 import WidgetSessionAnalytics from './analytics/WidgetSessionAnalytics.vue'
 import WidgetTrade from './trade/WidgetTrade.vue'
@@ -55,6 +56,7 @@ export const wokeWidgets: WidgetComponent[] = [
   WidgetLabGems as unknown as WidgetComponent,
   WidgetLeagueInvest as unknown as WidgetComponent,
   WidgetBossRuns as unknown as WidgetComponent,
+  WidgetScarabFlip as unknown as WidgetComponent,
   WidgetLootFilter as unknown as WidgetComponent,
   WidgetSessionAnalytics as unknown as WidgetComponent,
   WidgetTrade as unknown as WidgetComponent
