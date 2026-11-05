@@ -23,6 +23,14 @@ const NPC_MECHANIC: Record<string, string> = {
   'Gwennen, the Gambler': 'expedition'
 }
 
+// The Expedition vendor a log speaker stands for.
+const SPEAKER_VENDOR: Record<string, string> = {
+  'Dannig, Warrior Skald': 'Dannig',
+  'Tujen, the Haggler': 'Tujen',
+  'Rog': 'Rog',
+  'Gwennen, the Gambler': 'Gwennen'
+}
+
 const SPEAKER_RE = /\] ([^:#$&%@\]][^:\]]*): /
 
 export function mechanicForSpeaker (line: string): string | undefined {
@@ -30,15 +38,24 @@ export function mechanicForSpeaker (line: string): string | undefined {
   return m ? NPC_MECHANIC[m[1]] : undefined
 }
 
+export function expeditionVendorForSpeaker (line: string): string | undefined {
+  const m = SPEAKER_RE.exec(line)
+  return m ? SPEAKER_VENDOR[m[1]] : undefined
+}
+
 // Calls back with the mechanic of the zone you're in, or null on entering a
 // zone that has none (town, hideout, a plain map), so the icon can hide.
-export function useMechanicZone (onMechanic: (id: string | null) => void): void {
+// onVendor: the Expedition vendor who last spoke in this instance, or null.
+export function useMechanicZone (onMechanic: (id: string | null) => void, onVendor?: (vendor: string | null) => void): void {
   onGameLog((lines) => {
     for (const { line, ev } of lines) {
+      const vendor = expeditionVendorForSpeaker(line)
+      if (vendor) onVendor?.(vendor)
       const npc = mechanicForSpeaker(line)
       if (npc) { onMechanic(npc); continue }
       if (ev?.kind === 'area') {
         // A new instance: forget the last zone's mechanic unless this one has its own.
+        onVendor?.(null)
         onMechanic(mechanicForZone(ev.areaId)?.id ?? null)
       } else if (ev?.kind === 'zone') {
         const mech = mechanicForZone(ev.name)

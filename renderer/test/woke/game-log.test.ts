@@ -11,7 +11,7 @@ import { actProgress, advanceOnEnter, resyncTo, DEFAULT_ROUTE_OPTIONS, xpMultipl
 import { routeAsleepAfter } from '@/web/woke/campaign/widget'
 import type { RouteOptions } from '@/web/woke/campaign/route-parse'
 import { countNewMap, isMapArea, isMapSideArea, newSession, onZoneChange, maybeAutoPause, AUTO_PAUSE_MS } from '@/web/woke/farming/farming'
-import { mechanicForSpeaker } from '@/web/woke/mechanics/zone'
+import { expeditionVendorForSpeaker, mechanicForSpeaker } from '@/web/woke/mechanics/zone'
 import { BOSS_AREAS, bossAreaIds } from '@/web/woke/shared/boss-areas'
 import { BOSS_ARENAS, arenaBosses, zoneKind } from '@/web/woke/shared/zone'
 import { BOSSES } from '@/web/woke/boss-runs/bosses'
@@ -215,6 +215,16 @@ describe('league mechanics', () => {
     expect(say('Jun, Veiled Master')).toBe('betrayal')
     expect(say('Niko, Master of the Depths')).toBe('delve')
     expect(say('Rog')).toBe('expedition')
+  })
+
+  it('knows which Expedition vendor is here from their real log lines', () => {
+    const say = (rest: string) => expeditionVendorForSpeaker(`2026/11/05 20:49:11 18887484 cffb065b [INFO Client 34092] ${rest}`)
+    expect(say('Tujen, the Haggler: Oi! Over here!')).toBe('Tujen')
+    expect(say('Rog: I\'ve got another one for ya!')).toBe('Rog')
+    expect(say('Dannig, Warrior Skald: Hail!')).toBe('Dannig')
+    expect(say('Gwennen, the Gambler: Exile!')).toBe('Gwennen')
+    expect(say('Einhar, Beastmaster: Exile!')).toBeUndefined()
+    expect(say('@From Tujen, the Haggler: wtb')).toBeUndefined()
   })
 
   it('player chat is never an NPC', () => {

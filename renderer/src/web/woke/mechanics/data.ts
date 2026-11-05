@@ -13,6 +13,8 @@ export interface PriceGroup {
   unit?: number
   // Short tag shown next to an item, e.g. the Expedition vendor.
   tag?: (item: PriceItem) => string | undefined
+  // Prices here can't rank the items against each other, so no "best" call.
+  unranked?: boolean
   limit?: number
 }
 
@@ -32,9 +34,18 @@ export interface Mechanic {
 
 const EXPEDITION_VENDORS: Record<string, string> = {
   'Exotic Coinage': 'Tujen',
-  'Scrap Metal': 'Gwennen',
-  'Astragali': 'Rog',
+  'Scrap Metal': 'Rog',
+  'Astragali': 'Gwennen',
   'Burial Medallion': 'Dannig'
+}
+
+// Per unit, and the four don't drop in the same amounts, so the dearest isn't
+// necessarily the one worth most per run.
+const EXPEDITION_GROUP: PriceGroup = {
+  label: 'Refresh currency, each',
+  types: ['Artifact'],
+  tag: i => EXPEDITION_VENDORS[i.name],
+  unranked: true
 }
 
 const LIFEFORCE_COLOUR: Record<string, string> = {
@@ -66,14 +77,7 @@ export const MECHANICS: Mechanic[] = [
     label: 'Expedition',
     short: 'EXP',
     icon: 'fas fa-bomb',
-    groups: [
-      {
-        label: 'Vendor currency, per unit',
-        types: ['Currency'],
-        match: /^(Exotic Coinage|Scrap Metal|Astragali|Burial Medallion)$/,
-        tag: i => EXPEDITION_VENDORS[i.name]
-      }
-    ],
+    groups: [EXPEDITION_GROUP],
     scarabs: /Expedition/,
     tips: [
       'Run logbooks for the faction whose vendor currency is worth most per unit.',
@@ -197,7 +201,6 @@ export const MECHANICS: Mechanic[] = [
     short: 'ULT',
     icon: 'fas fa-dungeon',
     groups: [
-      { label: 'Inscribed Ultimatum', match: /^Inscribed Ultimatum/, limit: 4 },
       { label: 'Catalysts', types: ['Currency'], match: /Catalyst$/, limit: 10 }
     ],
     scarabs: /Ultimatum/,
@@ -212,7 +215,6 @@ export const MECHANICS: Mechanic[] = [
     short: 'SNC',
     icon: 'fas fa-place-of-worship',
     groups: [
-      { label: 'Tome', match: /Forbidden Tome/, limit: 2 },
       { label: 'Relics', types: ['UniqueRelic'], limit: 10 }
     ],
     tips: [
@@ -319,11 +321,22 @@ export function priceScarabs (family: RegExp, items: PriceItem[], limit = 8): Pr
   return priceGroup({ label: 'Scarabs', types: ['Scarab'], match: family, limit }, items)
 }
 
-// One-line pick: the top item of the first group that has prices.
+export function expeditionRows (items: PriceItem[]): PricedRow[] {
+  return priceGroup(EXPEDITION_GROUP, items)
+}
+
+// Change over poe.ninja's last 7 days as a ratio (0.12 is +12%), if known.
+export function weekChange (row: PricedRow): number | null {
+  const then = row.item.d7
+  return then != null && then > 0 ? row.item.chaos / then - 1 : null
+}
+
+// One-line pick: the top item of the first group that has prices, unless
+// that group's prices can't rank its items.
 export function verdict (mech: Mechanic, items: PriceItem[]): { best: PricedRow, next?: PricedRow } | null {
   for (const group of mech.groups) {
     const rows = priceGroup(group, items)
-    if (rows.length) return { best: rows[0], next: rows[1] }
+    if (rows.length) return group.unranked ? null : { best: rows[0], next: rows[1] }
   }
   return null
 }
