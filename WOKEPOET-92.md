@@ -1,7 +1,7 @@
 ---
 id: WOKEPOET-92
 title: 'Generalize the flip screen: catalysts, delirium orbs, Harvest rerolls and more'
-status: Ready
+status: Done
 priority: None
 effort: L
 assignee: Agent
@@ -80,9 +80,86 @@ history:
     to: Ready
     user: Agent
     date: '2026-11-05T11:29:32.068Z'
+  - type: comment
+    user: Agent
+    comment: >-
+      Merged as 9a3784a1 and running in the dev copy. Tabbed Flips covers
+      scarabs, catalysts, delirium orbs, fossils, essences, oils and runegrafts.
+      Not yet seen on screen in the real app; the 30 lifeforce per item is still
+      to be confirmed in game and is editable in the panel.
+    completionComment: true
+    date: '2026-11-05T12:16:37.636Z'
+    id: c-2026-11-05t12-16-37-636z
+  - type: status_change
+    from: Ready
+    to: Done
+    user: Agent
+    date: '2026-11-05T12:16:37.876Z'
 swimlane: null
 needsAction: null
 implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/163'
+baselineCommit: ae9d149f9c555d42e467c95e82514624d060baa7
+diffSummary:
+  - file: docs/.vitepress/theme/landing/Landing.vue
+    additions: 363
+    deletions: 131
+  - file: docs/.vitepress/theme/landing/content.js
+    additions: 65
+    deletions: 23
+  - file: docs/public/shots/hero.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/readme-banner.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/story-essence.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/story-loot.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/story-maps.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/story-price.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/tour-boss-runs.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/tour-boss.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/tour-campaign-chip.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/tour-campaign.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/tour-filter-prices.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/tour-filter-rules.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/tour-map-mods.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/tour-market.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/tour-pob.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/tour-regex.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/tour-trade.webp
+    additions: 0
+    deletions: 0
+  - file: testing/e2e/landing-shots.spec.ts
+    additions: 211
+    deletions: 4
 ---
 > **TL;DR:** Turn the scarab flip panel into one Flips screen covering every recipe and Harvest reroll that can be priced, once Guy picks a layout.
 
