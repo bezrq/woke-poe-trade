@@ -89,13 +89,22 @@ describe('uniques with a pool of mods', () => {
   it('keeps the first mods of a long list and counts the rest', () => {
     const lines = unique("Watcher's Eye")
     expect(lines).toContain('(4-6)% increased maximum Life')
-    expect(lines).toContain('and 84 more possible mods')
+    expect(lines).toContain('and 84 more mods')
     expect(lines.length).toBeLessThan(12)
   })
   it('lists every mod of a unique that really has this many', () => {
     const lines = unique('The Dancing Duo')
-    expect(lines.some(l => l.includes('possible'))).toBe(false)
+    expect(lines.some(l => l.includes('more mods'))).toBe(false)
     expect(lines).toContain('Manifested Dancing Dervishes disables both weapon slots')
+  })
+})
+
+describe('a long mod list and the stats', () => {
+  it('still counts a fixed mod past the cut', () => {
+    const lines = all(buildTip(pack, { name: 'Cane of Kulemak', kind: 'unique' }))
+    const row = pack.uniques!['Cane of Kulemak'].v[0]
+    const sure = gearStats(pack.bases![pack.uniques!['Cane of Kulemak'].b], row.e ?? []).map(text)
+    expect(lines).toEqual(expect.arrayContaining(sure))
   })
 })
 

@@ -105,7 +105,7 @@
             @click="selTier = t.tier; picked = []" @contextmenu="tierMenu($event, t)"
             @dragover="onDragOver(t, $event)" @dragleave="dragOver = dragOver === t.tier ? null : dragOver" @drop="onDrop(t, $event)">
             <span :class="$style.tierName" :title="t.tier">{{ tierName(firstLive(t)) }}<span v-if="tierChanged(t.tier)" :class="$style.dot" title="You changed this tier" /></span>
-            <span :class="$style.icons">
+            <span :class="$style.icons" :title="t.bases.slice(0, 3).every(b => baseIcon(b)) ? undefined : t.bases.slice(0, 12).join(' · ')">
               <template v-if="t.bases.length">
                 <template v-for="b in t.bases.slice(0, 3)" :key="b"><img v-if="baseIcon(b)" v-item-tip="baseTip(b)" :src="baseIcon(b)!" :class="$style.rowArt" alt=""></template>
                 <span v-if="t.bases.length > 3" class="w-faint text-xs w-num" :title="t.bases.slice(3, 15).join(' · ')">+{{ t.bases.length - 3 }}</span>

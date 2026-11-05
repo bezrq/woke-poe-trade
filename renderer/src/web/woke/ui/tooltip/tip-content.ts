@@ -270,7 +270,7 @@ const present = (sections: TipLine[][]) => sections.filter(s => s.length)
 // dozens that never appear together. No real item has this many of either kind.
 const MOST_IMPLICITS = 4
 const MOST_EXPLICITS = 12
-// The fixed mods come first in the data, so these are the ones to keep.
+// The data doesn't say which are fixed, so this is only the start of the list.
 const EXPLICITS_SHOWN = 6
 
 export function uniqueTip (name: string, unique: TipUnique, base: TipBase | undefined, variant?: string): TipModel {
@@ -280,9 +280,10 @@ export function uniqueTip (name: string, unique: TipUnique, base: TipBase | unde
   const implicits = allImplicits.length > MOST_IMPLICITS ? [] : allImplicits
   const explicits = allExplicits.length > MOST_EXPLICITS ? allExplicits.slice(0, EXPLICITS_SHOWN) : allExplicits
   const mutated = row?.m ?? []
-  // Only mods it's sure to have count towards its stats and requirements.
-  const stats = base ? gearStats(base, [...implicits, ...explicits, ...mutated]) : []
-  const need = requirements(row?.l ?? base?.l, attributeNeeds(base, [...implicits, ...explicits, ...mutated]))
+  // Every explicit counts, since a fixed one can be past the cut. An implicit
+  // pool doesn't: none of it is sure, and it would inflate the item's stats.
+  const stats = base ? gearStats(base, [...implicits, ...allExplicits, ...mutated]) : []
+  const need = requirements(row?.l ?? base?.l, attributeNeeds(base, [...implicits, ...allExplicits, ...mutated]))
   const moreExplicits = allExplicits.length - explicits.length
   return {
     name,
@@ -297,7 +298,7 @@ export function uniqueTip (name: string, unique: TipUnique, base: TipBase | unde
       [
         ...mutated.map(m => plain(unwrap(m), 'mutated')),
         ...explicits.map(m => plain(unwrap(m), 'mod')),
-        ...(moreExplicits ? [plain(`and ${moreExplicits} more possible mods`, 'dim')] : [])
+        ...(moreExplicits ? [plain(`and ${moreExplicits} more mods`, 'dim')] : [])
       ],
       unique.f ? unique.f.split('\n').map(l => plain(l, 'flavour')) : []
     ])
