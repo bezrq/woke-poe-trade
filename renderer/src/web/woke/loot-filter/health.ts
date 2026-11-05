@@ -32,6 +32,8 @@ export function trashCount (items: HealthItem[]): number {
   return items.filter(i => i.grade === 'trash').length
 }
 
+export const GRADE_LABEL: Record<PriceGrade, string> = { high: 'worth it', mid: 'some value', trash: 'trash', unknown: '' }
+
 // The bar's length: a log scale, so 1c and 1000c both stay readable.
 export function priceBar (chaos: number | null, most: number): number {
   if (chaos == null || chaos <= 0 || most <= 0) return 0

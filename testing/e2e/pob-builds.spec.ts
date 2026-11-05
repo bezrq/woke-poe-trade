@@ -29,17 +29,18 @@ async function openBuild (overlay: Overlay, width: number, height: number) {
   return detail
 }
 
-test('at 1440p, where panels are zoomed, the tooltip stays beside the panel and on screen', async ({ overlay }) => {
+test('at 1440p, where panels are zoomed, the item tooltip stays at the cursor and on screen', async ({ overlay }) => {
   const detail = await openBuild(overlay, 2560, 1440)
   await detail.getByRole('tab', { name: 'Gear' }).click()
-  await detail.locator('[class*="gearRow"]').first().hover()
+  const row = detail.locator('[class*="gearRow"]').first()
+  await row.hover()
+  const rowBox = (await row.boundingBox())!
   const tip = overlay.page.getByRole('tooltip')
   await expect(tip).toBeVisible()
   await overlay.page.waitForTimeout(300)
   await overlay.snap('item tooltip 1440p')
   const tipBox = (await tip.boundingBox())!
-  const panelBox = (await detail.boundingBox())!
-  expect(tipBox.x).toBeGreaterThanOrEqual(panelBox.x + panelBox.width)
+  expect(tipBox.x).toBeCloseTo(rowBox.x + rowBox.width / 2 + 16, -1)
   expect(tipBox.x + tipBox.width).toBeLessThanOrEqual(2560)
   expect(tipBox.y + tipBox.height).toBeLessThanOrEqual(1440)
 })
@@ -112,8 +113,9 @@ test('gem colours, item art and tooltips', async ({ overlay }) => {
   await page.waitForTimeout(600)
   await overlay.snap('item tooltip')
   const tipBox = (await tip.boundingBox())!
-  const panelBox = (await detail.boundingBox())!
-  expect(tipBox.x >= panelBox.x + panelBox.width || tipBox.x + tipBox.width <= panelBox.x).toBe(true)
+  // Clear of the cursor.
+  const rowBox = (await row.boundingBox())!
+  expect(tipBox.x).toBeGreaterThan(rowBox.x + rowBox.width / 2)
 
   await page.mouse.move(5, 5)
   await expect(tip).toHaveCount(0)

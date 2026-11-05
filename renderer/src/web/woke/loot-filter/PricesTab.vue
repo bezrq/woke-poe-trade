@@ -37,7 +37,7 @@
         </div>
       </template>
       <div v-if="moves.length" class="w-group-label" :class="$style.label">Would move</div>
-      <div v-for="m in moves" :key="m.type + m.base" v-item-tip="{ name: m.base }" :class="$style.row" @contextmenu="moveMenu($event, m)">
+      <div v-for="m in moves" :key="m.type + m.base" v-item-tip="baseTip(m.type, m.base)" :class="$style.row" @contextmenu="moveMenu($event, m)">
         <input :id="`pm-${m.type}-${m.base}`" v-model="picked[pickKey(m)]" type="checkbox" :class="$style.check" :aria-label="`Move ${m.base}`">
         <img v-if="icon(m)" :src="icon(m)!" :class="$style.art" alt="">
         <LabelPreview :text="m.base" :actions="lookOf(m.type, m.to)" :extras="false" />
@@ -81,7 +81,7 @@
       {{ hiddenCount }} hidden<template v-if="caughtCount">; your {{ config.safetyNet.minChaos }}c safety net still shows {{ caughtCount }}</template>. Click one to see what you'd get.
     </div>
     <template v-for="r in rows" :key="r.key">
-      <button v-item-tip="{ name: r.v.base }" type="button" class="w-focusable" :class="[$style.row, $style.healthRow, { [$style.open]: openRow === r.key }]" :aria-expanded="openRow === r.key" @click="openRow = openRow === r.key ? null : r.key">
+      <button v-item-tip="baseTip(r.v.group.type, r.v.base)" type="button" class="w-focusable" :class="[$style.row, $style.healthRow, { [$style.open]: openRow === r.key }]" :aria-expanded="openRow === r.key" @click="openRow = openRow === r.key ? null : r.key">
         <img v-if="r.icon" :src="r.icon" :class="$style.art" alt="">
         <LabelPreview :text="r.v.base" :actions="r.v.block?.actions ?? []" :visibility="r.v.state === 'hidden' ? 'Hide' : 'Show'" :extras="false" />
         <span class="w-trunc text-xs" :class="$style.who">
@@ -126,8 +126,7 @@
 import { computed, reactive, ref, watch } from 'vue'
 import { WButton, WChip, WEmpty, WField, WPrice, WSegmented, WToggle, agoPhrase, gameIcon, ninjaIcon, openMenu, toast, vItemTip } from '../ui'
 import { TURN_OFF_IDS } from './notices'
-import { gradeItems, healthKey, isDismissed, priceBar, showEffect, trashCount } from './health'
-import type { PriceGrade } from './health'
+import { gradeItems, GRADE_LABEL, healthKey, isDismissed, priceBar, showEffect, trashCount } from './health'
 import { usePoeninja } from '@/web/background/Prices'
 import LabelPreview from './LabelPreview.vue'
 import type { LootFilterStore } from './store'
@@ -135,6 +134,7 @@ import type { LootFilterWidget } from './widget'
 import { ECONOMY_GROUPS, NET_GROUPS, lockKey, tierRank } from './economy'
 import type { PriceMove, PriceSkip } from './economy'
 import { conditionSignature } from './edits'
+import { baseTipRef } from './base-tip'
 import { SAFETY_LOOK } from './safety'
 import type { BaseVerdict } from './safety'
 import { groupName } from './groups'
@@ -164,9 +164,12 @@ const SKIP_WHY = {
   locked: { label: 'your tier, locked', title: 'You placed this item yourself' }
 }
 
-const GRADE_LABEL: Record<PriceGrade, string> = { high: 'worth it', mid: 'some value', trash: 'trash', unknown: '' }
 const openRow = ref<string | null>(null)
 const showMoved = ref(false)
+
+function baseTip (type: string, base: string) {
+  return baseTipRef(props.store.prices.breakdown.value, props.config.safetyNet.minChaos, type, base)
+}
 
 const health = computed(() => props.store.health.value.filter(v => !isDismissed(props.config.healthDismissed, v)))
 const rows = computed(() => {

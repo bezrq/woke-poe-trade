@@ -1,6 +1,9 @@
 // The item tooltip on the market tracker: the rows that started it, on prices
 // with a real week of movement.
 import fs from 'node:fs'
+import os from 'node:os'
+import path from 'node:path'
+import zlib from 'node:zlib'
 import { fileURLToPath } from 'node:url'
 import { test, expect } from './harness'
 
@@ -19,7 +22,7 @@ const ROWS: Row[] = [
 
 const DENSE = fileURLToPath(new URL('../fixtures/http/poe.ninja/poe1/api/economy/current/dense/overviews.json', import.meta.url))
 
-test('hovering a market row shows the item beside the panel, with its price', async ({ overlay }) => {
+test('hovering a market row shows the item at the cursor, with its price', async ({ overlay }) => {
   const recorded = fs.readFileSync(DENSE, 'utf8')
   const blocks = ROWS.map(([type, name, variant, chaos, graph]) =>
     `{"type":"${type}","lines":[${JSON.stringify({ name, ...(variant ? { variant } : {}), chaos, graph })}]}`)
@@ -56,10 +59,16 @@ test('hovering a market row shows the item beside the panel, with its price', as
     await row.hover()
     await expect(tip).toContainText(name)
     await expect(tip).toContainText(shows)
-    // P1: beside the panel, covering none of it.
-    const t = (await tip.boundingBox())!
-    const p = (await panel.locator('[data-w-panel]').boundingBox())!
-    expect(t.x >= p.x + p.width || t.x + t.width <= p.x).toBe(true)
+    // Beside the cursor, and it follows.
+    const r = (await row.boundingBox())!
+    const near = async (x: number, y: number) => {
+      await overlay.page.mouse.move(x, y)
+      const t = (await tip.boundingBox())!
+      expect(t.x).toBeCloseTo(x + 16, -1)
+      expect(t.y).toBeCloseTo(y + 16, -1)
+    }
+    await near(r.x + 60, r.y + r.height / 2)
+    await near(r.x + 200, r.y + r.height / 2)
     await overlay.snap(`tip ${name}`)
     await overlay.page.mouse.move(1800, 1000)
     await expect(tip).toHaveCount(0)
@@ -73,8 +82,45 @@ test('hovering a market row shows the item beside the panel, with its price', as
   await expect(tip).toContainText('+3838%')
   await overlay.snap('with price strip')
 
+  // At the screen's edge it flips to stay on screen.
+  await overlay.page.mouse.move(1800, 1000)
+  const box = (await panel.locator('.w-row', { hasText: 'Pact of Lycia' }).boundingBox())!
+  const size = { width: Math.round(box.x + 300), height: Math.round(box.y + 60) }
+  await overlay.page.setViewportSize(size)
+  await panel.locator('.w-row', { hasText: 'Pact of Lycia' }).hover()
+  await expect(tip).toContainText('Pact of Lycia')
+  const flipped = (await tip.boundingBox())!
+  expect(flipped.x + flipped.width).toBeLessThanOrEqual(size.width)
+  expect(flipped.x).toBeGreaterThanOrEqual(0)
+  expect(flipped.y + flipped.height).toBeLessThanOrEqual(size.height)
+  await overlay.page.setViewportSize({ width: 1920, height: 1080 })
+
   // It stays out of the way of the right-click menu.
   await panel.locator('.w-row', { hasText: 'Pact of Lycia' }).click({ button: 'right' })
   await expect(tip).toHaveCount(0)
   expect(overlay.errors).toEqual([])
+})
+
+test('a base in a unique tier lists the uniques it can drop as, with their prices', async ({ overlay, fakeApp }) => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'woke-filters-'))
+  const gz = fs.readFileSync(fileURLToPath(new URL('../fixtures/filters/neversink/1-REGULAR.filter.gz', import.meta.url)))
+  fs.writeFileSync(path.join(dir, 'NeverSink.filter'), zlib.gunzipSync(gz))
+  await overlay.boot({
+    widgets: [{ wmType: 'woke-loot-filter', wmFlags: ['invisible-on-blur'], sampleHotkey: 'Alt + F', editorHotkey: 'Alt + Shift + F', folder: dir, sourceName: 'NeverSink.filter' }]
+  })
+  await expect.poll(() => fakeApp.registeredHotkeys(), { timeout: 20_000 }).toContain('Alt+Shift+F')
+  await overlay.pressHotkey('Alt + Shift + F')
+  const page = overlay.page
+  await page.getByRole('button', { name: /^Uniques \d+/ }).click()
+  const tip = page.getByRole('tooltip')
+
+  // Many uniques on one base: the best in full, then each with its price and grade.
+  await page.locator('[title="multispecialhigh"]').first().click()
+  const chip = page.getByText('Leather Belt', { exact: true }).first()
+  await chip.hover()
+  await expect(tip).toContainText('Headhunter')
+  await expect(tip).toContainText('Leather Belt')
+  await expect(tip).toContainText('worth it')
+  await expect(tip).toContainText('Cyclopean Coil')
+  await overlay.snap('unique base')
 })

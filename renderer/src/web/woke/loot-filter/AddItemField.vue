@@ -3,7 +3,7 @@
     <WField v-model="query" type="search" icon="fas fa-plus" placeholder="Add an item to this tier"
       @keydown.enter.prevent="pick(results[hl])" @keydown.down.prevent="step(1)" @keydown.up.prevent="step(-1)" @keydown.esc="query = ''" />
     <div v-if="results.length" ref="listEl" :class="$style.list" role="listbox">
-      <button v-for="(r, i) in results" :key="r.base" v-item-tip="{ name: r.base }" type="button" role="option" :aria-selected="i === hl" :class="[$style.row, { [$style.hl]: i === hl }]"
+      <button v-for="(r, i) in results" :key="r.base" v-item-tip="tipFor?.(r.base) ?? { name: r.base }" type="button" role="option" :aria-selected="i === hl" :class="[$style.row, { [$style.hl]: i === hl }]"
         @mouseenter="hl = i" @click="pick(r)">
         <img v-if="baseIcon(r.base)" :src="baseIcon(r.base)!" :class="$style.art" alt="">
         <span v-else :class="$style.art" />
@@ -24,6 +24,7 @@ import { computed, nextTick, ref, watch } from 'vue'
 import { ITEMS_ITERATOR } from '@/assets/data'
 import type { BaseType } from '@/assets/data'
 import { WField, vItemTip } from '../ui'
+import type { ItemTipRef } from '../ui'
 import LabelPreview from './LabelPreview.vue'
 import { addSearch } from './groups'
 import type { AddResult } from './groups'
@@ -31,7 +32,7 @@ import { baseIcon } from './label-style'
 import { ruleLabel } from './parse'
 import type { FilterDoc } from './parse'
 
-const props = defineProps<{ doc: FilterDoc, type: string, tier: string }>()
+const props = defineProps<{ doc: FilterDoc, type: string, tier: string, tipFor?: (base: string) => ItemTipRef }>()
 const emit = defineEmits<{ (e: 'add', result: AddResult): void }>()
 
 const query = ref('')

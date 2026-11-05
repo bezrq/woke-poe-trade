@@ -145,7 +145,7 @@
                 <WChip clickable :active="picked.includes(b)" draggable="true"
                   title="Click to pick it, shift-click to pick a run. Drag onto a tier to move it, with any others you've picked. Right-click for Move to."
                   @click="pickBase(b, $event)" @contextmenu="baseMenu($event, b)" @dragstart="onDragStart(b, $event)" @dragend="dragOver = null">
-                  <span v-item-tip="{ name: b }" class="flex items-center gap-1">
+                  <span v-item-tip="baseTip(b)" class="flex items-center gap-1">
                     <img v-if="baseIcon(b)" :src="baseIcon(b)!" :class="$style.chipArt" alt="">
                     <span>{{ b }}</span>
                     <span v-if="priceOf(b) != null" class="w-num" :class="$style[`p_${priceGrade(priceOf(b), config.safetyNet.minChaos)}`]">{{ priceText(priceOf(b)!) }}</span>
@@ -164,7 +164,7 @@
               <WButton size="sm" variant="ghost" @click="bulkTakeOff">Take off</WButton>
               <button type="button" class="w-icon-btn" title="Clear" aria-label="Clear picked items" @click="picked = []"><i aria-hidden="true" class="fas fa-times" /></button>
             </div>
-            <AddItemField v-if="store.doc.value && selType && targets.includes(tier.tier)" :key="`${selType}|${tier.tier}`" :doc="store.doc.value" :type="selType" :tier="tier.tier" @add="addItem" />
+            <AddItemField v-if="store.doc.value && selType && targets.includes(tier.tier)" :tip-for="baseTip" :key="`${selType}|${tier.tier}`" :doc="store.doc.value" :type="selType" :tier="tier.tier" @add="addItem" />
           </template>
           <WButton v-if="isOwnGroup && ownEditFor(tier)" size="sm" variant="ghost" icon="fas fa-trash" @click="removeEdit(ownEditFor(tier)!)">Remove this own rule</WButton>
         </template>
@@ -317,6 +317,7 @@ import { outputName } from './widget'
 import type { LootFilterWidget } from './widget'
 import { OWN_RULE_TYPE, addEdit, conditionSignature, describeEdit, moveTargets, nextEditId, readStyle, rehome, rehomeOptions } from './edits'
 import { ECONOMY_GROUPS } from './economy'
+import { baseTipRef } from './base-tip'
 import { priceGrade } from './health'
 import type { RehomeOption } from './edits'
 import type { FilterEdit, StylePatch } from './edits'
@@ -366,6 +367,10 @@ const dragOver = ref<string | null>(null)
 // The own rule open in the rule builder.
 const editingRuleId = ref<number | null>(null)
 const editingRule = computed(() => props.config.rules.find(r => r.id === editingRuleId.value) ?? null)
+
+function baseTip (base: string) {
+  return baseTipRef(props.store.prices.breakdown.value, props.config.safetyNet.minChaos, selType.value ?? '', base)
+}
 
 // Today's price of a base, in groups poe.ninja prices.
 function priceOf (base: string): number | null {
