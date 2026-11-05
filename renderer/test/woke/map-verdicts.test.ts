@@ -2,7 +2,7 @@
 // and a map with mods that can't be read is never a plain RUN.
 import { describe, it, expect, beforeAll, vi } from 'vitest'
 import { loadGameData } from '../helpers/game-data'
-import { allAreaMods } from '@/web/woke/map-mods/data'
+import { allAreaMods, everyStatLine } from '@/web/woke/map-mods/data'
 import { PRESETS, carryRewordedRatings, deadRatings, defaultProfile, rateMods } from '@/web/woke/map-mods/rules'
 import type { ModRating } from '@/web/woke/map-mods/rules'
 import { isUnsure } from '@/web/woke/map-mods/check'
@@ -56,7 +56,13 @@ describe('rating reworded mods', () => {
   })
 
   it('lists ratings on mods that no longer exist', () => {
-    expect(deadRatings({ [THORNS]: 'warn', 'No such mod': 'deadly' }, allAreaMods())).toEqual(['No such mod'])
+    expect(deadRatings({ [THORNS]: 'warn', 'No such mod': 'deadly', [OLD]: 'deadly' }, everyStatLine())).toEqual(['No such mod', OLD])
+  })
+
+  it('a mod missing from the Map mods list but in the game is not dead', () => {
+    const offList = 'Area contains an additional unstable Breach'
+    expect(allAreaMods()).not.toContain(offList)
+    expect(deadRatings({ [offList]: 'good' }, everyStatLine())).toEqual([])
   })
 })
 

@@ -50,7 +50,7 @@ import { defineComponent, computed } from 'vue'
 import WHotkeyCell from '../ui/WHotkeyCell.vue'
 import { configProp, configModelValue } from '@/web/settings/utils'
 import { WButton, WField, WSelect } from '../ui'
-import { allAreaMods } from './data'
+import { everyStatLine } from './data'
 import { copyOfProfile, deadRatings } from './rules'
 import type { JuiceWeights } from './rules'
 import { activeProfile, normalizeMapModsWidget } from './widget'
@@ -77,7 +77,7 @@ export default defineComponent({
       return props.configWidget
     })
     const profile = computed(() => activeProfile(w.value))
-    const dead = computed(() => deadRatings(profile.value.ratings, allAreaMods()))
+    const dead = computed(() => deadRatings(profile.value.ratings, everyStatLine()))
     const profileOptions = computed(() => w.value.profiles.map(p => ({ value: String(p.id), label: p.name || 'Unnamed' })))
 
     function nextId () { return Math.max(0, ...w.value.profiles.map(p => p.id)) + 1 }
