@@ -129,6 +129,36 @@ test('rare: the Generic / Base switch changes the title and the search', async (
   await expect(title).toHaveText('Ring')
 })
 
+test('filter tiles change by scrolling or dragging', async ({ overlay, page }) => {
+  await overlay.boot()
+  await overlay.copyItem('items/rare-ring.txt')
+  const panel = overlay.widget('price-check')
+  const value = panel.locator('.filter-name-tiles input').first()
+  await expect(value).toHaveValue('84')
+  const tile = panel.locator('.filter-name-tiles > div').first()
+  const box = (await tile.boundingBox())!
+  const x = box.x + box.width / 2
+  const y = box.y + 8 // the label
+
+  await page.mouse.move(x, y)
+  await page.mouse.wheel(0, -100)
+  await expect(value).toHaveValue('85')
+  await page.mouse.wheel(0, 100)
+  await page.mouse.wheel(0, 100)
+  await expect(value).toHaveValue('83')
+
+  const atRest = await tile.getAttribute('class')
+  await page.mouse.down()
+  await page.mouse.move(x, y - 40, { steps: 5 })
+  await expect(value).toHaveValue('88')
+  await page.mouse.move(x, y - 24, { steps: 3 })
+  await expect(value).toHaveValue('86')
+  await page.mouse.up()
+
+  // Letting go didn't count as a click on the label, which would switch the filter off.
+  await expect(tile).toHaveAttribute('class', atRest!)
+})
+
 test('map: price check shows the map mod verdict strip', async ({ overlay }) => {
   await overlay.boot({ widgets: [{ wmType: 'woke-map-mods' }] })
   await overlay.copyItem('items/map-rare-t16-deadly.txt')
