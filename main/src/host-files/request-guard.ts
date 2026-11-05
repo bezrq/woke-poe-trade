@@ -71,7 +71,9 @@ export function sendFile (root: string, url: string, res: ServerResponse) {
 }
 
 export function resolveInside (root: string, url: string): string | null {
-  const clean = url.split(/[?#]/, 1)[0]
+  // A backslash is a separator on Windows only: treat it as one everywhere, so
+  // "..\" can't climb out on the PC and the check is the same in tests.
+  const clean = url.split(/[?#]/, 1)[0].replace(/\\/g, '/')
   const base = path.resolve(root)
   const full = path.resolve(base, `.${path.posix.sep}${clean}`)
   return full.startsWith(base + path.sep) ? full : null
