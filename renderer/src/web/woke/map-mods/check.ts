@@ -5,8 +5,8 @@ import { ItemCategory, ItemRarity } from '@/parser'
 import type { ParsedItem } from '@/parser'
 import { ModifierType } from '@/parser/modifiers'
 import { prepareMapStat } from '@/web/map-check/prepare-map-stats'
-import { juiceScore, rateMods } from './rules'
-import type { JuiceResult, MapVerdict } from './rules'
+import { juiceScore, modRatings, rateMods } from './rules'
+import type { JuiceResult, MapVerdict, ModMode } from './rules'
 import { MAP_MODS_TYPE, activeProfile, importAptOnce, initMapModsWidget } from './widget'
 import type { MapModsWidget } from './widget'
 
@@ -25,10 +25,17 @@ function isHeistItem (item: ParsedItem): boolean {
   return item.category === ItemCategory.HeistContract || item.category === ItemCategory.HeistBlueprint
 }
 
-// A chart's implicit is its Voyage mod once charted, and until then this line.
+// A chart's implicit is its Voyage mod once charted, and until then this stat.
 const VOYAGE_UNREVEALED = 'Voyage Modifier will be revealed once Charted'
 
+// Which Map mods tab rates this item.
+export function modeOfItem (item: ParsedItem): ModMode {
+  if (isHeistItem(item)) return 'heist'
+  return item.category === ItemCategory.Chart ? 'charts' : 'maps'
+}
+
 export interface MapCheckResult {
+  mode: ModMode
   name: string
   sub: string
   verdict: MapVerdict
@@ -36,16 +43,19 @@ export interface MapCheckResult {
   juice: JuiceResult | null
   props: Array<{ label: string, value: number }>
   unknown: string[]
+  // Its mods are hidden, so the verdict means nothing yet.
+  unidentified: boolean
 }
 
 export function checkMap (item: ParsedItem, config: MapModsWidget): MapCheckResult {
   const profile = activeProfile(config)
   const isChart = item.category === ItemCategory.Chart
+  const rated = (type: ModifierType) => type === ModifierType.Explicit || (isChart && type === ModifierType.Implicit)
   const stats = item.statsByType
-    .filter(calc => calc.type === ModifierType.Explicit || (isChart && calc.type === ModifierType.Implicit))
+    .filter(calc => rated(calc.type) && calc.stat.ref !== VOYAGE_UNREVEALED)
     .map(calc => prepareMapStat(calc))
-    .filter(stat => stat.matcher !== VOYAGE_UNREVEALED)
-  const verdict = rateMods(stats, profile)
+  const mode = modeOfItem(item)
+  const verdict = rateMods(stats, { ...profile, ratings: modRatings(profile, mode) })
 
   const juice = isHeistItem(item) ? null : juiceScore({
     quantity: item.areaItemQuantity,
@@ -79,10 +89,10 @@ export function checkMap (item: ParsedItem, config: MapModsWidget): MapCheckResu
   subParts.push(`${stats.length} mods`)
 
   const unknown = item.unknownModifiers
-    .filter(mod => mod.type === ModifierType.Explicit)
+    .filter(mod => rated(mod.type))
     .map(mod => mod.text)
 
-  return { name, sub: subParts.join(' · '), verdict, juice, props, unknown }
+  return { mode, name, sub: subParts.join(' · '), verdict, juice, props, unknown, unidentified: item.isUnidentified }
 }
 
 // The checker's config, for the strip inside APT's own windows. Null when the

@@ -4,12 +4,19 @@ import type { MinStat } from './regex'
 
 export type ModRating = 'deadly' | 'warn' | 'good' | 'ok'
 
+// The Map mods tabs. Each has its own ratings and its own search: a rating on
+// one never reaches another, even for a mod that rolls on both.
+export type ModMode = 'maps' | 'heist' | 'charts'
+
 export interface MapModProfile {
   id: number
   name: string
   // Map mod matcher string (as APT translates it, e.g.
   // "Players cannot Regenerate Life, Mana or Energy Shield") -> rating.
   ratings: Record<string, ModRating>
+  // The same, for heist contracts and blueprints, and for charts.
+  heistRatings?: Record<string, ModRating>
+  chartRatings?: Record<string, ModRating>
   // Stash regex settings: minimum map stats and what to highlight.
   mins: Partial<Record<MinStat, number>>
   highlight: 'good' | 'bad'
@@ -178,6 +185,18 @@ export function nextPresetRating (r: ModRating): ModRating {
   return 'ok'
 }
 
+export function modRatings (profile: MapModProfile, mode: ModMode): Record<string, ModRating> {
+  if (mode === 'heist') return profile.heistRatings ?? {}
+  if (mode === 'charts') return profile.chartRatings ?? {}
+  return profile.ratings
+}
+
+export function setModRatings (profile: MapModProfile, mode: ModMode, ratings: Record<string, ModRating>) {
+  if (mode === 'heist') profile.heistRatings = ratings
+  else if (mode === 'charts') profile.chartRatings = ratings
+  else profile.ratings = ratings
+}
+
 export type ModListRow =
   | { kind: 'head', rating: ModRating, count: number }
   | { kind: 'mod', matcher: string }
@@ -308,7 +327,15 @@ export function shortLabel (matcher: string): string {
 
 // A new profile with everything this one has, under its own id and name.
 export function copyOfProfile (profile: MapModProfile, id: number): MapModProfile {
-  return { ...profile, id, name: `${profile.name} copy`, ratings: { ...profile.ratings }, mins: { ...profile.mins } }
+  return {
+    ...profile,
+    id,
+    name: `${profile.name} copy`,
+    ratings: { ...profile.ratings },
+    heistRatings: { ...profile.heistRatings },
+    chartRatings: { ...profile.chartRatings },
+    mins: { ...profile.mins }
+  }
 }
 
 export function defaultProfile (): MapModProfile {

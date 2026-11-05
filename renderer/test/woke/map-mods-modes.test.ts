@@ -3,6 +3,7 @@
 import { describe, it, expect, beforeAll, vi } from 'vitest'
 import { fixture, loadGameData, parseItem } from '../helpers/game-data'
 import { allAreaMods, chartMods, heistMods, modsForMode, profileRegex, tier17Mods } from '@/web/woke/map-mods/data'
+import { MAX_SEARCH_LENGTH } from '@/web/woke/map-mods/regex'
 import { defaultProfile, modListRows } from '@/web/woke/map-mods/rules'
 import type { MapModProfile } from '@/web/woke/map-mods/rules'
 import { DEFAULT_JUICE_WEIGHTS } from '@/web/woke/map-mods/rules'
@@ -28,16 +29,29 @@ beforeAll(loadGameData)
 
 describe('mods per tab', () => {
   it('every chart mod is one the stat data can read', () => {
-    expect(chartMods()).toHaveLength(46)
-    expect(chartMods()).toContain('Monsters fire # additional Projectiles')
+    for (const m of [
+      'Monsters fire # additional Projectiles',
+      '#% Monster Chaos Resistance',
+      'Monsters Blind on Hit',
+      'Monsters have #% chance to Blind on Hit',
+      'Monsters inflict # Grasping Vines on Hit',
+      "Monsters' Action Speed cannot be modified to below Base Value"
+    ]) expect(chartMods()).toContain(m)
+    expect(chartMods().length).toBeGreaterThanOrEqual(46)
   })
 
   it('heist mods are their own list and stay out of Maps, even when rated', () => {
     expect(heistMods()).toContain(GUARDS)
     expect(allAreaMods()).not.toContain(GUARDS)
-    const maps = modsForMode('maps', profile({ [GUARDS]: 'deadly' }))
+    const maps = modsForMode('maps', profile({}, { heistRatings: { [GUARDS]: 'deadly' } }))
     expect(maps).not.toContain(GUARDS)
     expect(modsForMode('heist', profile({}))).toContain(GUARDS)
+  })
+
+  it('a mod rated from a card stays visible on its tab, to be un-rated', () => {
+    const p = profile({}, { chartRatings: { 'Monsters have #% increased Attack Speed': 'warn' } })
+    expect(modsForMode('charts', p)).toContain('Monsters have #% increased Attack Speed')
+    expect(modsForMode('maps', p)).not.toContain('Monsters have #% increased Attack Speed')
   })
 
   it('the T17 switch takes T17 mods out of Maps only', () => {
@@ -65,11 +79,51 @@ describe('map search', () => {
     expect(p.ratings[DROWNING]).toBe('deadly')
   })
 
-  it('never includes heist picks', () => {
-    const res = profileRegex(profile({ [GUARDS]: 'deadly' }))
-    expect(res.tokens[GUARDS]).toBeUndefined()
-    expect(res.missing).toEqual([])
-    expect(res.text).toBe('')
+  it('never mixes tabs: each search holds only its own picks', () => {
+    const projectiles = 'Monsters fire # additional Projectiles'
+    const p = profile(
+      { 'Monsters reflect #% of Physical Damage': 'deadly' },
+      { heistRatings: { [GUARDS]: 'deadly' }, chartRatings: { [projectiles]: 'deadly' } }
+    )
+    expect(Object.keys(profileRegex(p, 'maps').tokens)).toEqual(['Monsters reflect #% of Physical Damage'])
+    expect(Object.keys(profileRegex(p, 'heist').tokens)).toEqual([GUARDS])
+    expect(Object.keys(profileRegex(p, 'charts').tokens)).toEqual([projectiles])
+  })
+
+  it('finds a search token for every chart and heist mod', () => {
+    const untokened = (mode: 'heist' | 'charts', mods: string[]) => mods.filter(m => {
+      const list = { [m]: 'deadly' as const }
+      const p = profile({}, mode === 'heist' ? { heistRatings: list } : { chartRatings: list })
+      return !profileRegex(p, mode).tokens[m]
+    })
+    expect(untokened('charts', chartMods())).toEqual([])
+    expect(untokened('heist', heistMods().filter(m => !/reduced|less /.test(m)))).toEqual([])
+  })
+
+  it('minimums only go in the map search', () => {
+    const p = profile({}, { mins: { quantity: 80 }, chartRatings: {} })
+    expect(profileRegex(p, 'maps').text).toContain('tity')
+    expect(profileRegex(p, 'charts').text).toBe('')
+    expect(profileRegex(p, 'heist').text).toBe('')
+  })
+
+  it('the T17 switch leaves other tabs alone', () => {
+    const action = "Monsters' Action Speed cannot be modified to below Base Value"
+    const p = profile({}, { hideT17: true, chartRatings: { [action]: 'deadly' } })
+    expect(profileRegex(p, 'charts').tokens[action]).toBeTruthy()
+  })
+
+  it('a chart search hides the real chart with that mod, and only by that mod', () => {
+    const text = fixture('items/chart-sandy-seabed.txt').toLowerCase()
+    const search = (matcher: string) => {
+      const res = profileRegex(profile({}, { chartRatings: { [matcher]: 'deadly' } }), 'charts')
+      expect(res.length).toBeLessThanOrEqual(MAX_SEARCH_LENGTH)
+      return text.includes(res.tokens[matcher])
+    }
+    expect(search('Monsters fire # additional Projectiles')).toBe(true)
+    expect(search('Monsters have #% increased Area of Effect')).toBe(true)
+    expect(search('Monsters deal #% extra Physical Damage as Fire')).toBe(false)
+    expect(search('Monsters are Hexproof')).toBe(false)
   })
 })
 
@@ -114,9 +168,25 @@ describe('checking a chart', () => {
     expect(res.juice?.score).toBeGreaterThan(0)
   })
 
-  it('a rating made on any tab decides the verdict', () => {
-    const res = checkMap(chart(), widget(profile({ 'Monsters fire # additional Projectiles': 'deadly' })))
-    expect(res.verdict.verdict).toBe('skip')
+  it('its verdict uses chart ratings, not map ratings', () => {
+    const projectiles = 'Monsters fire # additional Projectiles'
+    expect(checkMap(chart(), widget(profile({}, { chartRatings: { [projectiles]: 'deadly' } }))).verdict.verdict).toBe('skip')
+    expect(checkMap(chart(), widget(profile({ [projectiles]: 'deadly' }, { chartRatings: {} }))).verdict.verdict).toBe('run')
+  })
+})
+
+describe('checking a charted chart', () => {
+  // Hand-written around the real chart: a charted one's text hasn't been seen.
+  const charted = (implicit: string) => parseItem(
+    fixture('items/chart-sandy-seabed.txt').replace('Voyage Modifier will be revealed once Charted', implicit)
+  )
+
+  it('shows a Voyage line it can\'t read as not recognised', () => {
+    const res = checkMap(charted('Monsters in all Voyage Areas are at least Magic'), widget(profile({})))
+    expect(res.unknown).toEqual(['Monsters in all Voyage Areas are at least Magic'])
+    // The stat data has no implicit wording for this either.
+    const res2 = checkMap(charted('Monster Damage Penetrates 10% Elemental Resistances'), widget(profile({})))
+    expect(res2.unknown).toEqual(['Monster Damage Penetrates 10% Elemental Resistances'])
   })
 })
 
@@ -143,7 +213,8 @@ describe('checking a heist contract', () => {
   it('rates its mods and has no juice score', () => {
     const item = contract()
     expect(isMapLike(item)).toBe(true)
-    const res = checkMap(item, widget(profile({ [GUARDS]: 'deadly' })))
+    const res = checkMap(item, widget(profile({}, { heistRatings: { [GUARDS]: 'deadly' } })))
+    expect(res.mode).toBe('heist')
     expect(res.verdict.verdict).toBe('skip')
     expect(res.verdict.deadly[0].text).toBe('Guards deal 30% increased Damage')
     expect(res.juice).toBeNull()
@@ -156,21 +227,44 @@ describe('final import from the old list', () => {
     maps: { profile: 1, showNewStats: false, selectedStats }
   })
 
-  it('brings over marks made since the first import, once', () => {
+  const REFLECT = 'Monsters reflect #% of Physical Damage'
+  const REWARD = 'Reward Rooms have #% increased Monsters'
+
+  it('a first import sorts every old mark by tab', () => {
+    const p = profile({})
+    const w = widget(p)
+    config.widgets = [itemCheck([
+      { matcher: REWARD, decision: 'd-w' },
+      { matcher: REFLECT, decision: 'd--' }
+    ])]
+    importAptOnce(w)
+    expect(w.profiles[0].ratings).toEqual({ [REFLECT]: 'deadly' })
+    expect(w.profiles[0].heistRatings).toEqual({ [REWARD]: 'deadly' })
+    expect(w.profiles.map(_ => _.id)).toEqual([1, 3])
+  })
+
+  it('after an earlier import, takes only heist marks and keeps what was un-rated', () => {
+    // The first import put a heist mark with the map ratings. REFLECT was then
+    // un-rated here, and profile 3 deleted.
     const p = profile({ [GUARDS]: 'warn' })
     const w = widget(p, { aptImported: true })
     config.widgets = [itemCheck([
-      { matcher: 'Reward Rooms have #% increased Monsters', decision: 'd--' },
-      { matcher: GUARDS, decision: 'd--' }
+      { matcher: REWARD, decision: 'd-w' },
+      { matcher: GUARDS, decision: 'd--' },
+      { matcher: REFLECT, decision: 'd--' }
     ])]
     importAptOnce(w)
-    expect(p.ratings['Reward Rooms have #% increased Monsters'] ?? w.profiles[0].ratings['Reward Rooms have #% increased Monsters']).toBe('deadly')
-    // Already rated here: keeps it.
-    expect(w.profiles[0].ratings[GUARDS]).toBe('warn')
+    const after = w.profiles[0]
+    expect(after.ratings).toEqual({})
+    expect(after.heistRatings).toEqual({ [GUARDS]: 'warn', [REWARD]: 'deadly' })
+    expect(after.chartRatings).toBeUndefined()
+    expect(w.profiles.map(_ => _.id)).toEqual([1])
 
     // A later removal isn't undone.
-    w.profiles[0].ratings = {}
+    after.ratings = {}
+    after.heistRatings = {}
     importAptOnce(w)
-    expect(w.profiles[0].ratings).toEqual({})
+    expect(after.ratings).toEqual({})
+    expect(after.heistRatings).toEqual({})
   })
 })

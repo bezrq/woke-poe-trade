@@ -9,9 +9,15 @@ const APT_PROFILES = 3
 const DECISION: Record<string, ModRating | undefined> = { d: 'deadly', w: 'warn', g: 'good' }
 
 // Adds APT's ratings to `profiles` (in place). APT profile N fills our profile
-// with id N, made when missing; a mod already rated here keeps its rating.
+// with id N, made when missing; a mod already rated here keeps its rating. Its
+// list held every kind of mod: `isHeist` sends heist mods to the heist ratings.
 // Returns how many ratings were added.
-export function importAptMapRatings (profiles: MapModProfile[], apt: MapCheckConfig | undefined): number {
+export function importAptMapRatings (
+  profiles: MapModProfile[],
+  apt: MapCheckConfig | undefined,
+  isHeist: (matcher: string) => boolean = () => false,
+  makeProfiles = true
+): number {
   if (!apt || !Array.isArray(apt.selectedStats)) return 0
   let added = 0
   for (let n = 1; n <= APT_PROFILES; n++) {
@@ -23,17 +29,32 @@ export function importAptMapRatings (profiles: MapModProfile[], apt: MapCheckCon
     if (!rated.length) continue
     let profile = profiles.find(p => p.id === n)
     if (!profile) {
+      if (!makeProfiles) continue
       profile = { ...defaultProfile(), id: n, name: `Profile ${n}`, ratings: {} }
       profiles.push(profile)
     }
     const ratings = { ...profile.ratings }
+    const heistRatings = { ...profile.heistRatings }
     for (const [matcher, r] of rated) {
-      if (ratings[matcher]) continue
-      ratings[matcher] = r
+      const list = isHeist(matcher) ? heistRatings : ratings
+      if (list[matcher]) continue
+      list[matcher] = r
       added++
     }
     profile.ratings = ratings
+    profile.heistRatings = heistRatings
   }
   profiles.sort((a, b) => a.id - b.id)
   return added
+}
+
+// The first import put heist marks with the map ratings: moves them to their own
+// list, where one already there wins.
+export function moveHeistRatings (profiles: MapModProfile[], isHeist: (matcher: string) => boolean) {
+  for (const profile of profiles) {
+    const moved = Object.entries(profile.ratings).filter(([m]) => isHeist(m))
+    if (!moved.length) continue
+    profile.heistRatings = { ...Object.fromEntries(moved), ...profile.heistRatings }
+    profile.ratings = Object.fromEntries(Object.entries(profile.ratings).filter(([m]) => !isHeist(m)))
+  }
 }

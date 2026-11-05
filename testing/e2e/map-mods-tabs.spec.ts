@@ -24,7 +24,13 @@ test('tabs switch the list, picks sort to the top, the T17 switch hides T17 mods
   await panel.getByRole('tab', { name: /^Heist/ }).click()
   await expect(panel.getByText('Guards deal #% increased Damage')).toBeVisible()
   await expect(panel.getByRole('switch')).toHaveCount(0)
-  await expect(panel.getByText('Copy')).toHaveCount(0)
+  // Its own search: starts empty, and a pick fills only this one.
+  await expect(panel.getByText('Pick mods below')).toBeVisible()
+  await panel.getByText('Guards deal #% increased Damage').locator('..').getByRole('radio', { name: 'avoid' }).or(
+    panel.getByText('Guards deal #% increased Damage').locator('..').getByRole('button', { name: 'avoid' })
+  ).first().click()
+  await expect(panel.getByText('Pick mods below')).toHaveCount(0)
+  await expect(panel.getByRole('tab', { name: /^Heist/ })).toContainText('1')
   await overlay.snap('map mods heist tab')
 
   await panel.getByRole('tab', { name: /^Charts/ }).click()

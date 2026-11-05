@@ -1,7 +1,8 @@
 import type { Widget, Anchor } from '@/web/overlay/widgets'
 import { AppConfig } from '@/web/Config'
 import type { MapCheckConfig } from '@/web/map-check/common'
-import { importAptMapRatings } from './apt-import'
+import { importAptMapRatings, moveHeistRatings } from './apt-import'
+import { heistMods } from './data'
 import { DEFAULT_JUICE_WEIGHTS, defaultProfile } from './rules'
 import type { JuiceWeights, MapModProfile } from './rules'
 
@@ -42,15 +43,22 @@ export function initMapModsWidget (w: MapModsWidget) {
 }
 
 // APT's item info map check is replaced by this module: bring its ratings over.
-// Marks still in APT's list count once more, since its heist card stayed in use
-// after the first import. A mod already rated here keeps its rating.
+// A config that already imported them only takes heist marks, since APT's heist
+// card stayed in use after that. Its map marks stay as they are: a mod missing
+// here may be one the player un-rated, and deleted profiles stay deleted.
 export function importAptOnce (w: MapModsWidget) {
   if (w.aptImportedFinal) return
+  const firstImport = !w.aptImported
   w.aptImported = true
   w.aptImportedFinal = true
   try {
     const itemCheck = AppConfig().widgets.find(_ => _.wmType === 'item-check') as { maps?: MapCheckConfig } | undefined
-    importAptMapRatings(w.profiles, itemCheck?.maps)
+    const heist = new Set(heistMods())
+    const isHeist = (m: string) => heist.has(m)
+    moveHeistRatings(w.profiles, isHeist)
+    const maps = itemCheck?.maps
+    if (firstImport || !maps) importAptMapRatings(w.profiles, maps, isHeist)
+    else importAptMapRatings(w.profiles, { ...maps, selectedStats: maps.selectedStats.filter(s => isHeist(s.matcher)) }, isHeist, false)
   } catch {}
 }
 
@@ -68,6 +76,8 @@ export function normalizeMapModsWidget (w: MapModsWidget) {
     if (!p.mins || typeof p.mins !== 'object') p.mins = {}
     if (p.highlight !== 'bad') p.highlight = 'good'
     if (!p.ratings || typeof p.ratings !== 'object') p.ratings = {}
+    if (!p.heistRatings || typeof p.heistRatings !== 'object') p.heistRatings = {}
+    if (!p.chartRatings || typeof p.chartRatings !== 'object') p.chartRatings = {}
   }
   importAptOnce(w)
 }

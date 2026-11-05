@@ -13,15 +13,15 @@
         <span class="flex-1" />
         <WToggle v-if="mode === 'maps'" :model-value="!profile.hideT17" @update:model-value="profile.hideT17 = !$event">Include T17 mods</WToggle>
       </div>
-      <div v-if="mode !== 'maps'" class="w-dim text-xs w-full">{{ MODE_HINT[mode] }}</div>
-      <div v-if="mode === 'maps'" :class="$style.regexBar">
-        <code :class="$style.regex" :title="regex.text">{{ regex.text || 'Pick mods or minimums below' }}</code>
+      <div :class="$style.regexBar">
+        <code :class="$style.regex" :title="regex.text">{{ regex.text || (mode === 'maps' ? 'Pick mods or minimums below' : 'Pick mods below') }}</code>
         <span class="w-num text-xs" :class="regex.tooLong ? 'w-down' : 'w-up'">{{ regex.length }}/{{ MAX_SEARCH_LENGTH }}</span>
         <WButton size="sm" variant="primary" :icon="copied ? 'fas fa-check' : 'far fa-copy'" :disabled="!regex.text" @click="copy">Copy</WButton>
         <WButton size="sm" icon="fas fa-search" :disabled="!regex.text" @click="paste" title="Type it into the open stash's search box">Stash</WButton>
         <WButton size="sm" variant="ghost" icon="far fa-bookmark" :disabled="!regex.text" @click="saveToLibrary" title="Keep this search in the Regex library">Save</WButton>
       </div>
-      <div v-if="mode === 'maps'" class="flex items-center gap-2 w-full text-xs">
+      <div v-if="mode !== 'maps'" class="w-dim text-xs w-full">{{ MODE_HINT[mode] }}</div>
+      <div class="flex items-center gap-2 w-full text-xs">
         <WChip clickable :active="!!profile.autoTrim" @click="profile.autoTrim = !profile.autoTrim"
           title="When the search is too long, leave out wanted mods first, then avoided mods that aren't in a Quick preset, longest first">
           <i class="fas fa-cut" /> Auto-trim to fit
@@ -34,7 +34,7 @@
         </span>
       </div>
       <div v-if="t17Kept" class="w-warn text-xs w-full">T17 picks are kept but left out of the search. Checking a T17 map still flags them.</div>
-      <div v-if="mode === 'maps' && regex.missing.length" class="w-warn text-xs w-full">No unique text found for: {{ regex.missing.join(', ') }}</div>
+      <div v-if="regex.missing.length" class="w-warn text-xs w-full">No unique text found for: {{ regex.missing.join(', ') }}</div>
       <div v-if="mode === 'maps'" class="flex flex-wrap gap-1 w-full">
         <span class="w-dim text-xs self-center mr-1">Quick:</span>
         <button v-for="p in presets" :key="p.preset.id" type="button"
@@ -49,17 +49,15 @@
     <template v-for="row in visible" :key="row.kind === 'head' ? `head:${row.rating}` : row.matcher">
       <div v-if="row.kind === 'head'" :class="[$style.groupHead, $style[row.rating]]">{{ HEAD_LABEL[row.rating] }} · {{ row.count }}</div>
       <div v-else :class="$style.row">
-        <span class="flex-1 min-w-0" :class="{ 'w-dim': !profile.ratings[row.matcher] }">
+        <span class="flex-1 min-w-0" :class="{ 'w-dim': !ratings[row.matcher] }">
           {{ row.matcher }}<span v-if="mode === 'maps' && t17.has(row.matcher)" :class="$style.t17">T17</span>
         </span>
-        <template v-if="mode === 'maps'">
-          <span v-if="regex.tokens[row.matcher]" :class="$style.cost"
-            :title="`Shortened to &quot;${regex.tokens[row.matcher]}&quot;, costs ${tokenCost(regex.tokens[row.matcher])} characters`">
-            <code>{{ regex.tokens[row.matcher] }}</code> {{ tokenCost(regex.tokens[row.matcher]) }}
-          </span>
-          <span v-else-if="regex.dropped.includes(row.matcher)" class="w-warn text-xs" title="Left out by auto-trim">trimmed</span>
-        </template>
-        <WSegmented :model-value="profile.ratings[row.matcher] ?? 'ok'" :options="RATING_OPTIONS"
+        <span v-if="regex.tokens[row.matcher]" :class="$style.cost"
+          :title="`Shortened to &quot;${regex.tokens[row.matcher]}&quot;, costs ${tokenCost(regex.tokens[row.matcher])} characters`">
+          <code>{{ regex.tokens[row.matcher] }}</code> {{ tokenCost(regex.tokens[row.matcher]) }}
+        </span>
+        <span v-else-if="regex.dropped.includes(row.matcher)" class="w-warn text-xs" title="Left out by auto-trim">trimmed</span>
+        <WSegmented :model-value="ratings[row.matcher] ?? 'ok'" :options="RATING_OPTIONS"
           @update:model-value="setRating(row.matcher, $event as ModRating)" />
       </div>
     </template>
@@ -90,12 +88,11 @@ import { pushHostConfig } from '@/web/Config'
 import { WPanel, WButton, WChip, WField, WSegmented, WSelect, WTabs, WToggle, WEmpty, toast } from '../ui'
 import { useCopy } from '../ui/copy'
 import { SAVE_MESSAGE, saveToRegexLibrary } from '../regex-library/save'
-import { PRESETS, applyPreset, modListRows, nextPresetRating, presetRating, withRating } from './rules'
-import type { MapModPreset, ModRating } from './rules'
+import { PRESETS, applyPreset, modListRows, modRatings, nextPresetRating, presetRating, setModRatings, withRating } from './rules'
+import type { MapModPreset, ModMode, ModRating } from './rules'
 import { MAX_SEARCH_LENGTH, MIN_LABELS, tokenCost } from './regex'
 import type { MinStat } from './regex'
 import { modsForMode, profileRegex, tier17Mods } from './data'
-import type { ModMode } from './data'
 import { activeProfile } from './widget'
 import type { MapModsWidget } from './widget'
 
@@ -118,9 +115,11 @@ const MINS_MODE_OPTIONS = [
 const MIN_KEYS: MinStat[] = ['quantity', 'rarity', 'packSize', 'quality', 'currency', 'scarabs', 'maps', 'divCards']
 const MAX_ROWS = 200
 const MODE_HINT: Record<string, string> = {
-  heist: 'Rates contracts and blueprints when you check one. A mod that also rolls on maps shares its rating. Nothing here goes in the map search.',
-  charts: 'Rates charts when you check one, including Voyage mods once charted. These mods also roll on maps, so they share a rating, and an avoid here goes in the map search too.'
+  heist: 'These picks also set the verdict when you check a contract or blueprint.',
+  charts: 'These picks also set the verdict when you check a chart.'
 }
+const MODE_NOUN: Record<ModMode, string> = { maps: 'map', heist: 'heist', charts: 'chart' }
+const LIBRARY_NAME: Record<ModMode, string> = { maps: 'Maps', heist: 'Heist', charts: 'Charts' }
 const HEAD_LABEL: Record<ModRating, string> = { deadly: 'Avoid', warn: 'Careful', good: 'Want', ok: 'Not rated' }
 
 const profile = computed(() => activeProfile(props.config))
@@ -140,21 +139,19 @@ function isDanger (m: string) {
 }
 
 const t17 = computed(() => tier17Mods())
+const ratings = computed(() => modRatings(profile.value, mode.value))
 const modeMods = computed(() => modsForMode(mode.value, profile.value))
-const searchHint = computed(() => {
-  const noun = { maps: 'map', heist: 'heist', charts: 'chart' }[mode.value]
-  return `Search ${modeMods.value.length} ${noun} mods`
-})
+const searchHint = computed(() => `Search ${modeMods.value.length} ${MODE_NOUN[mode.value]} mods`)
 
 const modeOptions = computed(() => ([['maps', 'Maps'], ['heist', 'Heist'], ['charts', 'Charts']] as Array<[ModMode, string]>).map(([value, label]) => ({
   value,
   label,
-  count: modsForMode(value, profile.value).filter(m => profile.value.ratings[m]).length
+  count: modsForMode(value, profile.value).filter(m => modRatings(profile.value, value)[m]).length
 })))
 
 const filterOptions = computed(() => [
   { value: 'all', label: 'All' },
-  { value: 'picked', label: 'Picked', count: modeMods.value.filter(m => profile.value.ratings[m]).length },
+  { value: 'picked', label: 'Picked', count: modeMods.value.filter(m => ratings.value[m]).length },
   ...(mode.value === 'maps' ? [{ value: 'danger', label: 'Danger' }, { value: 'reward', label: 'Reward' }] : [])
 ])
 
@@ -163,31 +160,32 @@ const t17Kept = computed(() => mode.value === 'maps' && !!profile.value.hideT17 
 
 const filtered = computed(() => {
   const q = search.value.trim().toLowerCase()
-  const ratings = profile.value.ratings
   return modeMods.value.filter(m => {
     if (q && !m.toLowerCase().includes(q)) return false
-    if (filter.value === 'picked') return ratings[m] != null
+    if (filter.value === 'picked') return ratings.value[m] != null
     if (filter.value === 'danger') return isDanger(m)
     if (filter.value === 'reward') return !isDanger(m)
     return true
   })
 })
 
-// Picked mods go on top. The order only refreshes when the view changes, so a
-// row doesn't jump away from the cursor while it's being rated.
-const orderBy = shallowRef(profile.value.ratings)
+// Picked mods go on top. The order refreshes when the view or search changes or
+// a Quick chip is used, not on a single rating, so a row doesn't jump away from
+// the cursor while it's being rated.
+const orderBy = shallowRef(ratings.value)
 watch(mode, () => {
   filter.value = 'all'
   search.value = ''
 })
-watch([mode, filter, () => profile.value.hideT17, () => props.config.activeProfile, () => props.config.wmWants], () => {
-  orderBy.value = profile.value.ratings
+watch([mode, filter, search, () => profile.value.hideT17, () => props.config.activeProfile, () => props.config.wmWants], () => {
+  orderBy.value = ratings.value
 })
 const rows = computed(() => modListRows(filtered.value, orderBy.value))
 const visible = computed(() => rows.value.slice(0, MAX_ROWS))
 const hiddenCount = computed(() => rows.value.slice(MAX_ROWS).filter(row => row.kind === 'mod').length)
 
-const regex = computed(() => profileRegex(profile.value))
+const mapRegex = computed(() => profileRegex(profile.value))
+const regex = computed(() => mode.value === 'maps' ? mapRegex.value : profileRegex(profile.value, mode.value))
 
 // The three picked mods that cost the most characters.
 const costliest = computed(() => Object.entries(regex.value.tokens)
@@ -196,9 +194,9 @@ const costliest = computed(() => Object.entries(regex.value.tokens)
   .map(([m, t]) => `${m.replace(/#/g, 'N')} (${tokenCost(t)})`)
   .join(', '))
 
-// Keep the stored text in sync so the paste hotkey uses the latest regex.
+// Keep the stored text in sync so the paste hotkey uses the latest map regex.
 let pushTimer: ReturnType<typeof setTimeout> | undefined
-watch(() => regex.value.text, (text) => {
+watch(() => mapRegex.value.text, (text) => {
   if (props.config.regexText === text) return
   props.config.regexText = text
   if (!props.config.regexHotkey) return
@@ -207,11 +205,12 @@ watch(() => regex.value.text, (text) => {
 }, { immediate: true })
 
 function setRating (matcher: string, rating: ModRating) {
-  profile.value.ratings = withRating(profile.value.ratings, [matcher], rating)
+  setModRatings(profile.value, mode.value, withRating(ratings.value, [matcher], rating))
 }
 
 function cyclePreset (preset: MapModPreset, current: ModRating) {
   applyPreset(profile.value, preset, nextPresetRating(current))
+  orderBy.value = ratings.value
 }
 
 function setMin (key: MinStat, value: string | number) {
@@ -225,7 +224,8 @@ async function copy () {
 }
 
 function saveToLibrary () {
-  const res = saveToRegexLibrary({ name: `Maps: ${profile.value.name}`, text: regex.value.text, category: 'Maps' })
+  const library = LIBRARY_NAME[mode.value]
+  const res = saveToRegexLibrary({ name: `${library}: ${profile.value.name}`, text: regex.value.text, category: library })
   toast(SAVE_MESSAGE[res])
 }
 

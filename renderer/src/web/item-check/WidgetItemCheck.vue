@@ -5,8 +5,10 @@
       <!-- woke: Map mods replaces APT's map check. -->
       <WokeMapVerdictCard v-if="wokeMap"
         :result="wokeMap.result" :config="wokeMap.config" />
-      <ItemInfo v-else
-        :item="item" />
+      <div v-else class="flex flex-col">
+        <div v-if="wokeIsMapLike(item)" class="bg-gray-900 text-gray-400 text-sm px-2 py-1">Turn on Map mods in Settings to rate this.</div>
+        <ItemInfo :item="item" />
+      </div>
     </template>
   </Widget>
 </template>

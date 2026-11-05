@@ -22,7 +22,7 @@
         <WButton size="sm" icon="fas fa-copy" @click="copyProfile">Copy</WButton>
         <WButton v-if="w.profiles.length > 1" size="sm" variant="danger" icon="fas fa-trash" @click="removeProfile">Delete</WButton>
       </div>
-      <div class="w-dim text-sm">One profile per build. Pick mods to avoid or want for maps, heist and charts, and minimum quantity etc., in the Map mods overlay widget.</div>
+      <div class="w-dim text-sm">One profile per build. Pick mods to avoid or want, and minimum quantity etc., in the Map mods overlay widget. Maps, heist and charts each keep their own picks.</div>
     </section>
 
     <section class="flex flex-col gap-2">

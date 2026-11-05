@@ -3,8 +3,8 @@
     <template #actions>
       <span class="w-dim text-xs whitespace-nowrap pr-2">{{ result.sub }}</span>
     </template>
-    <div :class="[$style.verdict, $style[result.verdict.verdict]]">
-      <div :class="$style.badge">{{ VERDICT_LABEL[result.verdict.verdict] }}</div>
+    <div :class="[$style.verdict, result.unidentified ? $style.unknown : $style[result.verdict.verdict]]">
+      <div :class="$style.badge">{{ result.unidentified ? '?' : VERDICT_LABEL[result.verdict.verdict] }}</div>
       <div class="flex flex-col min-w-0">
         <span :class="$style.headline">{{ headline }}</span>
         <span class="w-dim text-xs w-trunc">Profile: {{ profileName }}</span>
@@ -26,7 +26,7 @@
     </div>
     <div class="w-group-label">Mods</div>
     <div v-if="!result.verdict.mods.length && !result.unknown.length" class="w-dim px-3 pb-2">No mods</div>
-    <button v-for="mod in result.verdict.mods" :key="mod.matcher" type="button"
+    <button v-for="(mod, i) in result.verdict.mods" :key="`${i}:${mod.matcher}`" type="button"
       :class="[$style.mod, { 'w-dim': mod.rating === 'ok' }]"
       :title="`Click to change: ${RATING_LABEL[mod.rating]}`"
       @click="cycle(mod.matcher, mod.rating)">
@@ -47,7 +47,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { WPanel } from '../ui'
-import { nextModRating, withRating } from './rules'
+import { modRatings, nextModRating, setModRatings, withRating } from './rules'
 import type { ModRating, Verdict } from './rules'
 import { activeProfile } from './widget'
 import type { MapModsWidget } from './widget'
@@ -64,6 +64,7 @@ const RATING_LABEL: Record<ModRating, string> = { deadly: "can't run", warn: 'ca
 const profileName = computed(() => activeProfile(props.config).name)
 
 const headline = computed(() => {
+  if (props.result.unidentified) return "Not identified, so its mods aren't shown yet"
   const v = props.result.verdict
   if (v.deadly.length) return `${v.deadly.length} ${v.deadly.length === 1 ? "mod your build can't run" : "mods your build can't run"}`
   if (v.warn.length) return `${v.warn.length} ${v.warn.length === 1 ? 'mod' : 'mods'} to be careful with`
@@ -73,7 +74,8 @@ const headline = computed(() => {
 function cycle (matcher: string, current: ModRating) {
   const profile = activeProfile(props.config)
   const next = nextModRating(current)
-  profile.ratings = withRating(profile.ratings, [matcher], next)
+  const mode = props.result.mode
+  setModRatings(profile, mode, withRating(modRatings(profile, mode), [matcher], next))
 }
 </script>
 
@@ -104,6 +106,7 @@ function cycle (matcher: string, current: ModRating) {
 .careful { background: color-mix(in srgb, var(--w-warn) 10%, transparent); }
 .careful .badge { background: var(--w-warn); }
 .careful .headline { color: var(--w-warn); }
+.unknown .badge { background: var(--w-panel-3); color: var(--w-dim); }
 .run { background: color-mix(in srgb, var(--w-up) 10%, transparent); }
 .run .badge { background: var(--w-up); }
 .run .headline { color: var(--w-up); }

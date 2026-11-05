@@ -16,7 +16,7 @@
       <span v-if="result.verdict.warn.length" :class="[$style.chip, $style.warnChip]">{{ warnText }}</span>
     </div>
     <div v-if="open" :class="$style.list">
-      <div v-for="mod in result.verdict.mods" :key="mod.matcher" :class="$style.mod">
+      <div v-for="(mod, i) in result.verdict.mods" :key="`${i}:${mod.matcher}`" :class="$style.mod">
         <span :class="[$style.dot, $style[mod.rating]]" />
         <span :class="{ 'w-dim': mod.rating === 'ok' }">{{ mod.text }}</span>
       </div>
@@ -39,7 +39,7 @@ const open = shallowRef(false)
 
 const result = computed(() => {
   const config = findMapModsConfig()
-  if (!config || !config.stripOnPriceCheck || !isMapLike(props.item)) return null
+  if (!config || !config.stripOnPriceCheck || !isMapLike(props.item) || props.item.isUnidentified) return null
   return checkMap(props.item, config)
 })
 
