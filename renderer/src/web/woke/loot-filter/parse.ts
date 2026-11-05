@@ -77,6 +77,8 @@ export interface FilterDoc {
   eol: '\r\n' | '\n'
   // The file started with a byte order mark.
   bom?: boolean
+  // A Ruthless filter, the only kind where `Minimal` is allowed.
+  ruthless: boolean
 }
 
 const HEADER_RE = /^(#?)\s*(Show|Hide|Minimal)\b\s*(?:#(.*))?$/
@@ -305,7 +307,8 @@ export function parseFilter (source: string): FilterDoc {
     strictness,
     isNeverSink: /NeverSink/i.test(head),
     eol,
-    bom
+    bom,
+    ruthless: /^#\s*filterType:\s*Ruthless/im.test(head) || /^#\s*(TYPE|STYLE):.*RUTHLESS/im.test(head)
   }
 }
 
