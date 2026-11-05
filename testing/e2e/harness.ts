@@ -174,7 +174,7 @@ export class Overlay {
   // Rests the mouse on a dock icon until its card opens (main's hover
   // tracker sees the mouse; the overlay doesn't get mouse events in game).
   async hoverDockIcon (moduleId: string) {
-    const box = await this.dockIcon(moduleId).boundingBox({ timeout: 20_000 })
+    const box = await this.dockIcon(moduleId).boundingBox()
     if (!box) throw new Error(`Dock icon ${moduleId} is not on screen`)
     await this.moveMouse(Math.round(box.x + box.width / 2), Math.round(box.y + box.height / 2))
   }
@@ -255,7 +255,7 @@ export class Overlay {
   // Clicks a dock icon in game, then leaves it straight away, so only the
   // click can have opened its card (the hover delay gets cancelled).
   async clickDockIconAndLeave (moduleId: string) {
-    const box = await this.dockIcon(moduleId).boundingBox({ timeout: 20_000 })
+    const box = await this.dockIcon(moduleId).boundingBox()
     if (!box) throw new Error(`Dock icon ${moduleId} is not on screen`)
     this.app.pressMouse(Math.round(box.x + box.width / 2), Math.round(box.y + box.height / 2))
     this.app.moveMouse(1000, 900)

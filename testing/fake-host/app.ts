@@ -282,7 +282,7 @@ export async function startFakeApp (opts: FakeAppOptions): Promise<FakeApp> {
     shortcuts.updateActions(cfg.shortcuts, cfg.stashScroll, cfg.logKeys, cfg.restoreClipboard, cfg.language)
     // The fake game's Client.txt, whatever the settings say.
     if (cfg.wokeGameLog === false) gameLogWatcher.stop()
-    else app.logWatcherReady = gameLogWatcher.restart(app.clientLogPath)
+    else app.logWatcherReady = Promise.all([app.logWatcherReady, gameLogWatcher.restart(app.clientLogPath)])
     gameConfig.readConfig(cfg.gameConfig ?? '')
   })
   uIOhook.start()

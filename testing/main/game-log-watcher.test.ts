@@ -83,8 +83,17 @@ describe('GameLogWatcher', () => {
   it('lets go of a deleted file and picks up the new one', async () => {
     await appendUntilSeen('first')
     fs.unlinkSync(file)
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    fs.writeFileSync(file, 'new file\n')
+    // Windows refuses the name until the watcher has let go of the old file.
+    const end = Date.now() + 20_000
+    for (;;) {
+      try {
+        fs.writeFileSync(file, 'new file\n')
+        break
+      } catch (e) {
+        if (Date.now() > end) throw e
+        await new Promise(resolve => setTimeout(resolve, 200))
+      }
+    }
     await until(() => lines.includes('new file'))
     fs.appendFileSync(file, 'more\n')
     await until(() => lines.includes('more'))
