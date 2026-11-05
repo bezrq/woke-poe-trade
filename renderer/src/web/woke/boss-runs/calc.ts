@@ -1,4 +1,6 @@
+import { ITEM_BY_REF } from '@/assets/data'
 import { VARIABLE_ITEMS } from './bosses'
+import { ESTIMATED_RATES } from './estimates'
 import { formatClock } from '../ui/format'
 import type { Boss, BossDrop } from './bosses'
 import type { PriceItem } from '../market/types'
@@ -39,7 +41,16 @@ export interface BossPrefs {
   customPrices: Record<string, number>
 }
 
-export type PriceMode = 'min' | 'median' | 'custom'
+// 'unid' = unidentified trade listings; 'median' is the poe.ninja price.
+export type PriceMode = 'unid' | 'min' | 'median' | 'custom'
+// Where the price on a row came from.
+export type PriceSource = 'trade' | 'ninja' | 'custom'
+
+// Price found on official trade, for drops poe.ninja can't price properly.
+export interface TradeQuote {
+  chaos: number
+  listings: number
+}
 
 export interface VariantStats {
   min: number
@@ -51,9 +62,10 @@ export interface VariantStats {
 export interface Prices {
   price: (name: string, variant?: string) => number | null
   variants: (name: string) => VariantStats | null
+  trade: (name: string) => TradeQuote | null
 }
 
-export type RateSource = 'custom' | 'community' | 'mine' | 'none'
+export type RateSource = 'custom' | 'community' | 'mine' | 'estimate' | 'none'
 
 export interface DropRow {
   name: string
@@ -70,6 +82,9 @@ export interface DropRow {
   // Variant spread on poe.ninja, for items priced by mode.
   spread: VariantStats | null
   priceMode: PriceMode | null
+  priceSource: PriceSource | null
+  // Trade listings behind the price, when it came from trade.
+  listings: number | null
 }
 
 export interface BossResult {
@@ -84,6 +99,8 @@ export interface BossResult {
   // Drops with a chance but no price, or a price but no chance.
   unpriced: number
   unrated: number
+  // Drops using an estimated chance rather than a measured one.
+  estimated: number
   hasRates: boolean
   // Has rates and a known entry cost, so the profit means something.
   ready: boolean
@@ -97,7 +114,7 @@ export interface BossResult {
 // Prices by item name. Gems and some uniques have several variants
 // (level/quality, links); take the requested one, else the plain one,
 // else the cheapest, so values lean conservative.
-export function priceResolver (items: PriceItem[]): Prices {
+export function priceResolver (items: PriceItem[], trade: (name: string) => TradeQuote | null = () => null): Prices {
   const byName = new Map<string, PriceItem[]>()
   for (const item of items) {
     const list = byName.get(item.name)
@@ -123,20 +140,56 @@ export function priceResolver (items: PriceItem[]): Prices {
     if (plain) return plain.chaos
     return Math.min(...list.map(i => i.chaos))
   }
-  return { price, variants }
+  return { price, variants, trade }
 }
 
-// Price for a drop, honouring the player's choice for high-variance items.
-export function dropPrice (d: BossDrop, prices: Prices, prefs: BossPrefs): { price: number | null, spread: VariantStats | null, mode: PriceMode | null } {
+export interface DropPrice {
+  price: number | null
+  spread: VariantStats | null
+  mode: PriceMode | null
+  source: PriceSource | null
+  listings: number | null
+}
+
+// Price for a drop, honouring the player's choice for roll-dependent items.
+// Trade fills in until poe.ninja has a row: unidentified items fall back to
+// poe.ninja until their trade price is known.
+export function dropPrice (d: BossDrop, prices: Prices, prefs: BossPrefs): DropPrice {
   const custom = prefs.customPrices[d.name]
   const chosen = prefs.priceModes[d.name]
-  const mode: PriceMode | null = chosen ?? (d.variable ? 'median' : null)
-  if (mode === 'custom' && custom != null) return { price: custom, spread: prices.variants(d.name), mode }
-  if (mode === 'min' || mode === 'median' || mode === 'custom') {
-    const spread = prices.variants(d.name)
-    return { price: spread ? (mode === 'min' ? spread.min : spread.median) : null, spread, mode }
+  const mode: PriceMode | null = chosen ?? (d.variable ? 'unid' : null)
+  const quote = prices.trade(d.name)
+  if (mode == null) {
+    const ninja = prices.price(d.name, d.variant)
+    if (ninja != null) return { price: ninja, spread: null, mode, source: 'ninja', listings: null }
+    if (quote) return { price: quote.chaos, spread: null, mode, source: 'trade', listings: quote.listings }
+    return { price: null, spread: null, mode, source: null, listings: null }
   }
-  return { price: prices.price(d.name, d.variant), spread: null, mode: null }
+  const spread = prices.variants(d.name)
+  if (mode === 'custom' && custom != null) return { price: custom, spread, mode, source: 'custom', listings: null }
+  if (mode === 'unid' && quote) return { price: quote.chaos, spread, mode, source: 'trade', listings: quote.listings }
+  const ninja = spread ? (mode === 'min' ? spread.min : spread.median) : null
+  return { price: ninja, spread, mode, source: ninja == null ? null : 'ninja', listings: null }
+}
+
+// Whether a drop needs a trade lookup at these settings.
+export function needsTrade (d: Pick<BossDrop, 'name' | 'variant'>, prices: Prices, prefs: BossPrefs): boolean {
+  const chosen = prefs.priceModes[d.name]
+  if (chosen && chosen !== 'unid') return false
+  return chosen === 'unid' || VARIABLE_ITEMS.has(d.name) || prices.price(d.name, d.variant) == null
+}
+
+// Names to look up on trade: the opened boss first, then the rest, so the
+// ranking fills in over time.
+export function tradeWanted (bosses: Boss[], selectedId: string | null, prefs: BossPrefs, prices: Prices): string[] {
+  const ordered = [...bosses].sort((a, b) => Number(b.id === selectedId) - Number(a.id === selectedId))
+  const names = new Set<string>()
+  for (const boss of ordered) {
+    for (const d of dropList(boss, prefs)) {
+      if (needsTrade(d, prices, prefs)) names.add(d.name)
+    }
+  }
+  return [...names]
 }
 
 export function observedRates (kills: KillRecord[]): Map<string, number> {
@@ -203,6 +256,7 @@ export function evaluateBoss (
   const kills = prefs.kills[boss.id] ?? []
   const mine = observedRates(kills)
   const custom = prefs.rates[boss.id] ?? {}
+  const estimates = ESTIMATED_RATES[boss.id] ?? {}
 
   let entry = 0
   const entryMissing: string[] = []
@@ -226,21 +280,24 @@ export function evaluateBoss (
       chance = d.chance; rateSource = 'community'
     } else if (kills.length >= OWN_RATE_MIN_KILLS) {
       chance = mine.get(d.name) ?? 0; rateSource = 'mine'
+    } else if (estimates[d.name] != null) {
+      chance = estimates[d.name] / 100; rateSource = 'estimate'
     }
     const qty = d.qty ?? 1
-    const { price: p, spread, mode } = dropPrice(d, prices, prefs)
+    const { price: p, spread, mode, source, listings } = dropPrice(d, prices, prefs)
     const tooRare = chance != null && chance > 0 && chance < minChance
     const included = toggles[d.name] ?? !tooRare
     if (chance == null) unrated++
     else if (p == null && chance > 0 && included) unpriced++
     const value = included && chance != null && p != null ? chance * qty * p : 0
-    return { name: d.name, variant: d.variant, chance, rateSource, qty, price: p, value, included, tooRare, spread, priceMode: mode }
+    return { name: d.name, variant: d.variant, chance, rateSource, qty, price: p, value, included, tooRare, spread, priceMode: mode, priceSource: source, listings }
   })
   drops.sort((a, b) => b.value - a.value || (b.price ?? 0) - (a.price ?? 0))
 
   const loot = drops.reduce((n, d) => n + d.value, 0)
   const hasRates = drops.some(d => d.chance != null && d.chance > 0)
   const excluded = drops.filter(d => !d.included).length
+  const estimated = drops.filter(d => d.rateSource === 'estimate').length
   const runSeconds = prefs.runSeconds[boss.id] ?? boss.runSeconds
   const profit = loot - entry
   const perHour = runSeconds > 0 ? profit * 3600 / runSeconds : 0
@@ -254,7 +311,7 @@ export function evaluateBoss (
     myLoot = total / kills.length
   }
 
-  return { boss, entry, entryMissing, loot, profit, perHour, runSeconds, drops, unpriced, unrated, hasRates, ready: hasRates && !entryMissing.length, kills: kills.length, myLoot, excluded }
+  return { boss, entry, entryMissing, loot, profit, perHour, runSeconds, drops, unpriced, unrated, estimated, hasRates, ready: hasRates && !entryMissing.length, kills: kills.length, myLoot, excluded }
 }
 
 export interface Luck {
@@ -332,19 +389,33 @@ const UNIQUE_BASES: Record<string, string> = {
   'Forbidden Flame': 'Crimson Jewel',
   'Sublime Vision': 'Prismatic Jewel',
   "Atziri's Splendour": 'Sacrificial Garb',
-  "Doryani's Invitation": 'Heavy Belt'
+  "Doryani's Invitation": 'Heavy Belt',
+  'The Light of Meaning': 'Prismatic Jewel',
+  'Rational Doctrine': 'Cobalt Jewel',
+  'Beauty': 'Vaal Aspect',
+  'Melding of the Flesh': 'Cobalt Jewel',
+  'Dissolution of the Flesh': 'Crimson Jewel'
+}
+
+// Instant buyout is the live market now: plain 'online' finds next to nothing
+// and 'any' is full of offline bait.
+export function tradeQuery (name: string, unidentified: boolean) {
+  const uniqueBase = UNIQUE_BASES[name] ?? ITEM_BY_REF('UNIQUE', name)?.[0]?.unique?.base
+  return {
+    query: {
+      status: { option: 'securable' as const },
+      // Divination cards, keys and other named bases have only a type.
+      ...(uniqueBase ? { name, type: uniqueBase } : { type: name }),
+      stats: [],
+      filters: unidentified
+        ? { misc_filters: { filters: { identified: { option: 'false' as const } } } }
+        : {}
+    },
+    sort: { price: 'asc' as const }
+  }
 }
 
 // Official trade search for unidentified copies of a unique, cheapest first.
 export function unidentifiedTradeUrl (league: string, name: string): string {
-  const query = {
-    query: {
-      status: { option: 'online' },
-      name,
-      ...(UNIQUE_BASES[name] ? { type: UNIQUE_BASES[name] } : {}),
-      filters: { misc_filters: { filters: { identified: { option: 'false' } } } }
-    },
-    sort: { price: 'asc' }
-  }
-  return `https://www.pathofexile.com/trade/search/${encodeURIComponent(league)}?q=${encodeURIComponent(JSON.stringify(query))}`
+  return `https://www.pathofexile.com/trade/search/${encodeURIComponent(league)}?q=${encodeURIComponent(JSON.stringify(tradeQuery(name, true)))}`
 }
