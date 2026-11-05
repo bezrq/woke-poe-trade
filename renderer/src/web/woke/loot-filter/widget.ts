@@ -11,6 +11,7 @@ import type { OwnRule } from './rules'
 import { defaultPresets, normalizePresets } from './presets'
 import type { Presets } from './presets'
 import { popupAnchor } from '../ui/window-anchor'
+import { sortKeys } from './hotkey-match'
 
 export const LOOT_FILTER_TYPE = 'woke-loot-filter'
 // copy-item target: sample the hovered item and open its rule card.
@@ -150,9 +151,8 @@ export function seedLootFilterWidget (wmId: number, taken: string[] = []): LootF
   const w = { wmId, wmType: LOOT_FILTER_TYPE, wmTitle: '', wmWants: 'hide', wmZorder: null, wmFlags: [] } as unknown as LootFilterWidget
   initLootFilterWidget(w)
   // Order doesn't matter: 'Shift + Alt + F' is 'Alt + Shift + F'.
-  const canon = (key: string) => key.split(' + ').sort().join('+')
-  const used = new Set(taken.map(canon))
-  const free = (key: string | null) => key && !used.has(canon(key)) ? key : null
+  const used = new Set(taken.map(sortKeys))
+  const free = (key: string | null) => key && !used.has(sortKeys(key)) ? key : null
   w.sampleHotkey = free(w.sampleHotkey)
   w.editorHotkey = free(w.editorHotkey)
   w.stricterHotkey = free(w.stricterHotkey)

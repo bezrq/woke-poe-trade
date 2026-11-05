@@ -7,7 +7,7 @@
 
     <template v-if="store.wrongFilterInGame.value" #banner>
       <WBanner tone="warn">Your changes won't show in game: it's using "{{ store.gameFilter.value.name }}", not your saved copy.
-        <template #actions><WButton size="sm" variant="primary" @click="store.reloadInGame(true)">Use mine in game</WButton></template>
+        <template v-if="config.reloadViaChat" #actions><WButton size="sm" variant="primary" @click="store.reloadInGame(true)">Use mine in game</WButton></template>
       </WBanner>
     </template>
 

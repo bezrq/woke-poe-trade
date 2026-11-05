@@ -138,7 +138,10 @@ export async function pruneNeverSink (args: { keep?: number }): Promise<void> {
 export function filterLoaded (raw: unknown, name: string | null): boolean | null {
   if (raw == null) return null
   const value = String(raw)
-  return value === 'true' || (value !== 'false' && value !== '' && value === name)
+  if (value === 'true') return true
+  // The game may write the name with or without ".filter", in another case.
+  const stem = (s: string) => s.replace(/\.filter$/i, '').toLowerCase()
+  return name != null && value !== '' && stem(value) === stem(name)
 }
 
 // What the game itself has selected, from production_Config.ini: the filter

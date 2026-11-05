@@ -21,6 +21,12 @@ describe('filterLoaded', () => {
     expect(filterLoaded('other', 'x')).toBe(false)
   })
 
+  it('matches the name with or without .filter, in any case', () => {
+    expect(filterLoaded('MyFilter', 'MyFilter.filter')).toBe(true)
+    expect(filterLoaded('myfilter.filter', 'MyFilter')).toBe(true)
+    expect(filterLoaded('x', null)).toBe(false)
+  })
+
   it('is unknown when the game wrote nothing', () => {
     expect(filterLoaded(undefined, 'x')).toBeNull()
   })

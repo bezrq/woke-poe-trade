@@ -120,11 +120,19 @@ const match = computed(() => {
   return matchItem(doc, { ...sample.value, areaLevel: effectiveAreaLevel.value })
 })
 
-async function ensureLoaded () {
-  if (!store.doc.value && !store.loading.value) {
-    await store.listFiles()
-    await store.load()
-  }
+// One load at a time: store.loading only turns on after listFiles resolves.
+let loading: Promise<void> | null = null
+function ensureLoaded () {
+  if (store.doc.value || store.loading.value || loading) return loading
+  loading = (async () => {
+    try {
+      await store.listFiles()
+      await store.load()
+    } finally {
+      loading = null
+    }
+  })()
+  return loading
 }
 // Never set up: read nothing until it's first used, so an overlay you haven't
 // touched stays quiet.
@@ -153,7 +161,10 @@ const itemFailed = MainProcess.onEvent('MAIN->CLIENT::item-text-failed', (e) => 
 // Hotkeys only reach the game while it has focus: say so instead of nothing.
 function onOverlayKey (e: KeyboardEvent) {
   const key = props.config.sampleHotkey
-  if (!key || e.repeat || !props.config.wmWants || props.config.wmWants !== 'show') return
+  if (!key || e.repeat || props.config.wmWants !== 'show') return
+  // Typing or recording a hotkey somewhere in the overlay, not trying to sample.
+  const t = e.target as HTMLElement | null
+  if (t?.closest?.('input, textarea, select, [contenteditable]')) return
   if (pressedKeys(e) === sortKeys(key)) toast(`Click into the game first, hover the item, then press ${key}.`)
 }
 window.addEventListener('keydown', onOverlayKey)

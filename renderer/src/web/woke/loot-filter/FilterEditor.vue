@@ -24,6 +24,12 @@
       </WBanner>
     </template>
 
+    <!-- Outside the v-if chain, so leaving the tab keeps it cached and Back
+         returns to the same pile. -->
+    <KeepAlive>
+      <PreviewTab v-if="store.doc.value && tab === 'preview'" :store="store" :config="config" :anchor="panel?.el" @open-rule="openRule" />
+    </KeepAlive>
+
     <div v-if="!store.doc.value && store.loading.value" :class="$style.layout" aria-busy="true">
       <WSkeleton :rows="10" :value="true" />
       <WSkeleton :rows="8" :value="false" />
@@ -147,10 +153,6 @@
       </div>
     </div>
 
-    <!-- Kept alive so Back returns to the same pile. -->
-    <KeepAlive v-else-if="tab === 'preview'">
-      <PreviewTab :store="store" :config="config" :anchor="panel?.el" @open-rule="openRule" />
-    </KeepAlive>
     <PresetsTab v-else-if="tab === 'presets'" :store="store" :config="config" />
     <PricesTab v-else-if="tab === 'prices'" :store="store" :config="config" :anchor="panel?.el" />
     <NeverSinkTab v-else-if="tab === 'neversink'" :store="store" :config="config" :anchor="panel?.el" />
@@ -180,7 +182,7 @@
     </div>
 
     <!-- changes -->
-    <div v-else :class="$style.changes" class="w-scroll">
+    <div v-else-if="tab === 'changes'" :class="$style.changes" class="w-scroll">
       <div v-if="store.problems.value.length" :class="$style.problems">
         <div v-for="(p, i) in store.problems.value.slice(0, 6)" :key="i" class="text-sm">
           <i class="fas fa-exclamation-triangle" style="color: var(--w-down);" /> {{ describeProblem(p) }}
@@ -382,7 +384,7 @@ const banner = computed<{ text: string, tone: 'warn' | 'info', actions: BannerAc
     return {
       tone: 'warn',
       text: `Your changes won't show in game: it's using "${s.gameFilter.value.name}", not your saved copy "${outName.value.replace(/\.filter$/i, '')}".`,
-      actions: [{ label: 'Use mine in game', primary: true, run: () => s.reloadInGame(true) }]
+      actions: props.config.reloadViaChat ? [{ label: 'Use mine in game', primary: true, run: () => s.reloadInGame(true) }] : []
     }
   }
   return null
@@ -445,7 +447,7 @@ function goBack () {
 }
 
 function onMouseBack (e: MouseEvent) {
-  if (e.button !== 3 || !trail.value.length) return
+  if (e.button !== 3 || !trail.value.length || props.config.wmWants !== 'show') return
   e.preventDefault()
   goBack()
 }
