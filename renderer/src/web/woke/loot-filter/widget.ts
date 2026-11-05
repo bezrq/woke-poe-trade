@@ -3,6 +3,7 @@ import { isPatch, isValidEdit } from './edits'
 import type { FilterEdit } from './edits'
 import { emptyTimeline, normalizeTimeline } from './timeline'
 import type { Timeline } from './timeline'
+import type { NavMode } from './nav'
 import { DEFAULT_BUILD_RULES } from './build-rules'
 import type { BuildRuleSwitches } from './build-rules'
 import type { PriceMove, UniqueRule } from './economy'
@@ -120,6 +121,8 @@ export interface LootFilterWidget extends Widget {
   healthDismissed: Record<string, number>
   // The same on a hidden item: the net leaves it hidden too.
   netDismissed: Record<string, number>
+  // The rule list: what its switch shows, and the groups you pinned.
+  ruleNav: { mode: NavMode, pins: string[] }
   // Your changes step by step, for undo and redo.
   timeline: Timeline
   // Dock icon notices you've turned off, and what each said when you pressed Got it.
@@ -161,6 +164,7 @@ export function initLootFilterWidget (w: LootFilterWidget) {
   w.presets = defaultPresets()
   w.healthDismissed = {}
   w.netDismissed = {}
+  w.ruleNav = { mode: 'endgame', pins: [] }
   w.timeline = emptyTimeline()
   w.noticesOff = []
   w.noticesSeen = {}
@@ -251,6 +255,11 @@ export function normalizeLootFilterWidget (w: LootFilterWidget) {
   w.presets = normalizePresets(w.presets)
   if (!w.healthDismissed || typeof w.healthDismissed !== 'object') w.healthDismissed = {}
   if (!w.netDismissed || typeof w.netDismissed !== 'object') w.netDismissed = {}
+  const nav = w.ruleNav as Partial<LootFilterWidget['ruleNav']> | undefined
+  w.ruleNav = {
+    mode: nav?.mode === 'campaign' || nav?.mode === 'all' ? nav.mode : 'endgame',
+    pins: Array.isArray(nav?.pins) ? nav.pins.filter(p => typeof p === 'string') : []
+  }
   w.timeline = normalizeTimeline(w.timeline)
   if (!Array.isArray(w.noticesOff)) w.noticesOff = []
   if (!w.noticesSeen || typeof w.noticesSeen !== 'object') w.noticesSeen = {}

@@ -3,7 +3,11 @@
 
 // Top-level groups and path parts, where a capital letter isn't enough.
 const WHOLE_TYPES: Record<string, string> = {
-  currency: 'General currency'
+  'currency': 'General currency',
+  'divination': 'Divination cards',
+  'normalcraft->extra': 'Normal crafting bases',
+  'influenced->all': 'Influenced gear',
+  'uniques': 'All uniques'
 }
 
 const PARTS: Record<string, string> = {
