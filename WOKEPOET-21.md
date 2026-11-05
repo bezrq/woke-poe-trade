@@ -1,7 +1,7 @@
 ---
 id: WOKEPOET-21
 title: Remove the redundant move button from panel title bars
-status: Ready
+status: Done
 priority: Low
 effort: XS
 assignee: unassigned
@@ -59,11 +59,24 @@ history:
     to: Ready
     user: Agent
     date: '2026-11-05T04:05:43.189Z'
+  - type: comment
+    user: Agent
+    comment: >-
+      PR squash-merged for branch
+      `flux/WOKEPOET-21-remove-the-redundant-move-button-from-panel-title-bars`
+      — advanced to Done.
+    date: '2026-11-05T04:06:52.373Z'
+    id: c-2026-11-05t04-06-52-373z
+  - type: status_change
+    from: Ready
+    to: Done
+    user: Agent
+    date: '2026-11-05T04:06:52.374Z'
 needsAction: null
 branch: flux/WOKEPOET-21-remove-the-redundant-move-button-from-panel-title-bars
 baselineCommit: a4c85a758a73046c8f54268117154f06f5082670
 implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/94'
-swimlane: open-pr
+swimlane: null
 ---
 > **TL;DR:** Dragging the title bar already moves a panel, so the Move icon comes off the title bar. Its one extra ability, choosing which corner the panel is anchored to, stays in the right-click menu under a clearer name.
 
