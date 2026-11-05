@@ -1,14 +1,14 @@
 // Scarab vendor recipe: expected value, buy list, odds and rare-but-cheap marks.
 import { describe, it, expect } from 'vitest'
 import { buyList, flipModel, flipOdds, parseExchange, rareCheapList, scarabQuotes, shortScarab, RARE_SHARE } from '@/web/woke/scarab-flip/calc'
-import type { ScarabQuote } from '@/web/woke/scarab-flip/calc'
+import type { Quote } from '@/web/woke/scarab-flip/calc'
 import { SAMPLE_ROLLS, TIER_ROLLS, UNSAMPLED_TIERS } from '@/web/woke/scarab-flip/weights'
 import type { PriceItem } from '@/web/woke/market/types'
 
 const PLAIN = { sellDiscount: 0, reroll: false }
 
 function quotes (prices: Record<string, number>, tradedChaos: number | null = 1000) {
-  return new Map<string, ScarabQuote>(Object.entries(prices).map(([name, chaos]) => [name, { chaos, tradedChaos }]))
+  return new Map<string, Quote>(Object.entries(prices).map(([name, chaos]) => [name, { chaos, tradedChaos }]))
 }
 
 // Sample counts: Harvest Scarab 649, Harvest of Doubling 218, Scarab of Wisps 212.
@@ -69,7 +69,7 @@ describe('buy list', () => {
     const q = quotes({ 'Harvest Scarab': 1, 'Harvest Scarab of Doubling': 100, 'Scarab of Wisps': 2 })
     q.get('Harvest Scarab')!.tradedChaos = 2
     q.get('Scarab of Wisps')!.tradedChaos = 1000
-    const list = buyList(flipModel(q, PLAIN), true)
+    const list = buyList(flipModel(q, PLAIN).rows, true)
     expect(list.map(r => r.name)).toEqual(['Scarab of Wisps', 'Harvest Scarab'])
     expect(list[1].profit).toBeGreaterThan(list[0].profit)
     expect(list[1].tradedPerDay).toBe(2)
@@ -79,12 +79,12 @@ describe('buy list', () => {
     const q = quotes({ 'Harvest Scarab': 1, 'Harvest Scarab of Doubling': 100, 'Torment Scarab of Possession': 0.05 })
     q.get('Torment Scarab of Possession')!.tradedChaos = 0.1
     const m = flipModel(q, PLAIN)
-    expect(buyList(m, true).map(r => r.name)).not.toContain('Torment Scarab of Possession')
-    expect(buyList(m, false).map(r => r.name)).toContain('Torment Scarab of Possession')
+    expect(buyList(m.rows, true).map(r => r.name)).not.toContain('Torment Scarab of Possession')
+    expect(buyList(m.rows, false).map(r => r.name)).toContain('Torment Scarab of Possession')
   })
 
   it('is empty when no scarab is cheap enough', () => {
-    expect(buyList(flipModel(quotes({ 'Harvest Scarab': 50, 'Scarab of Wisps': 50 }), PLAIN), true)).toEqual([])
+    expect(buyList(flipModel(quotes({ 'Harvest Scarab': 50, 'Scarab of Wisps': 50 }), PLAIN).rows, true)).toEqual([])
   })
 })
 
@@ -169,7 +169,7 @@ describe('price feeds', () => {
   it('falls back to the dense prices with volume unknown', () => {
     const q = scarabQuotes(dense, null)
     expect(q.get('Harvest Scarab')).toEqual({ chaos: 2, tradedChaos: null })
-    const list = buyList(flipModel(new Map([['Harvest Scarab', q.get('Harvest Scarab')!], ['Scarab of Wisps', q.get('Scarab of Wisps')!]]), PLAIN), true)
+    const list = buyList(flipModel(new Map([['Harvest Scarab', q.get('Harvest Scarab')!], ['Scarab of Wisps', q.get('Scarab of Wisps')!]]), PLAIN).rows, true)
     expect(list[0].profitPerDay).toBeNull()
   })
 })

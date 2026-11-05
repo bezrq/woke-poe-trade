@@ -103,7 +103,7 @@ describe('every tool in the launcher', () => {
   const specs = [
     { type: 'image-strip', name: 'Cheat sheets' },
     { type: 'woke-essence-scan', name: 'Essence scan' },
-    { type: 'woke-scarab-flip', name: 'Scarab flip' },
+    { type: 'woke-scarab-flip', name: 'Flips' },
     { type: 'woke-campaign', name: 'Campaign tracker' },
     { type: 'woke-boss-runs', name: 'Boss runs' }
   ]
@@ -117,7 +117,7 @@ describe('every tool in the launcher', () => {
     expect(state).toEqual({
       'My boss runs': 'placed',
       'Essence scan': 'available',
-      'Scarab flip': 'off',
+      'Flips': 'off',
       'Campaign tracker': 'dock',
       'Cheat sheets': 'available'
     })

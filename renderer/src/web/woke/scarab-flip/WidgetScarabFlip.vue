@@ -1,56 +1,65 @@
 <template>
   <Widget :config="config" move-handles="corners" :inline-edit="false" :readonly="true">
-    <!-- The verdict on hover, so a quick check doesn't open the panel. -->
-    <DockItem id="scarab-flip" title="Scarab flip" :show="dockShow" :wm-id="config.wmId">
+    <!-- The best flip on hover, so a quick check doesn't open the panel. -->
+    <DockItem id="scarab-flip" title="Flips" :show="dockShow" :wm-id="config.wmId">
       <template #card>
-        <div v-if="model" class="flex flex-col gap-0.5" style="padding: 2px var(--w-pad) 6px;">
-          <span class="w-num">{{ verdict }} · {{ verdictSub }}</span>
-          <span v-if="buy[0]" class="w-dim w-num">Best supply: {{ shortScarab(buy[0].name) }}, {{ fmt(buy[0].chaos) }}, +{{ fmt(buy[0].profit) }}</span>
-          <span v-if="rareCheap.length" class="w-dim"><i class="fas fa-star w-warn" /> {{ rareCheap.length }} rare and cheap</span>
+        <div v-if="best" class="flex flex-col gap-0.5" style="padding: 2px var(--w-pad) 6px;">
+          <span class="w-num">Best supply: {{ shortName(best.name) }}</span>
+          <span class="w-dim w-num">{{ best.family.label }}, {{ best.method.label.toLowerCase() }}, +{{ fmt(best.profit) }}, up to {{ fmt(best.profitPerDay) }} a day</span>
         </div>
+        <div v-else class="w-dim" style="padding: 2px var(--w-pad) 6px;">Nothing worth flipping right now</div>
       </template>
     </DockItem>
-    <WPanel :title="config.wmTitle || 'Scarab flip'" :icon="panelIcon" :updated="snapshot?.ts ?? null" :fresh-min="40" :stale-min="180" width="32rem">
+    <WPanel :title="config.wmTitle || 'Flips'" :icon="panelIcon" :updated="snapshot?.ts ?? null" :fresh-min="40" :stale-min="180" width="34rem">
       <template #tabs>
-        <WTabs v-model="config.tab" :options="[
-          { value: 'buy', label: 'Buy list', count: model ? buy.length : undefined },
-          { value: 'odds', label: 'Odds' },
-          { value: 'rare', label: 'Rare & cheap', count: model ? rareCheap.length : undefined }
-        ]" />
+        <WTabs :model-value="family.id" :options="FAMILIES.map(f => ({ value: f.id, label: f.label }))"
+          @update:model-value="config.family = $event" />
       </template>
       <template #toolbar>
+        <WSegmented v-if="family.methods.length > 1" :model-value="method.id"
+          :options="family.methods.map(m => ({ value: m.id, label: m.label }))"
+          @update:model-value="pickMethod($event)" />
+        <WSegmented v-if="views.length > 1" :model-value="view" :options="views"
+          @update:model-value="pickView($event)" />
         <WSelect :model-value="String(config.sellDiscount)" title="What you lose selling results below the listed price"
           :options="[0, 5, 10, 20].map(n => ({ value: String(n), label: `Sell discount ${n}%` }))"
           @update:model-value="config.sellDiscount = Number($event)" />
-        <WChip clickable :active="config.reroll" title="Vendor results worth less than a third of a recipe instead of selling them"
+        <WChip v-if="method.id !== 'upgrade'" clickable :active="config.reroll" title="Flip results again when that is worth more than selling them"
           @click="config.reroll = !config.reroll"><i class="fas fa-recycle" /> Reroll cheap results</WChip>
-        <WChip v-if="config.tab === 'buy'" clickable :active="config.hideUntraded" :title="`Hide scarabs with under ${UNTRADED_CHAOS}c traded a day: their price means little`"
+        <WChip v-if="view === 'buy'" clickable :active="config.hideUntraded" :title="`Hide items with under ${UNTRADED_CHAOS}c traded a day: their price means little`"
           @click="config.hideUntraded = !config.hideUntraded">Hide untraded</WChip>
+        <WField v-if="method.lifeforce" :model-value="lifeforcePerItem" type="number" :suffix="`${method.lifeforce} / item`" style="width: 8rem;"
+          title="Lifeforce per item for this craft. The wiki lists 30; change it if the bench shows otherwise."
+          @update:model-value="config.lifeforcePerItem = Number($event) || 0" />
       </template>
       <template #meta>
-        <template v-if="model">
+        <template v-if="flip">
           <span>{{ snapshot?.league }}</span><span class="w-faint">·</span>
-          <span class="w-num">{{ model.rows.length }} scarabs priced</span>
+          <span class="w-num">{{ family.label }}: {{ method.label.toLowerCase() }}</span>
         </template>
-        <span v-else>Waiting for poe.ninja prices…</span>
+        <span v-else-if="!snapshot">Waiting for poe.ninja prices…</span>
       </template>
 
-      <div v-if="model" :class="$style.verdict" class="w-num">
+      <div v-if="flip && flip.kind !== 'no-cost'" :class="$style.verdict" class="w-num">
         <b>{{ verdict }}</b>
-        <span class="w-dim">{{ verdictSub }}<template v-if="buy.length"> · {{ buy.length }} of {{ model.rows.length }} scarabs qualify</template></span>
+        <span class="w-dim">{{ verdictSub }}</span>
       </div>
+      <div v-if="warning" :class="[$style.note, $style.warning]">{{ warning }}</div>
 
-      <WSkeleton v-if="!model" :rows="8" />
+      <WSkeleton v-if="!snapshot" :rows="8" />
+      <WEmpty v-else-if="!flip" icon="fas fa-recycle">poe.ninja has no {{ family.noun }} prices yet.</WEmpty>
+      <WEmpty v-else-if="flip.kind === 'no-cost'" icon="fas fa-recycle">No {{ method.lifeforce }} Crystallised Lifeforce price yet, so the cost of a reroll is unknown.</WEmpty>
 
-      <template v-else-if="config.tab === 'buy'">
-        <WEmpty v-if="!buy.length" icon="fas fa-recycle">Nothing is cheap enough to vendor right now.</WEmpty>
+      <template v-else-if="view === 'buy'">
+        <WEmpty v-if="!buy.length" icon="fas fa-recycle">No {{ family.noun }} is worth flipping this way right now.</WEmpty>
         <template v-else>
           <div class="w-row w-row--head" :class="$style.buyGrid">
-            <span>Scarab</span><span class="text-right">Price</span><span class="text-right" title="Return of a recipe using 3 of this scarab, minus their price">Profit / recipe</span>
-            <template v-if="hasVolume"><span class="text-right" title="Scarabs traded in the last 24 hours">Traded / day</span><span class="text-right" title="Most profit a day, if you bought every scarab traded">c / day</span></template>
+            <span>{{ capitalize(family.noun) }}</span><span class="text-right">Price</span>
+            <span class="text-right" :title="profitTitle">{{ method.id === 'harvest' ? 'Profit / reroll' : 'Profit / recipe' }}</span>
+            <template v-if="hasVolume"><span class="text-right" title="Items traded in the last 24 hours">Traded / day</span><span class="text-right" title="Most profit a day, if you bought every item traded">c / day</span></template>
           </div>
-          <div v-for="r in buy" :key="r.name" class="w-row" :class="$style.buyGrid" @contextmenu="rowMenu($event, r.name)">
-            <ScarabName :row="r" />
+          <div v-for="r in buy" :key="r.name" class="w-row" :class="$style.buyGrid" @contextmenu="rowMenu($event, itemName(r))">
+            <FlipName :name="r.name" :item="itemName(r)" :rare-cheap="'rareCheap' in r && r.rareCheap" />
             <WPrice :chaos="r.chaos" :divine="snapshot?.divine" class="text-right" />
             <span class="text-right w-up w-num">+{{ amount(r.profit) }}c</span>
             <template v-if="hasVolume">
@@ -61,10 +70,10 @@
         </template>
       </template>
 
-      <template v-else-if="config.tab === 'odds'">
+      <template v-else-if="view === 'odds' && odds">
         <div :class="$style.note" class="w-num">
-          <template v-if="odds.medianResult != null">Half of all recipes return {{ fmt(odds.medianResult) }} or less. </template>
-          Before any rerolls, a recipe sells for {{ fmt(odds.saleValue) }} on average.
+          <template v-if="odds.medianResult != null">Half of all {{ flipWord }}s return {{ fmt(odds.medianResult) }} or less. </template>
+          Before any rerolls, a {{ flipWord }} sells for {{ fmt(odds.saleValue) }} on average.
         </div>
         <div :class="$style.legend">
           <span><i :class="[$style.key, $style.chance]" />Chance of this result</span>
@@ -81,27 +90,27 @@
         </div>
         <div class="w-group-label">Biggest sources of value</div>
         <div v-for="s in odds.sources" :key="s.name" class="w-row" :class="$style.sourceGrid" @contextmenu="rowMenu($event, s.name)">
-          <span class="w-trunc" :title="s.name">{{ shortScarab(s.name) }}</span>
+          <span class="w-trunc" :title="s.name">{{ shortName(s.name) }}</span>
           <WPrice :chaos="s.chaos" :divine="snapshot?.divine" class="text-right" />
           <span class="text-right w-num w-dim">{{ pct(s.valueShare) }}</span>
         </div>
-        <div v-if="odds.jackpotOneIn" :class="$style.note" class="w-num">
-          A {{ JACKPOT_CHAOS }}c+ result comes about 1 in {{ Math.round(odds.jackpotOneIn) }} recipes. Without those, a recipe sells for {{ fmt(odds.withoutJackpot) }}, so {{ fmt(odds.withoutJackpot / 3) }} each is the safer buy line.
+        <div v-if="odds.jackpotOneIn && pool" :class="$style.note" class="w-num">
+          A {{ JACKPOT_CHAOS }}c+ result comes about 1 in {{ Math.round(odds.jackpotOneIn) }} {{ flipWord }}s. Without those, a {{ flipWord }} sells for {{ fmt(odds.withoutJackpot) }}, so {{ fmt((odds.withoutJackpot - pool.recipe.cost) / pool.recipe.inputs) }} each is the safer buy line.
         </div>
       </template>
 
-      <template v-else>
+      <template v-else-if="pool">
         <div :class="$style.note" class="w-num">
-          These drop under {{ pct(RARE_SHARE) }} of the time but cost less than a third of a typical rare scarab<template v-if="model.typicalRare != null"> ({{ fmt(model.typicalRare) }})</template>, so they may rise later. Hold them rather than vendoring.
+          These drop under {{ pct(family.rareShare ?? 0) }} of the time but cost less than a third of a typical rare {{ family.noun }}<template v-if="pool.typicalRare != null"> ({{ fmt(pool.typicalRare) }})</template>, so they may rise later. Hold them rather than flipping them.
         </div>
-        <WEmpty v-if="!rareCheap.length" icon="fas fa-star">No exceptionally rare scarab is cheap right now.</WEmpty>
+        <WEmpty v-if="!rareCheap.length" icon="fas fa-star">No exceptionally rare {{ family.noun }} is cheap right now.</WEmpty>
         <template v-else>
           <div class="w-row w-row--head" :class="$style.rareGrid">
-            <span>Scarab</span><span class="text-right">Price</span><span class="text-right" title="Chance per recipe or drop, from the weights">Drops</span>
-            <span v-if="hasVolume" class="text-right" title="Scarabs traded in the last 24 hours">Traded / day</span>
+            <span>{{ capitalize(family.noun) }}</span><span class="text-right">Price</span><span class="text-right" title="Chance per flip or drop, from the weights">Drops</span>
+            <span v-if="hasVolume" class="text-right" title="Items traded in the last 24 hours">Traded / day</span>
           </div>
           <div v-for="r in rareCheap" :key="r.name" class="w-row" :class="$style.rareGrid" @contextmenu="rowMenu($event, r.name)">
-            <ScarabName :row="r" />
+            <FlipName :name="r.name" :item="r.name" :rare-cheap="r.rareCheap" />
             <WPrice :chaos="r.chaos" :divine="snapshot?.divine" class="text-right" />
             <span class="text-right w-dim w-num">1 in {{ Math.round(1 / r.share).toLocaleString('en-US') }}</span>
             <span v-if="hasVolume" class="text-right w-dim w-num">{{ Math.round(r.tradedPerDay ?? 0) }}</span>
@@ -110,7 +119,7 @@
       </template>
 
       <template #footer>
-        <span :title="footerTitle">3.27 player weights, {{ model?.rows.length ?? 0 }} scarabs<template v-if="model?.unrated.length"> · {{ model.unrated.length }} with no weight left out</template></span>
+        <span :title="footerTitle">{{ family.source }}</span>
       </template>
     </WPanel>
   </Widget>
@@ -124,7 +133,7 @@ export default {
   widget: {
     type: SCARAB_FLIP_TYPE,
     instances: 'multi',
-    trNameKey: 'Scarab flip'
+    trNameKey: 'Flips'
   } satisfies WidgetSpec
 }
 </script>
@@ -132,12 +141,11 @@ export default {
 <script setup lang="ts">
 import { popupAnchor } from '../ui/window-anchor'
 import { computed, defineComponent, h, inject, shallowRef, watch } from 'vue'
-import type { PropType } from 'vue'
 import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
 import { Host } from '@/web/background/IPC'
 import { useLeagues } from '@/web/background/Leagues'
-import { WPanel, WTabs, WSelect, WChip, WPrice, WEmpty, WSkeleton, openMenu, toast } from '../ui'
+import { WPanel, WTabs, WSegmented, WSelect, WChip, WField, WPrice, WEmpty, WSkeleton, openMenu, toast } from '../ui'
 import { copyText } from '../ui/copy'
 import { formatAmount, formatChaos } from '../ui/format'
 import { gameIcon, moduleIcon } from '../ui/game-icons'
@@ -146,8 +154,10 @@ import { latestSnapshots } from '../market/db'
 import type { Snapshot } from '../market/types'
 import DockItem from '../dock/DockItem.vue'
 import { useZone } from '../shared/zone'
-import { RARE_SHARE, UNTRADED_CHAOS, JACKPOT_CHAOS, buyList, flipModel, flipOdds, parseExchange, rareCheapList, scarabQuotes, shortScarab } from './calc'
-import type { ExchangeQuotes, ScarabRow } from './calc'
+import { UNTRADED_CHAOS, JACKPOT_CHAOS, buyList, flipOdds, parseExchange, rareCheapList } from './calc'
+import type { FlipRow, UpgradeRow } from './calc'
+import { DEFAULT_LIFEFORCE_PER_ITEM, FAMILIES, bestFlip, familyById, priceFlip, shortName, unpricedShare } from './families'
+import type { Exchanges, FlipMethodId } from './families'
 import type { ScarabFlipWidget } from './widget'
 
 const props = defineProps<{
@@ -158,7 +168,7 @@ const wm = inject<WidgetManager>('wm')!
 
 if (props.config.wmFlags[0] === 'uninitialized') {
   props.config.wmFlags = ['invisible-on-blur']
-  props.config.wmTitle = 'Scarab flip'
+  props.config.wmTitle = 'Flips'
   props.config.anchor = popupAnchor()
   props.config.tab = 'buy'
   props.config.sellDiscount = 0
@@ -166,6 +176,8 @@ if (props.config.wmFlags[0] === 'uninitialized') {
   props.config.hideUntraded = true
   wm.show(props.config.wmId)
 }
+// Placed back when the panel only did scarabs.
+if (props.config.wmTitle === 'Scarab flip') props.config.wmTitle = 'Flips'
 
 const collector = useMarketCollector({ poll: true })
 // Town and hideout only, like the other economy icons: in a map it would sit
@@ -175,11 +187,12 @@ const leagues = useLeagues()
 const league = computed(() => leagues.selectedId.value)
 
 const snapshot = shallowRef<Snapshot | null>(null)
-const exchange = shallowRef<ExchangeQuotes | null>(null)
+const exchanges = shallowRef<Exchanges>(new Map())
 
-// The dense prices have no volume, so the exchange feed is fetched alongside
-// them. If it fails the panel still works, without volume.
+// The dense prices have no volume, so each family's exchange feed is fetched
+// alongside them. If one fails that family still works, without volume.
 const EXCHANGE_MAX_AGE_MS = 20 * 60 * 1000
+const EXCHANGE_TYPES = [...new Set(FAMILIES.map(f => f.ninjaType))]
 let exchangeAt = 0
 let exchangeLeague: string | undefined
 
@@ -188,7 +201,7 @@ let loadSeq = 0
 async function load () {
   const seq = ++loadSeq
   const id = league.value
-  if (!id) { snapshot.value = null; exchange.value = null; return }
+  if (!id) { snapshot.value = null; exchanges.value = new Map(); return }
   try {
     const [snap] = await latestSnapshots(id, 1)
     if (seq === loadSeq) snapshot.value = snap ?? null
@@ -196,79 +209,137 @@ async function load () {
     if (seq === loadSeq) snapshot.value = null
   }
   // A newer load has started (league switch or revision): leave the
-  // exchange to it, or this one could wipe what it just stored.
+  // exchange feeds to it, or this one could wipe what it just stored.
   if (seq !== loadSeq) return
   if (exchangeLeague === id && Date.now() - exchangeAt < EXCHANGE_MAX_AGE_MS) return
-  if (exchangeLeague !== id) exchange.value = null
-  try {
-    const response = await Host.proxy(`poe.ninja/poe1/api/economy/exchange/current/overview?league=${encodeURIComponent(id)}&type=Scarab`)
-    const parsed = response.ok ? parseExchange(await response.json()) : null
-    if (seq === loadSeq) {
-      exchange.value = parsed
-      // Only a good answer is cached; after a 429 or 5xx the next load retries.
-      if (response.ok) {
-        exchangeLeague = id
-        exchangeAt = Date.now()
-      }
+  if (exchangeLeague !== id) exchanges.value = new Map()
+  const next: Exchanges = new Map(exchanges.value)
+  let allGood = true
+  for (const type of EXCHANGE_TYPES) {
+    try {
+      const response = await Host.proxy(`poe.ninja/poe1/api/economy/exchange/current/overview?league=${encodeURIComponent(id)}&type=${type}`)
+      if (seq !== loadSeq) return
+      next.set(type, response.ok ? parseExchange(await response.json()) : null)
+      if (!response.ok) allGood = false
+    } catch {
+      if (seq !== loadSeq) return
+      next.set(type, null)
+      allGood = false
     }
-  } catch {
-    if (seq === loadSeq) exchange.value = null
+  }
+  exchanges.value = next
+  // Only good answers are cached; after a 429 or 5xx the next load retries.
+  if (allGood) {
+    exchangeLeague = id
+    exchangeAt = Date.now()
   }
 }
 watch([league, collector.revision], load, { immediate: true })
 
-const model = computed(() => {
-  if (!snapshot.value) return null
-  const quotes = scarabQuotes(snapshot.value.items, exchange.value)
-  if (!quotes.size) return null
-  return flipModel(quotes, { sellDiscount: props.config.sellDiscount / 100, reroll: props.config.reroll })
+const family = computed(() => familyById(props.config.family))
+const method = computed(() => {
+  const picked = props.config.methods?.[family.value.id]
+  return family.value.methods.find(m => m.id === picked) ?? family.value.methods[0]
 })
+function pickMethod (id: string) {
+  props.config.methods = { ...props.config.methods, [family.value.id]: id as FlipMethodId }
+}
+function pickView (id: string) {
+  props.config.tab = id as ScarabFlipWidget['tab']
+}
+const lifeforcePerItem = computed(() => props.config.lifeforcePerItem ?? DEFAULT_LIFEFORCE_PER_ITEM)
+const options = computed(() => ({ sellDiscount: props.config.sellDiscount / 100, reroll: props.config.reroll }))
+
+const flip = computed(() => snapshot.value
+  ? priceFlip(family.value, method.value, snapshot.value.items, exchanges.value, options.value, lifeforcePerItem.value)
+  : null)
+const pool = computed(() => flip.value?.kind === 'pool' ? flip.value.model : null)
+const rows = computed<Array<FlipRow | UpgradeRow>>(() => {
+  if (flip.value?.kind === 'pool') return flip.value.model.rows
+  return flip.value?.kind === 'upgrade' ? flip.value.rows : []
+})
+const best = computed(() => snapshot.value
+  ? bestFlip(snapshot.value.items, exchanges.value, options.value, lifeforcePerItem.value)
+  : null)
+
+// Odds and rarity need weights, so a known-result flip only has its list.
+const views = computed(() => {
+  if (!pool.value) return []
+  const list = [{ value: 'buy', label: 'Buy list' }, { value: 'odds', label: 'Odds' }]
+  if (family.value.rareShare != null) list.push({ value: 'rare', label: `Rare & cheap ${rareCheap.value.length}` })
+  return list
+})
+const view = computed(() => views.value.some(v => v.value === props.config.tab) ? props.config.tab : 'buy')
 
 const panelIcon = moduleIcon('scarab-flip').art ?? undefined
-const dockShow = computed(() => Boolean(model.value) && (zone.kind === 'town' || zone.kind === 'hideout'))
-const hasVolume = computed(() => exchange.value != null)
-const buy = computed(() => model.value ? buyList(model.value, props.config.hideUntraded) : [])
-const rareCheap = computed(() => model.value ? rareCheapList(model.value) : [])
-const odds = computed(() => flipOdds(model.value!))
+const dockShow = computed(() => Boolean(snapshot.value) && (zone.kind === 'town' || zone.kind === 'hideout'))
+const hasVolume = computed(() => rows.value.some(r => r.tradedChaos != null))
+const buy = computed(() => buyList(rows.value, props.config.hideUntraded))
+const rareCheap = computed(() => pool.value ? rareCheapList(pool.value) : [])
+const odds = computed(() => pool.value ? flipOdds(pool.value) : null)
 // Both bars use one scale, so a long value bar means more than a long chance bar.
-const oddsScale = computed(() => Math.max(...odds.value.buckets.flatMap(b => [b.chance, b.valueShare]), 0.0001))
+const oddsScale = computed(() => Math.max(...(odds.value?.buckets ?? []).flatMap(b => [b.chance, b.valueShare]), 0.0001))
 
+const flipWord = computed(() => method.value.id === 'harvest' ? 'reroll' : 'recipe')
 const verdict = computed(() => {
-  const m = model.value
-  if (!m) return ''
   // Each row's break-even leaves its own type out of the pool, so one
   // pool-wide "buy under" price would disagree with the list below.
   const n = buy.value.length
-  return n ? `${n} scarab${n === 1 ? '' : 's'} worth vendoring` : 'Nothing worth buying right now'
+  if (!n) return 'Nothing worth flipping right now'
+  const verb = method.value.id === 'harvest' ? 'rerolling' : method.value.id === 'upgrade' ? 'upgrading' : 'vendoring'
+  return `${n} ${family.value.noun}${n === 1 ? '' : 's'} worth ${verb}`
 })
-const verdictSub = computed(() => model.value ? `A recipe returns ${fmt(model.value.recipeValue)} on average` : '')
+const verdictSub = computed(() => {
+  if (flip.value?.kind === 'upgrade') return '3 of a tier give 1 of the next, so there are no odds to weigh'
+  if (flip.value?.kind !== 'pool') return ''
+  const value = `A ${flipWord.value} returns ${fmt(flip.value.model.recipeValue)} on average`
+  return method.value.lifeforce ? `${value}, for ${fmt(flip.value.cost)} of ${method.value.lifeforce} lifeforce` : value
+})
+const profitTitle = computed(() => method.value.id === 'upgrade'
+  ? 'Price of the next tier, minus 3 of this one'
+  : `Return of a ${flipWord.value}, minus what goes in${method.value.lifeforce ? ' and the lifeforce' : ''}`)
+
+const unpriced = computed(() => flip.value?.kind === 'pool' ? unpricedShare(family.value, flip.value.quotes) : 0)
+const warning = computed(() => {
+  if (!pool.value) return ''
+  if (family.value.lowConfidence) return family.value.lowConfidence
+  return unpriced.value >= 0.1
+    ? `${pct(unpriced.value)} of the sampled weight is on ${family.value.noun}s poe.ninja doesn't price. They are left out, so if they still drop the average is too high.`
+    : ''
+})
 
 const footerTitle = computed(() => {
-  const tiers = model.value?.rows.filter(r => r.weightSource === 'tier').length ?? 0
-  const left = model.value?.unrated.join(', ')
+  const tiers = pool.value?.rows.filter(r => r.weightSource === 'tier').length ?? 0
+  const left = pool.value?.unrated.join(', ')
   return [
-    'Weights: 33,333 vendor rolls from version 3.27, linked from the PoE Wiki, so they may have drifted. Very rare scarabs rest on only a few rolls.',
+    family.value.source,
     tiers ? `${tiers} scarabs use the average weight of their wiki rarity tier.` : '',
     left ? `No weight, left out: ${left}.` : '',
     hasVolume.value ? 'Prices and volume: poe.ninja exchange.' : 'Prices: poe.ninja. Volume is missing because the exchange feed did not load.'
   ].filter(Boolean).join('\n')
 })
 
-const ScarabName = defineComponent({
-  props: { row: { type: Object as PropType<ScarabRow>, required: true } },
+const FlipName = defineComponent({
+  props: {
+    name: { type: String, required: true },
+    item: { type: String, required: true },
+    rareCheap: { type: Boolean, default: false }
+  },
   setup (p) {
     return () => {
-      const icon = gameIcon(p.row.name)
-      return h('span', { class: 'flex items-center gap-1 min-w-0', title: p.row.name }, [
+      const icon = gameIcon(p.item)
+      return h('span', { class: 'flex items-center gap-1 min-w-0', title: p.item }, [
         icon ? h('img', { src: icon, style: 'width: 20px; height: 20px; object-fit: contain; flex: none;', alt: '', loading: 'lazy', decoding: 'async', draggable: 'false' }) : null,
-        h('span', { class: 'w-trunc' }, shortScarab(p.row.name)),
-        p.row.rareCheap
-          ? h('i', { class: 'fas fa-star w-warn', style: 'flex: none; font-size: calc(11px * var(--w-text-scale, 1));', title: 'Exceptionally rare and cheap: it may rise later, so think before vendoring it' })
+        h('span', { class: 'w-trunc' }, shortName(p.name)),
+        p.rareCheap
+          ? h('i', { class: 'fas fa-star w-warn', style: 'flex: none; font-size: calc(11px * var(--w-text-scale, 1));', title: 'Exceptionally rare and cheap: it may rise later, so think before flipping it' })
           : null
       ])
     }
   }
 })
+
+function itemName (r: FlipRow | UpgradeRow) { return 'from' in r ? r.from : r.name }
 
 function rowMenu (e: MouseEvent, name: string) {
   openMenu(e, [{
@@ -282,6 +353,7 @@ function rowMenu (e: MouseEvent, name: string) {
   }])
 }
 
+function capitalize (s: string) { return s[0].toUpperCase() + s.slice(1) }
 function fmt (chaos: number) { return formatChaos(chaos, snapshot.value?.divine ?? null) }
 function amount (chaos: number) { return formatAmount(chaos) }
 function pct (p: number) {
@@ -297,6 +369,7 @@ function pct (p: number) {
 .rareGrid { grid-template-columns: minmax(0, 1fr) 62px 76px 64px; }
 .sourceGrid { grid-template-columns: minmax(0, 1fr) 76px 44px; }
 .note { padding: 8px var(--w-pad); color: var(--w-dim); font-size: var(--w-fs-sm); white-space: normal; overflow-wrap: anywhere; }
+.warning { color: var(--w-warn); }
 .legend { display: flex; flex-wrap: wrap; gap: 4px 16px; padding: 0 var(--w-pad) 6px; color: var(--w-dim); font-size: var(--w-fs-sm); }
 .key { display: inline-block; width: 10px; height: 7px; border-radius: 2px; margin-right: 4px; }
 .bucket { display: grid; grid-template-columns: 58px minmax(0, 1fr) 40px 40px; gap: 8px; align-items: center; padding: 3px var(--w-pad); }

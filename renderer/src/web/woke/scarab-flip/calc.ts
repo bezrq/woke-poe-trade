@@ -1,20 +1,20 @@
-// Expected value of the scarab vendor recipe. Any 3 scarabs vendor into a
-// random scarab of a different type from those used, respecting drop weights
-// (poewiki.net/wiki/Scarab).
+// Expected value of a flip: put in some items, get back a random one. Scarabs,
+// catalysts and runegrafts go through vendor recipes; catalysts, delirium orbs,
+// fossils and essences through Harvest rerolls. Which is which: families.ts.
 import { median } from '../analytics/stats'
 import type { PriceItem } from '../market/types'
 import { SAMPLE_ROLLS, TIER_ROLLS, UNSAMPLED_TIERS } from './weights'
 
-// Drop chance at or under this counts as exceptionally rare. The sample has a
-// clear gap: nothing falls between 0.10% and 0.53%.
+// Scarabs: drop chance at or under this counts as exceptionally rare. The
+// sample has a clear gap: nothing falls between 0.10% and 0.53%.
 export const RARE_SHARE = 0.0015
-// A rare scarab is cheap when it costs under this part of a typical rare one.
+// A rare item is cheap when it costs under this part of a typical rare one.
 export const CHEAP_RATIO = 1 / 3
 // Under this much chaos traded a day, a price means nothing.
 export const UNTRADED_CHAOS = 1
 export const JACKPOT_CHAOS = 200
 
-export interface ScarabQuote {
+export interface Quote {
   chaos: number
   // Chaos traded in the last 24 hours; null when the exchange feed is missing.
   tradedChaos: number | null
@@ -23,19 +23,53 @@ export interface ScarabQuote {
 export interface FlipOptions {
   // Lost when selling results below the listed price, 0..1.
   sellDiscount: number
-  // Vendor results worth less than a third of a recipe instead of selling them.
+  // Flip results again when that is worth more than selling them.
   reroll: boolean
 }
 
-export interface ScarabRow {
+export interface ItemWeight {
+  weight: number
+  source: 'sample' | 'tier'
+}
+
+export interface FlipRecipe {
+  // Items put in for one result.
+  inputs: number
+  // Chaos spent per flip on top of the inputs (Harvest lifeforce).
+  cost: number
+  // The result can't be the type you put in.
+  excludeInput: boolean
+  // Chance at or under which an item counts as rare; null: no rare marks.
+  rareShare: number | null
+  weightOf: (name: string) => ItemWeight | null
+}
+
+export function scarabWeight (name: string): ItemWeight | null {
+  const rolls = SAMPLE_ROLLS[name]
+  if (rolls) return { weight: rolls, source: 'sample' }
+  const tier = UNSAMPLED_TIERS[name]
+  return tier ? { weight: TIER_ROLLS[tier], source: 'tier' } : null
+}
+
+// The scarab vendor recipe: any 3 give a random scarab of a different type
+// from those used, respecting drop weights (poewiki.net/wiki/Scarab).
+export const SCARAB_RECIPE: FlipRecipe = {
+  inputs: 3,
+  cost: 0,
+  excludeInput: true,
+  rareShare: RARE_SHARE,
+  weightOf: scarabWeight
+}
+
+export interface FlipRow {
   name: string
   chaos: number
-  // Chance of being the result of a recipe, before the input is removed.
+  // Chance of being the result of a flip, before the input is removed.
   share: number
   weightSource: 'sample' | 'tier'
   tradedChaos: number | null
   tradedPerDay: number | null
-  // Return of a recipe using 3 of this scarab, minus their price.
+  // Return of a flip using this item, minus its inputs and any lifeforce.
   profit: number
   // Most profit the day's trading could supply; null without the exchange feed.
   profitPerDay: number | null
@@ -45,15 +79,16 @@ export interface ScarabRow {
 }
 
 export interface FlipModel {
-  rows: ScarabRow[]
-  // Priced scarabs with no known weight, left out of the pool.
+  rows: FlipRow[]
+  // Priced items with no known weight, left out of the pool.
   unrated: string[]
-  // Average return of a recipe, with the chosen options.
+  // Average return of a flip, with the chosen options.
   recipeValue: number
-  // Above this a scarab costs more than a third of a recipe.
+  // Above this an input costs more than its part of a flip.
   buyUnder: number
   typicalRare: number | null
   options: FlipOptions
+  recipe: FlipRecipe
 }
 
 interface ExchangeFeed {
@@ -79,105 +114,153 @@ export function parseExchange (feed: ExchangeFeed): ExchangeQuotes | null {
   return out.size ? out : null
 }
 
-// Exchange prices when there are any: they are newer and the volume refers to them.
-export function scarabQuotes (items: PriceItem[], exchange: ExchangeQuotes | null): Map<string, ScarabQuote> {
-  const quotes = new Map<string, ScarabQuote>()
+// Exchange prices when there are any: they are newer and the volume refers to
+// them. `match` picks the family's items, since a feed can hold others
+// (currency). A feed with none of them says nothing about volume, so it
+// counts as missing.
+export function familyQuotes (
+  items: PriceItem[],
+  type: string,
+  match: (name: string) => boolean,
+  exchange: ExchangeQuotes | null
+): Map<string, Quote> {
+  const feed = exchange ? [...exchange].filter(([name]) => match(name)) : []
+  const quotes = new Map<string, Quote>()
   for (const item of items) {
-    if (item.type === 'Scarab' && item.chaos > 0) {
-      quotes.set(item.name, { chaos: item.chaos, tradedChaos: exchange ? 0 : null })
+    if (item.type === type && item.chaos > 0 && match(item.name)) {
+      quotes.set(item.name, { chaos: item.chaos, tradedChaos: feed.length ? 0 : null })
     }
   }
-  if (exchange) for (const [name, q] of exchange) quotes.set(name, q)
+  for (const [name, q] of feed) quotes.set(name, q)
   return quotes
 }
 
-function weightOf (name: string): { weight: number, source: 'sample' | 'tier' } | null {
-  const rolls = SAMPLE_ROLLS[name]
-  if (rolls) return { weight: rolls, source: 'sample' }
-  const tier = UNSAMPLED_TIERS[name]
-  return tier ? { weight: TIER_ROLLS[tier], source: 'tier' } : null
+export function scarabQuotes (items: PriceItem[], exchange: ExchangeQuotes | null): Map<string, Quote> {
+  return familyQuotes(items, 'Scarab', name => name.includes('Scarab'), exchange)
 }
 
-export function flipModel (quotes: Map<string, ScarabQuote>, options: FlipOptions): FlipModel {
-  const pool: Array<{ name: string, quote: ScarabQuote, weight: number, source: 'sample' | 'tier' }> = []
+export function flipModel (quotes: Map<string, Quote>, options: FlipOptions, recipe: FlipRecipe = SCARAB_RECIPE): FlipModel {
+  const pool: Array<{ name: string, quote: Quote, weight: number, source: 'sample' | 'tier' }> = []
   const unrated: string[] = []
   for (const [name, quote] of quotes) {
-    const w = weightOf(name)
+    const w = recipe.weightOf(name)
     if (w) pool.push({ name, quote, weight: w.weight, source: w.source })
     else unrated.push(name)
   }
   const total = pool.reduce((n, s) => n + s.weight, 0)
   const keep = 1 - options.sellDiscount
+  const { inputs, cost } = recipe
 
-  // With rerolling, a result is worth at least a third of a recipe, which
-  // depends on the recipe's own value. Each pass shrinks the error to a third.
-  const passes = total > 0 ? (options.reroll ? 60 : 1) : 0
+  // With rerolling, a result is worth at least its share of another flip,
+  // which depends on the flip's own value, so it settles over several passes.
   let recipeValue = 0
-  const worth = (chaos: number) => Math.max(chaos * keep, options.reroll ? recipeValue / 3 : 0)
+  const worth = (chaos: number) => Math.max(chaos * keep, options.reroll ? (recipeValue - cost) / inputs : 0)
+  const passes = total > 0 ? (options.reroll ? 2000 : 1) : 0
   for (let i = 0; i < passes; i++) {
-    recipeValue = pool.reduce((n, s) => n + s.weight * worth(s.quote.chaos), 0) / total
+    const next = pool.reduce((n, s) => n + s.weight * worth(s.quote.chaos), 0) / total
+    const settled = Math.abs(next - recipeValue) < 1e-9
+    recipeValue = next
+    if (settled) break
   }
 
-  const rareShares = pool.filter(s => s.weight / total <= RARE_SHARE)
-  const typicalRare = median(rareShares.map(s => s.quote.chaos))
+  const isRare = (weight: number) => recipe.rareShare != null && weight / total <= recipe.rareShare
+  const typicalRare = median(pool.filter(s => isRare(s.weight)).map(s => s.quote.chaos))
 
-  const rows: ScarabRow[] = pool.map(s => {
+  const rows: FlipRow[] = pool.map(s => {
     const { chaos, tradedChaos } = s.quote
-    // The recipe can't give back the type you put in.
-    const value = total > s.weight
-      ? (recipeValue * total - s.weight * worth(chaos)) / (total - s.weight)
-      : 0
-    const profit = value - 3 * chaos
+    let value = recipeValue
+    if (recipe.excludeInput) {
+      value = total > s.weight ? (recipeValue * total - s.weight * worth(chaos)) / (total - s.weight) : 0
+    }
+    const profit = value - inputs * chaos - cost
     const tradedPerDay = tradedChaos == null ? null : tradedChaos / chaos
-    const share = s.weight / total
-    const rare = share <= RARE_SHARE
+    const rare = isRare(s.weight)
     return {
       name: s.name,
       chaos,
-      share,
+      share: s.weight / total,
       weightSource: s.source,
       tradedChaos,
       tradedPerDay,
       profit,
-      profitPerDay: tradedPerDay == null ? null : Math.max(0, profit) * tradedPerDay / 3,
+      profitPerDay: tradedPerDay == null ? null : Math.max(0, profit) * tradedPerDay / inputs,
       rare,
       rareCheap: rare && typicalRare != null && chaos < typicalRare * CHEAP_RATIO
     }
   })
-  return { rows, unrated, recipeValue, buyUnder: recipeValue / 3, typicalRare, options }
+  return { rows, unrated, recipeValue, buyUnder: (recipeValue - cost) / inputs, typicalRare, options, recipe }
 }
 
-export function isTraded (row: ScarabRow): boolean {
+export function isTraded (row: { tradedChaos: number | null }): boolean {
   return row.tradedChaos == null || row.tradedChaos >= UNTRADED_CHAOS
 }
 
-// Scarabs worth buying to vendor, biggest supply of profit first.
-export function buyList (model: FlipModel, hideUntraded: boolean): ScarabRow[] {
-  return model.rows
+// Items worth flipping, biggest supply of profit first.
+export function buyList<T extends { profit: number, profitPerDay: number | null, tradedChaos: number | null }> (rows: T[], hideUntraded: boolean): T[] {
+  return rows
     .filter(r => r.profit > 0 && (!hideUntraded || isTraded(r)))
     .sort((a, b) => (b.profitPerDay ?? 0) - (a.profitPerDay ?? 0) || b.profit - a.profit)
 }
 
 // Cheapest first, leaving out prices with no trades behind them.
-export function rareCheapList (model: FlipModel): ScarabRow[] {
+export function rareCheapList (model: FlipModel): FlipRow[] {
   return model.rows.filter(r => r.rareCheap && isTraded(r)).sort((a, b) => a.chaos - b.chaos)
+}
+
+export interface UpgradeRow {
+  name: string
+  from: string
+  into: string
+  chaos: number
+  // Price of 1 of the next tier, minus 3 of this one.
+  profit: number
+  tradedChaos: number | null
+  tradedPerDay: number | null
+  profitPerDay: number | null
+}
+
+// Vendor recipes with a known result: 3 of a tier give 1 of the next.
+// `chains` lists each line of items from lowest tier to highest.
+export function upgradeRows (quotes: Map<string, Quote>, chains: string[][], sellDiscount: number): UpgradeRow[] {
+  const rows: UpgradeRow[] = []
+  for (const chain of chains) {
+    for (let i = 0; i + 1 < chain.length; i++) {
+      const from = quotes.get(chain[i])
+      const into = quotes.get(chain[i + 1])
+      if (!from || !into) continue
+      const profit = into.chaos * (1 - sellDiscount) - 3 * from.chaos
+      const tradedPerDay = from.tradedChaos == null ? null : from.tradedChaos / from.chaos
+      rows.push({
+        // "Black Oil", "Opalescent Oil" -> "Black to Opalescent Oil"
+        name: `${chain[i].split(' ')[0]} to ${chain[i + 1]}`,
+        from: chain[i],
+        into: chain[i + 1],
+        chaos: from.chaos,
+        profit,
+        tradedChaos: from.tradedChaos,
+        tradedPerDay,
+        profitPerDay: tradedPerDay == null ? null : Math.max(0, profit) * tradedPerDay / 3
+      })
+    }
+  }
+  return rows
 }
 
 export interface OddsBucket {
   label: string
   // Chance of a result in this price range, 0..1.
   chance: number
-  // Part of the recipe's value that comes from this range, 0..1.
+  // Part of the flip's value that comes from this range, 0..1.
   valueShare: number
 }
 
 export interface Odds {
   buckets: OddsBucket[]
-  // Average sale value of a result, before any rerolling.
+  // Average sale value of a result, before flipping any result again.
   saleValue: number
   medianResult: number | null
   sources: Array<{ name: string, chaos: number, valueShare: number }>
-  // Recipes per jackpot result, and the sale value without those results.
+  // Flips per jackpot result, and the sale value without those results.
   jackpotOneIn: number | null
   withoutJackpot: number
 }
@@ -194,7 +277,7 @@ const BUCKETS: Array<{ label: string, under: number }> = [
 export function flipOdds (model: FlipModel): Odds {
   const keep = 1 - model.options.sellDiscount
   const saleValue = model.rows.reduce((n, r) => n + r.share * r.chaos * keep, 0)
-  const valueOf = (r: ScarabRow) => saleValue > 0 ? r.share * r.chaos * keep / saleValue : 0
+  const valueOf = (r: FlipRow) => saleValue > 0 ? r.share * r.chaos * keep / saleValue : 0
 
   let from = 0
   const buckets = BUCKETS.map(b => {
