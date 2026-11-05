@@ -105,6 +105,11 @@ history:
     to: Ready
     user: Agent
     date: '2026-11-05T06:34:12.847Z'
+  - type: activity
+    user: Agent
+    date: '2026-11-05T06:38:00.227Z'
+    comment: Task worktree automatically reclaimed (ready-or-terminal-status)
+    id: a-2026-11-05t06-38-00-227z
 swimlane: null
 needsAction: null
 branch: flux/WOKEPOET-31-give-woke-its-own-icon-and-overlay-mark
