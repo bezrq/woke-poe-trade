@@ -83,7 +83,9 @@
                 'w-pc-aging': improved && (row.band === 'aging' || (allStale && row.band === 'stale')),
                 'w-pc-stale': improved && row.band === 'stale' && !row.dropped && !allStale
               }"
-              :title="improved ? rowTitle(row) : undefined">
+              :title="improved ? rowTitle(row) : undefined"
+              @mouseenter="showRowTip($event, row)"
+              @mouseleave="hideTip">
               <td class="px-2 whitespace-nowrap">
                 <span class="w-pc-price">
                   <span class="w-pc-amount" :class="{ 'line-through': row.lead.priceCurrency === 'exalted' }">{{ row.lead.priceAmount }}</span>
@@ -100,6 +102,7 @@
                     <i v-if="!row.lead.hasNote" class="fas fa-question" />
                   </span>
                   <span v-if="improved && row.dropped && FIX_TAG[row.dropped]" class="w-pc-tag">{{ FIX_TAG[row.dropped] }}</span>
+                  <span v-if="row.lead.corrupted && item.category !== 'Gem'" class="w-pc-tag">Corrupted</span>
                 </span>
               </td>
               <td v-if="item.stackSize" class="px-2 text-right">{{ row.lead.stackSize }}</td>
@@ -138,7 +141,8 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, computed, watch, PropType, inject, shallowReactive, shallowRef, ShallowRef } from 'vue'
+import { defineComponent, computed, watch, onUnmounted, PropType, inject, shallowReactive, shallowRef, ShallowRef } from 'vue'
+import { hideTip, showTip } from '@/web/woke/ui/tooltip/tooltip'
 import { useI18nNs } from '@/web/i18n'
 import UiErrorBox from '@/web/ui/UiErrorBox.vue'
 import { requestTradeResultList, requestResults, createTradeRequest, clearTradeCache, PricingResult, SearchResult } from './pathofexile-trade'
@@ -308,6 +312,8 @@ export default defineComponent({
     const { error, searchResult, groupedResults, fetchResults, fetching, search } = useTradeApi()
     const { retryIn, rateLimited } = useRetryCountdown(error)
     const refreshNote = shallowRef('')
+    // A tooltip must not outlive the listings it came from.
+    onUnmounted(hideTip)
 
     // woke: improved view reads the same listings, nothing extra is requested
     const { insight, divine, options: insightOptions } = useInsight(groupedResults, computed(() => props.filters.trade.league))
@@ -337,7 +343,8 @@ export default defineComponent({
       merge: improved.value,
       dropped: insight.value.dropped,
       detail: (r) => {
-        const parts: unknown[] = []
+        // Corrupted and clean copies sell differently, so they keep their own rows.
+        const parts: unknown[] = [Boolean(r.corrupted)]
         if (props.item.stackSize) parts.push(r.stackSize)
         if (props.filters.itemLevel) parts.push(r.itemLevel)
         if (props.item.category === 'Gem') parts.push(r.level)
@@ -375,6 +382,10 @@ export default defineComponent({
       logKey,
       rows,
       rowTitle,
+      showRowTip (e: MouseEvent, row: ListingRow<PricingResult & { listedTimes: number }>) {
+        if (row.lead.tipItem) showTip(e, { kind: 'item', item: row.lead.tipItem })
+      },
+      hideTip,
       FIX_TAG,
       SKELETON_ROWS,
       coinFor: (currency: string) => COINS[currency],
