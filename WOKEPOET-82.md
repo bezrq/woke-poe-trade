@@ -15,6 +15,26 @@ history:
     user: Agent
     date: '2026-11-05T10:48:15.107Z'
     comment: Created ticket.
+    id: a-2026-11-05t10-48-15-107z
+  - type: comment
+    user: Agent
+    comment: >-
+      Which tag, filter and rule? Mocks:
+      https://claude.ai/artifact/Gghx9jLJVkozMHRYqmrggX Recommended: 1B (the
+      word thin), 2A (Skip thin per panel), 3A (Lab gems rule, low trade later).
+    date: '2026-11-05T11:07:05.315Z'
+    id: c-2026-11-05t11-07-05-315z
+  - type: swimlane_change
+    swimlane: require-input
+    action: set
+    user: Agent
+    date: '2026-11-05T11:07:05.315Z'
+    comment: >-
+      Which tag, filter and rule? Mocks:
+      https://claude.ai/artifact/Gghx9jLJVkozMHRYqmrggX Recommended: 1B (the
+      word thin), 2A (Skip thin per panel), 3A (Lab gems rule, low trade later).
+swimlane: require-input
+needsAction: null
 ---
 Guy, 2026-11-05: low-confidence prices should have a filter and a tag, like the Lab gems toggle. Same thin rule as Lab gems (no poe.ninja price on 3 or more of the last 7 days). Mocks first, then Guy's pick.
 
