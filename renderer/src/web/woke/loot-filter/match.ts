@@ -114,7 +114,14 @@ function linkedSockets (groups: string[] | undefined): number {
   return Math.max(0, ...groups.map(g => g.length > 1 ? g.length : 0))
 }
 
+// A condition on something only maps or gems have: any other item fails it,
+// where a map or gem whose copy can't tell stays unknown.
+function only (c: FilterCondition, applies: boolean | null, actual: number | undefined): Tri {
+  return applies === false ? false : numeric(c, actual)
+}
+
 export function evalCondition (c: FilterCondition, item: ItemFacts): Tri {
+  const cls = item.itemClass
   switch (c.key) {
     case 'Class': return strings(c, item.itemClass)
     case 'BaseType': return strings(c, item.baseType)
@@ -123,14 +130,14 @@ export function evalCondition (c: FilterCondition, item: ItemFacts): Tri {
     case 'DropLevel': return numeric(c, item.dropLevel)
     case 'Quality': return numeric(c, item.quality)
     case 'AreaLevel': return numeric(c, item.areaLevel)
-    case 'MapTier': return numeric(c, item.mapTier)
-    case 'GemLevel': return numeric(c, item.gemLevel)
+    case 'MapTier': return only(c, cls == null ? null : cls === 'Maps', item.mapTier)
+    case 'GemLevel': return only(c, cls == null ? null : /Gem/.test(cls), item.gemLevel)
     case 'StackSize': return numeric(c, item.stackSize ?? 1)
     case 'Width': return numeric(c, item.width)
     case 'Height': return numeric(c, item.height)
     case 'MemoryStrands': return numeric(c, item.memoryStrands)
     case 'CorruptedMods': return numeric(c, item.corruptedMods)
-    case 'EnchantmentPassiveNum': return numeric(c, item.enchantmentPassiveNum)
+    case 'EnchantmentPassiveNum': return numeric(c, item.enchantmentPassiveNum ?? (item.enchantments ? 0 : undefined))
     case 'LinkedSockets': return numeric(c, linkedSockets(item.socketGroups))
     case 'Sockets': return sockets(c, item.socketGroups, false)
     case 'SocketGroup': return sockets(c, item.socketGroups, true)
@@ -145,6 +152,10 @@ export function evalCondition (c: FilterCondition, item: ItemFacts): Tri {
     case 'TransfiguredGem': return bool(c, item.transfigured)
     case 'BlightedMap': return bool(c, item.blightedMap)
     case 'Imbued': return bool(c, item.imbued)
+    case 'ZanaMemory': return bool(c, item.zanaMemory)
+    case 'Exceptional': return bool(c, item.exceptional)
+    case 'ShaperItem': return bool(c, item.influences.includes('Shaper'))
+    case 'ElderItem': return bool(c, item.influences.includes('Elder'))
     case 'HasCruciblePassiveTree': return bool(c, item.crucibleTree)
     case 'UberBlightedMap': return bool(c, item.uberBlightedMap)
     case 'AnyEnchantment': return bool(c, item.anyEnchantment)
@@ -152,7 +163,8 @@ export function evalCondition (c: FilterCondition, item: ItemFacts): Tri {
     case 'HasSearingExarchImplicit': return numeric(c, item.exarchTier)
     case 'HasEaterOfWorldsImplicit': return numeric(c, item.eaterTier)
     case 'HasInfluence': return influence(c, item.influences)
-    case 'HasExplicitMod': return item.identified === false ? (c.op === '!=' || c.op === '!') : strings(c, item.explicitModNames)
+    // An unidentified item shows no mods, so counts see none: "=0" passes.
+    case 'HasExplicitMod': return strings(c, item.identified === false ? [] : item.explicitModNames)
     case 'HasEnchantment': return strings(c, item.enchantments)
     case 'EnchantmentPassiveNode': return strings(c, item.enchantPassiveNodes)
     default: return null

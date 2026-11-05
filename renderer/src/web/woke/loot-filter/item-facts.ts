@@ -6,6 +6,7 @@
 // stays undefined, and the matcher treats conditions on it as unknown.
 import type { ParsedItem } from '@/parser'
 import { ItemRarity } from '@/parser'
+import { BASE_FACTS } from './base-facts'
 
 export type FilterRarity = 'Normal' | 'Magic' | 'Rare' | 'Unique'
 
@@ -35,6 +36,8 @@ export interface ItemFacts {
   vestigial?: boolean
   transfigured?: boolean
   imbued?: boolean
+  zanaMemory?: boolean
+  exceptional?: boolean
   crucibleTree?: boolean
   blightedMap?: boolean
   uberBlightedMap?: boolean
@@ -69,8 +72,9 @@ const ELDRITCH_RANKS = ['Lesser', 'Greater', 'Grand', 'Exceptional', 'Exquisite'
 
 function num (text: string | undefined): number | undefined {
   if (text == null) return undefined
-  const m = /-?\d+/.exec(text)
-  return m ? Number(m[0]) : undefined
+  // The game writes big stacks with a separator: "Stack Size: 1,234/20".
+  const m = /-?\d[\d,]*/.exec(text)
+  return m ? Number(m[0].replace(/,/g, '')) : undefined
 }
 
 // Reads the facts straight from the clipboard text, using APT's parsed item
@@ -94,7 +98,10 @@ export function itemFacts (clipboard: string, parsed: ParsedItem | null): ItemFa
   if (!baseType) baseType = nameLines[nameLines.length - 1]?.replace(/^Superior /, '')
   // The parser's unique maps are just "Map"; filters match "Map (Tier 16)".
   const tier = parsed?.mapTier ?? num(all.find(l => l.startsWith('Map Tier:')))
-  if (baseType === 'Map' && tier != null) baseType = `Map (Tier ${tier})`
+  // So are blighted ones, whose copy says "Blighted Map (Tier 16)". The tier in
+  // a magic map's name stands between its affixes.
+  if (/^(Blighted |Blight-ravaged )?Map$/.test(baseType ?? '') && tier != null) baseType = `Map (Tier ${tier})`
+  else if (itemClass === 'Maps') baseType = /Map \(Tier \d+\)/.exec(baseType ?? '')?.[0] ?? baseType
 
   // Currency, gems and cards count as Normal for Rarity conditions.
   const textRarity = ['Normal', 'Magic', 'Rare', 'Unique'].includes(rarityText ?? '') ? rarityText as FilterRarity : 'Normal'
@@ -137,19 +144,22 @@ export function itemFacts (clipboard: string, parsed: ParsedItem | null): ItemFa
   }
 
   const name = nameLines.join(' ')
+  const known = baseType != null ? BASE_FACTS[baseType] : undefined
+  const isGem = /Gem/.test(itemClass ?? '')
   const facts: ItemFacts = {
     name,
     itemClass,
     baseType,
     rarity,
     itemLevel: parsed?.itemLevel ?? num(line('Item Level:')),
+    dropLevel: known?.[0],
     quality: parsed?.quality ?? num(line('Quality:')) ?? 0,
     stackSize: parsed?.stackSize?.value ?? num(line('Stack Size:')),
     mapTier: parsed?.mapTier ?? num(line('Map Tier:')),
     // Not from "Level:" on other items: that's the requirement.
-    gemLevel: parsed?.gemLevel ?? (/Gem/.test(itemClass ?? '') ? num(line('Level:')) : undefined),
-    width: parsed?.info.w,
-    height: parsed?.info.h,
+    gemLevel: parsed?.gemLevel ?? (isGem ? num(line('Level:')) : undefined),
+    width: parsed?.info.w ?? known?.[1],
+    height: parsed?.info.h ?? known?.[2],
     memoryStrands: parsed?.memoryStrands ?? num(line('Memory Strands:')) ?? 0,
     socketGroups,
     identified: parsed ? !parsed.isUnidentified : !all.includes('Unidentified'),
@@ -159,8 +169,11 @@ export function itemFacts (clipboard: string, parsed: ParsedItem | null): ItemFa
     synthesised: parsed ? !!parsed.isSynthesised : all.includes('Synthesised Item'),
     replica: rarity === 'Unique' && /^Replica /.test(nameLines[0] ?? ''),
     foulborn: parsed ? !!parsed.isFoulborn : /^Foulborn /.test(name),
-    vestigial: parsed ? !!parsed.isVestigial : undefined,
-    transfigured: parsed ? Boolean(parsed.info.gem?.transfigured) : undefined,
+    vestigial: parsed ? !!parsed.isVestigial : all.some(l => /^Vestigial\b/.test(l)),
+    // Without the parser's data only a gem can be unsure.
+    transfigured: parsed ? Boolean(parsed.info.gem?.transfigured) : (isGem ? undefined : false),
+    zanaMemory: all.some(l => /\bZana'?s? Memory\b/i.test(l)),
+    exceptional: isGem && all.some(l => /(^|, )Exceptional(,|$)/.test(l)),
     imbued: parsed?.imbuedGem ?? all.some(l => /^Imbued\b/.test(l)),
     // The copy doesn't show crucible trees; they only exist on legacy items.
     crucibleTree: false,
@@ -174,7 +187,8 @@ export function itemFacts (clipboard: string, parsed: ParsedItem | null): ItemFa
     enchantmentPassiveNum,
     enchantPassiveNodes,
     enchantments,
-    influences: parsed?.influences.map(i => String(i)) ?? [],
+    influences: parsed?.influences.map(i => String(i)) ??
+      all.flatMap(l => /^(Shaper|Elder|Crusader|Hunter|Redeemer|Warlord) Item$/.exec(l)?.[1] ?? []),
     explicitModNames
   }
   return facts
