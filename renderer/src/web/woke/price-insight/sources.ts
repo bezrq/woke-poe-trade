@@ -156,6 +156,15 @@ export function buildBlend (input: BlendInput): Blend {
 }
 
 /**
+ * Whether listing the sources says more than the verdict's own line, which
+ * already shows the cheapest listing and poe.ninja's price.
+ */
+export function sourcesAddAnything (blend: Blend): boolean {
+  if (blend.agreement === 'mixed' || blend.agreement === 'disagree') return true
+  return blend.points.some(p => p.weight === 0 || (p.key !== 'listings' && p.key !== 'ninja'))
+}
+
+/**
  * The price to headline. Plenty of agreeing listings already say what this
  * exact search sells for, and other sources can't see its rolls, so they only
  * move the headline when listings are thin or missing.
