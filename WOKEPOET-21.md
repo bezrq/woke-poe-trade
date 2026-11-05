@@ -1,7 +1,7 @@
 ---
 id: WOKEPOET-21
 title: Remove the redundant move button from panel title bars
-status: In Progress
+status: Ready
 priority: Low
 effort: XS
 assignee: unassigned
@@ -33,13 +33,37 @@ history:
       flux/WOKEPOET-21-remove-the-redundant-move-button-from-panel-title-bars
     event: worktree-created
     id: a-2026-11-05t04-00-33-549z
+  - type: comment
+    user: Agent
+    comment: >-
+      **The Move icon is off the title bar; choosing the anchor corner is now a
+      right-click option.** The handles' only extra ability is that anchor
+      choice, which sets the way a widget grows. Review found the tab bar could
+      only be moved through those handles, so its empty edges now drag too.
+
+
+      Validated: 220 tests, vue-tsc, eslint; in the browser with a read-only
+      copy of Guy's layout: no Move buttons, tab bar drags by its edge,
+      right-click shows Choose anchor corner. Not run in the Electron overlay.
+      Docs: updated renderer/src/web/woke/ui/README.md.
+    date: '2026-11-05T04:05:35.289Z'
+    completionComment: true
+    id: c-2026-11-05t04-05-35-289z
+  - type: activity
+    user: Agent
+    comment: 'PR created: https://github.com/guybnd/woke-poe-trade/pull/94'
+    date: '2026-11-05T04:05:43.188Z'
+    id: a-2026-11-05t04-05-43-188z
+  - type: status_change
+    from: In Progress
+    to: Ready
+    user: Agent
+    date: '2026-11-05T04:05:43.189Z'
 needsAction: null
-claim:
-  holder: claude-code@guy-pc
-  claimedAt: '2026-11-05T04:00:28.663Z'
-  expiresAt: '2026-11-05T04:30:28.663Z'
 branch: flux/WOKEPOET-21-remove-the-redundant-move-button-from-panel-title-bars
 baselineCommit: a4c85a758a73046c8f54268117154f06f5082670
+implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/94'
+swimlane: open-pr
 ---
 > **TL;DR:** Dragging the title bar already moves a panel, so the Move icon comes off the title bar. Its one extra ability, choosing which corner the panel is anchored to, stays in the right-click menu under a clearer name.
 

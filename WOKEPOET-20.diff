@@ -1,0 +1,1179 @@
+diff --git a/renderer/src/web/Config.ts b/renderer/src/web/Config.ts
+index ecfbce93..4697b7c6 100644
+--- a/renderer/src/web/Config.ts
++++ b/renderer/src/web/Config.ts
+@@ -8,6 +8,7 @@ import { wokeGlobalShortcuts, wokeShortcutsFor } from './woke/shortcuts'
+ import { filterAptShortcuts, needsGameLog } from './woke/modules'
+ import { MAP_CHECK_TYPE, initMapCheckWidget } from './woke/map-mods/map-check'
+ import { moveStashSearchToLibrary } from './woke/regex-library/apt-import'
++import { movePopupsToNewSpot } from './woke/ui/window-anchor'
+ import type { WokeModulesConfig } from './woke/modules'
+ import type { ItemCheckWidget } from './item-check/widget'
+ import type { ItemSearchWidget } from './item-search/widget'
+@@ -449,6 +450,8 @@ function upgradeConfig (_config: Config): Config {
+   }
+   // woke: Stash search strings move into the Regex library.
+   moveStashSearchToLibrary(config.widgets as Array<Record<string, any> & { wmId: number, wmType: string }>)
++  // woke: panels still on their old default spot open in the new one.
++  movePopupsToNewSpot(config.widgets as Array<Record<string, any> & { wmType: string }>)
+   /* eslint-enable */
+ 
+   return config as unknown as Config
+diff --git a/renderer/src/web/woke/analytics/WidgetSessionAnalytics.vue b/renderer/src/web/woke/analytics/WidgetSessionAnalytics.vue
+index 1ebe715a..f277540a 100644
+--- a/renderer/src/web/woke/analytics/WidgetSessionAnalytics.vue
++++ b/renderer/src/web/woke/analytics/WidgetSessionAnalytics.vue
+@@ -221,6 +221,7 @@ export default {
+ </script>
+ 
+ <script setup lang="ts">
++import { popupAnchor } from '../ui/window-anchor'
+ import { inject, computed, shallowRef, watch } from 'vue'
+ import type { WidgetManager } from '@/web/overlay/interfaces'
+ import Widget from '@/web/overlay/Widget.vue'
+@@ -256,7 +257,7 @@ const wm = inject<WidgetManager>('wm')!
+ if (props.config.wmFlags[0] === 'uninitialized') {
+   props.config.wmFlags = ['invisible-on-blur']
+   props.config.wmTitle = 'Session analytics'
+-  props.config.anchor = { pos: 'tc', x: 50, y: 12 }
++  props.config.anchor = popupAnchor()
+   props.config.unit = 'div'
+   props.config.range = 'league'
+   props.config.bosses = true
+diff --git a/renderer/src/web/woke/atlas/WidgetAtlas.vue b/renderer/src/web/woke/atlas/WidgetAtlas.vue
+index be5ea6e4..b6af3342 100644
+--- a/renderer/src/web/woke/atlas/WidgetAtlas.vue
++++ b/renderer/src/web/woke/atlas/WidgetAtlas.vue
+@@ -158,6 +158,7 @@ export default {
+ </script>
+ 
+ <script setup lang="ts">
++import { popupAnchor } from '../ui/window-anchor'
+ import { inject, computed, shallowRef, watch } from 'vue'
+ import { MainProcess } from '@/web/background/IPC'
+ import type { WidgetManager } from '@/web/overlay/interfaces'
+@@ -188,7 +189,7 @@ const wm = inject<WidgetManager>('wm')!
+ if (props.config.wmFlags[0] === 'uninitialized') {
+   props.config.wmFlags = ['invisible-on-blur']
+   props.config.wmTitle = 'Atlas strategies'
+-  props.config.anchor = { pos: 'tl', x: 20, y: 15 }
++  props.config.anchor = popupAnchor()
+   props.config.dataUrl = ''
+   props.config.selectedId = null
+   props.config.strategies = []
+diff --git a/renderer/src/web/woke/boss-runs/WidgetBossRuns.vue b/renderer/src/web/woke/boss-runs/WidgetBossRuns.vue
+index f1e77388..c3e1bc9c 100644
+--- a/renderer/src/web/woke/boss-runs/WidgetBossRuns.vue
++++ b/renderer/src/web/woke/boss-runs/WidgetBossRuns.vue
+@@ -250,6 +250,7 @@ export default {
+ </script>
+ 
+ <script setup lang="ts">
++import { popupAnchor } from '../ui/window-anchor'
+ import WToggle from '../ui/WToggle.vue'
+ import { inject, computed, nextTick, shallowRef, watch } from 'vue'
+ import type { WidgetManager } from '@/web/overlay/interfaces'
+@@ -274,7 +275,7 @@ const wm = inject<WidgetManager>('wm')!
+ if (props.config.wmFlags[0] === 'uninitialized') {
+   props.config.wmFlags = ['invisible-on-blur']
+   props.config.wmTitle = 'Boss runs'
+-  props.config.anchor = { pos: 'cc', x: 50, y: 50 }
++  props.config.anchor = popupAnchor()
+   props.config.selected = BOSSES[0].id
+   props.config.sort = 'hour'
+   props.config.tier = 'all'
+diff --git a/renderer/src/web/woke/campaign/CampaignBuild.vue b/renderer/src/web/woke/campaign/CampaignBuild.vue
+index 9619147a..adb917fd 100644
+--- a/renderer/src/web/woke/campaign/CampaignBuild.vue
++++ b/renderer/src/web/woke/campaign/CampaignBuild.vue
+@@ -46,7 +46,7 @@
+ import { computed } from 'vue'
+ import { saveConfig } from '@/web/Config'
+ import { useActiveBuild } from '../pob-builds/active'
+-import { actRewards, linkColours, linkGroups, orderedGems, pickStage, relevantGems, skillSetsOf, townBuys } from '../pob-builds/build-model'
++import { actRewards, linkColours, linkGroups, loadoutOf, orderedGems, relevantGems, townBuys } from '../pob-builds/build-model'
+ import { gemData, nextGems } from '../pob-builds/gems'
+ import SocketDots from '../pob-builds/SocketDots.vue'
+ import { isTown } from './log-parse'
+@@ -64,28 +64,28 @@ const build = useActiveBuild()
+ const s = computed(() => props.config.state)
+ const level = computed(() => s.value.level)
+ const details = computed(() => props.config.showBuild ? build.details.value : null)
+-// Same stage rules as skill and item sets: "Act 3" is an act, not level 3.
+-const tree = computed(() => details.value ? pickStage(details.value.trees, s.value.level, s.value.act)?.item ?? null : null)
++const loadout = computed(() => details.value ? loadoutOf(details.value, s.value.level, s.value.act, build.loadout.value) : null)
++const tree = computed(() => loadout.value?.tree ?? null)
+ const got = computed(() => s.value.gemsGot ?? [])
+ const campaignAct = computed(() => (s.value.act != null && s.value.act <= 10) ? s.value.act : null)
+ 
+ const buys = computed(() => (details.value && campaignAct.value != null && isTown(s.value.areaId))
+-  ? townBuys(details.value, build.className.value, s.value.level, campaignAct.value, got.value).slice(0, 6)
++  ? townBuys(details.value, build.className.value, s.value.level, campaignAct.value, got.value, build.loadout.value).slice(0, 6)
+   : [])
+ const buyNpcs = computed(() => [...new Set(buys.value.map(b => b.npc))].join(', '))
+ const rewards = computed(() => (details.value && campaignAct.value != null)
+-  ? actRewards(details.value, build.className.value, s.value.level, campaignAct.value, got.value).slice(0, 3)
++  ? actRewards(details.value, build.className.value, s.value.level, campaignAct.value, got.value, build.loadout.value).slice(0, 3)
+   : [])
+ 
+ // Out of town: the next gem the build uses that you can't use yet.
+ const nextGem = computed(() => {
+   if (!details.value || campaignAct.value == null) return null
+   const lvl = s.value.level ?? 1
+-  const names = relevantGems(details.value, s.value.level, s.value.act).filter(n => !got.value.includes(n))
++  const names = relevantGems(details.value, s.value.level, s.value.act, build.loadout.value).filter(n => !got.value.includes(n))
+   return nextGems(details.value, lvl, build.className.value, names).find(g => g.requiredLevel > lvl) ?? null
+ })
+ 
+-const picked = computed(() => details.value ? pickStage(skillSetsOf(details.value), s.value.level, s.value.act) : null)
++const picked = computed(() => loadout.value?.skillSet ?? null)
+ const linkSet = computed(() => (picked.value?.byStage || (details.value?.skillSets?.length ?? 0) > 1) ? picked.value?.item.title ?? '' : '')
+ const links = computed(() => picked.value
+   ? linkGroups(picked.value.item.groups, props.maxLinks).map(g => ({
+diff --git a/renderer/src/web/woke/challenges/WidgetChallenges.vue b/renderer/src/web/woke/challenges/WidgetChallenges.vue
+index 8bf1efce..109b0b23 100644
+--- a/renderer/src/web/woke/challenges/WidgetChallenges.vue
++++ b/renderer/src/web/woke/challenges/WidgetChallenges.vue
+@@ -72,6 +72,7 @@ export default {
+ </script>
+ 
+ <script setup lang="ts">
++import { popupAnchor } from '../ui/window-anchor'
+ import { computed, inject, nextTick, onUnmounted, shallowRef, watch } from 'vue'
+ import { Host, MainProcess } from '@/web/background/IPC'
+ import { AppConfig } from '@/web/Config'
+@@ -102,7 +103,7 @@ const wm = inject<WidgetManager>('wm')!
+ if (props.config.wmFlags[0] === 'uninitialized') {
+   props.config.wmFlags = ['invisible-on-blur']
+   props.config.wmTitle = 'Challenges'
+-  props.config.anchor = { pos: 'tl', x: 15, y: 8 }
++  props.config.anchor = popupAnchor()
+   props.config.url = ''
+   props.config.hotkey = null
+   props.config.dockIcon = false
+diff --git a/renderer/src/web/woke/farming/WidgetFarming.vue b/renderer/src/web/woke/farming/WidgetFarming.vue
+index 540bbef1..f7f9e975 100644
+--- a/renderer/src/web/woke/farming/WidgetFarming.vue
++++ b/renderer/src/web/woke/farming/WidgetFarming.vue
+@@ -173,6 +173,7 @@ export default {
+ </script>
+ 
+ <script setup lang="ts">
++import { popupAnchor } from '../ui/window-anchor'
+ import WToggle from '../ui/WToggle.vue'
+ import { inject, computed, shallowRef, onUnmounted, watch, nextTick } from 'vue'
+ import { useVisibleClock } from '../shared/visible-clock'
+@@ -210,7 +211,7 @@ const wm = inject<WidgetManager>('wm')!
+ if (props.config.wmFlags[0] === 'uninitialized') {
+   props.config.wmFlags = ['invisible-on-blur']
+   props.config.wmTitle = 'Farming profit'
+-  props.config.anchor = { pos: 'tl', x: 60, y: 30 }
++  props.config.anchor = popupAnchor()
+   props.config.strategy = ''
+   props.config.costs = []
+   props.config.autoCountMaps = true
+diff --git a/renderer/src/web/woke/lab-gems/WidgetLabGems.vue b/renderer/src/web/woke/lab-gems/WidgetLabGems.vue
+index abbe8a91..c37e3b22 100644
+--- a/renderer/src/web/woke/lab-gems/WidgetLabGems.vue
++++ b/renderer/src/web/woke/lab-gems/WidgetLabGems.vue
+@@ -128,6 +128,7 @@ export default {
+ </script>
+ 
+ <script setup lang="ts">
++import { popupAnchor } from '../ui/window-anchor'
+ import { inject, computed, shallowRef, watch } from 'vue'
+ import type { WidgetManager } from '@/web/overlay/interfaces'
+ import Widget from '@/web/overlay/Widget.vue'
+@@ -154,7 +155,7 @@ const wm = inject<WidgetManager>('wm')!
+ if (props.config.wmFlags[0] === 'uninitialized') {
+   props.config.wmFlags = ['invisible-on-blur']
+   props.config.wmTitle = 'Lab gems'
+-  props.config.anchor = { pos: 'tl', x: 45, y: 20 }
++  props.config.anchor = popupAnchor()
+   props.config.view = 'color'
+   props.config.gemState = '20/20'
+   props.config.specificMode = 'choose'
+diff --git a/renderer/src/web/woke/lab/WidgetLab.vue b/renderer/src/web/woke/lab/WidgetLab.vue
+index ce47dc4a..3da869dd 100644
+--- a/renderer/src/web/woke/lab/WidgetLab.vue
++++ b/renderer/src/web/woke/lab/WidgetLab.vue
+@@ -68,6 +68,7 @@ export default {
+ </script>
+ 
+ <script setup lang="ts">
++import { popupAnchor } from '../ui/window-anchor'
+ import { inject, computed, shallowRef, watch, nextTick, onUnmounted } from 'vue'
+ import { useVisibleClock } from '../shared/visible-clock'
+ import { Host, MainProcess } from '@/web/background/IPC'
+@@ -92,7 +93,7 @@ const wm = inject<WidgetManager>('wm')!
+ if (props.config.wmFlags[0] === 'uninitialized') {
+   props.config.wmFlags = ['invisible-on-blur']
+   props.config.wmTitle = 'Labyrinth'
+-  props.config.anchor = { pos: 'tl', x: 30, y: 20 }
++  props.config.anchor = popupAnchor()
+   props.config.urls = { normal: '', cruel: '', merciless: '', uber: '' }
+   props.config.defaultDifficulty = 'uber'
+   props.config.hotkeyOverlay = null
+diff --git a/renderer/src/web/woke/league-invest/WidgetLeagueInvest.vue b/renderer/src/web/woke/league-invest/WidgetLeagueInvest.vue
+index 28dc985b..b7094400 100644
+--- a/renderer/src/web/woke/league-invest/WidgetLeagueInvest.vue
++++ b/renderer/src/web/woke/league-invest/WidgetLeagueInvest.vue
+@@ -132,6 +132,7 @@ export default {
+ </script>
+ 
+ <script setup lang="ts">
++import { popupAnchor } from '../ui/window-anchor'
+ import { inject, computed, shallowRef, watch } from 'vue'
+ import type { WidgetManager } from '@/web/overlay/interfaces'
+ import Widget from '@/web/overlay/Widget.vue'
+@@ -166,7 +167,7 @@ const wm = inject<WidgetManager>('wm')!
+ if (props.config.wmFlags[0] === 'uninitialized') {
+   props.config.wmFlags = ['invisible-on-blur']
+   props.config.wmTitle = 'League investments'
+-  props.config.anchor = { pos: 'tl', x: 50, y: 20 }
++  props.config.anchor = popupAnchor()
+   props.config.budgetDiv = 5
+   props.config.slots = 5
+   props.config.horizon = 7
+diff --git a/renderer/src/web/woke/loot-filter/build-input.ts b/renderer/src/web/woke/loot-filter/build-input.ts
+index 3b00b1da..8f0a41d4 100644
+--- a/renderer/src/web/woke/loot-filter/build-input.ts
++++ b/renderer/src/web/woke/loot-filter/build-input.ts
+@@ -3,7 +3,7 @@ import { computed } from 'vue'
+ import type { ComputedRef } from 'vue'
+ import { ITEM_BY_REF } from '@/assets/data'
+ import { useActiveBuild } from '../pob-builds/active'
+-import { buildFacts, linkColours, mainGroupOf, pickStage, skillSetsOf } from '../pob-builds/build-model'
++import { buildFacts, linkColours, loadoutOf, mainGroupOf } from '../pob-builds/build-model'
+ import { CATEGORY_CLASSES } from './build-rules'
+ import type { BuildRuleInput } from './build-rules'
+ 
+@@ -23,8 +23,9 @@ export function useBuildRuleInput (): ComputedRef<BuildRuleInput | null> {
+     if (!d) return null
+     const level = build.level.value
+     const act = build.act.value
+-    const facts = buildFacts(d, level, act)
+-    const set = pickStage(skillSetsOf(d), level, act)?.item
++    const pick = build.loadout.value
++    const facts = buildFacts(d, level, act, pick)
++    const set = loadoutOf(d, level, act, pick).skillSet?.item
+     const main = set ? mainGroupOf(set.groups) : null
+     const name = (build.relPath.value ?? '').split('/').pop()!.replace(/\.xml$/i, '')
+     return {
+diff --git a/renderer/src/web/woke/loot-filter/widget.ts b/renderer/src/web/woke/loot-filter/widget.ts
+index 3111b422..6a4f39c7 100644
+--- a/renderer/src/web/woke/loot-filter/widget.ts
++++ b/renderer/src/web/woke/loot-filter/widget.ts
+@@ -10,6 +10,7 @@ import type { StrictnessAuto } from './strictness'
+ import type { OwnRule } from './rules'
+ import { defaultPresets, normalizePresets } from './presets'
+ import type { Presets } from './presets'
++import { popupAnchor } from '../ui/window-anchor'
+ 
+ export const LOOT_FILTER_TYPE = 'woke-loot-filter'
+ // copy-item target: sample the hovered item and open its rule card.
+@@ -117,7 +118,7 @@ export function defaultPriceTiers (): PriceTiers {
+ export function initLootFilterWidget (w: LootFilterWidget) {
+   w.wmTitle = 'Loot filter'
+   w.wmFlags = ['invisible-on-blur']
+-  w.anchor = { pos: 'cc', x: 50, y: 45 }
++  w.anchor = popupAnchor()
+   w.sampleHotkey = 'Alt + F'
+   w.editorHotkey = 'Alt + Shift + F'
+   w.folder = ''
+@@ -143,7 +144,7 @@ export function initLootFilterWidget (w: LootFilterWidget) {
+ }
+ 
+ export function normalizeLootFilterWidget (w: LootFilterWidget) {
+-  if (!w.anchor) w.anchor = { pos: 'cc', x: 50, y: 45 }
++  if (!w.anchor) w.anchor = popupAnchor()
+   if (w.sampleHotkey === undefined) w.sampleHotkey = null
+   if (w.editorHotkey === undefined) w.editorHotkey = null
+   if (typeof w.folder !== 'string') w.folder = ''
+diff --git a/renderer/src/web/woke/market/WidgetMarketTracker.vue b/renderer/src/web/woke/market/WidgetMarketTracker.vue
+index c8f73515..e205f3ab 100644
+--- a/renderer/src/web/woke/market/WidgetMarketTracker.vue
++++ b/renderer/src/web/woke/market/WidgetMarketTracker.vue
+@@ -138,6 +138,7 @@ export default {
+ </script>
+ 
+ <script setup lang="ts">
++import { popupAnchor } from '../ui/window-anchor'
+ import { inject, computed, shallowRef, watch } from 'vue'
+ import type { WidgetManager } from '@/web/overlay/interfaces'
+ import Widget from '@/web/overlay/Widget.vue'
+@@ -164,7 +165,7 @@ const wm = inject<WidgetManager>('wm')!
+ if (props.config.wmFlags[0] === 'uninitialized') {
+   props.config.wmFlags = ['invisible-on-blur']
+   props.config.wmTitle = 'Market tracker'
+-  props.config.anchor = { pos: 'tl', x: 40, y: 20 }
++  props.config.anchor = popupAnchor()
+   props.config.view = 'movers'
+   props.config.period = '24h'
+   props.config.minChaos = 5
+diff --git a/renderer/src/web/woke/pob-builds/BuildDetail.vue b/renderer/src/web/woke/pob-builds/BuildDetail.vue
+index 6a00fd71..e2bf2387 100644
+--- a/renderer/src/web/woke/pob-builds/BuildDetail.vue
++++ b/renderer/src/web/woke/pob-builds/BuildDetail.vue
+@@ -31,10 +31,12 @@
+           <template v-else>Level unknown: the campaign tracker reads it from Client.txt.</template>
+         </div>
+         <div v-if="skillSets.length > 1" class="flex flex-wrap gap-1 pt-1">
+-          <WChip v-for="(set, i) in skillSets" :key="i" clickable :active="set === shownSet" @click="viewSet = i">
+-            {{ set.title }}<span v-if="set === pickedSet?.item" class="w-accent"> ·  now</span>
++          <WChip v-if="pick" clickable :title="AUTO_HINT" @click="clearPick">Auto</WChip>
++          <WChip v-for="(set, i) in skillSets" :key="i" clickable :active="set === shownSet" :title="pickHint(set === shownSet, pick?.skillSet === set.title, loadout?.skillSet?.byStage)" @click="chooseSkillSet(set.title)">
++            <i v-if="pick && set === shownSet" class="fas fa-thumbtack text-xs" /> {{ set.title }}<span v-if="set === shownSet" class="w-accent"> · now</span>
+           </WChip>
+         </div>
++        <div v-if="!isActive" class="pt-1 text-xs" style="color: var(--w-warn);">Other windows use your active build. Press Make active to use this loadout there.</div>
+         <div :class="$style.heading">Links<template v-if="shownSet && skillSets.length > 1"> · {{ shownSet.title }}</template></div>
+         <div v-for="(g, i) in shownLinks" :key="i" :class="$style.linkGroup">
+           <div :class="$style.link">
+@@ -82,10 +84,12 @@
+         </template>
+ 
+         <div v-if="itemSets.length > 1" class="flex flex-wrap gap-1 pt-2">
+-          <WChip v-for="(set, i) in itemSets" :key="i" clickable :active="set === shownItemSet" @click="viewItemSet = i">
+-            {{ set.title }}<span v-if="set === pickedItemSet" class="w-accent"> · now</span>
++          <WChip v-if="pick" clickable :title="AUTO_HINT" @click="clearPick">Auto</WChip>
++          <WChip v-for="(set, i) in itemSets" :key="i" clickable :active="set === shownItemSet" :title="pickHint(set === shownItemSet, pick?.itemSet === set.title, loadout?.itemSet?.byStage)" @click="chooseItemSet(set.title)">
++            <i v-if="pick && set === shownItemSet" class="fas fa-thumbtack text-xs" /> {{ set.title }}<span v-if="set === shownItemSet" class="w-accent"> · now</span>
+           </WChip>
+         </div>
++        <div v-if="!isActive" class="pt-1 text-xs" style="color: var(--w-warn);">Other windows use your active build. Press Make active to use this loadout there.</div>
+         <div :class="$style.heading">Gear<template v-if="shownItemSet && itemSets.length > 1"> · {{ shownItemSet.title }}</template></div>
+         <WEmpty v-if="!gear.length" icon="fas fa-tshirt">No items in this build. Add them in PoB's Items tab to see what to look for.</WEmpty>
+         <div v-for="(s, i) in gear" :key="i" :class="$style.gearRow"
+@@ -114,12 +118,12 @@
+         <div v-if="details.trees.length" class="pb-2">
+           <div :class="$style.heading">Passive trees</div>
+           <a v-for="t in details.trees" :key="t.title + t.url" :href="safeUrl(t.url)" target="_blank"
+-            class="block w-trunc py-0.5 hover:underline" :class="t.isActive ? '' : 'w-dim'">
+-            <i class="fas fa-external-link-alt text-xs w-faint" /> {{ t.title }}<span v-if="t.isActive" class="w-accent"> · active</span>
++            class="block w-trunc py-0.5 hover:underline" :class="t === loadout?.tree ? '' : 'w-dim'">
++            <i class="fas fa-external-link-alt text-xs w-faint" /> {{ t.title }}<span v-if="t === loadout?.tree" class="w-accent"> · now</span>
+           </a>
+         </div>
+         <div v-for="(set, k) in skillSets" :key="k" class="pb-2">
+-          <div :class="$style.heading">Gem setups<template v-if="skillSets.length > 1"> · {{ set.title }}</template></div>
++          <div :class="$style.heading">Gem setups<template v-if="skillSets.length > 1"> · {{ set.title }}<span v-if="set === shownSet" class="w-accent normal-case tracking-normal"> · now</span></template></div>
+           <div v-for="(s, i) in set.groups" :key="i" :class="[$style.setup, { 'opacity-50': !s.enabled }]">
+             <div class="w-dim text-xs">
+               {{ s.label || s.slot || `Group ${i + 1}` }}<span v-if="s.isMain" class="w-accent"> · main</span>
+@@ -142,6 +146,7 @@
+             Save in the loot filter editor<template v-if="filterWidget.editorHotkey"> (<WKbd :keys="filterWidget.editorHotkey" />)</template> to write them.
+           </div>
+           <div v-if="!isActive" class="pb-1" style="color: var(--w-warn);">This isn't the active build; press Make active to use it for the filter.</div>
++          <div v-else-if="skillSets.length > 1" class="w-dim pb-1">Uses {{ shownSet?.title }}<template v-if="shownItemSet && shownItemSet.title !== shownSet?.title"> and {{ shownItemSet.title }}</template>.</div>
+           <div v-for="r in FILTER_ROWS" :key="r.key" class="flex items-center gap-2 py-1">
+             <WChip clickable :active="filterWidget.buildRules[r.key]" @click="filterWidget.buildRules[r.key] = !filterWidget.buildRules[r.key]">
+               {{ filterWidget.buildRules[r.key] ? 'On' : 'Off' }}
+@@ -179,13 +184,13 @@ import SocketDots from './SocketDots.vue'
+ import { nextGems } from './gems'
+ import type { GemColour, NextGem } from './gems'
+ import {
+-  gearOrder, isGearSlot, itemSetsOf, linkColours, linkGroups, mainGroupOf, noteRuns, orderedGems, pickStage,
++  gearOrder, isGearSlot, itemSetsOf, linkColours, linkGroups, loadoutOf, mainGroupOf, noteRuns, orderedGems,
+   relevantGems, skillSetsOf, slotLabel, socketGroups, socketRegex
+ } from './build-model'
+ import { itemArt } from './item-art'
+ import { hideTip, showTip } from './tooltip'
+ import { pobApi } from './widget'
+-import type { PobBuildEntry, PobBuildsWidget, PobDetails, PobItem } from './widget'
++import type { LoadoutPick, PobBuildEntry, PobBuildsWidget, PobDetails, PobItem } from './widget'
+ import { useActiveBuild } from './active'
+ 
+ const $style = useCssModule()
+@@ -236,17 +241,55 @@ function toggleFollow () {
+   saveConfig()
+ }
+ 
++// ---- loadout: saved per build, so the campaign card, the price check and
++// the filter rules see the same sets as this panel ----
++
++const AUTO_HINT = 'Go back to following your level'
++const pick = computed<LoadoutPick | undefined>(() => props.config.loadouts[props.entry.relPath])
++const loadout = computed(() => props.details ? loadoutOf(props.details, level.value, act.value, pick.value) : null)
++
++function setPick (next: LoadoutPick | null) {
++  const rest = Object.fromEntries(Object.entries(props.config.loadouts).filter(([rel]) => rel !== props.entry.relPath))
++  props.config.loadouts = next ? { ...rest, [props.entry.relPath]: next } : rest
++  saveConfig()
++}
++
++function clearPick () {
++  setPick(null)
++}
++
++function pickHint (inUse: boolean, byHand: boolean, byStage?: boolean) {
++  if (!inUse) return 'Use this loadout in every window'
++  if (byHand) return 'Picked by hand. Click to go back to following your level'
++  return byStage ? 'Picked from your level. Click to keep this one' : 'The set active in PoB. Click to keep this one'
++}
++
++// Drops one kind from the pick; nothing left means auto.
++function withoutKind (kind: keyof LoadoutPick): LoadoutPick | null {
++  const next: LoadoutPick = { ...pick.value, [kind]: undefined }
++  return next.skillSet || next.itemSet ? next : null
++}
++
++// Clicking the set you picked by hand unpicks just that one; any other click
++// pins it. A skill set takes its same-named item set and tree along.
++function chooseSkillSet (title: string) {
++  setPick(pick.value?.skillSet === title ? withoutKind('skillSet') : { skillSet: title })
++}
++
++// Item sets can differ from the skill set, so the skill set stays as it was.
++function chooseItemSet (title: string) {
++  setPick(pick.value?.itemSet === title ? withoutKind('itemSet') : { ...pick.value, itemSet: title })
++}
++
+ // ---- leveling ----
+ 
+ const skillSets = computed(() => props.details ? skillSetsOf(props.details) : [])
+-const pickedSet = computed(() => pickStage(skillSets.value, level.value, act.value))
+-const viewSet = shallowRef<number | null>(null)
+-const shownSet = computed(() => (viewSet.value != null ? skillSets.value[viewSet.value] : null) ?? pickedSet.value?.item ?? null)
++const shownSet = computed(() => loadout.value?.skillSet?.item ?? null)
+ const shownLinks = computed(() => shownSet.value ? linkGroups(shownSet.value.groups, 4) : [])
+ 
+ const className = computed(() => build.className.value || props.details?.ascendClassName || props.details?.className || '')
+ const gems = computed(() => props.details
+-  ? nextGems(props.details, level.value, className.value, relevantGems(props.details, level.value, act.value))
++  ? nextGems(props.details, level.value, className.value, relevantGems(props.details, level.value, act.value, pick.value))
+   : [])
+ 
+ const campaign = computed(() => AppConfig<CampaignWidget>(CAMPAIGN_TYPE))
+@@ -270,18 +313,14 @@ function toggleGot (name: string) {
+ // ---- gear ----
+ 
+ const itemSets = computed(() => props.details ? itemSetsOf(props.details) : [])
+-const pickedItemSet = computed(() => pickStage(itemSets.value, level.value, act.value)?.item ?? null)
+-const viewItemSet = shallowRef<number | null>(null)
+-const shownItemSet = computed(() => (viewItemSet.value != null ? itemSets.value[viewItemSet.value] : null) ?? pickedItemSet.value)
++const shownItemSet = computed(() => loadout.value?.itemSet?.item ?? null)
+ const gear = computed(() => (shownItemSet.value?.slots ?? []).filter(s => isGearSlot(s.slot))
+   .sort((a, b) => gearOrder(a.slot) - gearOrder(b.slot)))
+ 
+-const mainLink = computed(() => pickedSet.value ? mainGroupOf(pickedSet.value.item.groups) : null)
++const mainLink = computed(() => shownSet.value ? mainGroupOf(shownSet.value.groups) : null)
+ const mainColours = computed<GemColour[]>(() => mainLink.value ? linkColours(mainLink.value) : [])
+ const regex = computed(() => socketRegex(mainColours.value))
+ 
+-watch(() => props.entry.relPath, () => { viewSet.value = null; viewItemSet.value = null })
+-
+ const { copied, copy } = useCopy(1500)
+ async function copyRegex () {
+   if (!regex.value) return
+diff --git a/renderer/src/web/woke/pob-builds/BuildFitChip.vue b/renderer/src/web/woke/pob-builds/BuildFitChip.vue
+index c56d2dac..fbf25841 100644
+--- a/renderer/src/web/woke/pob-builds/BuildFitChip.vue
++++ b/renderer/src/web/woke/pob-builds/BuildFitChip.vue
+@@ -13,7 +13,7 @@ import type { ParsedItem } from '@/parser'
+ import { ItemCategory, ItemRarity } from '@/parser'
+ import SocketDots from './SocketDots.vue'
+ import { useActiveBuild } from './active'
+-import { bestFit, buildFacts, linkColours, mainGroupOf, pickStage, skillSetsOf } from './build-model'
++import { bestFit, buildFacts, linkColours, loadoutOf, mainGroupOf } from './build-model'
+ import type { GemColour } from './gems'
+ 
+ const props = defineProps<{ item: ParsedItem }>()
+@@ -27,7 +27,8 @@ const fits = computed<Fit[]>(() => {
+   const item = props.item
+   const level = build.level.value
+   const act = build.act.value
+-  const facts = buildFacts(d, level, act)
++  const pick = build.loadout.value
++  const facts = buildFacts(d, level, act, pick)
+   const name = item.info.refName
+   const out: Fit[] = []
+   if (item.category === ItemCategory.Gem) {
+@@ -41,7 +42,7 @@ const fits = computed<Fit[]>(() => {
+     const b = facts.bases.find(x => x.base === name)
+     if (b) out.push({ label: `Your base · ${b.slot}`, title: `Your build wears a rare ${name}` })
+     const sockets = /^Sockets: (.+)$/m.exec(item.rawText)?.[1]
+-    const set = pickStage(skillSetsOf(d), level, act)?.item
++    const set = loadoutOf(d, level, act, pick).skillSet?.item
+     const main = set ? mainGroupOf(set.groups) : null
+     if (sockets && main) {
+       const colours = linkColours(main)
+diff --git a/renderer/src/web/woke/pob-builds/WidgetPobBuilds.vue b/renderer/src/web/woke/pob-builds/WidgetPobBuilds.vue
+index f478d428..0944f54e 100644
+--- a/renderer/src/web/woke/pob-builds/WidgetPobBuilds.vue
++++ b/renderer/src/web/woke/pob-builds/WidgetPobBuilds.vue
+@@ -71,6 +71,7 @@ export default {
+ </script>
+ 
+ <script setup lang="ts">
++import { popupAnchor } from '../ui/window-anchor'
+ import { inject, computed, shallowRef, watch } from 'vue'
+ import type { WidgetManager } from '@/web/overlay/interfaces'
+ import Widget from '@/web/overlay/Widget.vue'
+@@ -90,12 +91,13 @@ const wm = inject<WidgetManager>('wm')!
+ if (props.config.wmFlags[0] === 'uninitialized') {
+   props.config.wmFlags = ['invisible-on-blur']
+   props.config.wmTitle = 'PoB builds'
+-  props.config.anchor = { pos: 'tl', x: 25, y: 20 }
++  props.config.anchor = popupAnchor()
+   props.config.buildsDir = ''
+   props.config.pobExe = ''
+   props.config.pinned = []
+   props.config.activeBuild = null
+   props.config.followChars = {}
++  props.config.loadouts = {}
+   wm.show(props.config.wmId)
+ }
+ migratePobWidget(props.config)
+diff --git a/renderer/src/web/woke/pob-builds/active.ts b/renderer/src/web/woke/pob-builds/active.ts
+index 933371c4..a1ccf535 100644
+--- a/renderer/src/web/woke/pob-builds/active.ts
++++ b/renderer/src/web/woke/pob-builds/active.ts
+@@ -17,6 +17,8 @@ export const useActiveBuild = createGlobalState(() => {
+     return cfg.widgets.find(w => w.wmType === POB_BUILDS_TYPE && (w as PobBuildsWidget).activeBuild) as PobBuildsWidget | undefined
+   })
+   const relPath = computed(() => pobWidget.value?.activeBuild ?? null)
++  // Read through this, so every window agrees on the loadout in use.
++  const loadout = computed(() => relPath.value ? pobWidget.value?.loadouts?.[relPath.value] : undefined)
+   const details = shallowRef<PobDetails | null>(null)
+   const error = shallowRef('')
+   const version = shallowRef(0)
+@@ -51,6 +53,7 @@ export const useActiveBuild = createGlobalState(() => {
+   return {
+     pobWidget,
+     relPath,
++    loadout,
+     details,
+     error,
+     level,
+diff --git a/renderer/src/web/woke/pob-builds/build-model.ts b/renderer/src/web/woke/pob-builds/build-model.ts
+index 95390e3d..150f70ff 100644
+--- a/renderer/src/web/woke/pob-builds/build-model.ts
++++ b/renderer/src/web/woke/pob-builds/build-model.ts
+@@ -5,7 +5,7 @@
+ import { MAX_SEARCH_LENGTH } from '../shared/library'
+ import { baseClass, CLASS_NAMES, gemData } from './gems'
+ import type { GemColour, GemSource } from './gems'
+-import type { PobDetails, PobGem, PobItem, PobItemSet, PobSkillGroup, PobSkillSet } from './widget'
++import type { LoadoutPick, PobDetails, PobGem, PobItem, PobItemSet, PobSkillGroup, PobSkillSet, PobTreeSpec } from './widget'
+ 
+ // ---- stages: "Act 2", "Level 12-28", "lvl 40", "Endgame" ----
+ 
+@@ -49,18 +49,28 @@ export interface Picked<T> {
+   item: T
+   // Items whose stage starts after the picked one (for "later" gems).
+   later: T[]
+-  // True when the title told us where it fits; false for the active fallback.
++  // True when the title or a pick says where it fits; false for the active fallback.
+   byStage: boolean
+ }
+ 
+ // The furthest stage you have reached; before the first one, the first one;
+-// with no stage titles, PoB's active set.
+-export function pickStage<T extends { title: string, isActive: boolean }> (items: T[], level: number | null, act: number | null): Picked<T> | null {
++// with no stage titles, PoB's active set. A title picked by hand beats all
++// of that, unless PoB no longer has a set by that name.
++export function pickStage<T extends { title: string, isActive: boolean }> (items: T[], level: number | null, act: number | null, chosen?: string): Picked<T> | null {
+   if (!items.length) return null
+   const staged = items
+     .map(item => ({ item, stage: stageOf(item.title) }))
+     .filter((x): x is { item: T, stage: Stage } => x.stage != null)
+     .sort((a, b) => stageLevel(a.stage) - stageLevel(b.stage))
++  const hand = chosen != null ? items.find(i => i.title === chosen) : undefined
++  if (hand) {
++    const at = stageOf(hand.title)
++    return {
++      item: hand,
++      later: at ? staged.filter(x => stageLevel(x.stage) > stageLevel(at)).map(x => x.item) : [],
++      byStage: true
++    }
++  }
+   if (!staged.length || (level == null && act == null)) {
+     const item = items.find(i => i.isActive) ?? items[0]
+     return { item, later: [], byStage: false }
+@@ -81,6 +91,24 @@ export function itemSetsOf (d: PobDetails): PobItemSet[] {
+   return d.itemSets ?? []
+ }
+ 
++export interface Loadout {
++  skillSet: Picked<PobSkillSet> | null
++  itemSet: Picked<PobItemSet> | null
++  tree: PobTreeSpec | null
++}
++
++// The sets in use: the same answer for every window that asks.
++export function loadoutOf (d: PobDetails, level: number | null, act: number | null, pick?: LoadoutPick): Loadout {
++  // A skill set pick takes its same-named item set and tree along. An item
++  // set pick changes only the gear.
++  const skillTitle = pick?.skillSet
++  return {
++    skillSet: pickStage(skillSetsOf(d), level, act, skillTitle),
++    itemSet: pickStage(itemSetsOf(d), level, act, pick?.itemSet ?? pick?.skillSet),
++    tree: pickStage(d.trees, level, act, skillTitle)?.item ?? null
++  }
++}
++
+ // ---- gems and links ----
+ 
+ export function isSupport (g: PobGem): boolean {
+@@ -198,11 +226,10 @@ export function gemsOf (sets: PobSkillSet[]): string[] {
+ 
+ // Gems from the skill set for your stage and every later one; gems that
+ // only earlier sets used are done with.
+-export function relevantGems (d: PobDetails, level: number | null, act: number | null): string[] {
+-  const sets = skillSetsOf(d)
+-  const pick = pickStage(sets, level, act)
+-  if (!pick || !pick.byStage) return gemsOf(sets)
+-  return gemsOf([pick.item, ...pick.later])
++export function relevantGems (d: PobDetails, level: number | null, act: number | null, pick?: LoadoutPick): string[] {
++  const set = loadoutOf(d, level, act, pick).skillSet
++  if (!set || !set.byStage) return gemsOf(skillSetsOf(d))
++  return gemsOf([set.item, ...set.later])
+ }
+ 
+ export interface GemBuy {
+@@ -231,10 +258,10 @@ const BUY_AHEAD = 3
+ const ASSUME_BOUGHT_BELOW = 10
+ 
+ // Build gems the vendors in this act's town sell, not ticked as got.
+-export function townBuys (d: PobDetails, className: string, level: number | null, act: number, got: string[]): GemBuy[] {
++export function townBuys (d: PobDetails, className: string, level: number | null, act: number, got: string[], pick?: LoadoutPick): GemBuy[] {
+   const lvl = level ?? 1
+   const out: GemBuy[] = []
+-  for (const name of relevantGems(d, level, act)) {
++  for (const name of relevantGems(d, level, act, pick)) {
+     if (got.includes(name)) continue
+     const data = gemData(name)
+     if (!data) continue
+@@ -252,9 +279,9 @@ export function townBuys (d: PobDetails, className: string, level: number | null
+ 
+ // Build gems offered as a quest reward in this act, grouped by quest (you
+ // pick one gem per quest).
+-export function actRewards (d: PobDetails, className: string, level: number | null, act: number, got: string[]): Array<{ quest: string, npc: string, gems: string[] }> {
++export function actRewards (d: PobDetails, className: string, level: number | null, act: number, got: string[], pick?: LoadoutPick): Array<{ quest: string, npc: string, gems: string[] }> {
+   const byQuest = new Map<string, { quest: string, npc: string, gems: string[] }>()
+-  for (const name of relevantGems(d, level, act)) {
++  for (const name of relevantGems(d, level, act, pick)) {
+     if (got.includes(name)) continue
+     const src = sourcesFor(name, className).find(s => s[3] === 'q' && s[0] === act)
+     if (!src) continue
+@@ -310,7 +337,7 @@ export interface BuildFacts {
+   weaponBases: string[]
+ }
+ 
+-export function buildFacts (d: PobDetails, level: number | null, act: number | null): BuildFacts {
++export function buildFacts (d: PobDetails, level: number | null, act: number | null, pick?: LoadoutPick): BuildFacts {
+   const facts: BuildFacts = { uniques: [], bases: [], gems: [], weaponBases: [] }
+   const sets = itemSetsOf(d)
+   // Uniques from every item set (levelling uniques and endgame ones).
+@@ -322,8 +349,8 @@ export function buildFacts (d: PobDetails, level: number | null, act: number | n
+       }
+     }
+   }
+-  const pick = pickStage(sets, level, act)?.item
+-  for (const { slot, item } of pick?.slots ?? []) {
++  const worn = loadoutOf(d, level, act, pick).itemSet?.item
++  for (const { slot, item } of worn?.slots ?? []) {
+     if (!isGearSlot(slot)) continue
+     const base = itemBase(item)
+     if (/^Weapon [12]$/.test(slot) && base) facts.weaponBases.push(base)
+diff --git a/renderer/src/web/woke/pob-builds/widget.ts b/renderer/src/web/woke/pob-builds/widget.ts
+index d767ecd7..f6a6c05c 100644
+--- a/renderer/src/web/woke/pob-builds/widget.ts
++++ b/renderer/src/web/woke/pob-builds/widget.ts
+@@ -15,12 +15,22 @@ export interface PobBuildsWidget extends Widget {
+   // Character name -> build file. When Client.txt shows that character
+   // levelling, its build becomes the active one.
+   followChars: Record<string, string>
++  // Build file -> the loadout picked by hand. No entry = follow your level.
++  loadouts: Record<string, LoadoutPick>
++}
++
++// Set titles, not positions: PoB can reorder sets. Sets sharing a title form
++// a loadout, so a pick also takes the same-named sets of the other kinds.
++export interface LoadoutPick {
++  skillSet?: string
++  itemSet?: string
+ }
+ 
+ export function migratePobWidget (w: PobBuildsWidget) {
+   if (!w.followChars || typeof w.followChars !== 'object') w.followChars = {}
+   if (!Array.isArray(w.pinned)) w.pinned = []
+   if (w.activeBuild === undefined) w.activeBuild = null
++  if (!w.loadouts || typeof w.loadouts !== 'object') w.loadouts = {}
+ }
+ 
+ // Shapes returned by main/src/woke/pob-builds.ts
+diff --git a/renderer/src/web/woke/regex-library/WidgetRegexLibrary.vue b/renderer/src/web/woke/regex-library/WidgetRegexLibrary.vue
+index 6e637f9b..22024a9e 100644
+--- a/renderer/src/web/woke/regex-library/WidgetRegexLibrary.vue
++++ b/renderer/src/web/woke/regex-library/WidgetRegexLibrary.vue
+@@ -57,6 +57,7 @@
+ </template>
+ 
+ <script lang="ts">
++import { popupAnchor } from '../ui/window-anchor'
+ import type { WidgetSpec } from '@/web/overlay/interfaces'
+ import { REGEX_LIBRARY_TYPE, starterEntries } from './widget'
+ import type { RegexLibraryWidget } from './widget'
+@@ -73,7 +74,7 @@ export default {
+       wmWants: 'hide',
+       wmZorder: null,
+       wmFlags: ['invisible-on-blur'],
+-      anchor: { pos: 'tl', x: 35, y: 30 },
++      anchor: popupAnchor(),
+       enableHotkeys: true,
+       entries: starterEntries()
+     }]
+@@ -103,7 +104,7 @@ const wm = inject<WidgetManager>('wm')!
+ if (props.config.wmFlags[0] === 'uninitialized') {
+   props.config.wmFlags = ['invisible-on-blur']
+   props.config.wmTitle = 'Regex library'
+-  props.config.anchor = { pos: 'tl', x: 30, y: 30 }
++  props.config.anchor = popupAnchor()
+   props.config.enableHotkeys = true
+   props.config.entries = starterEntries()
+   wm.show(props.config.wmId)
+diff --git a/renderer/src/web/woke/regex-library/apt-import.ts b/renderer/src/web/woke/regex-library/apt-import.ts
+index 44a22489..92292474 100644
+--- a/renderer/src/web/woke/regex-library/apt-import.ts
++++ b/renderer/src/web/woke/regex-library/apt-import.ts
+@@ -3,6 +3,7 @@
+ // drops the old widgets. Plain config objects, no Vue.
+ import { REGEX_LIBRARY_TYPE, starterEntries } from './widget'
+ import type { RegexEntry } from './widget'
++import { popupAnchor } from '../ui/window-anchor'
+ 
+ interface StashSearchLike {
+   wmType: string
+@@ -53,7 +54,7 @@ export function moveStashSearchToLibrary (widgets: WidgetLike[]): number {
+         wmWants: 'hide',
+         wmZorder: null,
+         wmFlags: ['invisible-on-blur'],
+-        anchor: { pos: 'tl', x: 35, y: 30 },
++        anchor: popupAnchor(),
+         enableHotkeys: true,
+         entries: starterEntries()
+       }
+diff --git a/renderer/src/web/woke/regex-library/save.ts b/renderer/src/web/woke/regex-library/save.ts
+index a8d0d7db..41cab8f5 100644
+--- a/renderer/src/web/woke/regex-library/save.ts
++++ b/renderer/src/web/woke/regex-library/save.ts
+@@ -4,6 +4,7 @@ import { AppConfig, saveConfig, pushHostConfig } from '@/web/Config'
+ import { isModuleOn } from '../modules'
+ import { REGEX_LIBRARY_TYPE, starterEntries } from './widget'
+ import type { RegexEntry, RegexLibraryWidget } from './widget'
++import { popupAnchor } from '../ui/window-anchor'
+ 
+ export type SaveResult = 'saved' | 'exists' | 'module-off'
+ 
+@@ -20,7 +21,7 @@ export function saveToRegexLibrary (entry: { name: string, text: string, categor
+       wmWants: 'hide',
+       wmZorder: null,
+       wmFlags: ['invisible-on-blur'],
+-      anchor: { pos: 'tl', x: 35, y: 30 },
++      anchor: popupAnchor(),
+       enableHotkeys: true,
+       entries: starterEntries()
+     } as RegexLibraryWidget)
+diff --git a/renderer/src/web/woke/scarab-flip/WidgetScarabFlip.vue b/renderer/src/web/woke/scarab-flip/WidgetScarabFlip.vue
+index 52ce00d2..553ce822 100644
+--- a/renderer/src/web/woke/scarab-flip/WidgetScarabFlip.vue
++++ b/renderer/src/web/woke/scarab-flip/WidgetScarabFlip.vue
+@@ -130,6 +130,7 @@ export default {
+ </script>
+ 
+ <script setup lang="ts">
++import { popupAnchor } from '../ui/window-anchor'
+ import { computed, defineComponent, h, inject, shallowRef, watch } from 'vue'
+ import type { PropType } from 'vue'
+ import type { WidgetManager } from '@/web/overlay/interfaces'
+@@ -157,7 +158,7 @@ const wm = inject<WidgetManager>('wm')!
+ if (props.config.wmFlags[0] === 'uninitialized') {
+   props.config.wmFlags = ['invisible-on-blur']
+   props.config.wmTitle = 'Scarab flip'
+-  props.config.anchor = { pos: 'tl', x: 45, y: 20 }
++  props.config.anchor = popupAnchor()
+   props.config.tab = 'buy'
+   props.config.sellDiscount = 0
+   props.config.reroll = false
+diff --git a/renderer/src/web/woke/tab-bar/TabBar.vue b/renderer/src/web/woke/tab-bar/TabBar.vue
+index c09f81b4..94b992a5 100644
+--- a/renderer/src/web/woke/tab-bar/TabBar.vue
++++ b/renderer/src/web/woke/tab-bar/TabBar.vue
+@@ -113,6 +113,7 @@
+ </template>
+ 
+ <script setup lang="ts">
++import { popupAnchor } from '../ui/window-anchor'
+ import { computed, inject, nextTick, ref, watch } from 'vue'
+ import type { WidgetManager } from '@/web/overlay/interfaces'
+ import type { Widget, Anchor } from '@/web/overlay/widgets'
+@@ -256,7 +257,7 @@ function shift (tab: Tab, dir: -1 | 1) {
+ 
+ function resetPosition (tab: Tab) {
+   const w = wm.widgets.value.find(x => x.wmId === tab.wmId) as (Widget & { anchor?: Anchor }) | undefined
+-  if (w?.anchor) w.anchor = { pos: 'cc', x: 50, y: 50 }
++  if (w?.anchor) w.anchor = popupAnchor()
+   show(tab)
+ }
+ 
+diff --git a/renderer/src/web/woke/trade-searches/WidgetTradeSearches.vue b/renderer/src/web/woke/trade-searches/WidgetTradeSearches.vue
+index 71a69ef1..ccd11b67 100644
+--- a/renderer/src/web/woke/trade-searches/WidgetTradeSearches.vue
++++ b/renderer/src/web/woke/trade-searches/WidgetTradeSearches.vue
+@@ -89,6 +89,7 @@ export default {
+ </script>
+ 
+ <script setup lang="ts">
++import { popupAnchor } from '../ui/window-anchor'
+ import { inject, computed, watch, shallowRef, nextTick, onUnmounted } from 'vue'
+ import { Host, MainProcess } from '@/web/background/IPC'
+ import { AppConfig, pushHostConfig } from '@/web/Config'
+@@ -111,7 +112,7 @@ const wm = inject<WidgetManager>('wm')!
+ if (props.config.wmFlags[0] === 'uninitialized') {
+   props.config.wmFlags = ['invisible-on-blur']
+   props.config.wmTitle = 'Trade searches'
+-  props.config.anchor = { pos: 'tl', x: 30, y: 25 }
++  props.config.anchor = popupAnchor()
+   props.config.enableHotkeys = true
+   props.config.entries = []
+   wm.show(props.config.wmId)
+diff --git a/renderer/src/web/woke/ui/window-anchor.ts b/renderer/src/web/woke/ui/window-anchor.ts
+index 0014f02a..bf4ced6c 100644
+--- a/renderer/src/web/woke/ui/window-anchor.ts
++++ b/renderer/src/web/woke/ui/window-anchor.ts
+@@ -27,3 +27,41 @@ export function restoreAnchor (state: MinimizedState, current: WidgetAnchor, rec
+     y: (top ? rect.top : rect.bottom) / h * 100
+   }
+ }
++
++// Panels opened from the tab bar or the dock open here: the empty left side of
++// the screen, just below the tab bar and clear of an icon row kept on the far
++// left (it draws above panels). A new object each time, because Widget moves a
++// panel by writing into its anchor.
++export function popupAnchor (): WidgetAnchor {
++  return { pos: 'tl', x: 10, y: 12 }
++}
++
++// Where those panels used to open. A saved anchor can't say whether the panel
++// was ever dragged, but one still exactly on its old spot wasn't, so it follows
++// the new default. HUD-style widgets aren't listed and keep their own spots.
++const OLD_POPUP_ANCHORS: Record<string, WidgetAnchor[]> = {
++  'woke-session-analytics': [{ pos: 'tc', x: 50, y: 12 }],
++  'woke-atlas-strategies': [{ pos: 'tl', x: 20, y: 15 }],
++  'woke-boss-runs': [{ pos: 'cc', x: 50, y: 50 }],
++  'woke-challenges': [{ pos: 'tl', x: 15, y: 8 }],
++  'woke-farming': [{ pos: 'tl', x: 60, y: 30 }],
++  'woke-lab': [{ pos: 'tl', x: 30, y: 20 }],
++  'woke-lab-gems': [{ pos: 'tl', x: 45, y: 20 }],
++  'woke-league-invest': [{ pos: 'tl', x: 50, y: 20 }],
++  'woke-loot-filter': [{ pos: 'cc', x: 50, y: 45 }],
++  'woke-market-tracker': [{ pos: 'tl', x: 40, y: 20 }],
++  'woke-pob-builds': [{ pos: 'tl', x: 25, y: 20 }],
++  'woke-scarab-flip': [{ pos: 'tl', x: 45, y: 20 }],
++  'woke-regex-library': [{ pos: 'tl', x: 30, y: 30 }, { pos: 'tl', x: 35, y: 30 }],
++  'woke-trade-searches': [{ pos: 'tl', x: 30, y: 25 }]
++}
++
++// A minimized panel's anchor is where its title bar was pinned, so it is left alone.
++export function movePopupsToNewSpot (widgets: Array<{ wmType: string, anchor?: WidgetAnchor, wokeMinimized?: unknown }>) {
++  for (const w of widgets) {
++    const { anchor } = w
++    if (!anchor || w.wokeMinimized) continue
++    const old = OLD_POPUP_ANCHORS[w.wmType]
++    if (old?.some(a => a.pos === anchor.pos && a.x === anchor.x && a.y === anchor.y)) w.anchor = popupAnchor()
++  }
++}
+diff --git a/renderer/test/woke/pob-builds.test.ts b/renderer/test/woke/pob-builds.test.ts
+index 7a5177ec..da4ee2d1 100644
+--- a/renderer/test/woke/pob-builds.test.ts
++++ b/renderer/test/woke/pob-builds.test.ts
+@@ -1,7 +1,8 @@
+ // Reading items and notes from a PoB build for the build detail panel.
+ import { describe, it, expect } from 'vitest'
+ import { parseItemText } from '../../../main/src/woke/pob-parse'
+-import { noteRuns } from '@/web/woke/pob-builds/build-model'
++import { buildFacts, loadoutOf, noteRuns, relevantGems } from '@/web/woke/pob-builds/build-model'
++import type { PobDetails, PobItemSet, PobSkillSet } from '@/web/woke/pob-builds/widget'
+ 
+ describe('parseItemText', () => {
+   const item = parseItemText(`
+@@ -64,3 +65,72 @@ describe('noteRuns', () => {
+     expect(noteRuns('^0a^x101010b')).toEqual([{ text: 'a', colour: null }, { text: 'b', colour: null }])
+   })
+ })
++
++describe('loadouts', () => {
++  const set = (title: string, gem: string, isActive = false): PobSkillSet => ({
++    title,
++    isActive,
++    groups: [{ label: '', slot: '', enabled: true, isMain: true, gems: [{ name: gem, level: 1, quality: 0, enabled: true }] }]
++  })
++  const items = (title: string, base: string): PobItemSet => ({
++    title,
++    isActive: false,
++    slots: [{ slot: 'Body Armour', item: { rarity: 'RARE', name: 'X', base, sockets: '', implicits: [], mods: [] } }]
++  })
++  // Guy's kind of build: same-named sets, and only "Day 1" reads as a stage.
++  const day1 = 'Leap Slam Day 1 No Cluster'
++  const day2 = 'Leap Slam Day 1.5 Clusters'
++  const d: PobDetails = {
++    className: 'Marauder',
++    ascendClassName: '',
++    level: 90,
++    mainSkill: '',
++    notes: '',
++    skills: [],
++    skillSets: [set(day1, 'Leap Slam'), set(day2, 'Cyclone')],
++    itemSets: [items(day1, 'Plate Vest'), items(day2, 'Vaal Regalia'), items('Swap', 'Simple Robe')],
++    trees: [{ title: day1, url: 'a', isActive: true }, { title: day2, url: 'b', isActive: false }]
++  }
++
++  it('follows your level with nothing picked', () => {
++    const l = loadoutOf(d, 90, null)
++    expect(l.skillSet?.item.title).toBe(day1)
++    expect(l.itemSet?.item.title).toBe(day1)
++  })
++
++  it('takes the same-named sets along with a pick', () => {
++    const l = loadoutOf(d, 90, null, { skillSet: day2 })
++    expect(l.skillSet?.item.title).toBe(day2)
++    expect(l.itemSet?.item.title).toBe(day2)
++    expect(l.tree?.title).toBe(day2)
++  })
++
++  it('lets the item set differ from the skill set', () => {
++    const l = loadoutOf(d, 90, null, { skillSet: day2, itemSet: 'Swap' })
++    expect(l.skillSet?.item.title).toBe(day2)
++    expect(l.itemSet?.item.title).toBe('Swap')
++    expect(l.tree?.title).toBe(day2)
++  })
++
++  it('an item set pick changes only the gear', () => {
++    const l = loadoutOf(d, 90, null, { itemSet: day2 })
++    expect(l.skillSet?.item.title).toBe(day1)
++    expect(l.itemSet?.item.title).toBe(day2)
++    expect(l.tree?.title).toBe(day1)
++  })
++
++  it('feeds the helpers from the pick', () => {
++    expect(relevantGems(d, 90, null, { skillSet: day2 })).toEqual(['Cyclone'])
++    expect(buildFacts(d, 90, null).bases.map(b => b.base)).toEqual(['Plate Vest'])
++    expect(buildFacts(d, 90, null, { skillSet: day2 }).bases.map(b => b.base)).toEqual(['Vaal Regalia'])
++  })
++
++  it('goes back to your level when PoB no longer has the set', () => {
++    expect(loadoutOf(d, 90, null, { skillSet: 'Renamed' }).skillSet?.item.title).toBe(day1)
++  })
++
++  it('keeps later stages in the gem list for a staged pick', () => {
++    const staged: PobDetails = { ...d, skillSets: [set('Level 12', 'Arc'), set('Level 30', 'Spark'), set('Level 50', 'Ball Lightning')] }
++    expect(relevantGems(staged, 60, null, { skillSet: 'Level 30' })).toEqual(['Spark', 'Ball Lightning'])
++  })
++})
+diff --git a/renderer/test/woke/popup-spot.test.ts b/renderer/test/woke/popup-spot.test.ts
+new file mode 100644
+index 00000000..79500707
+--- /dev/null
++++ b/renderer/test/woke/popup-spot.test.ts
+@@ -0,0 +1,51 @@
++import { describe, it, expect } from 'vitest'
++import { popupAnchor, movePopupsToNewSpot } from '@/web/woke/ui/window-anchor'
++
++const widget = (wmType: string, pos: string, x: number, y: number) => ({ wmType, anchor: { pos, x, y } })
++
++describe('popup spot', () => {
++  it('gives every panel its own anchor object', () => {
++    const a = popupAnchor()
++    a.x = 77
++    expect(popupAnchor().x).not.toBe(77)
++  })
++
++  it('moves panels still on their old default', () => {
++    const widgets = [
++      widget('woke-pob-builds', 'tl', 25, 20),
++      widget('woke-boss-runs', 'cc', 50, 50),
++      widget('woke-session-analytics', 'tc', 50, 12),
++      widget('woke-regex-library', 'tl', 30, 30),
++      widget('woke-regex-library', 'tl', 35, 30)
++    ]
++    movePopupsToNewSpot(widgets)
++    for (const w of widgets) expect(w.anchor).toEqual(popupAnchor())
++    expect(widgets[0].anchor).not.toBe(widgets[1].anchor)
++  })
++
++  it('keeps panels the user moved', () => {
++    const moved = widget('woke-pob-builds', 'tl', 25.5, 20)
++    const otherHandle = widget('woke-pob-builds', 'tr', 25, 20)
++    movePopupsToNewSpot([moved, otherHandle])
++    expect(moved.anchor).toEqual({ pos: 'tl', x: 25.5, y: 20 })
++    expect(otherHandle.anchor).toEqual({ pos: 'tr', x: 25, y: 20 })
++  })
++
++  it('leaves HUD widgets alone, and a spot that was another panel\'s default', () => {
++    const campaign = widget('woke-campaign', 'tc', 50, 1)
++    const trade = widget('woke-trade', 'tr', 98, 15)
++    const swapped = widget('woke-lab', 'tl', 25, 20) // PoB's old spot, not the lab's
++    movePopupsToNewSpot([campaign, trade, swapped])
++    expect(campaign.anchor).toEqual({ pos: 'tc', x: 50, y: 1 })
++    expect(trade.anchor).toEqual({ pos: 'tr', x: 98, y: 15 })
++    expect(swapped.anchor).toEqual({ pos: 'tl', x: 25, y: 20 })
++  })
++
++  it('leaves minimized panels and widgets with no anchor alone', () => {
++    const minimized = { ...widget('woke-pob-builds', 'tl', 25, 20), wokeMinimized: {} }
++    const none = { wmType: 'woke-pob-builds' }
++    movePopupsToNewSpot([minimized, none])
++    expect(minimized.anchor).toEqual({ pos: 'tl', x: 25, y: 20 })
++    expect(none).toEqual({ wmType: 'woke-pob-builds' })
++  })
++})
+diff --git a/testing/e2e/pob-builds.spec.ts b/testing/e2e/pob-builds.spec.ts
+index e20636cd..b4217fa1 100644
+--- a/testing/e2e/pob-builds.spec.ts
++++ b/testing/e2e/pob-builds.spec.ts
+@@ -126,3 +126,92 @@ test('gem colours, item art and tooltips', async ({ overlay }) => {
+   }
+   await overlay.snap('notes')
+ })
++
++// Guy's kind of build: same-named sets, and only the first title reads as a stage.
++const LOADOUTS_FILE = 'Loadouts.xml'
++const day1 = 'Day 1 No Cluster'
++const later = 'Day 1.5 Clusters'
++function loadoutSeed (loadouts: Record<string, unknown>) {
++  return [
++    {
++      wmType: 'woke-pob-builds',
++      wmWants: 'show' as const,
++      wmFlags: ['invisible-on-blur'],
++      anchor: { pos: 'tl', x: 5, y: 12 },
++      buildsDir: path.join(FIXTURES, 'pob'),
++      pobExe: '',
++      pinned: [],
++      activeBuild: LOADOUTS_FILE,
++      followChars: {},
++      loadouts
++    },
++    { wmType: 'woke-campaign', wmWants: 'show' as const }
++  ]
++}
++
++test('a picked loadout reaches the other windows, is saved, and Auto undoes it', async ({ overlay }) => {
++  await overlay.boot({ widgets: loadoutSeed({}), overlayActive: true })
++  await overlay.replayLog('client-logs/campaign-act1.txt')
++  const strip = overlay.widget('woke-campaign')
++  await expect(strip).toContainText(`Your links · ${day1}`)
++  await expect(strip).toContainText('Arc')
++
++  await overlay.widget('woke-pob-builds').getByText('Loadouts', { exact: false }).first().click()
++  const detail = overlay.page.locator('[data-w-panel]').filter({ hasText: 'Open in PoB' })
++  const chip = (name: string) => detail.getByRole('button', { name, exact: false })
++  await expect(chip(day1)).toContainText('now')
++
++  await chip(later).click()
++  await expect(chip(later)).toContainText('now')
++  await expect(chip(day1)).not.toContainText('now')
++  await expect(detail.getByText(`Links · ${later}`)).toBeVisible()
++
++  // The campaign card, on another widget, follows the pick.
++  await expect(strip).toContainText(`Your links · ${later}`)
++  await expect(strip).toContainText('Fireball')
++
++  // Gear tab: its set and "Links you need now" are the same loadout.
++  await detail.getByRole('tab', { name: 'Gear' }).click()
++  await expect(chip(later)).toContainText('now')
++  await expect(detail.locator('[class*="gearRow"]')).toContainText('Later Loop')
++  await expect(detail.getByText('Fireball').first()).toBeVisible()
++  await overlay.snap('gear follows the picked loadout')
++
++  // Setups: the matching tree is the one in use.
++  await detail.getByRole('tab', { name: 'Setups' }).click()
++  await expect(detail.getByRole('link', { name: `${later} · now` })).toBeVisible()
++  await expect.poll(() => overlay.savedWidget('woke-pob-builds')?.loadouts?.[LOADOUTS_FILE]).toEqual({ skillSet: later })
++
++  await detail.getByRole('tab', { name: 'Leveling' }).click()
++  await chip('Auto').click()
++  await expect(chip(day1)).toContainText('now')
++  await expect(strip).toContainText(`Your links · ${day1}`)
++  await expect(chip('Auto')).toHaveCount(0)
++  await expect.poll(() => overlay.savedWidget('woke-pob-builds')?.loadouts?.[LOADOUTS_FILE]).toBeUndefined()
++})
++
++test('the price check chip reads the saved loadout', async ({ overlay }) => {
++  await overlay.boot({ widgets: loadoutSeed({}) })
++  await overlay.replayLog('client-logs/campaign-act1.txt')
++  await overlay.copyItem('items/rare-ring.txt')
++  const panel = overlay.widget('price-check')
++  await expect(panel).toContainText('Category: Ring')
++  await expect(panel).not.toContainText('Your base')
++
++  await overlay.boot({ widgets: loadoutSeed({ [LOADOUTS_FILE]: { skillSet: later } }) })
++  await overlay.replayLog('client-logs/campaign-act1.txt')
++  await overlay.copyItem('items/rare-ring.txt')
++  await expect(overlay.widget('price-check')).toContainText('Your base · Ring')
++})
++
++test('a build that is not active says its loadout only applies once it is', async ({ overlay }) => {
++  const widgets = loadoutSeed({})
++  widgets[0].activeBuild = 'Showcase.xml'
++  await overlay.boot({ widgets, overlayActive: true })
++  await overlay.widget('woke-pob-builds').getByText('Loadouts', { exact: false }).first().click()
++  const detail = overlay.page.locator('[data-w-panel]').filter({ hasText: 'Open in PoB' })
++  const hint = detail.getByText('Other windows use your active build')
++  await expect(hint).toBeVisible()
++  await detail.getByRole('button', { name: 'Make active' }).click()
++  await expect(hint).toHaveCount(0)
++})
+\ No newline at end of file
+diff --git a/testing/fixtures/pob/Loadouts.xml b/testing/fixtures/pob/Loadouts.xml
+new file mode 100644
+index 00000000..c1d47dc4
+--- /dev/null
++++ b/testing/fixtures/pob/Loadouts.xml
+@@ -0,0 +1,43 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<PathOfBuilding>
++	<Build level="72" targetVersion="3_0" className="Witch" ascendClassName="Elementalist" mainSocketGroup="1"/>
++	<Skills activeSkillSet="1">
++		<SkillSet id="1" title="Day 1 No Cluster">
++			<Skill enabled="true" label="" slot="Body Armour">
++				<Gem nameSpec="Arc" gemId="Metadata/Items/Gems/SkillGemArc" skillId="Arc" level="20" quality="20" enabled="true"/>
++				<Gem nameSpec="Added Fire Damage" gemId="Metadata/Items/Gems/SupportGemAddedFireDamage" skillId="SupportAddedFireDamage" level="20" quality="0" enabled="true"/>
++			</Skill>
++		</SkillSet>
++		<SkillSet id="2" title="Day 1.5 Clusters">
++			<Skill enabled="true" label="" slot="Body Armour">
++				<Gem nameSpec="Fireball" gemId="Metadata/Items/Gems/SkillGemFireball" skillId="Fireball" level="20" quality="20" enabled="true"/>
++				<Gem nameSpec="Added Fire Damage" gemId="Metadata/Items/Gems/SupportGemAddedFireDamage" skillId="SupportAddedFireDamage" level="20" quality="0" enabled="true"/>
++			</Skill>
++		</SkillSet>
++	</Skills>
++	<Tree activeSpec="1">
++		<Spec title="Day 1 No Cluster"><URL>https://www.pathofexile.com/passive-skill-tree/AAAA</URL></Spec>
++		<Spec title="Day 1.5 Clusters"><URL>https://www.pathofexile.com/passive-skill-tree/BBBB</URL></Spec>
++	</Tree>
++	<Items activeItemSet="1">
++		<Item id="1">
++Rarity: RARE
++Early Loop
++Iron Ring
++Implicits: 0
++		</Item>
++		<Item id="2">
++Rarity: RARE
++Later Loop
++Two-Stone Ring
++Implicits: 0
++		</Item>
++		<ItemSet id="1" title="Day 1 No Cluster">
++			<Slot name="Ring 1" itemId="1"/>
++		</ItemSet>
++		<ItemSet id="2" title="Day 1.5 Clusters">
++			<Slot name="Ring 1" itemId="2"/>
++		</ItemSet>
++	</Items>
++	<Notes></Notes>
++</PathOfBuilding>
+\ No newline at end of file
