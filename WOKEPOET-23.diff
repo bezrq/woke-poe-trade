@@ -1,0 +1,314 @@
+diff --git a/renderer/src/web/woke/boss-runs/WidgetBossRuns.vue b/renderer/src/web/woke/boss-runs/WidgetBossRuns.vue
+index c3e1bc9c..134d654d 100644
+--- a/renderer/src/web/woke/boss-runs/WidgetBossRuns.vue
++++ b/renderer/src/web/woke/boss-runs/WidgetBossRuns.vue
+@@ -1,18 +1,23 @@
+ <template>
+   <Widget :config="config" move-handles="corners" :inline-edit="false" :readonly="true">
+-    <!-- In a pinnacle arena: what this fight costs and pays. -->
++    <!-- In a boss arena: what this fight costs and pays, and what to look for. Click: this boss's drops. -->
+     <DockItem id="boss-runs" title="Boss runs" :show="arenaBosses.length > 0"
+-      :badge="arenaBosses.length === 1 && arenaBosses[0].kills ? arenaBosses[0].kills : null" :wm-id="config.wmId" card-width="20rem">
++      :badge="arenaBosses.length === 1 && arenaBosses[0].kills ? arenaBosses[0].kills : null" :wm-id="config.wmId" card-width="22rem" @activate="openArenaBoss">
+       <template #card>
+         <div style="padding: 4px var(--w-pad) 6px;" class="flex flex-col gap-2">
+           <div v-for="r in arenaBosses" :key="r.boss.id" class="flex flex-col gap-0.5 w-num">
+             <div class="w-head-font w-accent w-trunc">{{ r.boss.name }}</div>
+             <div class="flex justify-between"><span class="w-dim">Entry</span>
+               <span class="w-down"><template v-if="r.entryMissing.length">?</template><WPrice v-else :chaos="-r.entry" :divine="divine" /></span></div>
+-            <div class="flex justify-between"><span class="w-dim">{{ r.myLoot != null ? 'Your average drop' : 'Average drop' }}</span><WPrice :chaos="r.myLoot ?? r.loot" :divine="divine" /></div>
++            <div class="flex justify-between"><span class="w-dim">{{ r.myLoot != null ? 'Your average drop' : 'Average drop' }}</span><WPrice :chaos="r.myLoot ?? (r.hasRates ? r.loot : null)" :divine="divine" /></div>
+             <div v-if="r.ready" class="flex justify-between"><span class="w-dim">Per run</span>
+               <span :class="r.profit >= 0 ? 'w-up' : 'w-down'"><WPrice :chaos="r.profit" :divine="divine" /></span></div>
+             <div v-if="r.kills" class="w-dim text-xs">{{ r.kills }} kill{{ r.kills === 1 ? '' : 's' }} logged</div>
++            <div v-for="d in r.drops.filter(x => x.included).slice(0, CARD_DROPS)" :key="d.name" :class="$style.cardDrop">
++              <span class="w-trunc" :title="d.name">{{ d.name }}</span>
++              <span class="w-dim text-right">{{ d.chance == null ? '?' : pct(d.chance) }}</span>
++              <span class="text-right"><WPrice :chaos="d.price" :divine="divine" /></span>
++            </div>
+           </div>
+         </div>
+       </template>
+@@ -331,6 +336,21 @@ const arenaBosses = computed(() => {
+   return BOSSES.filter(b => ids.includes(b.id)).map(b => evaluateBoss(b, props.config, px.value))
+ })
+ 
++const CARD_DROPS = 6
++
++// Keeps your pick when it's one of this arena's bosses (normal or uber), else
++// the first with a drop list; the log can't tell which tier you're fighting.
++// The tier filter must not hide the boss the icon opened.
++function openArenaBoss () {
++  const here = arenaBosses.value
++  if (!here.length) return
++  const pick = here.find(r => r.boss.id === props.config.selected) ??
++    here.find(r => r.drops.length) ?? here[0]
++  props.config.selected = pick.boss.id
++  if (props.config.tier !== 'all' && props.config.tier !== pick.boss.tier) props.config.tier = 'all'
++  tab.value = 'drops'
++}
++
+ const sel = computed(() => results.value.find(r => r.boss.id === props.config.selected) ?? results.value[0] ?? null)
+ const lk = computed(() => sel.value ? luckById.value.get(sel.value.boss.id) ?? null : null)
+ 
+@@ -517,6 +537,7 @@ function killValue (kill: KillRecord) {
+ .kv { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 3px 10px; font-size: var(--w-fs-md); align-items: center; }
+ .dropGrid { grid-template-columns: 16px minmax(0, 1fr) 62px 72px 72px 70px; }
+ .off { opacity: 0.45; }
++.cardDrop { display: grid; grid-template-columns: minmax(0, 1fr) 46px 58px; gap: 6px; align-items: center; }
+ .editor { padding: 8px var(--w-pad); background: var(--w-panel-2); border-bottom: 1px solid var(--w-line); }
+ .rateGrid { grid-template-columns: minmax(0, 1fr) 80px 80px 22px; }
+ .killGrid { grid-template-columns: 74px minmax(0, 1fr) 70px 22px; }
+diff --git a/renderer/src/web/woke/boss-runs/bosses.ts b/renderer/src/web/woke/boss-runs/bosses.ts
+index 0c4f1d51..e2d00ea2 100644
+--- a/renderer/src/web/woke/boss-runs/bosses.ts
++++ b/renderer/src/web/woke/boss-runs/bosses.ts
+@@ -36,7 +36,9 @@ export const VARIABLE_ITEMS = new Set([
+   "Watcher's Eye",
+   'Forbidden Flesh',
+   'Forbidden Flame',
+-  'Sublime Vision'
++  'Sublime Vision',
++  "Atziri's Splendour",
++  "Doryani's Invitation"
+ ])
+ 
+ export interface BossEntry {
+@@ -126,6 +128,33 @@ export const BOSSES: Boss[] = ([
+       { name: 'Auspicious Ambitions', chance: null }
+     ]
+   },
++  {
++    id: 'uber-atziri',
++    name: 'Uber Atziri',
++    tier: 'uber',
++    entry: [
++      { name: 'Mortal Hope', qty: 1 },
++      { name: 'Mortal Grief', qty: 1 },
++      { name: 'Mortal Rage', qty: 1 },
++      { name: 'Mortal Ignorance', qty: 1 }
++    ],
++    runSeconds: 240,
++    source: { label: 'poe.how community runs (3.29)', url: POE_HOW + 'uber-atziri', kills: 60, note: 'Small sample: drops not seen in it have no rate.' },
++    drops: [
++      { name: 'The Vertex', chance: 0.4167 },
++      { name: "Atziri's Splendour", chance: 0.35 },
++      { name: 'Beauty', chance: 0.1333 },
++      { name: 'Triumvirate Authority', chance: 0.10 },
++      { name: "Atziri's Acuity", chance: 0.05 },
++      { name: "Atziri's Reflection", chance: 0.05 },
++      { name: "Atziri's Rule", chance: 0.0333 },
++      { name: "Atziri's Disfavour", chance: null },
++      { name: 'The Price of Devotion', chance: null },
++      { name: 'Triskaidekaphobia', chance: null },
++      { name: 'Greater Spell Echo Support', chance: null, variant: '1' },
++      { name: 'Vaal Sacrifice Support', chance: null, variant: '1' }
++    ]
++  },
+   {
+     id: 'uber-exarch',
+     name: 'Uber Searing Exarch',
+@@ -237,6 +266,31 @@ export const BOSSES: Boss[] = ([
+     source: null,
+     drops: []
+   },
++  {
++    id: 'atziri',
++    name: 'Atziri',
++    tier: 'pinnacle',
++    entry: [
++      { name: 'Sacrifice at Dusk', qty: 1 },
++      { name: 'Sacrifice at Dawn', qty: 1 },
++      { name: 'Sacrifice at Noon', qty: 1 },
++      { name: 'Sacrifice at Midnight', qty: 1 }
++    ],
++    runSeconds: 180,
++    source: { label: 'poe.how drop list, no rates yet', url: POE_HOW + 'atziri', kills: null },
++    drops: [
++      { name: 'Mortal Hope', chance: null },
++      { name: 'Mortal Grief', chance: null },
++      { name: 'Mortal Rage', chance: null },
++      { name: 'Mortal Ignorance', chance: null },
++      { name: "Atziri's Promise", chance: null },
++      { name: "Atziri's Step", chance: null },
++      { name: "Doryani's Catalyst", chance: null },
++      { name: "Doryani's Invitation", chance: null },
++      { name: 'Pledge of Hands', chance: null },
++      { name: 'Triumvirate Authority', chance: null }
++    ]
++  },
+   {
+     id: 'feared',
+     name: 'The Feared',
+diff --git a/renderer/src/web/woke/boss-runs/calc.ts b/renderer/src/web/woke/boss-runs/calc.ts
+index 5ac0bdd4..f287aea0 100644
+--- a/renderer/src/web/woke/boss-runs/calc.ts
++++ b/renderer/src/web/woke/boss-runs/calc.ts
+@@ -307,7 +307,9 @@ const UNIQUE_BASES: Record<string, string> = {
+   "Watcher's Eye": 'Prismatic Jewel',
+   'Forbidden Flesh': 'Cobalt Jewel',
+   'Forbidden Flame': 'Crimson Jewel',
+-  'Sublime Vision': 'Prismatic Jewel'
++  'Sublime Vision': 'Prismatic Jewel',
++  "Atziri's Splendour": 'Sacrificial Garb',
++  "Doryani's Invitation": 'Heavy Belt'
+ }
+ 
+ // Official trade search for unidentified copies of a unique, cheapest first.
+diff --git a/renderer/src/web/woke/modules.ts b/renderer/src/web/woke/modules.ts
+index 96e6ebeb..f8f82f0d 100644
+--- a/renderer/src/web/woke/modules.ts
++++ b/renderer/src/web/woke/modules.ts
+@@ -52,7 +52,7 @@ export const MODULES: ModuleDef[] = [
+   { id: 'scarab-flip', name: 'Scarab flip', description: 'Whether the 3-to-1 vendor recipe pays, and rare scarabs that are cheap', group: 'economy', widgetTypes: ['woke-scarab-flip'], icon: { fa: 'fas fa-recycle', item: 'Harvest Scarab' }, needs: ['poll', 'network'] },
+   { id: 'farming', name: 'Farming profit', description: 'Session profit per hour', group: 'economy', widgetTypes: ['woke-farming'], icon: { fa: 'fas fa-coins', currency: 'chaos' }, needs: ['log', 'prices', 'hotkeys'] },
+   { id: 'session-analytics', name: 'Session analytics', description: 'Profit per map, strategy and hour over time', group: 'economy', widgetTypes: ['woke-session-analytics'], icon: { fa: 'fas fa-chart-bar' }, needs: ['prices'] },
+-  { id: 'boss-runs', name: 'Boss runs', description: 'Profit per boss kill', group: 'economy', widgetTypes: ['woke-boss-runs'], icon: { fa: 'fas fa-skull', mechanic: 'maven' }, needs: ['prices'] },
++  { id: 'boss-runs', name: 'Boss runs', description: 'Profit per boss kill', group: 'economy', widgetTypes: ['woke-boss-runs'], icon: { fa: 'fas fa-skull', mechanic: 'maven' }, needs: ['log', 'prices'] },
+ 
+   { id: 'map-mods', name: 'Map mods', description: 'Danger strip on price check and map regex', group: 'mapping', widgetTypes: ['woke-map-mods'], icon: { fa: 'fas fa-map', mechanic: 'map' }, needs: ['hotkeys'] },
+   { id: 'map-scan', name: 'Map scan', description: 'Reads map tooltips on screen', group: 'mapping', widgetTypes: ['woke-map-scan'], icon: { fa: 'fas fa-crosshairs', mechanic: 'map' }, needs: ['ocr', 'hotkeys'] },
+diff --git a/renderer/src/web/woke/shared/boss-areas.ts b/renderer/src/web/woke/shared/boss-areas.ts
+index 5edf5d04..244a8422 100644
+--- a/renderer/src/web/woke/shared/boss-areas.ts
++++ b/renderer/src/web/woke/shared/boss-areas.ts
+@@ -4,6 +4,8 @@
+ // ids, so without this a boss fight counted as a map in a farming session.
+ // No IPC imports, so farming.ts can use it. Add a row (or a name) when a
+ // fight isn't recognised. bosses [] = a boss fight with no Boss runs entry.
++// Names aren't unique: The Shaper's Realm is also the Uber Elder's arena
++// (MapWorldsElderArenaUber in real logs), so an area id always beats a name.
+ interface Arena {
+   areaIds: string[]
+   names: string[]
+@@ -11,6 +13,8 @@ interface Arena {
+ }
+ 
+ const ARENAS: Arena[] = [
++  { areaIds: ['MapAtziri1'], names: ['The Apex of Sacrifice'], bosses: ['atziri'] },
++  { areaIds: ['MapAtziri2'], names: ['The Alluring Abyss'], bosses: ['uber-atziri'] },
+   { areaIds: ['MapWorldsShapersRealm'], names: ["The Shaper's Realm"], bosses: ['shaper', 'uber-shaper'] },
+   { areaIds: ['MapWorldsElderArena'], names: [], bosses: [] },
+   { areaIds: ['MapWorldsElderArenaUber'], names: ['Absence of Value and Meaning'], bosses: ['uber-elder', 'uber-uber-elder'] },
+diff --git a/renderer/src/web/woke/shared/zone.ts b/renderer/src/web/woke/shared/zone.ts
+index 9dc98f86..4bcf008f 100644
+--- a/renderer/src/web/woke/shared/zone.ts
++++ b/renderer/src/web/woke/shared/zone.ts
+@@ -22,10 +22,10 @@ export interface ZoneState {
+ 
+ const LAB_ZONES = new Set(["Aspirants' Plaza", "Aspirant's Trial"])
+ 
+-// Bosses an arena can hold, by its area id and its name.
++// Bosses an arena can hold: by its area id, or its name if the id isn't known
++// (names can be shared between arenas, see boss-areas.ts).
+ export function arenaBosses (areaId: string, name: string): string[] {
+-  const ids = [...(bossAreaIds(areaId) ?? []), ...((name && BOSS_ARENAS[name]) || [])]
+-  return [...new Set(ids)]
++  return bossAreaIds(areaId) ?? ((name && BOSS_ARENAS[name]) || [])
+ }
+ 
+ export function zoneKind (areaId: string, name: string): ZoneKind {
+diff --git a/renderer/test/woke/game-log.test.ts b/renderer/test/woke/game-log.test.ts
+index 5ae8af05..78f2c623 100644
+--- a/renderer/test/woke/game-log.test.ts
++++ b/renderer/test/woke/game-log.test.ts
+@@ -155,6 +155,22 @@ describe('farming', () => {
+     expect(Object.values(BOSS_AREAS).flat().filter(id => !known.has(id))).toEqual([])
+   })
+ 
++  it('knows a boss arena by area id first, since names can be shared', () => {
++    // Pairs from real Client.txt logs.
++    expect(arenaBosses('MapAtziri2', 'The Alluring Abyss')).toEqual(['uber-atziri'])
++    expect(zoneKind('MapAtziri2', '')).toBe('boss')
++    expect(zoneKind('', 'The Alluring Abyss')).toBe('boss')
++    expect(isMapArea('MapAtziri2')).toBe(false)
++    expect(arenaBosses('MapAtziri1', 'The Apex of Sacrifice')).toEqual(['atziri'])
++    // The Shaper's Realm is also the Uber Elder's arena.
++    expect(arenaBosses('MapWorldsElderArenaUber', "The Shaper's Realm")).toEqual(['uber-elder', 'uber-uber-elder'])
++    expect(arenaBosses('MapWorldsShapersRealm', "The Shaper's Realm")).toEqual(['shaper', 'uber-shaper'])
++    // Name only, before the area id is known.
++    expect(arenaBosses('', 'The Alluring Abyss')).toEqual(['uber-atziri'])
++    expect(arenaBosses('Unknown', 'The Alluring Abyss')).toEqual(['uber-atziri'])
++    expect(arenaBosses('MapWorldsCemetery', 'Cemetery')).toEqual([])
++  })
++
+   it('auto-pauses after idling, counting time only up to the limit', () => {
+     const s = newSession('x', 0)
+     onZoneChange(s, true, 1000)
+diff --git a/testing/e2e/in-game.spec.ts b/testing/e2e/in-game.spec.ts
+index d3852fb5..b3a736f4 100644
+--- a/testing/e2e/in-game.spec.ts
++++ b/testing/e2e/in-game.spec.ts
+@@ -67,3 +67,72 @@ test('league mechanics icon: shows in a mechanic zone, hides in the hideout', as
+   await overlay.hoverDockIcon('mechanics')
+   await expect(icon).toContainText('Delve', { timeout: 5000 })
+ })
++
++test('boss runs icon: The Alluring Abyss shows Uber Atziri, and a click opens its drops', async ({ overlay }) => {
++  await overlay.boot({ widgets: [{ wmType: 'woke-boss-runs' }] })
++  const icon = overlay.dockIcon('boss-runs')
++  await overlay.log([
++    '2026/11/05 15:00:34 3725546 1186a8a3 [DEBUG Client 25552] Generating level 60 area "HideoutArenaSearingExarch" with seed 1',
++    '2026/11/05 15:00:35 3727812 cffb065b [INFO Client 25552] : You have entered Searing Hideout.'
++  ])
++  await expect(icon).toHaveCount(0)
++
++  await overlay.log([
++    '2026/11/05 15:00:36 3725546 1186a8a3 [DEBUG Client 25552] Generating level 80 area "MapAtziri2" with seed 3345257283',
++    '2026/11/05 15:00:37 3727812 cffb065b [INFO Client 25552] : You have entered The Alluring Abyss.'
++  ])
++  await expect(icon).toHaveCount(1)
++  await overlay.hoverDockIcon('boss-runs')
++  await expect(icon.getByText('Uber Atziri')).toBeVisible()
++  await expect(icon.getByText('The Vertex')).toBeVisible()
++  await overlay.snap('uber atziri card from the dock icon')
++
++  // A shared arena name doesn't mix in the other boss.
++  await overlay.moveMouse(5, 5)
++  await overlay.log([
++    '2026/11/05 15:10:00 3725546 1186a8a3 [DEBUG Client 25552] Generating level 84 area "MapWorldsElderArenaUber" with seed 1',
++    '2026/11/05 15:10:01 3727812 cffb065b [INFO Client 25552] : You have entered The Shaper\'s Realm.'
++  ])
++  await overlay.hoverDockIcon('boss-runs')
++  await expect(icon.getByText('The Uber Elder')).toBeVisible()
++  await expect(icon.getByText('The Shaper', { exact: true })).toHaveCount(0)
++})
++
++test('boss runs icon: a click opens the arena boss that has a drop list', async ({ overlay }) => {
++  await overlay.boot({ overlayActive: true, widgets: [{ wmType: 'woke-boss-runs' }] })
++  await overlay.log([
++    '2026/11/05 15:00:36 3725546 1186a8a3 [DEBUG Client 25552] Generating level 83 area "MapWorldsPrimordialBoss4" with seed 1',
++    '2026/11/05 15:00:37 3727812 cffb065b [INFO Client 25552] : You have entered Absence of Symmetry and Harmony.'
++  ])
++  await overlay.dockIcon('boss-runs').locator('span').first().click()
++  await expect(overlay.widget('woke-boss-runs').getByText('Forbidden Flesh').first()).toBeVisible()
++})
++
++test('boss runs icon: a click with the overlay open shows that boss despite the tier filter', async ({ overlay }) => {
++  await overlay.boot({
++    overlayActive: true,
++    widgets: [{ wmType: 'woke-boss-runs' }],
++    patch: c => {
++      const w = c.widgets.find((w: { wmType: string }) => w.wmType === 'woke-boss-runs')
++      w.wmFlags = ['invisible-on-blur']
++      w.anchor = { pos: 'cc', x: 50, y: 50 }
++      w.selected = 'shaper'
++      w.tier = 'pinnacle'
++      w.sort = 'hour'
++      w.runSeconds = {}
++      w.rates = {}
++      w.extraDrops = {}
++      w.kills = {}
++      w.ownEntry = false
++    }
++  })
++  await overlay.log([
++    '2026/11/05 15:00:36 3725546 1186a8a3 [DEBUG Client 25552] Generating level 80 area "MapAtziri2" with seed 3345257283',
++    '2026/11/05 15:00:37 3727812 cffb065b [INFO Client 25552] : You have entered The Alluring Abyss.'
++  ])
++  await overlay.dockIcon('boss-runs').locator('span').first().click()
++  const panel = overlay.widget('woke-boss-runs')
++  await expect(panel.getByText('Uber Atziri').first()).toBeVisible()
++  await expect(panel.getByText('The Vertex').first()).toBeVisible()
++  await overlay.snap('uber atziri drops panel')
++})
