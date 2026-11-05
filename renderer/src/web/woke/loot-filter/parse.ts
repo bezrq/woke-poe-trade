@@ -77,6 +77,8 @@ export interface FilterDoc {
   eol: '\r\n' | '\n'
   // The file started with a byte order mark.
   bom?: boolean
+  // A Ruthless filter, the only kind where `Minimal` is allowed.
+  ruthless: boolean
 }
 
 const HEADER_RE = /^(#?)\s*(Show|Hide|Minimal)\b\s*(?:#(.*))?$/
@@ -305,7 +307,11 @@ export function parseFilter (source: string): FilterDoc {
     strictness,
     isNeverSink: /NeverSink/i.test(head),
     eol,
-    bom
+    bom,
+    // By its header, or by already using Minimal: the game would refuse it in
+    // any other filter, so a file that has it must be Ruthless, whatever its header.
+    ruthless: /^#\s*filterType:\s*Ruthless/im.test(head) || /^#\s*(TYPE|STYLE):.*RUTHLESS/im.test(head) ||
+      blocks.some(b => !b.disabled && b.visibility === 'Minimal')
   }
 }
 

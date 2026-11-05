@@ -1,4 +1,5 @@
 import type { Widget, Anchor } from '@/web/overlay/widgets'
+import { isPatch, isValidEdit } from './edits'
 import type { FilterEdit } from './edits'
 import { DEFAULT_BUILD_RULES } from './build-rules'
 import type { BuildRuleSwitches } from './build-rules'
@@ -171,7 +172,7 @@ export function normalizeLootFilterWidget (w: LootFilterWidget) {
   if (typeof w.reloadWhenSafe !== 'boolean') w.reloadWhenSafe = true
   if (typeof w.sourceOnline !== 'boolean') w.sourceOnline = false
   if (typeof w.sourceTitle !== 'string') w.sourceTitle = ''
-  if (!Array.isArray(w.edits)) w.edits = []
+  w.edits = Array.isArray(w.edits) ? w.edits.filter(isValidEdit) : []
   if (w.lastVersion === undefined) w.lastVersion = null
   if (typeof w.fallbackAreaLevel !== 'number') w.fallbackAreaLevel = 83
   if (!w.buildRules || typeof w.buildRules !== 'object') w.buildRules = { ...DEFAULT_BUILD_RULES }
@@ -218,7 +219,7 @@ export function normalizeLootFilterWidget (w: LootFilterWidget) {
       : da.ladder
   }
   if (!Array.isArray(w.rules)) w.rules = []
-  w.rules = w.rules.filter(r => r && typeof r.id === 'number' && Array.isArray(r.conditions))
+  w.rules = w.rules.filter(r => r && typeof r.id === 'number' && Array.isArray(r.conditions) && isPatch(r.patch))
   w.presets = normalizePresets(w.presets)
   if (w.stricterHotkey === undefined) w.stricterHotkey = 'Alt + BracketRight'
   if (w.looserHotkey === undefined) w.looserHotkey = 'Alt + BracketLeft'

@@ -81,6 +81,7 @@ export function validateFilter (doc: FilterDoc): FilterProblem[] {
   const out: FilterProblem[] = []
   for (const b of doc.blocks) {
     if (b.disabled || !b.dirty) continue
+    if (b.visibility === 'Minimal' && !doc.ruthless) out.push({ block: b, message: 'Minimal only works in a Ruthless filter; use Show or Hide' })
     for (const message of checkBlock(b)) out.push({ block: b, message })
   }
   return out

@@ -55,18 +55,57 @@ export interface EditStatus {
 
 export const OWN_RULE_TYPE = 'woke->own'
 
+// ---- checking saved or shared edits ----
+
+const isColour = (v: unknown) => Array.isArray(v) && v.length >= 3 && v.length <= 4 && v.every(n => typeof n === 'number')
+
+export function isPatch (p: unknown): boolean {
+  if (!p || typeof p !== 'object') return false
+  const s = p as Record<string, unknown>
+  const obj = (v: unknown, keys: string[]) => v == null || (typeof v === 'object' && keys.every(k => (v as Record<string, unknown>)[k] != null))
+  return (s.fontSize === undefined || typeof s.fontSize === 'number') &&
+    (s.text === undefined || isColour(s.text)) &&
+    (s.background === undefined || isColour(s.background)) &&
+    (s.border === undefined || s.border === null || isColour(s.border)) &&
+    obj(s.sound, ['id', 'volume']) && typeof s.sound !== 'number' &&
+    obj(s.effect, ['color']) && typeof s.effect !== 'number' &&
+    obj(s.icon, ['size', 'color', 'shape']) && typeof s.icon !== 'number'
+}
+
+const VISIBILITIES = ['Show', 'Hide', 'Minimal']
+
+// An edit from a saved config or a share code has the fields its kind needs. A
+// broken one would stop the whole filter from opening.
+export function isValidEdit (e: unknown): e is FilterEdit {
+  const x = e as Record<string, unknown> | null
+  if (!x || typeof x !== 'object' || typeof x.id !== 'number' || typeof x.type !== 'string') return false
+  const str = (...keys: string[]) => keys.every(k => typeof x[k] === 'string')
+  switch (x.kind) {
+    case 'move': return str('base', 'from', 'to')
+    case 'style': return str('tier') && isPatch(x.patch)
+    case 'visibility': return str('tier') && VISIBILITIES.includes(x.visibility as string)
+    case 'group': return typeof x.hidden === 'boolean'
+    case 'item': return str('tier', 'base') && VISIBILITIES.includes(x.visibility as string) && isPatch(x.patch)
+    default: return false
+  }
+}
+
 // ---- style helpers ----
 
 function colour (args: string[]): Colour {
   const [r, g, b, a] = args.map(Number)
-  return [r ?? 0, g ?? 0, b ?? 0, Number.isFinite(a) ? a : 255]
+  const channel = (n: number) => Number.isFinite(n) ? n : 0
+  return [channel(r), channel(g), channel(b), Number.isFinite(a) ? a : 255]
 }
 
 export function readStyle (actions: FilterAction[]): StylePatch {
   const style: StylePatch = {}
   for (const a of actions) {
     switch (a.key) {
-      case 'SetFontSize': style.fontSize = Number(a.args[0]); break
+      case 'SetFontSize':
+        // A broken line in the source reads as no size, not as a NaN to save.
+        if (Number.isFinite(Number(a.args[0]))) style.fontSize = Number(a.args[0])
+        break
       case 'SetTextColor': style.text = colour(a.args); break
       case 'SetBorderColor': style.border = colour(a.args); break
       case 'SetBackgroundColor': style.background = colour(a.args); break

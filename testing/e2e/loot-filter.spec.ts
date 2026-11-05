@@ -110,6 +110,23 @@ test('rule builder, drag and drop between tiers, and presets end up in the saved
   expect(text).toMatch(/\$tier->t2divine[^\n]*\n(\t[^\n]*\n)*\tBaseType == [^\n]*"Chaos Orb"/)
 })
 
+test('Alt + F: a card alone for the hovered item, a key hides it', async ({ overlay, fakeApp }) => {
+  const folder = filterFolder()
+  await overlay.boot({ widgets: [lootFilter(folder)] })
+  await expect.poll(() => fakeApp.registeredHotkeys(), { timeout: 20_000 }).toContain('Alt+F')
+  await overlay.copyItem('items/currency-divine.txt', 'Alt + F')
+  const page = overlay.page
+  await expect(page.getByText('Filter rule for this item')).toBeVisible()
+  // The card shows alone: no editor tabs, no other windows.
+  await expect(page.getByRole('tab', { name: 'Rules' })).toHaveCount(0)
+  await overlay.snap('alt f card')
+  const out = path.join(folder, 'NeverSink (woke).filter')
+
+  // Hide it with the card's key; the file gets an own rule for that base.
+  await page.getByRole('toolbar', { name: 'Quick fixes' }).getByRole('button', { name: /Hide/ }).click()
+  await expect.poll(() => fs.existsSync(out) ? fs.readFileSync(out, 'utf8') : '').toMatch(/Hide # \$type->woke->own [^\n]*\n(\t[^\n]*\n)*\tBaseType == "Divine Orb"/)
+})
+
 test('back from a rule returns to the same pile, by button and by the mouse back button', async ({ overlay, fakeApp }) => {
   const folder = filterFolder()
   await overlay.boot({ widgets: [lootFilter(folder)] })

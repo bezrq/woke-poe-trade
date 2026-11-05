@@ -105,6 +105,8 @@ import { ICON_SHAPES, ICON_SIZES, POE_COLOURS, SOUND_IDS, poeColour, shapeGlyph 
 import { useActiveFilter } from './active-filter'
 import { NEVERSINK_SOUNDS, installPackSounds, isCustomSound, isPackSound, listFolderSounds, playSound, soundLabel, soundUses } from './sounds'
 
+const active = useActiveFilter()
+
 const props = withDefaults(defineProps<{
   look: StylePatch
   visibility: Visibility
@@ -118,11 +120,12 @@ const emit = defineEmits<{
   (e: 'visibility', v: Visibility): void
 }>()
 
-const visibilityOptions = [
+// The game only takes Minimal in a Ruthless filter.
+const visibilityOptions = computed(() => [
   { value: 'Show', label: 'Show' },
-  { value: 'Minimal', label: 'Minimal' },
+  ...(active.value?.doc.value?.ruthless || props.visibility === 'Minimal' ? [{ value: 'Minimal', label: 'Minimal' }] : []),
   { value: 'Hide', label: 'Hide' }
-]
+])
 
 const colourRows = computed(() => [
   { key: 'text' as const, label: 'Text', value: props.look.text ?? DEFAULT_TEXT },
@@ -141,7 +144,6 @@ function setColour (key: 'text' | 'border' | 'background', value: string) {
   emit('patch', { [key]: [rgb[0], rgb[1], rgb[2], prev?.[3] ?? 255] as Colour })
 }
 
-const active = useActiveFilter()
 const dir = computed(() => active.value?.config.folder ?? '')
 const uses = computed(() => soundUses(active.value?.doc.value ?? null))
 const ownSounds = ref<string[]>([])

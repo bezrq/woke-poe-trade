@@ -1,6 +1,7 @@
 // Your changes as a code to paste to a friend (or yourself on another PC):
 // edits, own rules, presets and locked price tiers, compressed. Folders,
 // hotkeys and the NeverSink download setting stay out of it.
+import { isPatch, isValidEdit } from './edits'
 import type { FilterEdit } from './edits'
 import type { OwnRule } from './rules'
 import { conditionKind } from './rules'
@@ -69,8 +70,6 @@ export async function decodeChanges (code: string): Promise<SharedChanges> {
   return { edits, rules, presets: normalizePresets(raw.presets as Partial<Presets>), locks }
 }
 
-const KINDS = ['move', 'style', 'visibility', 'group', 'item']
-
 // Every string goes into the filter file: no quotes or line breaks, which
 // could end a value early and add lines of their own.
 function safeStrings (v: unknown, depth = 0): boolean {
@@ -82,15 +81,14 @@ function safeStrings (v: unknown, depth = 0): boolean {
 }
 
 function isEdit (e: unknown): e is FilterEdit {
-  const x = e as Partial<FilterEdit> | null
-  return Boolean(x && typeof x === 'object' && typeof x.id === 'number' && typeof x.type === 'string' && KINDS.includes(x.kind as string) && safeStrings(x))
+  return isValidEdit(e) && safeStrings(e)
 }
 
 function isRule (r: unknown): r is OwnRule {
   const x = r as Partial<OwnRule> | null
   return Boolean(x && typeof x === 'object' && typeof x.id === 'number' && typeof x.name === 'string' &&
     Array.isArray(x.conditions) && x.conditions.every(c => c && conditionKind(c.key) && Array.isArray(c.values) && c.values.every(v => typeof v === 'string')) &&
-    ['Show', 'Hide', 'Minimal'].includes(x.visibility as string) && x.patch && typeof x.patch === 'object' && safeStrings(x))
+    ['Show', 'Hide', 'Minimal'].includes(x.visibility as string) && isPatch(x.patch) && safeStrings(x))
 }
 
 export function describeShared (c: SharedChanges): string {
