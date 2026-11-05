@@ -1,7 +1,7 @@
 ---
 id: WOKEPOET-11
 title: 'Window controls on panel top bars, minimize and right-click menu'
-status: In Progress
+status: Ready
 priority: Medium
 effort: M
 assignee: unassigned
@@ -33,13 +33,41 @@ history:
       flux/WOKEPOET-11-window-controls-on-panel-top-bars-minimize-and-right-click-m
     event: worktree-created
     id: a-2026-11-05t02-42-20-940z
+  - type: comment
+    user: Agent
+    comment: >-
+      **Panels now have settings, move, delete, minimize and hide buttons on the
+      title bar, and the hover corner menu is gone.** Right-click on any widget
+      gives the same options plus Reset size; rows with their own menu keep it.
+      Double-click the title minimizes, so Reset size moved from double-click to
+      the right-click menu on main panels. Delete acts at once with a 10 s Undo.
+      Widgets without a title bar (campaign strip, run timer, stash/item search,
+      image strip, delve grid) get the options by right-click only.
+
+
+      Validated: 160 tests, vue-tsc, eslint; in the browser with Guy's saved
+      layout (read-only copy): minimize, drag while minimized, restore on
+      screen, right-click menu, delete + undo. Not run in the Electron overlay.
+      Docs: updated renderer/src/web/woke/ui/README.md. Expect small merge
+      conflicts with WOKEPOET-10 in Widget.vue and WPanel.vue.
+    date: '2026-11-05T02:50:19.480Z'
+    completionComment: true
+    id: c-2026-11-05t02-50-19-480z
+  - type: activity
+    user: Agent
+    comment: 'PR created: https://github.com/guybnd/woke-poe-trade/pull/83'
+    date: '2026-11-05T02:50:29.136Z'
+    id: a-2026-11-05t02-50-29-136z
+  - type: status_change
+    from: In Progress
+    to: Ready
+    user: Agent
+    date: '2026-11-05T02:50:29.136Z'
 needsAction: null
-claim:
-  holder: claude-code@guy-pc
-  claimedAt: '2026-11-05T02:42:10.232Z'
-  expiresAt: '2026-11-05T03:12:10.232Z'
 branch: flux/WOKEPOET-11-window-controls-on-panel-top-bars-minimize-and-right-click-m
 baselineCommit: 95cbada0b56969b164437487851fe1db57556125
+implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/83'
+swimlane: open-pr
 ---
 > **TL;DR:** Replace the hover corner menu (hide / edit / move / delete) with buttons on each panel's title bar, add a minimize button that collapses a panel to its title bar, and offer the same options in a right-click menu on every widget.
 
