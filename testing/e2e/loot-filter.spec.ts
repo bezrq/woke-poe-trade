@@ -214,7 +214,6 @@ test('prices: a hidden valuable unique lists what else would show, and Show it d
 
   await page.getByRole('button', { name: /Despot Axe/ }).click()
   await page.getByRole('button', { name: 'Show it', exact: true }).click()
-  await page.getByRole('button', { name: /^Save/ }).click()
   await expect.poll(() => {
     const out = path.join(folder, 'NeverSink (woke).filter')
     return fs.existsSync(out) ? fs.readFileSync(out, 'utf8') : ''

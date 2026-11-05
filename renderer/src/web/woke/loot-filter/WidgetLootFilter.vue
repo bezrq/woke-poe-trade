@@ -226,6 +226,17 @@ const allNotes = computed<Notice[]>(() => {
   const moves = store.plan.value?.moves.length ?? 0
   if (moves) out.push({ id: 'prices', value: moves, tab: 'prices', text: `${moves} item${moves > 1 ? 's' : ''} would move to match today's prices.` })
   if (store.safetyCount.value) out.push({ id: 'safety', value: store.safetyCount.value, tab: 'prices', text: `Safety net shows ${store.safetyCount.value} valuable item${store.safetyCount.value > 1 ? 's' : ''} the filter hides.` })
+  if (store.netWithoutPrices.value) {
+    out.push({
+      id: 'net-prices',
+      value: store.safetyCount.value,
+      warn: true,
+      tab: 'prices',
+      text: store.safetyCount.value
+        ? `No poe.ninja prices for this league yet. The safety net is using its last list of ${store.safetyCount.value}.`
+        : 'No poe.ninja prices for this league yet, so the safety net is empty.'
+    })
+  }
   if (store.gameFilter.value.loaded === false) out.push({ id: 'load', value: 1, warn: true, tab: 'changes', text: 'The game couldn\'t load your filter. Open the editor and save again.' })
   else if (store.wrongFilterInGame.value) out.push({ id: 'wrong', value: store.gameFilter.value.name ?? '', warn: true, text: `The game is using "${store.gameFilter.value.name}", not your saved copy.` })
   if (store.failed.value.length) out.push({ id: 'failed', value: store.failed.value.length, warn: true, tab: 'changes', text: `${store.failed.value.length} change(s) need a new home after a NeverSink update.` })

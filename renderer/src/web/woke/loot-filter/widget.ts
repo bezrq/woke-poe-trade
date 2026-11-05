@@ -204,6 +204,8 @@ export function normalizeLootFilterWidget (w: LootFilterWidget) {
   if (!w.safetyNet || typeof w.safetyNet !== 'object') w.safetyNet = { ...DEFAULT_SAFETY_NET }
   if (typeof w.safetyNet.on !== 'boolean') w.safetyNet.on = DEFAULT_SAFETY_NET.on
   if (typeof w.safetyNet.minChaos !== 'number' || !(w.safetyNet.minChaos > 0)) w.safetyNet.minChaos = DEFAULT_SAFETY_NET.minChaos
+  const last = w.safetyNet.last
+  if (last && (!Array.isArray(last.plain) || !Array.isArray(last.unique))) delete w.safetyNet.last
   if (!Array.isArray(w.history)) w.history = []
   const ns = w.neversink as Partial<NeverSinkSource> | undefined
   const dn = defaultNeverSink()

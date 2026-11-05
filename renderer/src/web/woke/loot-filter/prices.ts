@@ -5,7 +5,7 @@ import { ITEMS_ITERATOR } from '@/assets/data'
 import type { BaseType } from '@/assets/data'
 import { usePoeninja } from '@/web/background/Prices'
 import { usePriceIndex } from '../market/price-index'
-import { priceBreakdown, priceLookup } from './economy'
+import { priceBreakdown, priceLookup, safetyLookup } from './economy'
 import type { PriceLookup, UniqueRule } from './economy'
 
 let uniqueBases: Map<string, string[]> | null = null
@@ -31,6 +31,12 @@ export function useFilterPrices (rule: () => UniqueRule) {
     if (!snap?.items.length) return null
     return priceLookup(snap.items, uniquesOnBase, rule())
   })
+  // Never follows the "cheapest unique" setting: see safetyLookup.
+  const safety = computed<PriceLookup | null>(() => {
+    const snap = index.snapshot.value
+    if (!snap?.items.length) return null
+    return safetyLookup(snap.items, uniquesOnBase)
+  })
   const breakdown = computed(() => priceBreakdown(index.snapshot.value?.items ?? [], uniquesOnBase))
   const updatedAt = computed(() => index.snapshot.value?.ts ?? null)
   const league = computed(() => index.snapshot.value?.league ?? null)
@@ -38,5 +44,5 @@ export function useFilterPrices (rule: () => UniqueRule) {
   function wantPrices () {
     try { ninja.queuePricesFetch() } catch {}
   }
-  return { lookup, breakdown, updatedAt, league, wantPrices }
+  return { lookup, safety, breakdown, updatedAt, league, wantPrices }
 }

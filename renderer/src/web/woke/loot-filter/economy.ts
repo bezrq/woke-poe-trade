@@ -60,22 +60,35 @@ export type PriceLookup = (group: EconomyGroup, base: string) => PricePoint | nu
 
 export type UniqueRule = 'max' | 'min'
 
-// Builds a lookup from a price snapshot. `uniquesOnBase` lists the uniques
-// that use a base (from APT's item data); passed in so tests can stub it.
-// One price per (type, name): the plain variant, or the cheapest one (6-link
-// and relic variants of uniques are not what drops).
-function priceFinder (items: PriceItem[]) {
-  const byName = new Map<string, PriceItem>()
+// One price per (type, name, base). 5-link, 6-link and relic lines of uniques are
+// not what drops. A plain line is the price; when there are only variants
+// (passives on a cluster jewel, sockets, the base it rolled on), the drop could
+// be any of them, so it's judged by the best.
+//  - 'market': the best with a real market, for moving tiers.
+//  - 'safety': the best of all, for never hiding what might be worth it.
+type VariantRule = 'market' | 'safety'
+
+function priceFinder (items: PriceItem[], rule: VariantRule = 'market') {
+  const byName = new Map<string, PriceItem[]>()
   for (const i of items) {
-    if (/\b[56]L\b|links?/i.test(i.variant)) continue
+    if (/\b[56]L\b|links?|^relic$/i.test(i.variant)) continue
     const key = `${i.type}\u0000${i.name}`
-    const prev = byName.get(key)
-    if (!prev || (!i.variant && prev.variant) || (Boolean(i.variant) === Boolean(prev.variant) && i.chaos < prev.chaos)) byName.set(key, i)
+    const list = byName.get(key)
+    if (list) list.push(i)
+    else byName.set(key, [i])
   }
-  return (types: string[], name: string) => {
+  const best = (list: PriceItem[]) => list.reduce((a, b) => b.chaos > a.chaos ? b : a)
+  return (types: string[], name: string, base?: string) => {
     for (const t of types) {
-      const hit = byName.get(`${t}\u0000${name}`)
-      if (hit) return hit
+      const lines = byName.get(`${t}\u0000${name}`)
+      if (!lines) continue
+      const plain = lines.find(i => !i.variant)
+      if (plain) return plain
+      // A unique that comes on several bases is priced per base.
+      const onBase = base ? lines.filter(i => i.variant.split(', ').includes(base)) : []
+      const pool = onBase.length ? onBase : lines
+      const solid = rule === 'market' ? pool.filter(i => !isThin(i)) : []
+      return best(solid.length ? solid : pool)
     }
     return undefined
   }
@@ -86,11 +99,11 @@ export function priceBreakdown (
   items: PriceItem[],
   uniquesOnBase: (base: string) => string[]
 ) {
-  const find = priceFinder(items)
+  const find = priceFinder(items, 'safety')
   return (group: EconomyGroup, base: string): Array<{ name: string, chaos: number | null, thin: boolean }> => {
     const names = group.unique ? uniquesOnBase(base).filter(name => !/^Replica /.test(name)) : [base]
     return names.map(name => {
-      const hit = find(group.ninja, name)
+      const hit = find(group.ninja, name, base)
       return { name, chaos: hit?.chaos ?? null, thin: hit ? isThin(hit) : false }
     })
   }
@@ -99,9 +112,10 @@ export function priceBreakdown (
 export function priceLookup (
   items: PriceItem[],
   uniquesOnBase: (base: string) => string[],
-  rule: UniqueRule = 'max'
+  rule: UniqueRule = 'max',
+  variants: VariantRule = 'market'
 ): PriceLookup {
-  const find = priceFinder(items)
+  const find = priceFinder(items, variants)
   return (group, base) => {
     if (!group.unique) {
       const hit = find(group.ninja, base)
@@ -111,7 +125,7 @@ export function priceLookup (
     // they never land in them and must not set the base's price.
     const priced = uniquesOnBase(base)
       .filter(name => !/^Replica /.test(name))
-      .map(name => find(group.ninja, name))
+      .map(name => find(group.ninja, name, base))
       .filter((x): x is PriceItem => Boolean(x))
     if (!priced.length) return null
     // "max": the base is worth what its best unique is worth, so a valuable
@@ -119,6 +133,12 @@ export function priceLookup (
     const pick = priced.reduce((a, b) => (rule === 'max' ? b.chaos > a.chaos : b.chaos < a.chaos) ? b : a)
     return { chaos: pick.chaos, thin: isThin(pick), note: priced.length > 1 ? `${pick.name}, 1 of ${priced.length}` : pick.name }
   }
+}
+
+// What the net and the health list judge by: always a base's best unique, and
+// every variant counts, whatever you picked for moving tiers.
+export function safetyLookup (items: PriceItem[], uniquesOnBase: (base: string) => string[]): PriceLookup {
+  return priceLookup(items, uniquesOnBase, 'max', 'safety')
 }
 
 // ---- tiers ----

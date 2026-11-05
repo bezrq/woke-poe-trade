@@ -70,7 +70,7 @@
         <WField v-model.number="minChaos" type="number" suffix="c" style="width: 5.5rem;" aria-label="Safety net value in chaos" />
         <span class="w-dim text-xs">{{ config.safetyNet.on ? `${store.safetyCount.value} hidden item${store.safetyCount.value === 1 ? '' : 's'} caught right now` : 'off' }}</span>
       </div>
-      <div class="w-faint text-xs">One rule at the top of your filter, white on red with a short red beam, for valuable items the rest of the filter would hide. Thin markets are left out.</div>
+      <div class="w-faint text-xs">One rule at the top of your filter, white on red with a short red beam, for valuable items the rest of the filter would hide. Thin markets count, since a junk price only costs you a click.</div>
       <WToggle :model-value="dockNotice" @update:model-value="setDockNotice">Tell me on the dock icon</WToggle>
     </div>
 
@@ -86,7 +86,7 @@
         <span class="w-trunc text-xs" :class="$style.who">
           <b v-if="r.top && r.top !== r.v.base">{{ r.top }}</b>
           <span v-else>{{ groupLabel(r.v.group.type) }}</span>
-          <span v-if="r.items.length > 1" class="w-dim"> {{ config.priceTiers.uniqueRule === 'min' ? 'cheapest' : 'highest priced' }} of {{ r.items.length }}</span>
+          <span v-if="r.items.length > 1" class="w-dim"> highest priced of {{ r.items.length }}</span>
         </span>
         <span v-if="r.trash" :class="$style.trash" class="text-xs">{{ r.trash }} trash</span>
         <span class="grow" />
@@ -270,7 +270,7 @@ function unlock (s: PriceSkip) {
     c.priceTiers.locks = c.priceTiers.locks.filter(k => k !== key)
     c.edits = c.edits.filter(e => !(e.kind === 'move' && e.type === s.type && e.base === s.base))
   })
-  toast(ownMove ? `Dropped your move of ${s.base}, so prices can move it again` : `Prices can move ${s.base} again`, { anchor: props.anchor, undo })
+  moved(ownMove ? `Dropped your move of ${s.base}, so prices can move it again` : `Prices can move ${s.base} again`, undo)
 }
 
 function keepAll () {
@@ -279,8 +279,7 @@ function keepAll () {
 }
 
 function reset () {
-  const undo = props.store.resetPrices()
-  toast('Price groups are back on NeverSink\'s tiers', { anchor: props.anchor, undo })
+  moved('Price groups are back on NeverSink\'s tiers', props.store.resetPrices())
 }
 
 function moveMenu (e: MouseEvent, m: PriceMove) {
@@ -294,8 +293,7 @@ function moveMenu (e: MouseEvent, m: PriceMove) {
 function showIt (v: BaseVerdict) {
   const b = v.block
   if (!b?.type || !b.tier) return
-  const undo = props.store.editWithUndo({ kind: 'item', type: b.type, tier: b.tier, base: v.base, visibility: 'Show', patch: v.state === 'hidden' ? SAFETY_LOOK : { fontSize: 40 }, anchor: conditionSignature(b), pin: true })
-  toast(`${v.base} now shows`, { anchor: props.anchor, undo })
+  moved(`${v.base} now shows`, props.store.editWithUndo({ kind: 'item', type: b.type, tier: b.tier, base: v.base, visibility: 'Show', patch: v.state === 'hidden' ? SAFETY_LOOK : { fontSize: 40 }, anchor: conditionSignature(b), pin: true }))
 }
 </script>
 
