@@ -6,6 +6,7 @@ import { initConfig, AppConfig } from './web/Config'
 import { Host } from './web/background/IPC'
 import { perfMark, perfTimeAsync } from './web/woke/shared/perf'
 import { captureRendererErrors } from './web/woke/app/report'
+import { startLiveDataChecks, useDownloadedData } from './web/woke/app/live-data'
 
 // woke: the first-run setup window loads this page with #setup. It needs no
 // item data, so it opens quicker.
@@ -22,9 +23,16 @@ const isSetupWindow = window.location.hash === '#setup'
     isSetupWindow ? Promise.resolve() : perfTimeAsync('Startup: load item + stat data', Data.init(AppConfig().language))
   ])
   captureRendererErrors()
+  if (!isSetupWindow) {
+    await useDownloadedData(AppConfig().language)
+    startLiveDataChecks(() => AppConfig().language)
+  }
 
   watch(() => AppConfig().language, async () => {
-    if (!isSetupWindow) await Data.loadForLang(AppConfig().language)
+    if (!isSetupWindow) {
+      await Data.loadForLang(AppConfig().language)
+      await useDownloadedData(AppConfig().language)
+    }
     await I18n.loadLang(AppConfig().language)
   })
 

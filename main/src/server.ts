@@ -9,6 +9,7 @@ import { IpcEvent, IpcEventPayload, HostState } from '../../ipc/types'
 import { ConfigStore } from './host-files/ConfigStore'
 import { addFileUploadRoutes } from './host-files/file-uploads'
 import { isOwnPageRequest, sendFile } from './host-files/request-guard'
+import { liveDataRoot } from './woke/live-data'
 import type { AppUpdater } from './AppUpdater'
 import type { Logger } from './RemoteLogger'
 
@@ -52,9 +53,15 @@ export function startConfigOver () {
 
 addFileUploadRoutes(httpRoutes)
 
+// woke: item and stat data downloaded since the last release.
+httpRoutes.addListener('request', (req: IncomingMessage, res: ServerResponse) => {
+  if (req.method !== 'GET' || !req.url?.startsWith('/live-data/')) return
+  sendFile(liveDataRoot(), req.url.slice('/live-data'.length), res)
+})
+
 if (!process.env.VITE_DEV_SERVER_URL) {
   httpRoutes.addListener('request', (req: IncomingMessage, res: ServerResponse) => {
-    if (req.url?.startsWith('/config') || req.url?.startsWith('/uploads') || req.url?.startsWith('/proxy')) return
+    if (req.url?.startsWith('/config') || req.url?.startsWith('/uploads') || req.url?.startsWith('/proxy') || req.url?.startsWith('/live-data/')) return
 
     const urlPath = req.url!.split(/[?#]/, 1)[0]
     const filePath = (urlPath === '/') ? '/index.html' : urlPath

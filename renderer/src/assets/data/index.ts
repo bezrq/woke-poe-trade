@@ -1,5 +1,6 @@
 import fnv1a from '@sindresorhus/fnv1a'
 import type { BaseType, DropEntry, Stat, StatOrGroup, StatMatcher, TranslationDict } from './interfaces'
+import { buildItemIndexes, buildStatIndexes } from './build-indexes'
 
 export * from './interfaces'
 
@@ -81,9 +82,11 @@ async function loadItems (language: string) {
     fetch(`${import.meta.env.BASE_URL}data/${language}/items-name.index.bin`).then(r => r.arrayBuffer()),
     fetch(`${import.meta.env.BASE_URL}data/${language}/items-ref.index.bin`).then(r => r.arrayBuffer())
   ])
+  useItems(ndjson, new Uint32Array(namesBuf), new Uint32Array(refNamesBuf))
+}
+
+function useItems (ndjson: string, indexNames: Uint32Array, indexRefNames: Uint32Array) {
   const INDEX_WIDTH = 2
-  const indexNames = new Uint32Array(namesBuf)
-  const indexRefNames = new Uint32Array(refNamesBuf)
 
   function commonFind (index: Uint32Array, prop: 'name' | 'refName') {
     return function (ns: BaseType['namespace'], name: string): BaseType[] | undefined {
@@ -118,9 +121,11 @@ async function loadStats (language: string) {
     fetch(`${import.meta.env.BASE_URL}data/${language}/stats-ref.index.bin`).then(r => r.arrayBuffer()),
     fetch(`${import.meta.env.BASE_URL}data/${language}/stats-matcher.index.bin`).then(r => r.arrayBuffer())
   ])
+  useStats(ndjson, new Uint32Array(refBuf), new Uint32Array(matcherBuf))
+}
+
+function useStats (ndjson: string, indexRef: Uint32Array, indexMatcher: Uint32Array) {
   const INDEX_WIDTH = 2
-  const indexRef = new Uint32Array(refBuf)
-  const indexMatcher = new Uint32Array(matcherBuf)
 
   STAT_BY_REF_V2 = function (ref: string) {
     let start = dataBinarySearch(indexRef, Number(fnv1a(ref, { size: 32 })), 0, INDEX_WIDTH)
@@ -191,6 +196,8 @@ export function pseudoStatByRef (ref: string): Stat | undefined {
 
 // assertion, to avoid regressions in stats.ndjson
 const DELAYED_STAT_VALIDATION = new Set<string>()
+// woke: every one checked so far, for checking downloaded data the same way.
+const CHECKED_STATS = new Set<string>()
 // type StatCheck =
 //   | 'ref-match' // text will be used for comparison with other stat refs
 //   | 'pseudo-find' // text will only be used in `pseudoStatByRef`
@@ -208,7 +215,13 @@ export async function init (lang: string) {
     loadForLang(lang)
   ])
 
-  for (const text of DELAYED_STAT_VALIDATION) {
+  validateStats(DELAYED_STAT_VALIDATION, lang)
+  for (const text of DELAYED_STAT_VALIDATION) CHECKED_STATS.add(text)
+  DELAYED_STAT_VALIDATION.clear()
+}
+
+function validateStats (texts: Iterable<string>, lang: string) {
+  for (const text of texts) {
     const statOrGroup = STAT_BY_REF_V2(text)
     if (!statOrGroup) {
       throw new Error(`Cannot find stat: ${text}`)
@@ -225,7 +238,36 @@ export async function init (lang: string) {
       throw new Error(`Some stats have different ref text: ${text}`)
     }
   }
-  DELAYED_STAT_VALIDATION.clear()
+}
+
+// woke: item and stat data the app downloaded, in place of what it's using. It
+// has to pass the same checks as bundled data, or nothing changes (it throws).
+export function useLiveData (lang: string, items: string, stats: string) {
+  if (!items.length || !stats.length) throw new Error('Empty data')
+  const itemIndexes = buildItemIndexes(items)
+  const statIndexes = buildStatIndexes(stats)
+  const before = {
+    ITEM_BY_TRANSLATED,
+    ITEM_BY_REF,
+    ITEMS_ITERATOR,
+    ALTQ_GEM_NAMES,
+    REPLICA_UNIQUE_NAMES,
+    STAT_BY_REF_V2,
+    STAT_BY_MATCH_STR_V2,
+    STAT_BY_MATCH_STR,
+    STATS_ITERATOR
+  }
+  useItems(items, itemIndexes.names, itemIndexes.refNames)
+  useStats(stats, statIndexes.refs, statIndexes.matchers)
+  try {
+    validateStats([...CHECKED_STATS, ...DELAYED_STAT_VALIDATION], lang)
+  } catch (e) {
+    ;({
+      ITEM_BY_TRANSLATED, ITEM_BY_REF, ITEMS_ITERATOR, ALTQ_GEM_NAMES, REPLICA_UNIQUE_NAMES,
+      STAT_BY_REF_V2, STAT_BY_MATCH_STR_V2, STAT_BY_MATCH_STR, STATS_ITERATOR
+    } = before)
+    throw e
+  }
 }
 
 export async function loadForLang (lang: string) {
