@@ -72,6 +72,11 @@ history:
     to: Done
     user: Agent
     date: '2026-11-05T03:42:52.211Z'
+  - type: activity
+    user: Agent
+    date: '2026-11-05T03:47:22.926Z'
+    comment: Task worktree automatically reclaimed (ready-or-terminal-status)
+    id: a-2026-11-05t03-47-22-926z
 needsAction: null
 branch: flux/WOKEPOET-16-fix-map-current-rolls-max-error-and-make-the-roll-bar-set-mi
 baselineCommit: a58632b0379617cbbaaebd67ac298914035552dd
