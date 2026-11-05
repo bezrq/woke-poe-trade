@@ -3,7 +3,7 @@ id: WOKEPOET-30
 title: >-
   Open wiki and Craft of Exile in the overlay, with a pop-out to the real
   browser
-status: Grooming
+status: Ready
 priority: None
 effort: None
 assignee: unassigned
@@ -53,8 +53,29 @@ history:
       Guy chose tabs (B), a pop-out icon in the header, and wants bookmarks.
       Same key again also pops out (assumed, he didn't pick). Bookmark layout
       mocked and asked in the thread; building tabs and pop-out meanwhile.
+  - type: activity
+    user: Agent
+    date: '2026-11-05T07:45:33.419Z'
+    comment: Updated implementation link.
+    id: a-2026-11-05t07-45-33-419z
+  - type: comment
+    user: Agent
+    comment: >-
+      PR #124 has tabs, pop-out (key and header icon) and a bookmarks tab. Guy
+      said to proceed as I wish, so I picked the tab layout. Two adversarial
+      reviews done and fixed, local checks pass, merge requested. Real key
+      presses in the panel are still untested.
+    date: '2026-11-05T07:45:34.971Z'
+    completionComment: true
+    id: c-2026-11-05t07-45-34-971z
+  - type: status_change
+    from: Grooming
+    to: Ready
+    user: Agent
+    date: '2026-11-05T07:45:34.971Z'
 swimlane: null
 needsAction: null
+implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/124'
 ---
 > **TL;DR:** The wiki, poedb and Craft of Exile item hotkeys throw you out to your real browser. Guy wants them to open inside the overlay, with a shortcut to pop the page out afterwards. Mocks come first; no code until Guy picks.
 
