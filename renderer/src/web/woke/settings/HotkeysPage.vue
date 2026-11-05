@@ -18,6 +18,7 @@
           <span :class="$style.status">
             <template v-if="problemOf(f)">{{ problemOf(f) }}</template>
             <template v-else-if="f.off">Module off, key is free</template>
+            <template v-else-if="gameNoteOf(f)">{{ gameNoteOf(f) }}</template>
           </span>
           <span v-if="f.hold" :class="$style.hold">
             <w-segmented :model-value="f.hold.get()" :options="HOLD" @update:model-value="f.hold!.set(String($event))" />
@@ -70,8 +71,14 @@ function problemOf (f: HotkeyField): string | null {
   }
   if (ctx.failed.value.has(norm)) return 'Another program holds this key'
   const others = uses.filter(l => l !== f.label)
-  if (uses.length > 1) return `Same key as ${others.join(', ') || 'another action'}`
-  const action = ctx.poeBinds.value.get(norm)
+  return uses.length > 1 ? `Same key as ${others.join(', ') || 'another action'}` : null
+}
+
+// Not a problem: taking a game key can be exactly what you meant.
+function gameNoteOf (f: HotkeyField): string | null {
+  const k = fieldKey(f)
+  if (!k || !ctx || f.off) return null
+  const action = ctx.poeBinds.value.get(normalizeKey(k))
   return action ? poeBindNote(action) : null
 }
 

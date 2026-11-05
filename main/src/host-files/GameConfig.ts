@@ -61,12 +61,12 @@ export class GameConfig {
 
   // woke: the game rewrites its config while running, so look again when it starts.
   async refresh () {
+    // The game can attach while the first read is still going.
+    await this.reading
     if (!this._actualPath) return
     try {
       const contents = await fs.readFile(this._actualPath, { encoding: 'utf-8', flag: 'r' })
-      const { binds, isExclusiveFullscreen } = readGameSettings(ini.parse(contents.trimStart()))
-      this.binds = binds
-      this.isExclusiveFullscreen = isExclusiveFullscreen
+      this.useGameSettings(ini.parse(contents.trimStart()))
     } catch {
       this.logger.write('error [GameConfig] Failed to read game configuration file.')
     }
@@ -77,7 +77,22 @@ export class GameConfig {
     private logger: Logger
   ) {}
 
-  async readConfig (filePath: string) {
+  private reading: Promise<void> = Promise.resolve()
+
+  private useGameSettings (parsed: Record<string, Record<string, unknown> | undefined>) {
+    const { binds, isExclusiveFullscreen } = readGameSettings(parsed)
+    this.binds = binds
+    this.isExclusiveFullscreen = isExclusiveFullscreen
+    // The page asks before the first read has finished, so it's told as well.
+    this.server.sendEventTo('broadcast', { name: 'MAIN->CLIENT::woke-event', payload: { topic: 'game-binds', data: binds } })
+  }
+
+  readConfig (filePath: string) {
+    this.reading = this.read(filePath)
+    return this.reading
+  }
+
+  private async read (filePath: string) {
     if (this._wantedPath !== filePath) {
       this._wantedPath = filePath
       this._actualPath = null
@@ -102,9 +117,7 @@ export class GameConfig {
 
       this._showModsKey = this.parseConfigHotkey(
         parsed['ACTION_KEYS']?.['show_advanced_item_descriptions'])
-      const { binds, isExclusiveFullscreen } = readGameSettings(parsed)
-      this.binds = binds
-      this.isExclusiveFullscreen = isExclusiveFullscreen
+      this.useGameSettings(parsed)
 
       this._actualPath = filePath
     } catch {

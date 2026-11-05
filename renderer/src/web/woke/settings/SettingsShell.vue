@@ -306,7 +306,7 @@ const uses = computed(() => clone.value ? hotkeyUses(hotkeyFields(clone.value)) 
 provideHotkeyContext({ uses, failed: health.failedNorm, poeBinds: health.poeBinds })
 const hotkeyProblems = computed(() => {
   let n = 0
-  for (const [norm, labels] of uses.value) if (labels.length > 1 || health.failedNorm.value.has(norm) || health.poeBinds.value.has(norm)) n++
+  for (const [norm, labels] of uses.value) if (labels.length > 1 || health.failedNorm.value.has(norm)) n++
   return n
 })
 

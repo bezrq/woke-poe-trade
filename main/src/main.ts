@@ -67,9 +67,21 @@ app.on('ready', async () => {
     }).catch(() => {})
   })
   poeWindow.onDetach(() => { appTray.setStatus('waiting') })
-  appTray.onResetOverlayKey = () => {
-    eventPipe.sendEventTo('broadcast', { name: 'MAIN->CLIENT::woke-event', payload: { topic: 'reset-overlay-key', data: { key: DEFAULT_OVERLAY_KEY } } })
+  // Says it worked only once the page has actually taken the new key.
+  let resetWaiting: ReturnType<typeof setTimeout> | undefined
+  eventPipe.onEventAnyClient('CLIENT->MAIN::update-host-config', (cfg) => {
+    if (!resetWaiting || cfg.overlayKey !== DEFAULT_OVERLAY_KEY) return
+    clearTimeout(resetWaiting)
+    resetWaiting = undefined
     appTray.notify('Overlay key reset', `Press ${DEFAULT_OVERLAY_KEY} in game to open the overlay.`)
+  })
+  appTray.onResetOverlayKey = () => {
+    clearTimeout(resetWaiting)
+    resetWaiting = setTimeout(() => {
+      resetWaiting = undefined
+      appTray.notify('Overlay key not reset', 'The overlay isn\'t responding. Quit and start the app again, then try this again.')
+    }, 3000)
+    eventPipe.sendEventTo('broadcast', { name: 'MAIN->CLIENT::woke-event', payload: { topic: 'reset-overlay-key', data: { key: DEFAULT_OVERLAY_KEY } } })
   }
   registerWokeHandler('game-filter', async () => await gameFilterSetting(gameConfig.actualPath))
   initSetup(appUpdater)

@@ -15,17 +15,23 @@ const failed = shallowRef<string[]>([])
 const poeBinds = shallowRef<Map<string, string>>(new Map())
 let listening = false
 
+interface GameBind { hotkey: string, action: string }
+function setPoeBinds (binds: GameBind[]) {
+  poeBinds.value = new Map(binds.map(b => [normalizeKey(b.hotkey), b.action]))
+}
+
 function listen () {
   if (listening) return
   listening = true
   MainProcess.onEvent('MAIN->CLIENT::woke-event', ({ topic, data }) => {
     if (topic === 'hotkeys') failed.value = (data as { failed: string[] }).failed
+    if (topic === 'game-binds') setPoeBinds(data as GameBind[])
   })
   hostRequest<{ failed: string[] }>('hotkey-failures', null)
     .then(r => { failed.value = r.failed })
     .catch(() => {})
-  hostRequest<Array<{ hotkey: string, action: string }>>('game-binds', null)
-    .then(binds => { poeBinds.value = new Map(binds.map(b => [normalizeKey(b.hotkey), b.action])) })
+  hostRequest<GameBind[]>('game-binds', null)
+    .then(binds => { if (binds.length) setPoeBinds(binds) })
     .catch(() => {})
 }
 
