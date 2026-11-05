@@ -23,6 +23,10 @@ const SCARAB = JSON.stringify({
 const area = (id: string, seed = '666232010') => `2026/11/05 20:49:09 18884906 1186a8a3 [DEBUG Client 34092] Generating level 83 area "${id}" with seed ${seed}`
 const TUJEN = '2026/11/05 20:49:11 18887484 cffb065b [INFO Client 34092] Tujen, the Haggler: Oi! Over here!'
 
+// Under load the card or the prices can land after one hover or the default
+// wait, so keep resting the mouse until the card is up.
+const SLOW = { timeout: 20_000 }
+
 test('Expedition card: prices, vendor here on top, no scarab chips or arrows', async ({ overlay }) => {
   const recorded = fs.readFileSync(DENSE, 'utf8')
   await overlay.page.route('**/dense/overviews*', (route) => route.fulfill({
@@ -34,13 +38,15 @@ test('Expedition card: prices, vendor here on top, no scarab chips or arrows', a
 
   // A logbook area: Expedition, but nobody has spoken yet.
   await overlay.log([area('ExpeditionBattlegroundGraves')])
-  await expect(icon).toBeVisible()
-  await overlay.hoverDockIcon('mechanics')
+  await expect(icon).toBeVisible(SLOW)
   const card = overlay.page.getByText('Refresh currency, each · week')
-  await expect(card).toBeVisible({ timeout: 5000 })
+  await expect(async () => {
+    await overlay.hoverDockIcon('mechanics')
+    await expect(card).toBeVisible({ timeout: 2000 })
+  }).toPass(SLOW)
   const body = overlay.page.locator('body')
   for (const name of ['Exotic Coinage', 'Scrap Metal', 'Burial Medallion', 'Astragali']) {
-    await expect(body).toContainText(name)
+    await expect(body).toContainText(name, SLOW)
   }
   await expect(body).not.toContainText('has no prices')
   await expect(body).not.toContainText('Expedition: Archaeology')
@@ -49,7 +55,7 @@ test('Expedition card: prices, vendor here on top, no scarab chips or arrows', a
 
   // Tujen speaks: their currency moves to the top.
   await overlay.log([TUJEN])
-  await expect(overlay.page.getByText('Tujen is here')).toBeVisible({ timeout: 5000 })
+  await expect(overlay.page.getByText('Tujen is here')).toBeVisible(SLOW)
   await expect(overlay.page.getByText('Tujen is here').locator('..')).toContainText('Exotic Coinage')
   await expect(overlay.page.getByText('Others, each · week')).toBeVisible()
   await expect(body).toContainText('0.07')
@@ -58,13 +64,15 @@ test('Expedition card: prices, vendor here on top, no scarab chips or arrows', a
   // Through a portal to the hideout and back: still them.
   await overlay.moveMouse(1000, 900)
   await overlay.log([area('HideoutFelled', '1')])
-  await expect(icon).toHaveCount(0)
+  await expect(icon).toHaveCount(0, SLOW)
   await overlay.log([area('ExpeditionBattlegroundGraves')])
-  await expect(icon).toBeVisible()
-  await overlay.hoverDockIcon('mechanics')
-  await expect(overlay.page.getByText('Tujen is here')).toBeVisible({ timeout: 5000 })
+  await expect(icon).toBeVisible(SLOW)
+  await expect(async () => {
+    await overlay.hoverDockIcon('mechanics')
+    await expect(overlay.page.getByText('Tujen is here')).toBeVisible({ timeout: 2000 })
+  }).toPass(SLOW)
 
   // A new instance forgets them.
   await overlay.log([area('ExpeditionKaruiWargraves')])
-  await expect(overlay.page.getByText('Tujen is here')).toHaveCount(0, { timeout: 5000 })
+  await expect(overlay.page.getByText('Tujen is here')).toHaveCount(0, SLOW)
 })
