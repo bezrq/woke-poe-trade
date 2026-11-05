@@ -3,30 +3,13 @@
     <div class="flex gap-2 min-h-0 items-start">
       <!-- While you play: an icon in the dock, only in a zone with a mechanic;
            resting the mouse on it shows the glance card. -->
-      <DockItem id="mechanics" :art="mechanicIcon(dockMech.id).src" :icon="dockMech.icon" :title="dockMech.label" :show="dockShow" :wm-id="config.wmId"
+      <DockItem :menu="dockMenu" id="mechanics" :art="mechanicIcon(dockMech.id).src" :icon="dockMech.icon" :title="dockMech.label" :show="dockShow" :wm-id="config.wmId"
         card-width="19rem" @activate="openFull">
         <template #card>
           <div v-if="wm.active.value" class="flex justify-end" style="padding: 2px 6px 0;">
             <button class="w-icon-btn" title="Expand" @click="openFull"><i class="fas fa-expand-alt" /></button>
           </div>
-          <WBanner v-if="!hasPrices" tone="info">Waiting for poe.ninja prices…</WBanner>
-          <template v-if="dockMech.id === 'betrayal' && goals.length">
-            <div class="w-group-label">Goals · {{ goalsDone }} of {{ goals.length }} in place</div>
-            <div v-for="g in goalRows.filter(r => !r.done)" :key="g.member" class="w-row" :class="$style.glanceBtr">
-              <span class="w-trunc"><span class="w-accent">{{ g.member }}</span> → {{ DIVISIONS[g.di] }}</span>
-              <span class="w-dim text-xs">{{ g.nowLabel }}</span>
-            </div>
-          </template>
-          <template v-else-if="dockMech.id === 'betrayal'">
-            <div class="w-group-label">{{ starredGlance.length ? 'Starred slots' : 'Most valuable slots' }}</div>
-            <div v-for="row in glanceBetrayal" :key="row.key" class="w-row" :class="$style.glanceBtr">
-              <span class="w-trunc"><span class="w-accent">{{ row.member }}</span> · {{ row.reward }}</span>
-              <WPrice :chaos="row.chaos" :divine="divine" class="justify-end" />
-            </div>
-          </template>
-          <ExpeditionGlance v-else-if="dockMech.id === 'expedition'" :items="items" :divine="divine" :vendor="zoneVendor" />
-          <MechanicPrices v-else-if="dockMech.groups.length" :mech="dockMech" :items="items" :divine="divine" :top="3" />
-          <div v-else class="w-dim text-xs" :class="$style.pad">{{ dockMech.tips[0] }}</div>
+          <MechanicGlance :mech="dockMech" :config="config" :items="items" :divine="divine" :vendor="zoneVendor" />
         </template>
       </DockItem>
 
@@ -136,7 +119,7 @@
             </button>
           </template>
         </div>
-        <template #footer><span>Click a slot to star it. Rewards from the 3.24 sheet; green = top 10% by value now.</span></template>
+        <template #footer><span>Click a slot to star it. Green = top 10% by value now.</span></template>
       </WPanel>
     </div>
   </Widget>
@@ -157,18 +140,20 @@ export default {
 </script>
 
 <script setup lang="ts">
-import { inject, computed, shallowRef } from 'vue'
+import { inject, computed, shallowRef, watch } from 'vue'
 import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
-import { WPanel, WSegmented, WButton, WPrice, WField, WSelect, WBanner, WIcon } from '../ui'
+import { toast, WPanel, WSegmented, WButton, WPrice, WField, WSelect, WBanner, WIcon } from '../ui'
 import { usePriceIndex } from '../market/price-index'
 import DockItem from '../dock/DockItem.vue'
+import type { DockMenuAction } from '../dock/dock'
 import { mechanicIcon } from '../ui/game-icons'
-import { hideWhilePlaying } from '../dock/dock'
+import { dockIconEl, hideWhilePlaying, saveDock } from '../dock/dock'
 import MechanicPrices from './MechanicPrices.vue'
-import ExpeditionGlance from './ExpeditionGlance.vue'
+import MechanicGlance from './MechanicGlance.vue'
 import { MECHANICS, mechanicById, priceScarabs } from './data'
-import { DIVISIONS, MEMBERS, REWARDS, adviceFor, goalsFromStars, priceReward, slotKey } from './betrayal'
+import { DIVISIONS, MEMBERS, adviceFor, slotKey } from './betrayal'
+import { useBetrayalSlots } from './betrayal-slots'
 import type { AdviceKind } from './betrayal'
 import { useMechanicZone } from './zone'
 
@@ -190,11 +175,19 @@ if (props.config.wmFlags[0] === 'uninitialized') {
   props.config.hidden = []
   props.config.betrayalStars = []
   props.config.betrayalOverrides = {}
-  wm.show(props.config.wmId)
 }
 
 // The expanded window shows only with the overlay open; the dock covers play.
 hideWhilePlaying(props.config)
+
+// Open means the panel is showing, so the launcher opens it. The dock icon
+// doesn't depend on this: it stays while the widget is hidden.
+if (!props.config.expanded && props.config.wmWants === 'show') wm.hide(props.config.wmId)
+watch(() => [props.config.wmWants, props.config.expanded] as const, ([wants, expanded], [wantsBefore]) => {
+  if (wants !== 'show') return
+  if (wantsBefore !== 'show') props.config.expanded = true
+  else if (!expanded) wm.hide(props.config.wmId)
+})
 
 // Icons placed before: the old default spot (left edge, 30% down) is inside
 // the stash grid. Move it above, once.
@@ -234,6 +227,7 @@ function openFull () {
 
 function collapse () {
   props.config.expanded = false
+  wm.hide(props.config.wmId)
 }
 
 const scarabs = computed(() => mech.value.scarabs ? priceScarabs(mech.value.scarabs, items.value) : [])
@@ -247,16 +241,7 @@ const division = shallowRef('2')
 const showBoard = shallowRef(false)
 const boardQuery = shallowRef('')
 
-function rewardText (member: string, di: number) {
-  return props.config.betrayalOverrides[slotKey(member, di)] || REWARDS[member][di]
-}
-
-const slots = computed(() => MEMBERS.flatMap(member => DIVISIONS.map((_, di) => {
-  const key = slotKey(member, di)
-  const reward = rewardText(member, di)
-  const priced = priceReward(reward, items.value)
-  return { key, member, di, reward, chaos: priced.chaos ?? null, bestName: priced.bestName, upTo: priced.upTo, count: priced.count, starred: props.config.betrayalStars.includes(key) }
-})))
+const { rewardText, slots, goals, betrayalAt, goalRows } = useBetrayalSlots(() => props.config, items)
 const slotByKey = computed(() => new Map(slots.value.map(s => [s.key, s])))
 
 const hotCut = computed(() => {
@@ -276,24 +261,11 @@ const betrayalRows = computed(() => slots.value
   .filter(s => s.di === Number(division.value))
   .sort((a, b) => Number(b.starred) - Number(a.starred) || (b.chaos ?? -1) - (a.chaos ?? -1)))
 
-const starredGlance = computed(() => slots.value.filter(s => s.starred))
-const glanceBetrayal = computed(() => (starredGlance.value.length
-  ? [...starredGlance.value]
-  : slots.value.filter(s => s.chaos != null)
-).sort((a, b) => (b.chaos ?? -1) - (a.chaos ?? -1)).slice(0, 4))
-
 function toggleStar (key: string) {
   const stars = props.config.betrayalStars
   props.config.betrayalStars = stars.includes(key) ? stars.filter(k => k !== key) : [...stars, key]
 }
 
-const goals = computed(() => goalsFromStars(props.config.betrayalStars))
-const betrayalAt = computed(() => props.config.betrayalAt ?? {})
-const goalRows = computed(() => goals.value.map(g => {
-  const now = betrayalAt.value[g.member]
-  return { ...g, done: now === g.di, nowLabel: now == null ? 'where now?' : `now ${DIVISIONS[now]}` }
-}))
-const goalsDone = computed(() => goalRows.value.filter(g => g.done).length)
 function setAt (member: string, di: number) {
   props.config.betrayalAt = { ...betrayalAt.value, [member]: di }
 }
@@ -306,10 +278,37 @@ function boardMatch (member: string, div: string, reward: string) {
   if (!q) return true
   return member.toLowerCase().includes(q) || div.toLowerCase().includes(q) || reward.toLowerCase().includes(q)
 }
+
+// The icon's right-click menu.
+const dockMenu = computed<DockMenuAction[]>(() => [
+  {
+    label: 'Switch mechanic by zone',
+    icon: 'fas fa-random',
+    checked: !!props.config.autoSwitch,
+    action: () => { props.config.autoSwitch = !props.config.autoSwitch; saveDock() }
+  },
+  ...(zoneMech.value
+    ? [{
+        label: `Never show ${mechanicById(zoneMech.value)?.label ?? 'this mechanic'}`,
+        icon: 'fas fa-eye-slash',
+        action: () => {
+          const id = zoneMech.value
+          if (!id) return
+          const el = dockIconEl('mechanics')
+          props.config.hidden = [...props.config.hidden, id]
+          saveDock()
+          toast(`${mechanicById(id)?.label ?? 'Mechanic'} won't show`, {
+            anchor: el,
+            dock: true,
+            undo: () => { props.config.hidden = props.config.hidden.filter(x => x !== id); saveDock() }
+          })
+        }
+      }]
+    : [])
+])
 </script>
 
 <style module>
-.glanceBtr { grid-template-columns: minmax(0, 1fr) 64px; }
 .pad { padding: 4px var(--w-pad) 8px; }
 .goal { display: flex; align-items: center; gap: 6px; padding: 3px var(--w-pad); font-size: var(--w-fs-md); }
 .goal > :first-child { flex: 1; min-width: 0; }

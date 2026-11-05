@@ -13,6 +13,7 @@ import type { ServerEvents } from '../server'
 import type { OverlayWindow } from '../windowing/OverlayWindow'
 
 const LEFT_BUTTON = 1
+const RIGHT_BUTTON = 2
 
 interface Zone {
   id: string
@@ -138,6 +139,13 @@ export class WokeHoverTracker {
     const inActivateZone = this.update(e.x, e.y)
     this.heldButtons.add(e.button)
     if (inActivateZone && reachedOverlay) this.overlay.assertCardActive()
+    // A right click needs the mouse taken: otherwise the game got it too, and it
+    // may be a skill on its way past.
+    if (e.button === RIGHT_BUTTON && (reachedOverlay || this.overlay.isInteractable)) {
+      for (const zone of this.flat) {
+        if (zone.inside) this.server.sendEventTo('broadcast', { name: 'MAIN->OVERLAY::woke-hover-context', payload: { id: zone.id } })
+      }
+    }
     if (e.button !== LEFT_BUTTON) return
     for (const zone of this.flat) {
       if (zone.inside) {
