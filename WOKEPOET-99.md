@@ -14,6 +14,13 @@ history:
     user: Agent
     date: '2026-11-05T12:15:18.165Z'
     comment: Created ticket.
+    id: a-2026-11-05t12-15-18-165z
+  - type: activity
+    user: Agent
+    date: '2026-11-05T12:19:42.059Z'
+    comment: Updated implementation link.
+    id: a-2026-11-05t12-19-42-059z
+implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/177'
 ---
 e2e/dock-menu.spec.ts:113 "a click on a menu row leaves no card behind" fails every run on master.
 
