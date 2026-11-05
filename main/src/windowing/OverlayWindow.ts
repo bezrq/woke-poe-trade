@@ -12,6 +12,9 @@ export class OverlayWindow {
   public isCardActive = false
   // Taking clicks over a dock icon or card, with the game still focused.
   public isMouseTaken = false
+  // The game got focus: the hover tracker takes the mouse again if it's resting
+  // on an icon, so the next click doesn't need the mouse to move first.
+  public onGameActive?: () => void
   public wasUsedRecently = true
   private window?: BrowserWindow
   private overlayKey: string = 'Shift + Space'
@@ -54,6 +57,11 @@ export class OverlayWindow {
       { role: 'reload' },
       { role: 'toggleDevTools' }
     ]))
+
+    // Nothing asked for focus, so Windows gave it for a click on an icon or card.
+    this.window.on('focus', () => {
+      if (!this.isInteractable) this.assertCardActive()
+    })
 
     this.window.webContents.on('before-input-event', this.handleExtraCommands)
     this.window.webContents.on('did-attach-webview', (_, webviewWebContents) => {
@@ -219,6 +227,7 @@ export class OverlayWindow {
       this.isInteractable = false
     }
     this.sendFocusChange(isActive)
+    if (isActive) this.onGameActive?.()
   }
 
   private sendFocusChange (game: boolean) {

@@ -36,6 +36,9 @@ export class WokeHoverTracker {
     private server: ServerEvents,
     private overlay: OverlayWindow
   ) {
+    this.overlay.onGameActive = () => {
+      if (this.listening && this.mouseX != null) this.update(this.mouseX, this.mouseY)
+    }
     this.server.onEventAnyClient('OVERLAY->MAIN::woke-hover-zones', ({ owner, zones }) => {
       const prev = this.zones.get(owner) ?? []
       const converted: Zone[] = zones.map(z => ({
@@ -107,10 +110,12 @@ export class WokeHoverTracker {
   }
 
   private readonly handleMouseDown = (e: UiohookMouseEvent) => {
+    // Only if the mouse was already taken did this click reach the overlay.
+    const reachedOverlay = this.overlay.isMouseTaken
     // Bring `inside` up to date first, so a click also counts as entering.
     const inActivateZone = this.update(e.x, e.y)
     this.heldButtons.add(e.button)
-    if (inActivateZone && this.overlay.isMouseTaken) this.overlay.assertCardActive()
+    if (inActivateZone && reachedOverlay) this.overlay.assertCardActive()
     if (e.button !== LEFT_BUTTON) return
     for (const zone of this.flat) {
       if (zone.inside) {
