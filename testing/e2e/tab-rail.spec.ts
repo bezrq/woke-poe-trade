@@ -106,7 +106,7 @@ test('the launcher lists every tool, finds them, opens them and pins them', asyn
 
   await icon(overlay, 'All tools').click()
   await box.fill('chall')
-  await expect(page.getByRole('button', { name: 'Boss runs', exact: true })).toHaveCount(0)
+  await expect(page.locator('[class*="launcher"]').getByRole('button', { name: 'Boss runs', exact: true })).toHaveCount(0)
   await page.keyboard.press('Enter')
   await expect(box).toHaveCount(0)
   await expect(icon(overlay, 'Challenges')).toHaveClass(/open/)
