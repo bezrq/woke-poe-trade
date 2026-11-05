@@ -1,7 +1,7 @@
 ---
 id: WOKEPOET-31
 title: Give Woke its own icon and overlay mark
-status: Ready
+status: Done
 priority: Medium
 effort: S
 assignee: unassigned
@@ -110,6 +110,19 @@ history:
     date: '2026-11-05T06:38:00.227Z'
     comment: Task worktree automatically reclaimed (ready-or-terminal-status)
     id: a-2026-11-05t06-38-00-227z
+  - type: comment
+    user: Agent
+    comment: >-
+      PR squash-merged for branch
+      `flux/WOKEPOET-31-give-woke-its-own-icon-and-overlay-mark` — advanced to
+      Done.
+    date: '2026-11-05T06:39:28.537Z'
+    id: c-2026-11-05t06-39-28-537z
+  - type: status_change
+    from: Ready
+    to: Done
+    user: Agent
+    date: '2026-11-05T06:39:28.538Z'
 swimlane: null
 needsAction: null
 branch: flux/WOKEPOET-31-give-woke-its-own-icon-and-overlay-mark
