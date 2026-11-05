@@ -22,7 +22,6 @@ export interface ItemTip {
 // The market strip at the foot of a looked-up item.
 export interface TipMarket {
   chaos: number
-  divine: number | null
   // Which variant the price is for, when the caller didn't name one.
   variant?: string
   // Over the 7 days of the graph, as a ratio: 0.12 is +12%.
@@ -45,7 +44,6 @@ export interface LookupTip {
   model: TipModel
   market: TipMarket | null
   uniques?: TipBaseUnique[]
-  divine?: number | null
 }
 
 export type TipContent = GemTip | ItemTip | LookupTip

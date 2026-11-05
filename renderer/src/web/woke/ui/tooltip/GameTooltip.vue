@@ -59,14 +59,14 @@
         <footer v-if="lookup.uniques" :class="$style.uniques">
           <div v-for="u in shownUniques" :key="u.name" :class="$style.uniqueRow">
             <span :class="[$style.uniqueName, 'w-trunc']">{{ u.name }}</span>
-            <WPrice v-if="u.chaos != null" :chaos="u.chaos" :divine="lookup.divine" />
+            <WPrice v-if="u.chaos != null" :chaos="u.chaos" :divine="xchgRate ?? null" />
             <span v-else class="w-faint">no price</span>
             <span :class="$style[`g-${u.grade}`]">{{ u.label }}{{ u.thin ? ', thin market' : '' }}</span>
           </div>
-          <div v-if="moreUniques" class="w-faint">and {{ moreUniques }} cheaper</div>
+          <div v-if="moreUniques" class="w-faint">and {{ moreUniques }} more</div>
         </footer>
         <footer v-if="lookup.market" :class="$style.strip">
-          <WPrice :chaos="lookup.market.chaos" :divine="lookup.market.divine" />
+          <WPrice :chaos="lookup.market.chaos" :divine="xchgRate ?? null" />
           <span v-if="lookup.market.variant" class="w-dim">{{ lookup.market.variant }}</span>
           <WDelta :value="lookup.market.change" title="Change over 7 days" />
           <WSpark :values="lookup.market.graph" :width="88" :height="20" />
@@ -82,6 +82,7 @@
 // the page rather than in the panel, so the panel's edges don't clip it.
 // Mounted once in the overlay.
 import { computed, inject, nextTick, onMounted, onUnmounted, ref, shallowRef, useCssModule, watch } from 'vue'
+import { usePoeninja } from '@/web/background/Prices'
 import type { WidgetManager } from '@/web/overlay/interfaces'
 import SocketDots from '../../pob-builds/SocketDots.vue'
 import { socketGroups } from '../../pob-builds/build-model'
@@ -101,6 +102,8 @@ const placed = shallowRef<{ left: number, top: number } | null>(null)
 const item = computed<PobItem | null>(() => tip.value?.content.kind === 'item' ? tip.value.content.item : null)
 const gem = computed<GemTip | null>(() => tip.value?.content.kind === 'gem' ? tip.value.content : null)
 const lookup = computed<LookupTip | null>(() => tip.value?.content.kind === 'lookup' ? tip.value.content : null)
+// Live: the divine rate can arrive after the tooltip opens.
+const { xchgRate } = usePoeninja()
 const MAX_UNIQUES = 12
 const shownUniques = computed(() => lookup.value?.uniques?.slice(0, MAX_UNIQUES) ?? [])
 const moreUniques = computed(() => Math.max(0, (lookup.value?.uniques?.length ?? 0) - MAX_UNIQUES))
@@ -163,12 +166,15 @@ const pointer = shallowRef<{ x: number, y: number } | null>(null)
 function nearCursor (at: { x: number, y: number }, w: number, h: number) {
   const vw = window.innerWidth
   const vh = window.innerHeight
-  const left = at.x + CURSOR_GAP + w <= vw - EDGE ? at.x + CURSOR_GAP : at.x - CURSOR_GAP - w
-  const top = at.y + CURSOR_GAP + h <= vh - EDGE ? at.y + CURSOR_GAP : at.y - CURSOR_GAP - h
-  return {
-    left: Math.max(EDGE, Math.min(left, vw - w - EDGE)),
-    top: Math.max(EDGE, Math.min(top, vh - h - EDGE))
+  // Flip only if the other side has room; a tip too big for both slides along
+  // the edge instead of jumping across the cursor.
+  const axis = (cursor: number, size: number, screen: number) => {
+    const after = cursor + CURSOR_GAP
+    const before = cursor - CURSOR_GAP - size
+    const at = after + size <= screen - EDGE || before < EDGE ? after : before
+    return Math.max(EDGE, Math.min(at, screen - size - EDGE))
   }
+  return { left: axis(at.x, w, vw), top: axis(at.y, h, vh) }
 }
 
 // Falls back to whichever side fits.
@@ -230,12 +236,15 @@ watch(() => wm?.active.value, hideTip)
 onMounted(() => {
   window.addEventListener('mousemove', onPointer, true)
   window.addEventListener('mouseover', onPointer, true)
+  // A drag sends no mouse events, so the tooltip would freeze over the targets.
+  window.addEventListener('dragstart', hideTip, true)
   window.addEventListener('blur', hideTip)
   window.addEventListener('scroll', hideTip, true)
 })
 onUnmounted(() => {
   window.removeEventListener('mousemove', onPointer, true)
   window.removeEventListener('mouseover', onPointer, true)
+  window.removeEventListener('dragstart', hideTip, true)
   window.removeEventListener('blur', hideTip)
   window.removeEventListener('scroll', hideTip, true)
   hideTip()

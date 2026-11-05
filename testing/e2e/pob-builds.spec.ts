@@ -48,9 +48,7 @@ test('at 1440p, where panels are zoomed, the item tooltip stays at the cursor an
 test('the tooltip goes away when the overlay closes', async ({ overlay }) => {
   const detail = await openBuild(overlay, 1920, 1080)
   await detail.getByRole('tab', { name: 'Gear' }).click()
-  const row = detail.locator('[class*="gearRow"]').first()
-  await row.hover()
-  const rowBox = (await row.boundingBox())!
+  await detail.locator('[class*="gearRow"]').first().hover()
   const tip = overlay.page.getByRole('tooltip')
   await expect(tip).toBeVisible()
   // Back to the game: the panel hides and no mouseleave ever comes.

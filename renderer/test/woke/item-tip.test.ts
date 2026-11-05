@@ -77,6 +77,11 @@ describe('gaps', () => {
     expect(tip).toEqual({ name: 'Star of Wraeclast', base: 'Ruby Amulet', frame: 'unique', sections: [] })
   })
 
+  it('heads a unique with the base it is looked at on', () => {
+    const tip = buildTip(pack, { name: "Doryani's Delusion", kind: 'unique', atBase: 'Sharkskin Boots' })
+    expect(tip?.base).toBe('Sharkskin Boots')
+  })
+
   it('has nothing for an unknown name', () => {
     expect(buildTip(pack, { name: 'Not An Item', kind: 'item' })).toBeNull()
     expect(buildTip(pack, { name: 'Not An Item', kind: 'gem' })).toBeNull()

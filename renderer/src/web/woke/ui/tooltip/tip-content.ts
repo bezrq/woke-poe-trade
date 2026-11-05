@@ -355,13 +355,16 @@ export function packFiles (kind: TipKind): Array<keyof TipPack> {
   return ['items', 'bases']
 }
 
-export function buildTip (pack: TipPack, ref: { name: string, kind: TipKind, variant?: string, base?: string }): TipModel | null {
+// base: shown when the data has no text for a unique. atBase: the base this
+// unique is being looked at on, for those that come on several.
+export function buildTip (pack: TipPack, ref: { name: string, kind: TipKind, variant?: string, base?: string, atBase?: string }): TipModel | null {
   const { name, kind, variant } = ref
   if (kind === 'unique') {
     const unique = pack.uniques?.[name]
     // Known by name but with no text: its base at least.
     if (!unique) return ref.base ? { name, base: ref.base, frame: 'unique', sections: [] } : null
-    return uniqueTip(name, unique, pack.bases?.[unique.b], variant)
+    const on = ref.atBase ?? unique.b
+    return uniqueTip(name, { ...unique, b: on }, pack.bases?.[on], variant)
   }
   if (kind === 'gem') {
     const gem = pack.gems?.[name]
