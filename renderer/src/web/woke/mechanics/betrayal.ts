@@ -49,7 +49,7 @@ function pricing (reward: string): PriceGroup | null {
     case 'Orb of Unmaking': return { label: reward, types: ['Currency'], match: /^Orb of Unmaking$/ }
     case 'Breach splinters': return { label: reward, types: ['Fragment'], match: /^Splinter of / }
     case 'Legion splinters': return { label: reward, types: ['Fragment'], match: /^Timeless .*Splinter$/ }
-    case 'Expedition currency': return { label: reward, types: ['Currency'], match: /^(Exotic Coinage|Scrap Metal|Astragali|Burial Medallion)$/ }
+    case 'Expedition currency': return { label: reward, types: ['Artifact'] }
     case 'Map fragments': return { label: reward, types: ['Fragment'] }
     default: return null
   }

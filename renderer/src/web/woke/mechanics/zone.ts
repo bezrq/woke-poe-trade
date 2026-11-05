@@ -1,5 +1,6 @@
 // Tracks which league mechanic is in the current zone, from Client.txt.
 import { onGameLog } from '../shared/game-log'
+import type { LogEvent } from '../campaign/log-parse'
 import { mechanicForZone } from './data'
 
 // League NPCs log their dialogue to Client.txt ("] Einhar, Beastmaster: …"),
@@ -23,6 +24,14 @@ const NPC_MECHANIC: Record<string, string> = {
   'Gwennen, the Gambler': 'expedition'
 }
 
+// The Expedition vendor a log speaker stands for.
+const SPEAKER_VENDOR: Record<string, string> = {
+  'Dannig, Warrior Skald': 'Dannig',
+  'Tujen, the Haggler': 'Tujen',
+  'Rog': 'Rog',
+  'Gwennen, the Gambler': 'Gwennen'
+}
+
 const SPEAKER_RE = /\] ([^:#$&%@\]][^:\]]*): /
 
 export function mechanicForSpeaker (line: string): string | undefined {
@@ -30,20 +39,60 @@ export function mechanicForSpeaker (line: string): string | undefined {
   return m ? NPC_MECHANIC[m[1]] : undefined
 }
 
+export function expeditionVendorForSpeaker (line: string): string | undefined {
+  const m = SPEAKER_RE.exec(line)
+  return m ? SPEAKER_VENDOR[m[1]] : undefined
+}
+
+interface InstanceNpcs { mechanic?: string, vendor?: string }
+
+// Seed 1 is what towns and hideouts log, so it doesn't name one instance.
+const SHARED_SEED = '1'
+const REMEMBERED_INSTANCES = 16
+
+// Turns log lines into the two callbacks below. NPCs only speak once, so what
+// they showed is kept per instance for coming back through a portal.
+export function zoneTracker (onMechanic: (id: string | null) => void, onVendor: (vendor: string | null) => void) {
+  const instances = new Map<string, InstanceNpcs>()
+  let here: InstanceNpcs | null = null
+
+  return (line: string, ev: LogEvent | null) => {
+    const vendor = expeditionVendorForSpeaker(line)
+    if (vendor) {
+      onVendor(vendor)
+      if (here) here.vendor = vendor
+    }
+    const npc = mechanicForSpeaker(line)
+    if (npc) {
+      onMechanic(npc)
+      if (here) here.mechanic = npc
+      return
+    }
+    if (ev?.kind === 'area') {
+      here = null
+      if (ev.seed && ev.seed !== SHARED_SEED) {
+        const key = `${ev.areaId}:${ev.seed}`
+        here = instances.get(key) ?? {}
+        instances.delete(key)
+        instances.set(key, here)
+        if (instances.size > REMEMBERED_INSTANCES) instances.delete(instances.keys().next().value!)
+      }
+      // A new instance: forget the last zone's mechanic unless this one has its own.
+      onVendor(here?.vendor ?? null)
+      onMechanic(mechanicForZone(ev.areaId)?.id ?? here?.mechanic ?? null)
+    } else if (ev?.kind === 'zone') {
+      const mech = mechanicForZone(ev.name)
+      if (mech) onMechanic(mech.id)
+    }
+  }
+}
+
 // Calls back with the mechanic of the zone you're in, or null on entering a
 // zone that has none (town, hideout, a plain map), so the icon can hide.
-export function useMechanicZone (onMechanic: (id: string | null) => void): void {
+// onVendor: the Expedition vendor who last spoke in this instance, or null.
+export function useMechanicZone (onMechanic: (id: string | null) => void, onVendor: (vendor: string | null) => void = () => {}): void {
+  const feed = zoneTracker(onMechanic, onVendor)
   onGameLog((lines) => {
-    for (const { line, ev } of lines) {
-      const npc = mechanicForSpeaker(line)
-      if (npc) { onMechanic(npc); continue }
-      if (ev?.kind === 'area') {
-        // A new instance: forget the last zone's mechanic unless this one has its own.
-        onMechanic(mechanicForZone(ev.areaId)?.id ?? null)
-      } else if (ev?.kind === 'zone') {
-        const mech = mechanicForZone(ev.name)
-        if (mech) onMechanic(mech.id)
-      }
-    }
+    for (const { line, ev } of lines) feed(line, ev)
   })
 }
