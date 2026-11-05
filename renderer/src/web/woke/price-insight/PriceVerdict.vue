@@ -10,7 +10,7 @@
           <div v-if="!loading && headline" :class="$style.value" :title="blendTitle">
             <w-price :class="[$style.headline, $style.headlinePrice]" :chaos="headline.chaos" :divine="divine" />
           </div>
-          <div v-else-if="!loading && ninjaInfo" :class="$style.value">
+          <div v-else-if="ninjaInfo" :class="$style.value">
             <ninja-line :chaos="ninjaInfo.chaos" :divine="divine" :url="ninjaInfo.url" />
           </div>
         </template>
@@ -33,7 +33,7 @@
             :title="historyOpen ? 'Hide price history' : 'Show price history'" @click="historyOpen = !historyOpen">
             <w-spark :values="sparkValues" :width="60" :height="18" />
             <span class="w-num">
-              <span :class="$style.sparkSource">{{ ranges[0] === 'mine' ? 'My checks' : 'poe.ninja 7d' }}</span>
+              <span :class="$style.sparkSource">{{ SPARK_LABEL[ranges[0]] }}</span>
               <span v-if="sparkChange != null" class="ml-1" :class="sparkChange >= 0 ? 'w-up' : 'w-down'">{{ sparkChange >= 0 ? '+' : '' }}{{ Math.round(sparkChange * 100) }}%</span>
             </span>
           </button>
@@ -72,7 +72,7 @@
       <div v-if="blend.points.length > 1" :class="$style.agree">{{ AGREEMENT_SENTENCE[blend.agreement] }}<template v-if="headline?.from === 'blend'">. The headline blends them, listings count most</template></div>
       <div v-for="p in blend.points" :key="p.key" :class="[$style.source, { [$style.off]: p.weight === 0 }]" :title="p.note">
         <span :class="{ [$style.ninjaName]: p.key === 'ninja' }">{{ p.label }}</span>
-        <span class="w-num" :class="$style.sourceNote">{{ p.weight === 0 ? 'not counted' : '' }}</span>
+        <span class="w-num" :class="$style.sourceNote" :title="p.key === 'ninja' && ninjaGapText ? 'Listings disagree with poe.ninja, which averages recent prices. Trust the listings for rolls and corruption, poe.ninja for the going rate.' : undefined">{{ p.weight === 0 ? 'not counted' : (p.key === 'ninja' ? ninjaGapText : '') }}</span>
         <span class="w-num" :class="$style.sourcePrice">
           <w-price :chaos="p.low" :divine="divine" /><template v-if="p.high > p.low">–<w-price :chaos="p.high" :divine="divine" /></template>
         </span>
@@ -145,6 +145,19 @@ const showSignals = computed(() => props.insight.signals.length > 0 && (
   expanded.value || props.insight.risk === 'medium' || props.insight.risk === 'high' ||
   props.insight.signals.some(s => s.kind === 'old')
 ))
+
+const SPARK_LABEL: Record<HistoryRange, string> = { week: 'poe.ninja 7d', league: 'poe.ninja', mine: 'My checks' }
+
+// Only worth mentioning when listings and poe.ninja are a quarter or more apart.
+const ninjaGapText = computed(() => {
+  const fair = props.insight.range?.fair
+  const ninja = ninjaInfo.value?.chaos
+  if (!fair || !ninja) return ''
+  const ratio = fair / ninja - 1
+  if (Math.abs(ratio) < 0.25) return ''
+  const pct = Math.round(ratio * 100)
+  return `listings ${pct > 0 ? '+' : ''}${pct}%`
+})
 
 const AGREEMENT_SENTENCE: Record<Agreement, string> = {
   single: 'One source',
@@ -307,7 +320,7 @@ async function copy (n: { key: string, text: string }) {
 .signals { display: flex; flex-direction: column; gap: 2px; color: var(--w-dim); }
 .signal { font-size: 12px; line-height: 17px; }
 .flag { color: var(--w-down); }
-.actions { display: flex; gap: 8px; }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .note2 {
   flex: 1 1 0;
   display: inline-flex;

@@ -67,7 +67,7 @@
             </template>
           </ui-popover>
         </div>
-        <div class="min-w-0 flex items-start gap-x-2" :class="showSlider ? 'flex-none' : 'flex-1'">
+        <div class="min-w-0 flex items-start gap-x-2" :class="showSlider ? 'flex-initial overflow-hidden' : 'flex-1'">
           <span v-if="filter.not"
             :class="[$style['tag'], $style['tag-not']]">{{ t('filters.tag_not') }}</span>
           <span v-if="showTag"

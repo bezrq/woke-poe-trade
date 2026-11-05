@@ -11,7 +11,7 @@
     </filter-name>
     <woke-map-strip :item="item" class="mb-2" />
     <!-- woke: TradeListing puts the improved verdict here, above the mods. -->
-    <div ref="verdictSlot" class="shrink-0" />
+    <div ref="verdictSlot" class="w-pc-verdict-slot" />
     <!-- woke: the improved verdict below shows poeprices and poe.ninja once listings load. -->
     <template v-if="!wokeVerdictShown">
       <price-prediction v-if="showPredictedPrice" class="mb-4"
@@ -128,6 +128,7 @@ export default defineComponent({
 
     const verdictSlot = shallowRef<HTMLElement | null>(null)
     provide('price-verdict-slot', verdictSlot)
+    provide('price-check-search', () => { nextTick(() => { doSearch.value = true }) })
 
     const presets = ref<{ active: string, presets: FilterPreset[] }>(null!)
     const itemFilters = computed(() => presets.value.presets.find(preset => preset.id === presets.value.active)!.filters)

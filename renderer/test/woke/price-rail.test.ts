@@ -36,7 +36,9 @@ describe('railMarks', () => {
 
   it('keeps a middle label clear of the end labels', () => {
     const marks = railMarks({ low: 10, likely: 10.5, high: 500 })
-    expect(marks[1].x).toBeGreaterThanOrEqual(22)
+    expect(marks[1].x).toBeGreaterThanOrEqual(20)
+    const far = railMarks({ low: 20, likely: 140, high: 25, ninja: 146, ninjaSuspect: true })
+    expect(far[1].x).toBeLessThanOrEqual(62)
   })
 
   it('says when poe.ninja is not counted', () => {

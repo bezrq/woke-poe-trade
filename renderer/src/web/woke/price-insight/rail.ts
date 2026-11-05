@@ -26,9 +26,10 @@ export interface RailMark {
 
 // Prices this close would draw on top of each other: one mark, both names.
 const SAME_RATIO = 1.02
-// A middle label stays this far from the ends, so it can't run into theirs.
-const MID_MIN = 22
-const MID_MAX = 78
+// A middle label stays clear of the end labels: roughly how much of the rail one
+// character of label takes, plus half the middle label.
+const LABEL_CHAR = 1.3
+const LABEL_GAP = 10
 
 export function railMarks (input: RailInput): RailMark[] {
   const raw: Array<Pick<RailMark, 'chaos' | 'label' | 'kind'>> = [
@@ -59,6 +60,8 @@ export function railMarks (input: RailInput): RailMark[] {
     if (i === 0) return { ...m, x: 0, align: 'start' }
     if (i === merged.length - 1) return { ...m, x: 100, align: 'end' }
     const x = (Math.log(m.chaos) - lo) / (hi - lo) * 100
-    return { ...m, x: Math.min(Math.max(x, MID_MIN), MID_MAX), align: 'center' }
+    const min = merged[0].label.length * LABEL_CHAR + LABEL_GAP
+    const max = 100 - merged[merged.length - 1].label.length * LABEL_CHAR - LABEL_GAP
+    return { ...m, x: Math.min(Math.max(x, min), max), align: 'center' }
   })
 }

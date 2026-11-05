@@ -12,7 +12,7 @@ import { computed, shallowRef, watch, onUnmounted } from 'vue'
 import { ItemRarity, ParsedItem } from '@/parser'
 import { WSegmented } from '../ui'
 import type { FilterOrGroup } from '@/web/price-check/filters/interfaces'
-import { applyRollPreset, activeRollPreset, canUseRollPresets, RollPreset } from './roll-presets'
+import { applyRollPreset, activeRollPreset, canUseHighRolls, canUseRollPresets, RollPreset } from './roll-presets'
 import { estimateWorth, valueChanges, applyValueChanges, WORTH_SOURCE_LABEL } from './mod-worth'
 import { driverSeed } from './drivers'
 import { priceView } from './view'
@@ -26,7 +26,7 @@ const showValue = computed(() => priceView.value === 'improved' && props.item.ra
 const options = computed(() => [
   { value: 'low', label: 'Low' },
   { value: 'current', label: 'Approx' },
-  { value: 'high', label: 'High' },
+  ...(canUseHighRolls(props.stats) ? [{ value: 'high', label: 'High' }] : []),
   ...(showValue.value ? [{ value: 'value', label: 'By value' }] : [])
 ])
 

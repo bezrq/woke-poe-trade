@@ -96,6 +96,11 @@ export function activeRollOf (filter: StatFilter): RollPreset | '' {
   return PRESETS.find(p => rollMatches(filter.roll!, p)) ?? ''
 }
 
+/** High means nothing on stats with no range to take a quarter of, like map stats. */
+export function canUseHighRolls (filters: FilterOrGroup[]): boolean {
+  return rollable(filters).some(canPickRoll)
+}
+
 export function canUseRollPresets (filters: FilterOrGroup[]): boolean {
   return rollable(filters).length > 0
 }

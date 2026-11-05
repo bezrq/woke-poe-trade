@@ -312,6 +312,9 @@
   --w-up: #7fcf90;
   --w-down: #ef8474;
   --w-ninja: #93c1e4;
+  --w-pc-window: #1a1713;
+  --w-pc-well: #0f0d0a;
+  --w-pc-raise: #27221b;
 }
 
 /* APT's price check colours that live in component styles, not utility classes. */

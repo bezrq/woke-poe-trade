@@ -100,7 +100,8 @@ export default defineComponent({
       rootEl,
       percentRoll: computed(() => {
         const { bounds } = props
-        return (props.roll - bounds.min) / (bounds.max - bounds.min) * 100
+        // Corrupted and catalysed rolls can sit outside the range.
+        return Math.min(Math.max((props.roll - bounds.min) / (bounds.max - bounds.min) * 100, 0), 100)
       }),
       editing,
       popupValue: computed(() => editing.value === 'min' ? dirty.value?.[0] : dirty.value?.[1]),
@@ -165,20 +166,20 @@ export default defineComponent({
   pointer-events: none;
 
   .min & {
-    left: var(--left);
+    left: clamp(0%, var(--left), 100%);
     right: 0;
     border-left: 2px solid var(--w-accent);
   }
 
   .max & {
     left: 0;
-    right: var(--right);
+    right: clamp(0%, var(--right), 100%);
     border-right: 2px solid var(--w-accent);
   }
 
   .range & {
-    left: var(--left);
-    right: var(--right);
+    left: clamp(0%, var(--left), 100%);
+    right: clamp(0%, var(--right), 100%);
     border-left: 2px solid var(--w-accent);
     border-right: 2px solid var(--w-accent);
   }

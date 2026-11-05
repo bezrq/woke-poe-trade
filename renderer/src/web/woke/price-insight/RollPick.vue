@@ -1,15 +1,15 @@
 <template>
   <div :class="$style.pick">
-    <button v-for="o in OPTIONS" :key="o.value" type="submit"
+    <button v-for="o in OPTIONS" :key="o.value" type="button"
       :class="{ [$style.on]: active === o.value }" :title="o.title" :aria-label="o.title"
-      @click="choose($event, o.value)">{{ o.label }}</button>
+      @click="choose(o.value)">{{ o.label }}</button>
   </div>
 </template>
 
 <script setup lang="ts">
-// Low / Approx / High for one mod, under its min and max boxes. Like the mod's
-// checkbox it submits the form, so a pick runs the search.
-import { computed } from 'vue'
+// Low / Approx / High for one mod, under its min and max boxes. A pick runs the
+// search, like the presets for all mods.
+import { computed, inject } from 'vue'
 import type { StatFilter } from '@/web/price-check/filters/interfaces'
 import { applyRollToFilter, activeRollOf, RollPreset } from './roll-presets'
 
@@ -21,12 +21,13 @@ const OPTIONS: Array<{ value: RollPreset, label: string, title: string }> = [
   { value: 'high', label: 'High', title: 'The best quarter of this range' }
 ]
 
+const search = inject<() => void>('price-check-search', () => {})
+
 const active = computed(() => activeRollOf(props.filter))
 
-function choose (e: MouseEvent, preset: RollPreset) {
-  // Enter in a min or max box also "clicks" the form's first submit button.
-  if (e.detail === 0) return
+function choose (preset: RollPreset) {
   applyRollToFilter(props.filter, preset)
+  search()
 }
 </script>
 

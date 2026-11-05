@@ -115,6 +115,20 @@
 .w-pc-table tbody tr.w-pc-aging .w-pc-age { color: var(--w-faint); }
 .w-pc-table tbody tr.w-pc-stale > td { opacity: 0.5; }
 
+/* The verdict can grow (details, chart, drivers). It scrolls by itself, so the
+ * toolbar and listings under it stay on screen. Bleeds to the window's edges. */
+.w-pc-verdict-slot {
+  flex: 0 1 auto;
+  min-height: 0;
+  max-height: 50vh;
+  margin: 0 -1rem;
+  padding: 0 1rem;
+  overflow: hidden auto;
+}
+.w-pc-verdict-slot::-webkit-scrollbar { width: 8px; }
+.w-pc-verdict-slot::-webkit-scrollbar-thumb { background: var(--w-panel-3); border-radius: 4px; }
+.w-pc-scroll { min-height: 7rem; }
+
 :root:not([data-woke-theme="classic"]) #overlay-window .w-pc-primary {
   background: var(--w-accent);
   color: var(--w-accent-fg);

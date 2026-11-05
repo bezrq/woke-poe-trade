@@ -50,13 +50,6 @@ const MINE_HALF_LIFE_DAYS = 7
 const MINE_MAX_DAYS = 14
 const DAY_MS = 24 * 60 * 60 * 1000
 
-export const AGREEMENT_LABEL: Record<Agreement, string> = {
-  single: 'one source',
-  agree: 'sources agree',
-  mixed: 'sources differ a bit',
-  disagree: 'sources disagree'
-}
-
 function ageText (ms: number): string {
   const h = ms / 3600_000
   if (h < 1) return 'just now'
