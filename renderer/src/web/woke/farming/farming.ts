@@ -112,6 +112,16 @@ export function sellPrice (r: PricedRef, ninja: number | null, rules: SellRules)
   return BULK_TYPES.has(r.type) ? ninja * rules.bulkFactor : ninja
 }
 
+// First mount. Atlas strategies may already have set a strategy and costs on a
+// widget that hasn't mounted yet (its module was off): those stay.
+export function initFarmingData (w: FarmingWidget) {
+  w.strategy ??= ''
+  w.costs ??= []
+  w.autoCountMaps = true
+  w.session = null
+  w.history = []
+}
+
 export function newSession (strategy: string, now: number): FarmingSession {
   return { strategy, startedAt: now, elapsedMs: 0, runningSince: now, maps: 0, loot: [], extraChaos: 0 }
 }
@@ -388,6 +398,12 @@ export function historyToRecords (history: FarmingResult[], league: string): Ses
 export function costsForStrategy (w: FarmingWidget, strategy: string): CostLine[] | null {
   const saved = w.costsByStrategy?.[strategy.trim()]
   return saved ? saved.map(c => ({ ...c })) : null
+}
+
+// Map costs with the scarabs swapped for these. A Farming widget that never
+// mounted has no costs yet.
+export function withScarabCosts (costs: CostLine[] | undefined, scarabs: CostLine[]): CostLine[] {
+  return [...(costs ?? []).filter(c => c.type !== 'Scarab'), ...scarabs]
 }
 
 export function rememberCosts (w: FarmingWidget): void {

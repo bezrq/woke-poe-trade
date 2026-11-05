@@ -145,7 +145,7 @@ import Widget from '@/web/overlay/Widget.vue'
 import { useLeagues } from '@/web/background/Leagues'
 import { useMarketCollector } from './collector'
 import { dailyHistory, dailyRowsForDate, latestSnapshots, snapshotAtOrBefore } from './db'
-import { computeMovers, trendThen } from './analysis'
+import { computeMovers, trendBaseline } from './analysis'
 import { WPanel, WTabs, WSegmented, WSelect, WField, WPrice, WDelta, WSpark, WEmpty, WChip, WIcon, WKbd, WSkeleton, WBanner, ninjaIcon, openMenu, toast } from '../ui'
 import { copyText } from '../ui/copy'
 import type { Mover } from './analysis'
@@ -244,7 +244,9 @@ async function loadMovers () {
   }
   if (seq !== moversSeq) return
   if (!then.length && props.config.period !== '6h') {
-    then = trendThen(snap.items, props.config.period)
+    const trend = trendBaseline(snap.items, props.config.period)
+    then = trend.then
+    divThen = trend.divThen
   }
   divMove.value = (snap.divine && divThen) ? snap.divine / divThen - 1 : null
   if (!then.length) {

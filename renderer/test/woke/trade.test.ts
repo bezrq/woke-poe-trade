@@ -259,3 +259,62 @@ describe('replies and values', () => {
     expect(t).toEqual({ sold: 100, spent: 40, sales: 2, buys: 1, unpriced: 1 })
   })
 })
+
+describe('item names and repeat whispers', () => {
+  const tab = '(stash tab "S"; position: left 1, top 1)'
+
+  it('reads a priced item with " in " in its name', () => {
+    const o = parseOffer(`Hi, I would like to buy your A Note in the Wind listed for 5 chaos in Settlers ${tab}`)!
+    expect(o).toMatchObject({ item: 'A Note in the Wind', league: 'Settlers', price: { amount: 5, currency: 'Chaos Orb' } })
+  })
+
+  it('reads an unpriced item with " in " in its name', () => {
+    const o = parseOffer(`Hi, I would like to buy your A Note in the Wind in Settlers ${tab}`)!
+    expect(o).toMatchObject({ item: 'A Note in the Wind', league: 'Settlers', price: null })
+  })
+
+  it('reads the same item without a stash tab', () => {
+    expect(parseOffer('Hi, I would like to buy your A Note in the Wind listed for 5 chaos in Settlers.')).toMatchObject({ item: 'A Note in the Wind', league: 'Settlers', tab: null })
+    expect(parseOffer('Hi, I would like to buy your A Note in the Wind in Settlers.')).toMatchObject({ item: 'A Note in the Wind', league: 'Settlers', price: null })
+    expect(parseOffer('Hi, I would like to buy your Tabula Rasa')).toMatchObject({ item: 'Tabula Rasa', league: '', price: null })
+  })
+
+  it('a repeat whisper at a new price replaces the old price', () => {
+    const book = newBook()
+    replay([
+      `2026/11/04 21:40:11 1 2 [INFO Client 1] @From Buyer: Hi, I would like to buy your Tabula Rasa Simple Robe listed for 5 chaos in Settlers ${tab}`,
+      '2026/11/04 21:40:30 1 2 [INFO Client 1] @From Buyer: Hi, I would like to buy your Tabula Rasa Simple Robe listed for 8 chaos in Settlers (stash tab "T"; position: left 2, top 3) hello'
+    ], book)
+    expect(book.offers).toHaveLength(1)
+    expect(book.offers[0]).toMatchObject({ repeats: 1, price: { amount: 8 }, tab: { name: 'T', left: 2, top: 3 }, note: 'hello' })
+  })
+})
+
+describe('skipping an offer', () => {
+  const whisper = (who: string) => `2026/11/04 21:40:11 1 2 [INFO Client 1] @From ${who}: Hi, I would like to buy your ${who} Thing listed for 5 chaos in Settlers (stash tab "S"; position: left 1, top 1)`
+
+  it('moves a buyer in your area behind one who is not', () => {
+    const book = newBook()
+    replay([whisper('Here'), whisper('Away'), '2026/11/04 21:40:12 1 2 [INFO Client 1] : Here has joined the area.'], book)
+    expect(front(book)!.who).toBe('Here')
+    skip(front(book)!, Date.now())
+    expect(front(book)!.who).toBe('Away')
+  })
+
+  it('ends when the buyer joins your area', () => {
+    const book = newBook()
+    replay([whisper('First'), whisper('Second')], book)
+    skip(front(book)!, Date.now())
+    expect(front(book)!.who).toBe('Second')
+    replay(['2026/11/04 21:40:20 1 2 [INFO Client 1] : First has joined the area.'], book)
+    expect(front(book)!.who).toBe('First')
+  })
+
+  it('ends when the buyer writes again', () => {
+    const book = newBook()
+    replay([whisper('First'), whisper('Second')], book)
+    skip(front(book)!, Date.now())
+    replay(['2026/11/04 21:40:20 1 2 [INFO Client 1] @From First: still there?'], book)
+    expect(front(book)!.who).toBe('First')
+  })
+})

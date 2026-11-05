@@ -1,6 +1,7 @@
 // Features that replaced a duplicate: the old data is carried over once.
 import { describe, it, expect, vi } from 'vitest'
 import { moveStashSearchToLibrary } from '@/web/woke/regex-library/apt-import'
+import { parseImport } from '@/web/woke/regex-library/widget'
 
 describe('Stash search strings move into the Regex library', () => {
   it('moves changed strings, skips untouched starters and duplicates, drops the widgets', () => {
@@ -90,5 +91,18 @@ describe('one icon per module', () => {
       expect(m.icon.fa, m.id).toMatch(/^fa[srb] fa-/)
       for (const t of m.widgetTypes) expect(`fas ${iconFor(t)}`).toBe(m.icon.fa)
     }
+  })
+})
+
+describe('regex library import', () => {
+  it('takes a plain search string that starts with a bracket', () => {
+    const added = parseImport(['[89]0%', '{ok}'].join('\n'), [])
+    expect(added.map(e => e.text)).toEqual(['[89]0%', '{ok}'])
+  })
+
+  it('still reads a JSON export', () => {
+    expect(parseImport('[{"name":"a","text":"b"}]', []).map(e => e.text)).toEqual(['b'])
+    expect(parseImport('{"entries":[{"text":"c"}]}', []).map(e => e.text)).toEqual(['c'])
+    expect(parseImport('[ ]', [])).toEqual([])
   })
 })

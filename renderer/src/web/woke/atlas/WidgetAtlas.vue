@@ -175,7 +175,7 @@ import { usePriceIndex } from '../market/price-index'
 import DockItem from '../dock/DockItem.vue'
 import { useZone } from '../shared/zone'
 import { formatChaos } from '../ui/format'
-import { FARMING_TYPE, strategyStats } from '../farming/farming'
+import { FARMING_TYPE, strategyStats, withScarabCosts } from '../farming/farming'
 import type { FarmingWidget } from '../farming/farming'
 import { decodeTree, diffTrees, extractTreeCode, overview } from './tree'
 import type { DecodedTree } from './tree'
@@ -259,7 +259,7 @@ function useInFarming () {
   farm.strategy = s.name
   const lines = pricedScarabs.value.filter(p => p.item)
     .map(p => ({ type: p.item!.type, name: p.item!.name, variant: p.item!.variant, qty: p.qty }))
-  farm.costs = [...farm.costs.filter(c => c.type !== 'Scarab'), ...lines]
+  farm.costs = withScarabCosts(farm.costs, lines)
   usedInFarming.value = true
   setTimeout(() => { usedInFarming.value = false }, 1500)
 }

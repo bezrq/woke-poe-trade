@@ -72,3 +72,17 @@ export function priceScarabs (lines: ScarabLine[], items: PriceItem[]): PricedSc
     return { ...l, item: loose ?? null }
   })
 }
+
+// The scarab lines a strategy of this name costs per map, priced now. Takes each
+// Atlas widget's list: one that never mounted (its module is off) has none yet.
+export function strategyScarabCosts (lists: Array<AtlasStrategy[] | undefined>, name: string, items: PriceItem[] | null | undefined): Array<{ type: string, name: string, variant: string, qty: number }> | null {
+  if (!items || !name) return null
+  for (const list of lists) {
+    const st = (list ?? []).find(x => x.name.trim() === name)
+    if (!st?.scarabs) continue
+    const lines = priceScarabs(parseScarabs(st.scarabs), items).filter(p => p.item)
+    if (!lines.length) continue
+    return lines.map(p => ({ type: p.item!.type, name: p.item!.name, variant: p.item!.variant, qty: p.qty }))
+  }
+  return null
+}

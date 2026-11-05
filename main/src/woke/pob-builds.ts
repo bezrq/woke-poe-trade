@@ -119,8 +119,11 @@ const LINK_RULES: Array<{ re: RegExp, raw: (id: string) => string }> = [
 
 export function decodePobCode (code: string): string {
   const clean = code.trim().replace(/\s+/g, '').replace(/-/g, '+').replace(/_/g, '/')
-  const xml = zlib.inflateSync(Buffer.from(clean, 'base64')).toString('utf8')
-  if (!/<PathOfBuilding/.test(xml)) throw new Error('That code is not a Path of Building build')
+  const notABuild = 'That code is not a Path of Building build'
+  let xml: string
+  // zlib's own message ("incorrect header check") means nothing to a player.
+  try { xml = zlib.inflateSync(Buffer.from(clean, 'base64')).toString('utf8') } catch { throw new Error(notABuild) }
+  if (!/<PathOfBuilding/.test(xml)) throw new Error(notABuild)
   return xml
 }
 

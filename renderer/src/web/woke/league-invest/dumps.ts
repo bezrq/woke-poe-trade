@@ -47,6 +47,27 @@ function dayDiff (from: string, to: string): number {
   return Math.round((Date.parse(to + 'T00:00:00Z') - Date.parse(from + 'T00:00:00Z')) / 86400000)
 }
 
+// Builds and saves every league the files hold. One that can't be used (its
+// currency file is missing, say) doesn't stop the others.
+export async function importLeagues (
+  importer: Pick<DumpImporter, 'leagues' | 'build'>,
+  save: (history: LeagueHistory) => Promise<void>,
+  onLeague?: (league: string) => void
+): Promise<{ imported: string[], failed: string[] }> {
+  const imported: string[] = []
+  const failed: string[] = []
+  for (const league of importer.leagues()) {
+    onLeague?.(league)
+    try {
+      await save(importer.build(league))
+      imported.push(league)
+    } catch (err) {
+      failed.push((err as Error).message)
+    }
+  }
+  return { imported, failed }
+}
+
 export function historyKey (item: { type: string, name: string, variant: string, links?: string }): string {
   return `${item.type}\u0000${item.name}\u0000${item.variant}\u0000${item.links ?? ''}`
 }

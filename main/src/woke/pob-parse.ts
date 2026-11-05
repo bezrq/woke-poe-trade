@@ -209,13 +209,15 @@ export function parseItemText (text: string): PobItem {
   if ((item.rarity === 'UNIQUE' || item.rarity === 'RARE' || item.rarity === 'RELIC') && lines[i] && !ITEM_META.test(lines[i]) && !/^Implicits:/.test(lines[i])) {
     item.base = lines[i++]
   }
-  let variant: number | null = null
+  // "Selected Variant", and "Selected Alt Variant [Two…]" on jewels with several
+  // picks (Watcher's Eye): a mod shows when any of them lists it.
+  const variants: number[] = []
   let implicitsLeft = -1
   const kinds: PobModKind[] = []
   for (; i < lines.length; i++) {
     const line = lines[i]
-    const sel = /^Selected Variant:\s*(\d+)/.exec(line)
-    if (sel) { variant = Number(sel[1]); continue }
+    const sel = /^Selected (?:Alt )?Variant(?: \w+)?:\s*(\d+)/.exec(line)
+    if (sel) { variants.push(Number(sel[1])); continue }
     const sock = /^Sockets:\s*(.*)$/.exec(line)
     if (sock) { item.sockets = sock[1].trim(); continue }
     const imp = /^Implicits:\s*(\d+)/.exec(line)
@@ -238,7 +240,7 @@ export function parseItemText (text: string): PobItem {
     let kind: PobModKind = ''
     for (const tag of mod.matchAll(/\{([^}]*)\}/g)) {
       const v = /^variant:([\d,]+)$/.exec(tag[1])
-      if (v && variant != null && !v[1].split(',').map(Number).includes(variant)) allowed = false
+      if (v && variants.length && !v[1].split(',').map(Number).some(n => variants.includes(n))) allowed = false
       if (tag[1] === 'crafted' || tag[1] === 'fractured') kind = tag[1]
     }
     mod = mod.replace(/\{[^}]*\}/g, '').trim()

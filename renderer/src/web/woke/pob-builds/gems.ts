@@ -87,7 +87,7 @@ function sourceFor (name: string, cls: string): string | null {
 }
 
 export function requiredLevel (name: string): number | null {
-  return (DATA[name] ?? DATA[`${name} Support`])?.l ?? null
+  return gemData(name)?.requiredLevel ?? null
 }
 
 // Every enabled gem in the build (or just `names`), ordered by when you can

@@ -78,7 +78,9 @@ export function matchesFilter (entry: RegexEntry, filter: string): boolean {
 // "name = string" (or name<TAB>string). Lines starting with # are skipped.
 export function parseImport (input: string, existing: RegexEntry[]): RegexEntry[] {
   const trimmed = input.trim()
-  if (trimmed.startsWith('[') || trimmed.startsWith('{')) return parseJsonImport(trimmed, existing)
+  // A search string can start with a bracket too ("[89]\d%"): only an array of
+  // objects, or an object, is an export.
+  if (/^(\[\s*[{\]]|\{)/.test(trimmed)) return parseJsonImport(trimmed, existing)
   let id = nextId(existing)
   const out: RegexEntry[] = []
   for (const raw of trimmed.split(/\r?\n/)) {
