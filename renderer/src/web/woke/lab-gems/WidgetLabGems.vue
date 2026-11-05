@@ -6,7 +6,7 @@
         <div style="padding: 2px var(--w-pad) 6px;">
           <div v-for="r in rolls" :key="r.color" class="flex items-center gap-2">
             <span :class="[$style.dot, $style[r.color]]" />
-            <span class="w-trunc flex-1">{{ r.top[0]?.name ?? 'no prices yet' }}</span>
+            <span class="w-trunc flex-1">{{ r.top[0]?.name ?? (thinInPool(allPrices, thin, r.color) ? 'only thin prices' : 'no prices yet') }}</span>
             <WPrice v-if="r.top[0]" :chaos="r.top[0].chaos ?? 0" :divine="snapshot?.divine" />
             <span class="w-faint text-xs w-num" title="Expected value of a roll of this colour">EV <WPrice :chaos="r.ev" :divine="snapshot?.divine" /></span>
           </div>
@@ -66,12 +66,12 @@
           <span v-for="c in (['r', 'g', 'b'] as const)" :key="c" class="text-right w-num" :class="row.state === bestState[c] ? 'w-up' : 'w-dim'"
             :title="row.state === bestState[c] ? 'Best level / quality to bring for this colour' : undefined">{{ fmt(row.ev[c]) }}</span>
         </button>
-        <div v-for="(roll, i) in rolls" :key="roll.color" class="pb-1">
+        <div v-for="roll in rolls" :key="roll.color" class="pb-1">
           <div class="w-row" :class="$style.poolGrid">
             <span :class="[$style.dot, $style[roll.color]]" />
             <span>{{ COLOR_NAMES[roll.color] }} pool</span>
             <span class="w-faint text-xs whitespace-nowrap">{{ roll.listed }}/{{ roll.poolSize }} priced · <template v-if="config.skipThin">{{ thinInPool(allPrices, thin, roll.color) }} thin left out</template><template v-else>each {{ pct(roll.chanceEach) }}</template></span>
-            <span class="w-num text-right" :class="i === 0 ? 'w-up' : ''" title="Expected value of the best of the 3 offered gems">EV {{ fmt(roll.ev) }}</span>
+            <span class="w-num text-right" :class="roll.ev > 0 && roll.ev === bestRoll ? 'w-up' : ''" title="Expected value of the best of the 3 offered gems">EV {{ fmt(roll.ev) }}</span>
           </div>
           <div v-for="g in roll.top" :key="g.name" class="w-row" :class="$style.gemGrid" @contextmenu="gemMenu($event, g.name)">
             <img v-if="gemIcon(g.name)" :src="gemIcon(g.name)!" :class="$style.icon" alt="" loading="lazy" decoding="async" draggable="false"><span v-else />
@@ -213,7 +213,7 @@ const stateEvs = computed(() => snapshot.value ? evByState(snapshot.value.items,
 const bestState = computed(() => {
   const best = { r: '', g: '', b: '' } as Record<GemColor, string>
   for (const c of ['r', 'g', 'b'] as const) {
-    let top = -1
+    let top = 0
     for (const row of stateEvs.value) if (row.ev[c] > top) { top = row.ev[c]; best[c] = row.state }
   }
   return best
