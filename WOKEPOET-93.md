@@ -3,7 +3,7 @@ id: WOKEPOET-93
 title: >-
   Boss runs: price jewels unidentified from trade, refresh rates, fill missing
   prices
-status: In Progress
+status: Ready
 priority: High
 effort: M
 assignee: unassigned
@@ -24,6 +24,23 @@ history:
     to: In Progress
     user: Agent
     date: '2026-11-05T11:04:28.722Z'
+  - type: comment
+    user: Agent
+    comment: >-
+      **Boss jewels now price unidentified from trade, estimates fill missing
+      chances.** PR #166. Option A from the mock, chip beside the price so names
+      keep their room. Adversarial review findings fixed (thin markets, gap on
+      reopen, regional clients, mid-lookup league switch, hung request).
+      Typecheck, lint, 2109 unit tests, build and Boss runs e2e pass locally. No
+      docs needed: in-panel behaviour only. Awaiting merge.
+    date: '2026-11-05T11:37:21.454Z'
+    completionComment: true
+    id: c-2026-11-05t11-37-21-454z
+  - type: status_change
+    from: In Progress
+    to: Ready
+    user: Agent
+    date: '2026-11-05T11:37:21.455Z'
 needsAction: null
 ---
 > **TL;DR:** Boss jewels drop unidentified, but Boss runs prices them from poe.ninja's single row, which is far below what unidentified copies sell for. Price them from unidentified instant-buyout trade listings instead, refresh stale drop rates, and fill drops poe.ninja doesn't list.
