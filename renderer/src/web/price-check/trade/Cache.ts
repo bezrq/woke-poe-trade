@@ -5,6 +5,7 @@ const CACHE_TTL = 300
 
 export class Cache {
   private cached = new Map<string, unknown>()
+  private timers = new Map<string, ReturnType<typeof setTimeout>>()
 
   get<T = unknown> (key: unknown): T | undefined {
     const _key = hash.sha1(JSON.parse(JSON.stringify(key)))
@@ -15,12 +16,16 @@ export class Cache {
     const _key = hash.sha1(JSON.parse(JSON.stringify(key)))
     this.cached.set(_key, value)
 
-    setTimeout(() => {
+    clearTimeout(this.timers.get(_key))
+    this.timers.set(_key, setTimeout(() => {
       this.cached.delete(_key)
-    }, ttl * 1000)
+      this.timers.delete(_key)
+    }, ttl * 1000))
   }
 
   clear (): void {
+    for (const timer of this.timers.values()) clearTimeout(timer)
+    this.timers.clear()
     this.cached.clear()
   }
 

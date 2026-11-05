@@ -12,7 +12,7 @@
       <online-filter v-if="list" class="w-pc-online" :filters="filters" api="trade" />
       <div class="w-pc-grow flex-1"></div>
       <button v-if="list" type="button" class="w-icon-btn mr-1" title="Search again: results are otherwise kept for 5 minutes"
-        :disabled="fetching" @click="refresh"><i class="fas fa-sync-alt text-xs" /></button>
+        :disabled="fetching" @click="refresh"><i class="fas fa-sync-alt text-xs" /><span v-if="refreshNote" class="text-xs ml-1">{{ refreshNote }}</span></button>
       <price-view-toggle class="mr-2" />
       <trade-links v-if="list"
         :get-link="makeTradeLink" />
@@ -142,7 +142,9 @@ import { defineComponent, computed, watch, PropType, inject, shallowReactive, sh
 import { useI18nNs } from '@/web/i18n'
 import UiErrorBox from '@/web/ui/UiErrorBox.vue'
 import { requestTradeResultList, requestResults, createTradeRequest, clearTradeCache, PricingResult, SearchResult } from './pathofexile-trade'
-import { getTradeEndpoint } from './common'
+import { getTradeEndpoint, preventQueueCreation, RATE_LIMIT_RULES } from './common'
+import { clearDriverCaches } from '@/web/woke/price-insight/drivers'
+import { measuredDrivers } from '@/web/woke/price-insight/check-state'
 import { AppConfig } from '@/web/Config'
 import { PriceCheckWidget } from '@/web/overlay/interfaces'
 import { ItemFilters, FilterOrGroup } from '../filters/interfaces'
@@ -240,10 +242,14 @@ function useTradeApi () {
               .then(results => r1
                 .then(() => { _fetchResults.push(...results) }))
           : Promise.resolve()
-        // woke: a failed page leaves what the other one loaded on screen.
+        // woke: a failed second page leaves the first on screen. Loading further pages
+        // would leave a hole in the prices, so stop there.
         const pages = await Promise.allSettled([r1, r2])
         const failed = pages.find((page): page is PromiseRejectedResult => page.status === 'rejected')
-        if (failed && !_fetchResults.length) throw failed.reason
+        if (failed) {
+          if (!_fetchResults.length) throw failed.reason
+          return
+        }
       }
 
       let fetched = 20
@@ -301,6 +307,7 @@ export default defineComponent({
 
     const { error, searchResult, groupedResults, fetchResults, fetching, search } = useTradeApi()
     const { retryIn, rateLimited } = useRetryCountdown(error)
+    const refreshNote = shallowRef('')
 
     // woke: improved view reads the same listings, nothing extra is requested
     const { insight, divine, options: insightOptions } = useInsight(groupedResults, computed(() => props.filters.trade.league))
@@ -382,9 +389,24 @@ export default defineComponent({
       slowdownReady: slowdown.isReady,
       execSearch: () => { search(props.filters, props.stats) },
       refresh: () => {
+        // Check first: results on screen shouldn't turn into a rate limit error.
+        try {
+          preventQueueCreation([
+            { count: 1, limiters: RATE_LIMIT_RULES.SEARCH },
+            { count: 1, limiters: RATE_LIMIT_RULES.FETCH }
+          ])
+        } catch (err) {
+          refreshNote.value = (err as Error).message
+          setTimeout(() => { refreshNote.value = '' }, 3000)
+          return
+        }
+        refreshNote.value = ''
         clearTradeCache()
+        clearDriverCaches()
+        measuredDrivers.value = null
         search(props.filters, props.stats)
       },
+      refreshNote,
       fetching,
       error,
       retryIn,

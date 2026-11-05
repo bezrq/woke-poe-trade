@@ -20,6 +20,7 @@ vi.mock('@/web/Config', () => ({
 import { createPresets } from '@/web/price-check/filters/create-presets'
 import { clearTradeCache, requestTradeResultList } from '@/web/price-check/trade/pathofexile-trade'
 import { RATE_LIMIT_RULES } from '@/web/price-check/trade/common'
+import { Cache } from '@/web/price-check/trade/Cache'
 import { DEFAULT_SEED, pickCandidates } from '@/web/woke/price-insight/drivers'
 import type { StatFilter } from '@/web/price-check/filters/interfaces'
 /* eslint-enable import/first */
@@ -43,6 +44,22 @@ describe('price check filters', () => {
   it('leave a perfect armour base unticked on a unique', () => {
     const base = (statsFor('items/unique-kaoms-heart.txt') as StatFilter[]).find(f => f.statRef === 'Base Percentile: #%')
     expect(base?.disabled).toBe(true)
+  })
+})
+
+describe('the trade cache', () => {
+  it('keeps a value set after a clear past the old timer', () => {
+    vi.useFakeTimers()
+    const cache = new Cache()
+    cache.set('k', 1, 10)
+    vi.advanceTimersByTime(8000)
+    cache.clear()
+    cache.set('k', 2, 10)
+    vi.advanceTimersByTime(4000)
+    expect(cache.get('k')).toBe(2)
+    vi.advanceTimersByTime(7000)
+    expect(cache.get('k')).toBeUndefined()
+    vi.useRealTimers()
   })
 })
 
