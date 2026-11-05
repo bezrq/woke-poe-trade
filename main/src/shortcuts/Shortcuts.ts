@@ -1,6 +1,7 @@
 import { screen, globalShortcut } from 'electron'
 import { uIOhook, UiohookKey, UiohookWheelEvent } from 'uiohook-napi'
 import { noteHotkeyFailures } from '../woke/hotkey-failures'
+import { pickActions } from './pick-actions'
 import { isModKey, KeyToElectron, mergeTwoHotkeys } from '../../../ipc/KeyToCode'
 import { typeInChat, stashSearch } from './text-box'
 import { WidgetAreaTracker } from '../windowing/WidgetAreaTracker'
@@ -191,18 +192,9 @@ export class Shortcuts {
     }
     actions = actions.filter(action => !allShortcuts.has(action.shortcut))
 
-    const duplicates = new Set<string>()
-    for (const action of actions) {
-      if (allShortcuts.has(action.shortcut)) {
-        this.logger.write(`error [Shortcuts] It is not possible to use the same hotkey "${action.shortcut}" for multiple actions.`)
-        duplicates.add(action.shortcut)
-      } else {
-        allShortcuts.add(action.shortcut)
-      }
-    }
-    this.actions = actions.filter(action =>
-      !duplicates.has(action.shortcut) ||
-      action.action.type === 'toggle-overlay')
+    this.actions = pickActions(actions, (shortcut) => {
+      this.logger.write(`error [Shortcuts] Hotkey "${shortcut}" is on more than one action; only one will work.`)
+    })
     // woke: hotkeys used to register only on the next game focus change, so
     // settings that arrived while the game had focus (e.g. the app starting
     // with the game already focused) left new hotkeys dead until an alt-tab.
