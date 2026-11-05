@@ -1,7 +1,7 @@
 ---
 id: WOKEPOET-17
 title: Build panel tooltip can stay stuck on screen when the overlay closes
-status: Ready
+status: Done
 priority: High
 effort: XS
 assignee: unassigned
@@ -55,6 +55,24 @@ history:
     to: Ready
     user: Agent
     date: '2026-11-05T03:41:23.691Z'
+  - type: comment
+    user: Agent
+    comment: >-
+      PR squash-merged for branch
+      `flux/WOKEPOET-17-build-panel-tooltip-can-stay-stuck-on-screen-when-the-overla`
+      — advanced to Done.
+    date: '2026-11-05T03:45:52.230Z'
+    id: c-2026-11-05t03-45-52-230z
+  - type: status_change
+    from: Ready
+    to: Done
+    user: Agent
+    date: '2026-11-05T03:45:52.230Z'
+  - type: activity
+    user: Agent
+    date: '2026-11-05T03:45:54.488Z'
+    comment: Task worktree automatically reclaimed (ready-or-terminal-status)
+    id: a-2026-11-05t03-45-54-488z
 branch: flux/WOKEPOET-17-build-panel-tooltip-can-stay-stuck-on-screen-when-the-overla
 baselineCommit: a58632b0379617cbbaaebd67ac298914035552dd
 needsAction: null
