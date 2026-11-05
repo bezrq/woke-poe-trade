@@ -143,6 +143,35 @@ export function initLootFilterWidget (w: LootFilterWidget) {
   w.looserHotkey = 'Alt + BracketLeft'
 }
 
+// The editor's hotkeys only register once the widget exists, so it is on every
+// overlay from the start. Already set up and hidden: adding it shows nothing.
+// `taken` lists keys already in use; two actions on one key would both die.
+export function seedLootFilterWidget (wmId: number, taken: string[] = []): LootFilterWidget {
+  const w = { wmId, wmType: LOOT_FILTER_TYPE, wmTitle: '', wmWants: 'hide', wmZorder: null, wmFlags: [] } as unknown as LootFilterWidget
+  initLootFilterWidget(w)
+  // Order doesn't matter: 'Shift + Alt + F' is 'Alt + Shift + F'.
+  const canon = (key: string) => key.split(' + ').sort().join('+')
+  const used = new Set(taken.map(canon))
+  const free = (key: string | null) => key && !used.has(canon(key)) ? key : null
+  w.sampleHotkey = free(w.sampleHotkey)
+  w.editorHotkey = free(w.editorHotkey)
+  w.stricterHotkey = free(w.stricterHotkey)
+  w.looserHotkey = free(w.looserHotkey)
+  return w
+}
+
+// Reads which NeverSink download a saved "NeverSink (woke).filter" came from,
+// for when the settings are gone but the file isn't (the dev copy doesn't save
+// settings). Null when the file isn't ours, or uses a style we can't name.
+export function neverSinkFromOutput (text: string): { version: string, level: number } | null {
+  const head = text.slice(0, 2000)
+  if (!/^# WOKE-LOOT-FILTER-EDITOR\b/.test(head) || !/^# Made from NeverSink .*downloaded from GitHub/m.test(head)) return null
+  const version = /^#\s*VERSION:\s*(\S+)/m.exec(head)?.[1]
+  const level = /^#\s*TYPE:\s*(\d)-/m.exec(head)?.[1]
+  if (!version || level == null || !/^#\s*STYLE:\s*DEFAULT\s*$/m.test(head)) return null
+  return { version, level: clampLevel(Number(level)) }
+}
+
 export function normalizeLootFilterWidget (w: LootFilterWidget) {
   if (!w.anchor) w.anchor = popupAnchor()
   if (w.sampleHotkey === undefined) w.sampleHotkey = null

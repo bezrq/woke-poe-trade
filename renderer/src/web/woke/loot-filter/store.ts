@@ -11,7 +11,7 @@ import { parseFilter, serializeFilter } from './parse'
 import type { FilterDoc } from './parse'
 import { addEdit, applyEdits, nextEditId } from './edits'
 import type { EditStatus, FilterEdit, NewFilterEdit } from './edits'
-import { HISTORY_SIZE, outputName } from './widget'
+import { HISTORY_SIZE, NEVERSINK_OUTPUT, neverSinkFromOutput, outputName } from './widget'
 import type { LootFilterWidget } from './widget'
 import { buildRuleBlocks, insertBuildBlocks } from './build-rules'
 import { useBuildRuleInput } from './build-input'
@@ -452,6 +452,27 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
   // up on the level or file you just left.
   let loadSeq = 0
 
+  // No settings, but an earlier NeverSink download saved by this editor: carry
+  // on from it. The strictness ladder stays off, so nothing here rewrites the
+  // filter or types in chat until you ask.
+  async function resumeSavedNeverSink (): Promise<boolean> {
+    const c = cfg()
+    if (c.edits.length || c.rules.length || !files.value.some(f => !f.online && f.name === NEVERSINK_OUTPUT)) return false
+    try {
+      const { text } = await hostRequest<{ text: string }>('filter-read', { dir: c.folder, name: NEVERSINK_OUTPUT, online: false })
+      const found = neverSinkFromOutput(text)
+      if (c.neversink.on) return true
+      if (!found || c.sourceName) return false
+      c.neversink.version = found.version
+      c.neversink.level = found.level
+      c.strictAuto.on = false
+      c.neversink.on = true
+      return true
+    } catch {
+      return false
+    }
+  }
+
   async function load () {
     const seq = ++loadSeq
     if (cfg().neversink.on) {
@@ -485,7 +506,10 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
       // Pick the most recently changed NeverSink file as a starting point.
       const ns = files.value.find(f => !f.online && /neversink/i.test(f.name) && !/\(woke\)/i.test(f.name)) ??
         files.value.find(f => f.online && /neversink/i.test(f.title ?? ''))
-      if (!ns) return
+      if (!ns) {
+        if (await resumeSavedNeverSink() && seq === loadSeq) await load()
+        return
+      }
       cfg().sourceName = ns.name
       cfg().sourceOnline = Boolean(ns.online)
       cfg().sourceTitle = ns.title ?? ''

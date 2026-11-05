@@ -185,7 +185,8 @@ const dockTone = computed(() => dockNotes.value.some(n => n.warn) ? 'warn' : (st
 
 // Say it briefly when the strictness changes.
 watch(() => props.config.neversink.level, (l, old) => {
-  if (old != null && l !== old) dockRef.value?.peek(LEVEL_NAMES[l])
+  // No filter loaded yet: this is setup at start-up, not a change to announce.
+  if (old != null && l !== old && store.doc.value) dockRef.value?.peek(LEVEL_NAMES[l])
 })
 
 // The card is a one-off; showing the widget again from the menu opens the editor.

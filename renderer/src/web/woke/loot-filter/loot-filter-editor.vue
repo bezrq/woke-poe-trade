@@ -3,6 +3,7 @@
     <div class="grid gap-2 items-center" style="grid-template-columns: auto 1fr;">
       <span>Hotkey: show the rule for the hovered item</span>
       <w-hotkey-cell v-model="sampleHotkey" />
+      <span class="w-dim text-xs" style="grid-column: 1 / -1;">Works in your inventory, stash and on ground labels. Keep Alt in this hotkey to reach items your filter hides, since those only have a label while Alt is held.</span>
       <span>Hotkey: open the editor</span>
       <w-hotkey-cell v-model="editorHotkey" />
       <span>Filter folder</span>
