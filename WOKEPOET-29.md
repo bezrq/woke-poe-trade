@@ -48,7 +48,24 @@ history:
       windows). Still waiting on Require Input: Guy's sign-off or changes before
       building.
     id: a-2026-11-05t05-45-02-916z
-swimlane: require-input
+  - type: activity
+    user: Agent
+    date: '2026-11-05T06:45:38.685Z'
+    comment: Updated implementation link.
+    id: a-2026-11-05t06-45-38-685z
+  - type: comment
+    user: Agent
+    comment: 'Guy signed off layout A. Built as PR #118, queued for merge.'
+    date: '2026-11-05T06:45:40.121Z'
+    id: c-2026-11-05t06-45-40-121z
+  - type: swimlane_change
+    swimlane: require-input
+    action: cleared
+    user: Agent
+    date: '2026-11-05T06:45:40.121Z'
+    comment: 'Guy signed off layout A. Built as PR #118, queued for merge.'
+swimlane: null
 needsAction: null
+implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/118'
 ---
 > **TL;DR:** Guy thinks the window's colours are still off after #101. Mock up options on the real window, let Guy pick, then apply the pick.
