@@ -18,9 +18,8 @@
         class="btn w-full mt-1">{{ info.actionText }}</button>
     </div>
     <div class="text-center mt-auto py-8">
-      <p>{{ t('app.contact_me') }} <br><span class="font-sans text-gray-500 select-all">&lt;@295216259795124225&gt;</span></p>
-      <ul class="flex gap-4">
-        <li><img class="rounded inline" src="/images/dc_tft.gif"> <a class="border-b" href="https://discord.gg/tftrove" target="_blank">The Forbidden Trove</a></li>
+      <p>{{ t('app.contact_me') }} <br><span class="font-sans text-gray-500 select-all">@whec</span></p>
+      <ul class="flex justify-center gap-4">
         <li><img class="rounded inline" src="/images/dc_reddit.png"> <a class="border-b" href="https://discord.gg/pathofexile" target="_blank">r/pathofexile</a></li>
       </ul>
     </div>

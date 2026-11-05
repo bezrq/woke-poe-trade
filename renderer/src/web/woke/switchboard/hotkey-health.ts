@@ -10,16 +10,28 @@ import { normalizeKey } from '../ui/hotkey-context'
 import { fieldKey, hotkeyFields, hotkeyUses } from '../settings/hotkey-fields'
 
 const failed = shallowRef<string[]>([])
+// Normalised key → what it does in the game. A note on that hotkey, not a
+// warning on the rail: taking a game key can be exactly what you meant.
+const poeBinds = shallowRef<Map<string, string>>(new Map())
 let listening = false
+
+interface GameBind { hotkey: string, action: string }
+function setPoeBinds (binds: GameBind[]) {
+  poeBinds.value = new Map(binds.map(b => [normalizeKey(b.hotkey), b.action]))
+}
 
 function listen () {
   if (listening) return
   listening = true
   MainProcess.onEvent('MAIN->CLIENT::woke-event', ({ topic, data }) => {
     if (topic === 'hotkeys') failed.value = (data as { failed: string[] }).failed
+    if (topic === 'game-binds') setPoeBinds(data as GameBind[])
   })
   hostRequest<{ failed: string[] }>('hotkey-failures', null)
     .then(r => { failed.value = r.failed })
+    .catch(() => {})
+  hostRequest<GameBind[]>('game-binds', null)
+    .then(binds => { if (binds.length) setPoeBinds(binds) })
     .catch(() => {})
 }
 
@@ -45,5 +57,5 @@ export function useHotkeyHealth () {
     if (failed.value.length) parts.push(`Held by another program: ${failed.value.join(', ')}`)
     return parts.join('. ')
   })
-  return { failed, failedNorm, problems, summary }
+  return { failed, failedNorm, poeBinds, problems, summary }
 }

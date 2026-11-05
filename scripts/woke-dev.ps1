@@ -77,6 +77,41 @@ function Stop-Dev {
       Fail "port $VitePort is held by process $holder ($($proc.Name)), which does not look like this app. Stop it and run again."
     }
   }
+  # A dying process keeps its port for a moment, and the next start would take
+  # that for the new one being up.
+  $deadline = (Get-Date).AddSeconds(10)
+  while (((Listener $VitePort) -or (Listener $HostPort)) -and (Get-Date) -lt $deadline) {
+    Start-Sleep -Milliseconds 200
+  }
+}
+
+# Vite answering, not just its port open: Electron loads the page right away.
+function Vite-Answers {
+  try {
+    $response = Invoke-WebRequest -Uri "http://localhost:$VitePort/" -UseBasicParsing -TimeoutSec 2
+    return $response.StatusCode -eq 200
+  } catch {
+    return $false
+  }
+}
+
+# The overlay's page address over the debug port, or $null if it can't be read.
+function Overlay-Page {
+  try {
+    $pages = Invoke-RestMethod -Uri "http://127.0.0.1:$DebugPort/json/list" -TimeoutSec 2
+  } catch {
+    return $null
+  }
+  # The setup window is the same page with #setup; it says nothing about the overlay.
+  $found = @($pages | Where-Object { $_.type -eq 'page' -and $_.url -notlike 'devtools://*' -and $_.url -notlike '*#setup' })
+  $good = @($found | Where-Object { $_.url -like "http://localhost:$VitePort/*" })
+  if ($good.Count -gt 0) { return $good[0].url }
+  if ($found.Count -gt 0) { return $found[0].url }
+  return $null
+}
+
+function Page-Loaded ($url) {
+  return $url -like "http://localhost:$VitePort/*"
 }
 
 function Stop-OtherBuilds {
@@ -185,7 +220,7 @@ function Start-Dev {
   Set-Content (Join-Path $State 'vite.pid') (Start-Detached $viteCmd (Join-Path $Repo 'renderer'))
 
   $deadline = (Get-Date).AddSeconds(60)
-  while (-not (Listener $VitePort)) {
+  while (-not (Vite-Answers)) {
     if ((Get-Date) -gt $deadline) {
       Get-Content "$State\vite.log" -Tail 20 -ErrorAction SilentlyContinue | Write-Host
       Fail "Vite did not start, see $State\vite.log"
@@ -209,13 +244,32 @@ function Start-Dev {
     }
     Start-Sleep -Milliseconds 300
   }
+
+  # No answer on the debug port means it can't be checked (branches older than
+  # WOKE_ELECTRON_ARGS have no port), not that the page failed.
+  $deadline = (Get-Date).AddSeconds(30)
+  while (-not (Page-Loaded (Overlay-Page))) {
+    if ((Get-Date) -gt $deadline) {
+      $page = Overlay-Page
+      if ($page) { Fail "the overlay page did not load (it is on: $page), see $State\main.log and $State\vite.log." }
+      Write-Host "Could not check the overlay page: no answer on debug port $DebugPort."
+      break
+    }
+    Start-Sleep -Milliseconds 300
+  }
 }
 
 function Show-Status {
   $electrons = @(Find-Electrons | Where-Object { $_.ExecutablePath -like "$Repo\*" })
   $running = $electrons.Count -gt 0 -and (Listener $VitePort) -and (Listener $HostPort)
   $what = (Git rev-parse --abbrev-ref HEAD) + ' @ ' + (Git log -1 --oneline)
-  if ($running) { Write-Host "Dev copy RUNNING: $what" } else { Write-Host "Dev copy not running (checkout: $what)" }
+  if ($running) {
+    Write-Host "Dev copy RUNNING: $what"
+    $page = Overlay-Page
+    if ($page -and -not (Page-Loaded $page)) { Write-Host "WARNING: the overlay page did not load (it is on: $page). Run woke-dev to restart." }
+  } else {
+    Write-Host "Dev copy not running (checkout: $what)"
+  }
   foreach ($exe in $OtherBuilds) {
     if (Get-CimInstance Win32_Process -Filter "Name='$exe'") { Write-Host "Also running: $exe" }
   }
