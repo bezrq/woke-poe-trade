@@ -3,7 +3,7 @@ import { AppConfig } from '@/web/Config'
 import type { MapCheckConfig } from '@/web/map-check/common'
 import { importAptMapRatings, moveHeistRatings } from './apt-import'
 import { heistRowOf } from './data'
-import { DEFAULT_JUICE_WEIGHTS, defaultProfile } from './rules'
+import { DEFAULT_JUICE_WEIGHTS, carryRewordedRatings, defaultProfile } from './rules'
 import type { JuiceWeights, MapModProfile } from './rules'
 
 export const MAP_MODS_TYPE = 'woke-map-mods'
@@ -57,6 +57,7 @@ export function importAptOnce (w: MapModsWidget) {
     const maps = itemCheck?.maps
     if (firstImport || !maps) importAptMapRatings(w.profiles, maps, heistRowOf)
     else importAptMapRatings(w.profiles, { ...maps, selectedStats: maps.selectedStats.filter(s => heistRowOf(s.matcher)) }, heistRowOf, false)
+    for (const p of w.profiles) carryRewordedRatings(p.ratings)
   } catch {}
 }
 

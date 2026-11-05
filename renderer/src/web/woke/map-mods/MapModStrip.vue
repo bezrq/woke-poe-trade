@@ -1,8 +1,8 @@
 <template>
-  <div v-if="result" :class="[$style.strip, $style[result.verdict.verdict]]">
+  <div v-if="result" :class="[$style.strip, isUnsure(result) ? $style.unknown : $style[result.verdict.verdict]]">
     <button type="button" :class="$style.row" @click="open = !open"
       :aria-expanded="open" aria-label="Show map mod ratings">
-      <span :class="$style.badge">{{ VERDICT_LABEL[result.verdict.verdict] }}</span>
+      <span :class="$style.badge">{{ isUnsure(result) ? '?' : VERDICT_LABEL[result.verdict.verdict] }}</span>
       <span :class="$style.headline" class="w-trunc">{{ headline }}</span>
       <span class="flex-1" />
       <template v-if="result.juice">
@@ -29,7 +29,7 @@ import { computed, shallowRef } from 'vue'
 import type { ParsedItem } from '@/parser'
 import { shortLabel } from './rules'
 import type { Verdict } from './rules'
-import { checkMap, findMapModsConfig, isMapLike } from './check'
+import { checkMap, findMapModsConfig, isMapLike, isUnsure } from './check'
 
 const props = defineProps<{ item: ParsedItem }>()
 
@@ -47,6 +47,7 @@ const headline = computed(() => {
   const v = result.value!.verdict
   if (v.deadly.length) return v.deadly.map(m => shortLabel(m.matcher)).join(' · ')
   if (v.warn.length) return 'Careful'
+  if (result.value!.unknown.length) return "Couldn't read every mod"
   return 'Safe for your build'
 })
 
@@ -80,6 +81,7 @@ const warnText = computed(() => result.value!.verdict.warn.map(m => shortLabel(m
 .skip .badge { background: var(--w-down); }
 .careful .badge { background: var(--w-warn); }
 .run .badge { background: var(--w-up); }
+.unknown .badge { background: var(--w-panel-3); color: var(--w-dim); }
 .headline { font-weight: 500; min-width: 0; }
 .skip .headline { color: var(--w-down); }
 .careful .headline { color: var(--w-warn); }
