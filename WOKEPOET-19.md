@@ -1,7 +1,7 @@
 ---
 id: WOKEPOET-19
 title: 'Keep panel resize grips reachable: all-edge resize, clamp to screen'
-status: In Progress
+status: Ready
 priority: Medium
 effort: M
 assignee: unassigned
@@ -76,6 +76,28 @@ history:
     to: In Progress
     user: Agent
     date: '2026-11-05T05:15:55.275Z'
+  - type: comment
+    user: Agent
+    comment: >-
+      **Review fixes pushed (bc0cb54a).** Fixed: Map check auto-placement,
+      widget size floor near edges, fresh anchor during resize, zero-rect guard,
+      press without drag, nested zoom, Syndicate board max width (new maxWidth
+      prop). Perf budgets for DOM nodes and listeners refreshed per
+      testing/perf/README.md, because the 5 extra handles per panel went over.
+      Local: 402 vitest tests, eslint, vue-tsc pass. Waiting on CI.
+    date: '2026-11-05T05:18:09.486Z'
+    completionComment: true
+    id: c-2026-11-05t05-18-09-486z
+  - type: activity
+    user: Agent
+    comment: 'PR created: https://github.com/guybnd/woke-poe-trade/pull/105'
+    date: '2026-11-05T05:18:11.809Z'
+    id: a-2026-11-05t05-18-11-809z
+  - type: status_change
+    from: In Progress
+    to: Ready
+    user: Agent
+    date: '2026-11-05T05:18:11.809Z'
 needsAction: null
 branch: flux/WOKEPOET-19-keep-panel-resize-grips-reachable-all-edge-resize-clamp-to-s
 baselineCommit: 7896e164a82865073f89df1ab235131664e8c4a4
