@@ -32,6 +32,8 @@ export const usePoeninja = createGlobalState(() => {
   const leagues = useLeagues()
 
   const xchgRate = shallowRef<number | undefined>(undefined)
+  // woke: when prices last loaded, so the verdict can say how old they are.
+  const updatedAt = shallowRef<number | null>(null)
 
   const isLoading = shallowRef(false)
   let PRICES_DB: PriceDatabase = []
@@ -64,6 +66,7 @@ export const usePoeninja = createGlobalState(() => {
         xchgRate.value = divine.chaos
       }
       lastUpdateTime = Date.now()
+      updatedAt.value = lastUpdateTime
     } finally {
       isLoading.value = false
     }
@@ -156,12 +159,14 @@ export const usePoeninja = createGlobalState(() => {
 
   watch(leagues.selectedId, () => {
     xchgRate.value = undefined
+    updatedAt.value = null
     PRICES_DB = []
     load(true)
   })
 
   return {
     xchgRate: readonly(xchgRate),
+    updatedAt: readonly(updatedAt),
     findPriceByQuery,
     findPriceByName,
     autoCurrency,

@@ -61,6 +61,8 @@
       </button>
     </div>
 
+    <p v-if="age" :class="$style.note" :style="age.stale ? { color: 'var(--w-warn)' } : undefined">{{ age.text }}</p>
+
     <price-history-chart v-if="historyOpen && ranges.length" :ranges="ranges" :series="series" :divine="divine"
       :from-ninja="Boolean(ninjaInfo)" :loading="leagueLoading" @range="onRange" />
 
@@ -90,6 +92,9 @@ import { ParsedItem } from '@/parser'
 import { AppConfig } from '@/web/Config'
 import { WPrice, WSpark } from '../ui'
 import { useCopy } from '../ui/copy'
+import { nowMinute } from '../ui/format'
+import { usePoeninja } from '@/web/background/Prices'
+import { dataAge } from './data-age'
 import PriceHistoryChart from './PriceHistoryChart.vue'
 import { verdictExpanded, historyOpen } from './view'
 import { DROP_LABEL, DropReason, Insight, Confidence, FixRisk, notePrice, noteText } from './insight'
@@ -131,6 +136,9 @@ const RISK_LABEL: Record<FixRisk, string> = { none: '', low: 'fixing risk: low',
 const smart = useSmartPrice(toRef(props, 'item'), toRef(props, 'insight'), toRef(props, 'divine'), toRef(props, 'logKey'), toRef(props, 'league'), toRef(props, 'ninjaFits'))
 onUnmounted(smart.stop)
 const { ninjaInfo, blend, headline, ranges, series, leagueLoading } = smart
+
+const { updatedAt } = usePoeninja()
+const age = computed(() => dataAge(props.divine, updatedAt.value, nowMinute.value))
 
 // With divine listings left out, what's left may not be the real price: no advice on it.
 const missingDivines = computed(() => props.insight.signals.some(s => s.kind === 'norate'))
