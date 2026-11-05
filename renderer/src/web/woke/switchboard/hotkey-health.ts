@@ -1,4 +1,4 @@
-// Hotkey problems for the warning in the tab bar, the health icon and the
+// Hotkey problems for the warning on the rail, the health icon and the
 // settings window: two actions on one key, and keys another program holds
 // (reported by main when it registers them). Read from the same field list
 // the Hotkeys page edits, so a new hotkey is checked as soon as it's listed.
