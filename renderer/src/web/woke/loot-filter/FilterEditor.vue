@@ -145,7 +145,7 @@
                 <WChip clickable :active="picked.includes(b)" draggable="true"
                   title="Click to pick it, shift-click to pick a run. Drag onto a tier to move it, with any others you've picked. Right-click for Move to."
                   @click="pickBase(b, $event)" @contextmenu="baseMenu($event, b)" @dragstart="onDragStart(b, $event)" @dragend="dragOver = null">
-                  <span v-item-tip="{ name: b }" class="flex items-center gap-1">
+                  <span v-item-tip="{ name: chipTip(b) }" class="flex items-center gap-1">
                     <img v-if="baseIcon(b)" :src="baseIcon(b)!" :class="$style.chipArt" alt="">
                     <span>{{ b }}</span>
                     <span v-if="priceOf(b) != null" class="w-num" :class="$style[`p_${priceGrade(priceOf(b), config.safetyNet.minChaos)}`]">{{ priceText(priceOf(b)!) }}</span>
@@ -317,7 +317,7 @@ import { outputName } from './widget'
 import type { LootFilterWidget } from './widget'
 import { OWN_RULE_TYPE, addEdit, conditionSignature, describeEdit, moveTargets, nextEditId, readStyle, rehome, rehomeOptions } from './edits'
 import { ECONOMY_GROUPS } from './economy'
-import { priceGrade } from './health'
+import { priceGrade, tipName } from './health'
 import type { RehomeOption } from './edits'
 import type { FilterEdit, StylePatch } from './edits'
 import { ruleLabel, tierName } from './parse'
@@ -374,6 +374,10 @@ function priceOf (base: string): number | null {
   if (lookup && base === 'Chaos Orb' && selType.value === 'currency') return 1
   const group = ECONOMY_GROUPS.find(g => g.type === selType.value)
   return (lookup && group && lookup(group, base)?.chaos) ?? null
+}
+function chipTip (base: string): string {
+  const group = ECONOMY_GROUPS.find(g => g.type === selType.value)
+  return group ? tipName(base, group.unique, props.store.prices.breakdown.value(group, base)) : base
 }
 const priceText = (chaos: number) => chaos >= 10 ? `${Math.round(chaos)}c` : (chaos < 0.1 ? '<0.1c' : `${Math.round(chaos * 10) / 10}c`)
 const tierItems = computed(() => byPrice(tier.value?.bases ?? [], priceOf))

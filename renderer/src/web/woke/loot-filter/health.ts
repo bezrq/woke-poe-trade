@@ -60,6 +60,13 @@ export function showEffect (v: BaseVerdict, items: HealthItem[]): string[] {
   return out
 }
 
+// What a base's tooltip should show: in a group of uniques, the best unique on
+// it, since a white copy isn't what the rule is about.
+export function tipName (base: string, unique: boolean | undefined, prices: PricedName[]): string {
+  if (!unique) return base
+  return gradeItems(prices, Infinity)[0]?.name ?? base
+}
+
 export function healthKey (v: Pick<BaseVerdict, 'group' | 'base'>): string {
   return `${v.group.type}|${v.base}`
 }

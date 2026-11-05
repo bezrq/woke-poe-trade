@@ -1,6 +1,6 @@
 // The Prices tab's "valuable items your filter hides" list, and the dock card.
 import { describe, it, expect } from 'vitest'
-import { gradeItems, healthKey, isDismissed, priceBar, priceGrade, showEffect, trashCount } from '@/web/woke/loot-filter/health'
+import { gradeItems, healthKey, isDismissed, priceBar, priceGrade, showEffect, tipName, trashCount } from '@/web/woke/loot-filter/health'
 import { canTurnOff, markSeen, visibleNotices } from '@/web/woke/loot-filter/notices'
 import type { Notice } from '@/web/woke/loot-filter/notices'
 import { ECONOMY_GROUPS, priceBreakdown, priceLookup } from '@/web/woke/loot-filter/economy'
@@ -117,6 +117,19 @@ describe('what Show it says, against what it does', () => {
 
   it('says bigger, not shown, for a small label', () => {
     expect(showEffect(verdict({ state: 'small' }), twoUniques)[0]).toContain('font size 40')
+  })
+})
+
+describe('the tooltip for a base', () => {
+  const prices = [{ name: 'Debeon', chaos: 1, thin: false }, { name: 'Kingmaker', chaos: 91, thin: false }, { name: 'Unpriced', chaos: null, thin: false }]
+
+  it('shows the best unique in a group of uniques', () => {
+    expect(tipName('Despot Axe', true, prices)).toBe('Kingmaker')
+  })
+
+  it('shows the base itself elsewhere, or when no unique is known', () => {
+    expect(tipName('The Doctor', false, prices)).toBe('The Doctor')
+    expect(tipName('Plain Axe', true, [])).toBe('Plain Axe')
   })
 })
 

@@ -37,7 +37,7 @@
         </div>
       </template>
       <div v-if="moves.length" class="w-group-label" :class="$style.label">Would move</div>
-      <div v-for="m in moves" :key="m.type + m.base" v-item-tip="{ name: m.base }" :class="$style.row" @contextmenu="moveMenu($event, m)">
+      <div v-for="m in moves" :key="m.type + m.base" v-item-tip="{ name: tipOf(m.type, m.base) }" :class="$style.row" @contextmenu="moveMenu($event, m)">
         <input :id="`pm-${m.type}-${m.base}`" v-model="picked[pickKey(m)]" type="checkbox" :class="$style.check" :aria-label="`Move ${m.base}`">
         <img v-if="icon(m)" :src="icon(m)!" :class="$style.art" alt="">
         <LabelPreview :text="m.base" :actions="lookOf(m.type, m.to)" :extras="false" />
@@ -80,7 +80,7 @@
       {{ hiddenCount }} hidden<template v-if="caughtCount">; your {{ config.safetyNet.minChaos }}c safety net still shows {{ caughtCount }}</template>. Click one to see what you'd get.
     </div>
     <template v-for="r in rows" :key="r.key">
-      <button v-item-tip="{ name: r.v.base }" type="button" class="w-focusable" :class="[$style.row, $style.healthRow, { [$style.open]: openRow === r.key }]" :aria-expanded="openRow === r.key" @click="openRow = openRow === r.key ? null : r.key">
+      <button v-item-tip="{ name: tipOf(r.v.group.type, r.v.base) }" type="button" class="w-focusable" :class="[$style.row, $style.healthRow, { [$style.open]: openRow === r.key }]" :aria-expanded="openRow === r.key" @click="openRow = openRow === r.key ? null : r.key">
         <img v-if="r.icon" :src="r.icon" :class="$style.art" alt="">
         <LabelPreview :text="r.v.base" :actions="r.v.block?.actions ?? []" :visibility="r.v.state === 'hidden' ? 'Hide' : 'Show'" :extras="false" />
         <span class="w-trunc text-xs" :class="$style.who">
@@ -125,7 +125,7 @@
 import { computed, reactive, ref, watch } from 'vue'
 import { WButton, WChip, WEmpty, WField, WPrice, WSegmented, WToggle, agoPhrase, gameIcon, ninjaIcon, openMenu, toast, vItemTip } from '../ui'
 import { TURN_OFF_IDS } from './notices'
-import { gradeItems, healthKey, isDismissed, priceBar, showEffect, trashCount } from './health'
+import { gradeItems, healthKey, isDismissed, priceBar, showEffect, tipName, trashCount } from './health'
 import type { PriceGrade } from './health'
 import { usePoeninja } from '@/web/background/Prices'
 import LabelPreview from './LabelPreview.vue'
@@ -188,6 +188,11 @@ const rows = computed(() => {
 })
 const hiddenCount = computed(() => health.value.filter(v => v.state === 'hidden').length)
 const caughtCount = computed(() => health.value.filter(v => v.state === 'hidden' && caught(v)).length)
+
+function tipOf (type: string, base: string): string {
+  const group = ECONOMY_GROUPS.find(g => g.type === type)
+  return group ? tipName(base, group.unique, props.store.prices.breakdown.value(group, base)) : base
+}
 
 function itemIcon (v: { group: { unique?: boolean, ninja: string[] } }, name: string): string | null {
   return v.group.unique ? gameIcon(name, 'UNIQUE') : ninjaIcon(v.group.ninja[0], name)
