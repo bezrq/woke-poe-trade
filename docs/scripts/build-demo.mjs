@@ -51,6 +51,18 @@ const walk = (dir) => {
   }
 }
 walk(fixtures)
+// Plus the demo's own sample prices (boss drops, session loot).
+const DENSE = 'poe.ninja/poe1/api/economy/current/dense/overviews.json'
+const dense = JSON.parse(http[DENSE])
+for (const [type, lines] of Object.entries(JSON.parse(fs.readFileSync(path.join(docs, 'scripts/demo-prices.json'), 'utf8')))) {
+  if (type.startsWith('_')) continue
+  const list = [...dense.currencyOverviews, ...dense.itemOverviews]
+  let ov = list.find(o => o.type === type)
+  if (!ov) dense.itemOverviews.push(ov = { type, lines: [] })
+  // Name first: price lookups find entries by their opening '{"name":'.
+  ov.lines.push(...lines.map(l => ({ ...l, graph: [0, 0, 0, 0, 0, 0, 0] })))
+}
+http[DENSE] = JSON.stringify(dense)
 fs.writeFileSync(path.join(out, 'http.json'), JSON.stringify(http))
 
 // The game screens behind the overlay.

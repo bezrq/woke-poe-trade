@@ -1,0 +1,25 @@
+{
+  "_note": "Sample poe.ninja prices the demo adds to testing/fixtures/http's (build-demo.mjs merges them), so its boss drops and sessions have prices. Made up, rounded.",
+  "Fragment": [
+    { "name": "Mortal Hope", "chaos": 95 }, { "name": "Mortal Grief", "chaos": 40 },
+    { "name": "Mortal Rage", "chaos": 55 }, { "name": "Mortal Ignorance", "chaos": 70 },
+    { "name": "Splinter of Chayula", "chaos": 3.5 }, { "name": "Timeless Karui Splinter", "chaos": 1.2 }
+  ],
+  "Scarab": [{ "name": "Breach Scarab of Lordship", "chaos": 9 }],
+  "UniqueArmour": [
+    { "name": "The Vertex", "chaos": 25 }, { "name": "Atziri's Splendour", "chaos": 60 },
+    { "name": "Triumvirate Authority", "chaos": 15 }, { "name": "Atziri's Reflection", "chaos": 450 }
+  ],
+  "UniqueWeapon": [
+    { "name": "Beauty", "chaos": 8 }, { "name": "Atziri's Disfavour", "chaos": 40 }
+  ],
+  "UniqueAccessory": [{ "name": "Atziri's Acuity", "chaos": 90 }],
+  "UniqueFlask": [{ "name": "Atziri's Rule", "chaos": 30 }],
+  "DivinationCard": [
+    { "name": "The Price of Devotion", "chaos": 4500 }, { "name": "Triskaidekaphobia", "chaos": 35 }
+  ],
+  "SkillGem": [
+    { "name": "Greater Spell Echo Support", "variant": "1", "chaos": 1100 },
+    { "name": "Vaal Sacrifice Support", "variant": "1", "chaos": 60 }
+  ]
+}

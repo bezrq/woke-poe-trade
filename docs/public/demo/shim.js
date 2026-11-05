@@ -14,8 +14,22 @@
   var here = new URL('.', document.currentScript.src).href
   var loaded = Promise.all([
     fetch(here + 'recording.json').then(function (r) { return r.json() }),
-    fetch(here + 'http.json').then(function (r) { return r.json() })
+    fetch(here + 'http.json').then(function (r) { return r.json() }),
+    fetch(here + 'seed.json').then(function (r) { return r.json() }).then(relativeTimes)
   ])
+
+  // seed.json: sample history the overlay asks the app for. Its times are
+  // relative (ms before now, as negative numbers), so it never goes stale.
+  function relativeTimes (v, k) {
+    if (Array.isArray(v)) return v.map(function (x) { return relativeTimes(x) })
+    if (v && typeof v === 'object') {
+      var out = {}
+      for (var key in v) out[key] = relativeTimes(v[key], key)
+      return out
+    }
+    if (typeof v === 'number' && v < 0 && /(At|^at)$/.test(k || '')) return Date.now() + v
+    return v
+  }
 
   // The overlay only acts as an overlay in Electron.
   var ua = navigator.userAgent
@@ -66,6 +80,8 @@
 
   // ---- the app's socket ----
   var socket = null
+  var seed = {}
+  var snapshot = null
   var docs = {}
   var zones = {}
   var hovered = {}
@@ -87,6 +103,12 @@
   // What the app answered for a request when recorded: the same arguments,
   // else the same request with any arguments.
   function answer (rec, op, args) {
+    if (Object.prototype.hasOwnProperty.call(seed, op)) return { ok: true, data: seed[op] }
+    // The latest prices: what the overlay saved here, else poe.ninja's
+    // answer in http.json (with the demo's sample prices).
+    if (op === 'market-save') { snapshot = args.snapshot; return { ok: true, data: null } }
+    if (op === 'market-latest') return { ok: true, data: [snapshot || ninjaSnapshot(args.league)] }
+    if (op === 'market-import-status') return { ok: true, data: { imported: true } }
     if (op === 'doc-get') return { ok: true, data: Object.prototype.hasOwnProperty.call(docs, key(args)) ? docs[key(args)] : null }
     if (op === 'doc-put') { docs[key(args)] = args && args.value; return { ok: true, data: null } }
     var exact = rec.requests[op + ' ' + JSON.stringify(args)]
@@ -98,6 +120,15 @@
     if (/-(put|save|save-many|add|delete|set|write|dismiss|finish|stop|start|install)$/.test(op)) return { ok: true, data: null }
     return { ok: false, error: 'Not available in the demo' }
   }
+  function ninjaSnapshot (league) {
+    var dense = JSON.parse(socket.http['poe.ninja/poe1/api/economy/current/dense/overviews.json'])
+    var items = []
+    dense.currencyOverviews.concat(dense.itemOverviews).forEach(function (ov) {
+      ov.lines.forEach(function (l) { items.push({ type: ov.type, name: l.name, variant: l.variant || '', chaos: l.chaos }) })
+    })
+    var divine = items.filter(function (i) { return i.name === 'Divine Orb' })[0]
+    return { league: league, ts: Date.now(), divine: divine ? divine.chaos : null, items: items }
+  }
   function key (args) { return JSON.stringify(args && (args.key || args.name || args.id) || args) }
 
   function FakeSocket () {
@@ -108,6 +139,8 @@
       self.readyState = 1
       if (self.onopen) self.onopen({})
       self.rec = all[0]
+      self.http = all[1]
+      seed = all[2]
       whenMounted(function () { settle(function () { parent.postMessage({ demo: 'ready' }, '*') }) })
     })
   }
@@ -126,13 +159,26 @@
   // meets a tidy overlay.
   function settle (cb) {
     deliver('MAIN->OVERLAY::focus-change', { game: false, overlay: true, usingHotkey: true })
-    setTimeout(function () {
+    // Tools open as they load: close them until none has opened for a while.
+    // A tool can open itself again as it finishes loading, so keep at it; but
+    // give a click time to land, or a second one would reopen it.
+    var clicked = {}
+    var quiet = 0
+    var tries = 0
+    var pass = setInterval(function () {
+      var open = 0
       document.querySelectorAll('#overlay-window button[aria-label]').forEach(function (b) {
-        if (/_open_/.test(b.className) && b.getAttribute('aria-label') !== 'Market tracker') b.click()
+        var name = b.getAttribute('aria-label')
+        if (!/_open_/.test(b.className) || name === 'Market tracker') return
+        open++
+        if (Date.now() - (clicked[name] || 0) > 700) { clicked[name] = Date.now(); b.click() }
       })
+      quiet = open ? 0 : quiet + 1
+      if (quiet < 3 && ++tries < 40) return
+      clearInterval(pass)
       deliver('MAIN->OVERLAY::focus-change', { game: true, overlay: false, usingHotkey: false })
       cb()
-    }, 400)
+    }, 250)
   }
   FakeSocket.prototype.send = function (data) {
     var ev = JSON.parse(data)
@@ -171,9 +217,20 @@
         if (Boolean(hovered[z.id]) !== inside) {
           hovered[z.id] = inside
           deliver('MAIN->OVERLAY::woke-hover', { id: z.id, inside: inside })
+          parent.postMessage({ demo: 'hover', inside: inside }, '*')
         }
       })
     }
+  }, true)
+  // Leaving the frame leaves every zone (the game would see the mouse go).
+  document.addEventListener('mouseout', function (e) {
+    if (e.relatedTarget) return
+    for (var id in hovered) {
+      if (!hovered[id]) continue
+      hovered[id] = false
+      deliver('MAIN->OVERLAY::woke-hover', { id: id, inside: false })
+    }
+    parent.postMessage({ demo: 'hover', inside: false }, '*')
   }, true)
   document.addEventListener('mousedown', function () {
     if (overlayOpen) return
@@ -198,6 +255,12 @@
     var msg = e.data || {}
     if (e.source !== parent || !socket || !socket.rec) return
     if (msg.demo === 'overlay') setOverlay(msg.open)
+    // Where a dock icon is, so the page can point at it.
+    if (msg.demo === 'locate') {
+      var icon = document.querySelector('[data-dock="' + msg.dock + '"]')
+      var r = icon && icon.getBoundingClientRect()
+      parent.postMessage({ demo: 'spot', dock: msg.dock, tries: msg.tries, x: r ? r.x + r.width / 2 : null, y: r ? r.y + r.height / 2 : null }, '*')
+    }
     if (msg.demo === 'action') {
       var events = socket.rec.actions[msg.name] || []
       if (overlayOpen && /^(price|filter|essence|map)/.test(msg.name) && !/-stop$/.test(msg.name)) setOverlay(false)
