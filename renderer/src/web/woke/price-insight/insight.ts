@@ -52,6 +52,8 @@ export interface Insight {
   dropped: Map<string, DropReason>
   /** Chaos value of every listing that could be converted, kept or not. */
   prices: Map<string, number>
+  /** The price nobody will pay more than: the cheapest instant buyout, or the fair price if that's higher. */
+  ceiling?: number | null
   /** Cheapest trusted listing, median of the cheapest few, and the top of that window. */
   range: { low: number, fair: number, high: number } | null
   /** Price to list at to sell fast (just under the floor) and when patient (the fair price). */
@@ -126,7 +128,9 @@ export function weightedMedian (rows: Array<{ chaos: number, weight: number }>):
   return rows[rows.length - 1].chaos
 }
 
-type KeptRow = { id: string, chaos: number, weight: number, account: string, copies: number, age: number | null }
+// `instant` is a merchant tab listing, which anyone can buy without the seller's
+// say: a real offer at that price, so it can't be bait, a wall or a dump.
+type KeptRow = { id: string, chaos: number, weight: number, account: string, copies: number, age: number | null, instant: boolean }
 
 export function buildInsight (listings: InsightListing[], opts: InsightOptions): Insight {
   const now = opts.now ?? Date.now()
@@ -149,7 +153,8 @@ export function buildInsight (listings: InsightListing[], opts: InsightOptions):
       weight: listingWeight(l, now),
       account: l.accountName,
       copies: l.listedTimes ?? 1,
-      age: age != null && Number.isFinite(age) ? age : null
+      age: age != null && Number.isFinite(age) ? age : null,
+      instant: l.hasFee
     })
   }
   kept.sort((a, b) => a.chaos - b.chaos)
@@ -161,7 +166,7 @@ export function buildInsight (listings: InsightListing[], opts: InsightOptions):
   // of what the next few ask is almost never real.
   while (kept.length >= 4) {
     const next = median(kept.slice(1, 1 + WINDOW).map(k => k.chaos))
-    if (kept[0].chaos >= next * FIXER_RATIO) break
+    if (kept[0].instant || kept[0].chaos >= next * FIXER_RATIO) break
     dropped.set(kept[0].id, 'fixer')
     kept = kept.slice(1)
   }
@@ -182,18 +187,25 @@ export function buildInsight (listings: InsightListing[], opts: InsightOptions):
   else if (kept.length >= 4 && spread <= 4) confidence = 'medium'
   else confidence = 'low'
 
-  // Agreeing listings prove nothing when none of them has sold in a week.
   const oldOnly = windowRows.every(k => k.age != null && k.age > OLD_MS)
-  if (oldOnly) {
+  if (oldOnly && windowRows.every(k => k.instant)) {
+    // Anyone could have bought these, and nobody has. That's a real answer.
+    signals.push({ kind: 'old', text: 'These can be bought instantly and none has sold in over a week, so it\'s unlikely to sell for more' })
+  } else if (oldOnly) {
+    // Agreeing listings prove nothing when none of them is known to be for sale.
     confidence = 'low'
     signals.push({ kind: 'old', text: 'The cheapest listings are all over a week old, so this may not be what it really sells for' })
   }
+
+  const instant = kept.filter(k => k.instant).map(k => k.chaos)
+  const ceiling = instant.length ? Math.max(Math.min(...instant), range.fair) : null
 
   return {
     kept: kept.map(k => ({ id: k.id, chaos: k.chaos, weight: k.weight })),
     dropped,
     prices,
     range,
+    ceiling,
     suggest: {
       // At least 1c, except for items whose cheapest listing is under 1c.
       fast: range.low >= 1 ? Math.max(range.low * 0.97, 1) : range.low,
@@ -211,7 +223,7 @@ function dropWalls (kept: KeptRow[], dropped: Map<string, DropReason>): KeptRow[
   const bottom = kept.slice(0, WINDOW)
   const walls = new Set<string>()
   for (const row of bottom) {
-    if (row.copies < WALL_COPIES) continue
+    if (row.instant || row.copies < WALL_COPIES) continue
     const others = kept.filter(k => k.account !== row.account).slice(0, WINDOW).map(k => k.chaos)
     if (others.length < 3) continue
     if (row.chaos < median(others) * WALL_RATIO) walls.add(row.account)
@@ -219,7 +231,7 @@ function dropWalls (kept: KeptRow[], dropped: Map<string, DropReason>): KeptRow[
   if (!walls.size) return kept
   return kept.filter(k => {
     // Every listing of that seller under the line goes, not only the pile.
-    if (!walls.has(k.account)) return true
+    if (k.instant || !walls.has(k.account)) return true
     const others = kept.filter(o => !walls.has(o.account)).slice(0, WINDOW).map(o => o.chaos)
     if (k.chaos >= median(others) * WALL_RATIO) return true
     dropped.set(k.id, 'wall')
@@ -233,7 +245,7 @@ function dropDumps (kept: KeptRow[], dropped: Map<string, DropReason>): KeptRow[
   const older = kept.filter(k => k.age == null || k.age > DUMP_AGE_MS).slice(0, WINDOW).map(k => k.chaos)
   if (older.length < 3) return kept
   const line = median(older) * DUMP_RATIO
-  const dump = kept.filter(k => k.age != null && k.age <= DUMP_AGE_MS && k.chaos < line)
+  const dump = kept.filter(k => !k.instant && k.age != null && k.age <= DUMP_AGE_MS && k.chaos < line)
   if (dump.length < DUMP_MIN) return kept
   const ids = new Set(dump.map(d => d.id))
   for (const id of ids) dropped.set(id, 'dump')
@@ -261,7 +273,7 @@ function fixRisk (kept: KeptRow[], dropped: Map<string, DropReason>, listings: I
   if (dumps) signals.push({ kind: 'dump', text: `${dumps} cheap listings all appeared in the last hour` })
   if (bait) signals.push({ kind: 'bait', text: bait === 1 ? 'One bait listing far under the rest' : `${bait} bait listings far under the rest` })
   const sellers = new Set(kept.map(k => k.account)).size
-  if (kept.length > 0 && kept.length < 4 && sellers <= 2) {
+  if (kept.length > 0 && kept.length < 4 && sellers <= 2 && kept.some(k => !k.instant)) {
     signals.push({ kind: 'thin', text: 'Few listings from one or two sellers: easy to fake, check by hand' })
   }
 

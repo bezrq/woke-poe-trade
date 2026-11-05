@@ -118,7 +118,7 @@
       </table>
     </div>
     <div v-if="improved && listSettled && list && rows.length" class="w-pc-foot"
-      title="Prices come from the cheapest listings the trade site returned"><span v-if="allStale" class="w-warn">All over a week old, so they may be gone · </span>{{ shownCount }} of {{ list.total }}{{ list.inexact ? '+' : '' }} listings</div>
+      title="Prices come from the cheapest listings the trade site returned"><span v-if="allStale" class="w-warn">{{ allInstant ? 'All unsold for over a week' : 'All over a week old, so they may be gone' }} · </span>{{ shownCount }} of {{ list.total }}{{ list.inexact ? '+' : '' }} listings</div>
   </div>
   <ui-error-box v-else>
     <template #name>{{ t(':error') }}</template>
@@ -354,6 +354,7 @@ export default defineComponent({
       inRange,
       maxCount,
       allStale,
+      allInstant: computed(() => rows.value.every(r => r.lead.hasFee)),
       showCountBar: computed(() => improved.value && maxCount.value > 1),
       shownCount: computed(() => fetchResults.value.filter(r => r != null).length),
       tableLoading,

@@ -3,7 +3,7 @@
     <div v-if="'error' in result" class="p-2">
       {{ result.error }}
     </div>
-    <template v-if="'related' in result">
+    <template v-if="'related' in result && result.related.length > 1">
       <div :class="$style.hd">Related to {{ item!.info.name }}</div>
       <div v-for="row in result.related" :key="row.name"
         :class="[$style.row, { [$style.me]: row.highlight }]">
@@ -16,7 +16,7 @@
       </div>
     </template>
     <template v-if="'items' in result && result.items.length">
-      <div :class="$style.hd">Drops · highest first</div>
+      <div :class="$style.hd">Drops in {{ item!.info.name }}</div>
       <div v-for="row in result.items" :key="row.name" :class="$style.row">
         <img :class="$style.art" :src="row.icon" :alt="''">
         <span :class="$style.name" :title="row.name">{{ row.name }}</span>

@@ -34,7 +34,7 @@
             <w-spark :values="sparkValues" :width="60" :height="18" />
             <span class="w-num">
               <span :class="$style.sparkSource">{{ ranges[0] === 'mine' ? 'My checks' : 'poe.ninja 7d' }}</span>
-              <span v-if="sparkChange != null" :class="sparkChange >= 0 ? 'w-up' : 'w-down'"> {{ sparkChange >= 0 ? '+' : '' }}{{ Math.round(sparkChange * 100) }}%</span>
+              <span v-if="sparkChange != null" class="ml-1" :class="sparkChange >= 0 ? 'w-up' : 'w-down'">{{ sparkChange >= 0 ? '+' : '' }}{{ Math.round(sparkChange * 100) }}%</span>
             </span>
           </button>
           <button type="button" class="w-icon-btn" :title="expanded ? 'Show less' : 'Show sources, listing notes and what drives the price'"
@@ -212,7 +212,9 @@ const notes = computed(() => {
   const s = props.insight.suggest
   if (!s) return []
   const fast = noteText(notePrice(s.fast, props.divine))
-  const patient = noteText(notePrice(s.patient, props.divine))
+  // Listings nobody has bought say little: being patient means asking the blended price.
+  const oldOnly = props.insight.signals.some(sig => sig.kind === 'old')
+  const patient = noteText(notePrice(oldOnly ? Math.max(headline.value?.chaos ?? s.patient, s.patient) : s.patient, props.divine))
   if (fast === patient) return [{ key: 'fast', label: 'List', text: fast }]
   return [
     { key: 'fast', label: 'Sell fast', text: fast },

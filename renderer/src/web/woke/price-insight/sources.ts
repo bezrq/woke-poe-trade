@@ -161,6 +161,8 @@ export function buildBlend (input: BlendInput): Blend {
 export function headlinePrice (blend: Blend, insight: Insight): { chaos: number, from: 'listings' | 'blend' } | null {
   if (insight.range && insight.confidence === 'high') return { chaos: insight.range.fair, from: 'listings' }
   if (blend.fair != null) {
+    // Nobody pays more than an instant buyout that's sitting there, whatever other sources say.
+    if (insight.ceiling != null && blend.fair > insight.ceiling) return { chaos: insight.ceiling, from: 'listings' }
     const onlyListings = blend.points.filter(p => p.weight > 0).every(p => p.key === 'listings')
     return { chaos: blend.fair, from: onlyListings ? 'listings' : 'blend' }
   }
