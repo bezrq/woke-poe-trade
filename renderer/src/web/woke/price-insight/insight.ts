@@ -40,7 +40,7 @@ export const FIXING_REASONS = new Set<DropReason>(['fixer', 'wall', 'dump'])
 export type FixRisk = 'none' | 'low' | 'medium' | 'high'
 
 export interface FixSignal {
-  kind: 'bait' | 'wall' | 'dump' | 'thin'
+  kind: 'bait' | 'wall' | 'dump' | 'thin' | 'old'
   text: string
 }
 
@@ -71,6 +71,8 @@ export interface InsightOptions {
 }
 
 const STALE_MS = 3 * 24 * 60 * 60 * 1000
+// Listings still up after this long are not selling at their price.
+const OLD_MS = 7 * 24 * 60 * 60 * 1000
 const WINDOW = 6
 const FIXER_RATIO = 0.5
 // A seller's pile of copies counts as a wall when it asks less than this share
@@ -179,6 +181,13 @@ export function buildInsight (listings: InsightListing[], opts: InsightOptions):
   if (kept.length >= 8 && spread <= 2) confidence = 'high'
   else if (kept.length >= 4 && spread <= 4) confidence = 'medium'
   else confidence = 'low'
+
+  // Agreeing listings prove nothing when none of them has sold in a week.
+  const oldOnly = windowRows.every(k => k.age != null && k.age > OLD_MS)
+  if (oldOnly) {
+    confidence = 'low'
+    signals.push({ kind: 'old', text: 'The cheapest listings are all over a week old, so this may not be what it really sells for' })
+  }
 
   return {
     kept: kept.map(k => ({ id: k.id, chaos: k.chaos, weight: k.weight })),

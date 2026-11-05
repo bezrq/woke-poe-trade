@@ -52,6 +52,9 @@
           <span v-else-if="!expanded" :class="$style.count" :title="droppedTitle">{{ countText }}</span>
         </div>
       </div>
+      <div v-if="ninjaFarOff" :class="$style.row" class="text-xs">
+        <ninja-line :chaos="ninjaInfo!.chaos" :divine="divine" :url="ninjaInfo!.url" :fair="insight.range.fair" />
+      </div>
       <price-strip v-if="showStrip" :insight="insight" :blend="blend" :fair="headline?.chaos ?? null" :divine="divine" />
       <div v-if="showStrip && blend.points.length > 1" :class="$style.row" class="text-xs">
         <span :class="[$style.agree, $style['agree-' + blend.agreement]]" :title="blendTitle">{{ AGREEMENT_LABEL[blend.agreement] }}</span>
@@ -78,7 +81,7 @@
         </button>
       </div>
     </template>
-    <price-history-chart v-if="historyOpen && ranges.length" :ranges="ranges" :series="series" :divine="divine"
+    <price-history-chart v-if="historyOpen && ranges.length" :ranges="ranges" :series="series" :divine="divine" :from-ninja="Boolean(ninjaInfo)"
       :loading="leagueLoading" @range="onRange" />
     <label v-if="expanded && canAsk" :class="$style.ppToggle">
       <input type="checkbox" v-model="usePoeprices">
@@ -132,6 +135,14 @@ onUnmounted(smart.stop)
 const { ninjaInfo, blend, headline, ranges, series, leagueLoading } = smart
 
 const lowValue = computed(() => (headline.value?.chaos ?? props.insight.range?.fair ?? 0) < LOW_VALUE)
+
+// Say so on the card when poe.ninja is far from the listings. Expanded already shows the line.
+const ninjaFarOff = computed(() => {
+  const fair = props.insight.range?.fair
+  const ninja = ninjaInfo.value?.chaos
+  if (expanded.value || !fair || !ninja) return false
+  return fair / ninja >= 2 || fair / ninja <= 0.5
+})
 
 // The strip shows when expanded, and on its own when the cheap end looks faked.
 const showStrip = computed(() => expanded.value || props.insight.risk === 'medium' || props.insight.risk === 'high')
