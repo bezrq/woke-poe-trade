@@ -1,5 +1,6 @@
 // The flips panel on recorded poe.ninja prices: the verdict, each view, the
 // rare-but-cheap marks, and the families beyond scarabs.
+import type { Page } from '@playwright/test'
 import { test, expect, fixtureText } from './harness'
 
 const DENSE = '**/poe.ninja/poe1/api/economy/current/dense/overviews*'
@@ -29,6 +30,21 @@ function exchangeFeed (rows: Array<[string, number, number]>) {
   }
 }
 
+async function routePrices (overlay: { page: Page }) {
+  const dense = JSON.parse(fixtureText('http/poe.ninja/poe1/api/economy/current/dense/overviews.json'))
+  dense.itemOverviews.push(
+    { type: 'DeliriumOrb', lines: ORBS.map(([name, chaos]) => ({ name, chaos, graph: [] })) },
+    { type: 'Oil', lines: OILS.map(([name, chaos]) => ({ name, chaos, graph: [] })) }
+  )
+  dense.currencyOverviews[0].lines.push({ name: 'Primal Crystallised Lifeforce', chaos: 0.033, graph: [] })
+  await overlay.page.route(DENSE, route => route.fulfill({ json: dense }))
+  await overlay.page.route(EXCHANGE, route => {
+    const type = new URL(route.request().url()).searchParams.get('type')
+    const rows = type === 'DeliriumOrb' ? ORBS : type === 'Oil' ? OILS : []
+    return route.fulfill({ json: exchangeFeed(rows) })
+  })
+}
+
 test('flips: buy list, odds and rare scarabs from recorded prices', async ({ overlay }) => {
   await overlay.boot({ overlayActive: true, widgets: [{ wmType: 'woke-scarab-flip', wmWants: 'show' }] })
   const panel = overlay.widget('woke-scarab-flip')
@@ -51,18 +67,7 @@ test('flips: buy list, odds and rare scarabs from recorded prices', async ({ ove
 })
 
 test('flips: a Harvest reroll tab and a known-result tab', async ({ overlay }) => {
-  const dense = JSON.parse(fixtureText('http/poe.ninja/poe1/api/economy/current/dense/overviews.json'))
-  dense.itemOverviews.push(
-    { type: 'DeliriumOrb', lines: ORBS.map(([name, chaos]) => ({ name, chaos, graph: [] })) },
-    { type: 'Oil', lines: OILS.map(([name, chaos]) => ({ name, chaos, graph: [] })) }
-  )
-  dense.currencyOverviews[0].lines.push({ name: 'Primal Crystallised Lifeforce', chaos: 0.033, graph: [] })
-  await overlay.page.route(DENSE, route => route.fulfill({ json: dense }))
-  await overlay.page.route(EXCHANGE, route => {
-    const type = new URL(route.request().url()).searchParams.get('type')
-    const rows = type === 'DeliriumOrb' ? ORBS : type === 'Oil' ? OILS : []
-    return route.fulfill({ json: exchangeFeed(rows) })
-  })
+  await routePrices(overlay)
 
   await overlay.boot({ overlayActive: true, widgets: [{ wmType: 'woke-scarab-flip', wmWants: 'show' }] })
   const panel = overlay.widget('woke-scarab-flip')
@@ -83,15 +88,25 @@ test('flips: a Harvest reroll tab and a known-result tab', async ({ overlay }) =
   await overlay.snap('flips-oils-upgrade')
 })
 
-test('flips: the lifeforce cost is set on the settings page', async ({ overlay }) => {
+test('flips: the lifeforce cost set in settings changes the panel, and blank goes back to the default', async ({ overlay }) => {
   await overlay.page.setViewportSize({ width: 2560, height: 1440 })
-  await overlay.boot({ overlayActive: true, widgets: [{ wmType: 'woke-scarab-flip' }] })
+  await routePrices(overlay)
+  await overlay.boot({ overlayActive: true, widgets: [{ wmType: 'woke-scarab-flip', wmWants: 'show' }] })
+  const panel = overlay.widget('woke-scarab-flip')
+  await panel.getByRole('tab', { name: 'Delirium', exact: true }).click()
+  // 30 Primal at 0.033c.
+  await expect(panel.getByText(/for 1 c of Primal lifeforce/)).toBeVisible()
+
   await overlay.widget('menu').locator('.fa-cog').click()
   const settings = overlay.widget('settings')
   await settings.getByText('Market & investments', { exact: true }).first().click()
-  const row = settings.locator('[data-setting="Lifeforce per item for Harvest rerolls"]')
-  await expect(row).toBeVisible()
-  await row.locator('input').fill('12')
-  await expect(row.locator('input')).toHaveValue('12')
+  const input = settings.locator('[data-setting="Lifeforce per item for Harvest rerolls"] input')
+  // The panel stays mounted but hidden while settings are open.
+  await input.fill('100')
   await overlay.snap('flips-settings-lifeforce')
+  await expect(panel.getByText(/for 3\.3 c of Primal lifeforce/)).toBeAttached()
+
+  await input.fill('')
+  await expect(panel.getByText(/for 1 c of Primal lifeforce/)).toBeAttached()
+  await expect(input).toHaveValue('')
 })

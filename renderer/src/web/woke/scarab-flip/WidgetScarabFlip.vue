@@ -54,7 +54,7 @@
           <div class="w-row w-row--head" :class="$style.buyGrid">
             <span>{{ capitalize(family.noun) }}</span><span class="text-right">Price</span>
             <span class="text-right" :title="profitTitle">{{ method.id === 'harvest' ? 'Profit / reroll' : 'Profit / recipe' }}</span>
-            <template v-if="hasVolume"><span class="text-right" :title="MARKET_TITLE">Market / day</span><span class="text-right" title="The most you could make in a day: the profit if you bought every item the whole market traded and flipped them all. A ceiling, used to rank the list. Real profit will be far lower.">Max profit / day</span></template>
+            <template v-if="hasVolume"><span class="text-right" :title="MARKET_TITLE">Market / day</span><span class="text-right" :title="MAX_PROFIT_TITLE">Max profit / day</span></template>
           </div>
           <div v-for="r in buy" :key="r.name" class="w-row" :class="$style.buyGrid" @contextmenu="rowMenu($event, itemName(r))">
             <FlipName :name="r.name" :item="itemName(r)" :rare-cheap="'rareCheap' in r && r.rareCheap" />
@@ -156,7 +156,7 @@ import type { DockMenuAction } from '../dock/dock'
 import { useZone } from '../shared/zone'
 import { UNTRADED_CHAOS, JACKPOT_CHAOS, buyList, flipOdds, parseExchange, rareCheapList } from './calc'
 import type { FlipRow, UpgradeRow } from './calc'
-import { DEFAULT_LIFEFORCE_PER_ITEM, FAMILIES, bestFlip, familyById, priceFlip, shortName, unpricedShare } from './families'
+import { DEFAULT_LIFEFORCE_PER_ITEM, FAMILIES, bestFlip, familyById, parseLifeforce, priceFlip, shortName, unpricedShare } from './families'
 import type { Exchanges, FlipMethodId } from './families'
 import type { ScarabFlipWidget } from './widget'
 
@@ -256,7 +256,7 @@ function pickMethod (id: string) {
 function pickView (id: string) {
   props.config.tab = id as ScarabFlipWidget['tab']
 }
-const lifeforcePerItem = computed(() => props.config.lifeforcePerItem ?? DEFAULT_LIFEFORCE_PER_ITEM)
+const lifeforcePerItem = computed(() => parseLifeforce(props.config.lifeforcePerItem ?? '') ?? DEFAULT_LIFEFORCE_PER_ITEM)
 const options = computed(() => ({ sellDiscount: props.config.sellDiscount / 100, reroll: props.config.reroll }))
 
 const flip = computed(() => snapshot.value
@@ -281,6 +281,7 @@ const views = computed(() => {
 })
 const view = computed(() => views.value.some(v => v.value === props.config.tab) ? props.config.tab : 'buy')
 
+const MAX_PROFIT_TITLE = 'The most you could make in a day: the profit if you bought every item the whole market traded and flipped them all. A ceiling, used to rank the list. Real profit will be far lower.'
 const MARKET_TITLE = 'How many of this item changed hands across the whole market in the last 24 hours, from poe.ninja. Not how many you could buy.'
 const panelIcon = moduleIcon('scarab-flip').art ?? undefined
 const hasVolume = computed(() => rows.value.some(r => r.tradedChaos != null))
@@ -307,7 +308,7 @@ const verdictSub = computed(() => {
 })
 const profitTitle = computed(() => method.value.id === 'upgrade'
   ? 'Price of the next tier, minus 3 of this one'
-  : `Return of a ${flipWord.value}, minus what goes in${method.value.lifeforce ? ' and the lifeforce' : ''}`)
+  : `Return of a ${flipWord.value}, minus what goes in${method.value.lifeforce ? ' and the lifeforce. Lifeforce per item is in Settings, under Market & investments.' : ''}`)
 
 const unpriced = computed(() => flip.value?.kind === 'pool' ? unpricedShare(family.value, flip.value.quotes) : 0)
 const warning = computed(() => {

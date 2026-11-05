@@ -58,11 +58,12 @@ describe('Harvest rerolls', () => {
     expect(dear.recipeValue).toBeCloseTo(99001, 6)
   })
 
-  it('reads a typed lifeforce cost: blank is the listed cost, never negative', () => {
+  it('reads a typed lifeforce cost: blank, zero or negative mean the listed cost', () => {
     expect(parseLifeforce('')).toBeUndefined()
+    expect(parseLifeforce(0)).toBeUndefined()
+    expect(parseLifeforce('-30')).toBeUndefined()
+    expect(parseLifeforce('12')).toBe(12)
     expect(parseLifeforce(12)).toBe(12)
-    expect(parseLifeforce('-30')).toBe(0)
-    expect(parseLifeforce(0)).toBe(0)
   })
 
   it('never treats a free or negative craft as profit from nothing', () => {
