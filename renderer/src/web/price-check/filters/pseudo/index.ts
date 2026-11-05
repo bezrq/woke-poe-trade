@@ -304,6 +304,11 @@ const PSEUDO_RULES: PseudoRule[] = [
   }
 ]
 
+/** What adds up to a pseudo stat, so a listing's total can be worked out from its mods. */
+export function pseudoRuleStats (pseudoRef: string): PseudoRule['stats'] | undefined {
+  return PSEUDO_RULES.find(rule => rule.pseudo === pseudoRef)?.stats
+}
+
 export function filterPseudo (ctx: FiltersCreationContext) {
   const filterByGroup = new Map<string, StatFilter[]>()
 
