@@ -179,10 +179,7 @@ const hotkeys = MainProcess.onEvent('MAIN->CLIENT::widget-action', (e) => {
     return
   }
   if (parseEditorHotkeyTarget(e.target) !== props.config.wmId) return
-  if (props.config.wmWants === 'show' && mode.value === 'editor') {
-    wm.hide(props.config.wmId)
-    return
-  }
+  // Always opens: the key only fires from the game, where the editor can't be seen.
   mode.value = 'editor'
   wm.show(props.config.wmId)
   ensureLoaded()
