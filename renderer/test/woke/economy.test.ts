@@ -17,8 +17,8 @@ import { evaluateBoss, priceResolver, observedRates, parseRunTime, formatRunTime
 import type { BossPrefs } from '@/web/woke/boss-runs/calc'
 import { DumpImporter, importLeagues } from '@/web/woke/league-invest/dumps'
 import type { LeagueHistory } from '@/web/woke/league-invest/dumps'
-import { MECHANICS, mechanicById, priceGroup } from '@/web/woke/mechanics/data'
-import { REWARDS } from '@/web/woke/mechanics/betrayal'
+import { MECHANICS, expeditionRows, mechanicById, priceGroup, verdict, weekChange } from '@/web/woke/mechanics/data'
+import { REWARDS, priceReward } from '@/web/woke/mechanics/betrayal'
 import { MECHANIC_ICONS } from '@/web/woke/ui/game-icons'
 import { mechanicOf } from '@/web/woke/atlas/tree'
 import type { AtlasNode } from '@/web/woke/atlas/tree'
@@ -136,8 +136,8 @@ describe('essence corruption', () => {
 })
 
 describe('league mechanics', () => {
-  // APT's item data: what the game has now (Breach splinters, Incubators and
-  // Expedition artifacts are gone).
+  // APT's item data: what the game has now (Breach splinters and Incubators
+  // are gone).
   const names = new Set([...fs.readFileSync(path.join(__dirname, '../../public/data/en/items.ndjson'), 'utf8')
     .matchAll(/"name":"((?:[^"\\]|\\.)*)"/g)].map(m => JSON.parse(`"${m[1]}"`) as string))
 
@@ -145,7 +145,7 @@ describe('league mechanics', () => {
     const empty: string[] = []
     for (const m of MECHANICS) {
       for (const g of m.groups) {
-        if (g.types?.some(t => ['Artifact', 'Incubator'].includes(t))) empty.push(`${m.id}: ${g.label}`)
+        if (g.types?.includes('Incubator')) empty.push(`${m.id}: ${g.label}`)
         if (g.match && ![...names].some(n => g.match!.test(n))) empty.push(`${m.id}: ${g.label}`)
       }
     }
@@ -168,6 +168,42 @@ describe('league mechanics', () => {
       { type: 'UniqueArmour', name: 'Replica Mail', variant: 'Astral Plate, 6L', chaos: 300 }
     ])
     expect(rows.map(r => [r.item.name, r.chaos])).toEqual([['Replica Mail', 300], ['Replica Robe', 40]])
+  })
+
+  // poe.ninja's own list, as the live feed sends it (Allflame, 2026-11-05).
+  const artifacts: PriceItem[] = [
+    { type: 'Artifact', name: 'Burial Medallion', variant: '', chaos: 1, d7: 2.8 },
+    { type: 'Artifact', name: 'Astragali', variant: '', chaos: 0.07 },
+    { type: 'Artifact', name: 'Exotic Coinage', variant: '', chaos: 7.2, d7: 4 },
+    { type: 'Artifact', name: 'Scrap Metal', variant: '', chaos: 2.94 },
+    { type: 'Currency', name: 'Exotic Coinage', variant: '', chaos: 999 }
+  ]
+
+  it('finds the Expedition currencies under poe.ninja\'s Artifact type, with their vendors', () => {
+    expect(expeditionRows(artifacts).map(r => [r.item.name, r.tag, r.chaos])).toEqual([
+      ['Exotic Coinage', 'Tujen', 7.2],
+      ['Scrap Metal', 'Rog', 2.94],
+      ['Burial Medallion', 'Dannig', 1],
+      ['Astragali', 'Gwennen', 0.07]
+    ])
+    for (const r of expeditionRows(artifacts)) expect(names.has(r.item.name)).toBe(true)
+  })
+
+  it('makes no best call on Expedition prices, which are per unit', () => {
+    expect(verdict(mechanicById('expedition')!, artifacts)).toBeNull()
+    expect(verdict(mechanicById('harvest')!, [{ type: 'Currency', name: 'Sacred Crystallised Lifeforce', variant: '', chaos: 380 }])?.best.item.name)
+      .toBe('Sacred Crystallised Lifeforce')
+  })
+
+  it('shows the week\'s change only when the trend is known', () => {
+    const [coinage, scrap] = expeditionRows(artifacts)
+    expect(weekChange(coinage)).toBeCloseTo(0.8)
+    expect(weekChange(scrap)).toBeNull()
+  })
+
+  it('prices the Betrayal Expedition reward from the same list', () => {
+    expect(priceReward('Expedition currency', artifacts).chaos).toBeCloseTo(1.97)
+    expect(priceReward('Expedition currency', artifacts).count).toBe(4)
   })
 
   it('mechanic icons show items that exist', () => {

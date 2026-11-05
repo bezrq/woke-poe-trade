@@ -12,7 +12,7 @@
       <div v-for="(row, i) in g.rows" :key="row.item.name" class="w-row" :class="$style.priceGrid">
         <span v-item-tip="row.item" class="w-trunc flex items-center gap-1">
           <WIcon :src="ninjaIcon(row.item.type, row.item.name) ?? undefined" fallback="fas fa-coins" />{{ row.item.name }}<span v-if="row.tag" class="w-faint ml-1 text-xs">{{ row.tag }}</span>
-          <span v-if="i === 0" class="w-up ml-1" :class="$style.best">best</span>
+          <span v-if="i === 0 && !g.unranked" class="w-up ml-1" :class="$style.best">best</span>
         </span>
         <span :class="$style.bar"><i :style="{ width: barWidth(row.chaos, g.max) }" /></span>
         <WPrice :chaos="row.chaos" :divine="divine" class="justify-end" />
@@ -39,7 +39,7 @@ const props = withDefaults(defineProps<{
 
 const groups = computed(() => props.mech.groups.map(g => {
   const rows = priceGroup(g, props.items)
-  return { label: g.unit ? `${g.label} (per ${g.unit})` : g.label, rows, max: rows[0]?.chaos ?? 0 }
+  return { label: g.unit ? `${g.label} (per ${g.unit})` : g.label, rows, max: rows[0]?.chaos ?? 0, unranked: g.unranked }
 }))
 const shownGroups = computed(() => props.top == null
   ? groups.value
