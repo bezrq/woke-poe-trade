@@ -23,8 +23,8 @@
           :options="[{ value: '3', label: 'Top 3' }, { value: '5', label: 'Top 5' }, { value: '8', label: 'Top 8' }]"
           @update:model-value="config.topN = Number($event)" />
         <template v-else>
-          <WSelect v-model="config.specificMode" title="Whether the font lets you choose the transfigured version or gives a random one"
-            :options="[{ value: 'choose', label: 'I choose the version' }, { value: 'random', label: 'Random version' }]" />
+          <WSelect v-model="config.specificMode" title="The font only sometimes offers the choice of version; otherwise it's a random gem of that colour"
+            :options="[{ value: 'choose', label: 'I choose the version (rare offer)' }, { value: 'random', label: 'Random version' }]" />
           <WField v-model="config.minProfit" type="number" suffix="c profit min" style="width: 9rem;" />
         </template>
         <WChip clickable :active="!!config.skipThin" title="Leave thin-market gems out: they count as 0 and leave the lists. Most gems are thin, so EVs become a floor."
@@ -49,7 +49,7 @@
         <WField :model-value="config.runnerMinutes ?? 6" type="number" suffix="min / run" style="width: 7.5rem;"
           @update:model-value="config.runnerMinutes = Number($event) || 0" />
         <span class="w-dim text-xs">Entry <WPrice :chaos="entryCost" :divine="snapshot?.divine" /></span>
-        <span v-if="config.view === 'color' && bestRoll" class="ml-auto w-num" title="Best colour EV minus entry and gem, per run and per hour">
+        <span v-if="config.view === 'color' && bestRoll" class="ml-auto w-num" title="Best colour EV for each font craft in this lab, minus entry and gems, per run and per hour">
           <span :class="runProfit >= 0 ? 'w-up' : 'w-down'">{{ fmt(runProfit) }}</span> / run
           <template v-if="perHour != null"> · {{ fmt(perHour) }} / h</template>
         </span>
@@ -160,7 +160,7 @@ if (props.config.wmFlags[0] === 'uninitialized') {
   props.config.anchor = popupAnchor()
   props.config.view = 'color'
   props.config.gemState = '20/20'
-  props.config.specificMode = 'choose'
+  props.config.specificMode = 'random'
   props.config.topN = 5
   props.config.minProfit = 0
   wm.show(props.config.wmId)
@@ -224,9 +224,11 @@ const entryCost = computed(() => {
   if ((props.config.runnerLab ?? 'merciless') !== 'eternal' || !snapshot.value) return 0
   return snapshot.value.items.find(i => i.name === 'Offering to the Goddess')?.chaos ?? 0
 })
-const runCost = computed(() => props.config.runner ? entryCost.value + (props.config.runnerGemCost ?? 1) : 0)
+// Merciless gives one font craft and Eternal two, each with its own gem.
+const runCrafts = computed(() => (props.config.runnerLab ?? 'merciless') === 'eternal' ? 2 : 1)
+const runCost = computed(() => props.config.runner ? entryCost.value + (props.config.runnerGemCost ?? 1) * runCrafts.value : 0)
 const bestRoll = computed(() => rolls.value.length ? Math.max(...rolls.value.map(r => r.ev)) : null)
-const runProfit = computed(() => (bestRoll.value ?? 0) - runCost.value)
+const runProfit = computed(() => (bestRoll.value ?? 0) * runCrafts.value - runCost.value)
 const perHour = computed(() => {
   const min = props.config.runnerMinutes ?? 6
   return min > 0 ? runProfit.value * 60 / min : null

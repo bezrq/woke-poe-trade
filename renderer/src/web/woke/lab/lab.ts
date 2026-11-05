@@ -29,19 +29,25 @@ export interface LabWidget extends Widget {
 
 // The lab's entrance. The game spells it "Aspirants' Plaza" (its boss rooms
 // are "Aspirant's Trial"), so it is recognised by its area id, which is the
-// same in every client language: "3_Labyrinth_Airlock" (merciless), etc.
+// same in every client language: "Labyrinth_Airlock". That id and its level 33
+// are the same for every difficulty, so the plaza can't tell which lab you run.
 export const PLAZA_ZONE = "Aspirants' Plaza"
 
 export function isPlazaArea (areaId: string): boolean {
   return /(^|_)Labyrinth_Airlock$/i.test(areaId)
 }
 
-// The plaza's area level tells the difficulty: 33 / 55 / 68 / 75.
+// A lab room's area level tells the difficulty: 33 / 55 / 68 / 75.
 export function difficultyForAreaLevel (level: number): LabDifficulty {
   if (level <= 33) return 'normal'
   if (level <= 55) return 'cruel'
   if (level <= 68) return 'merciless'
   return 'uber'
+}
+
+// The difficulty you're in, or null in the plaza, where it can't be known yet.
+export function labDifficultyOf (areaId: string, areaLevel: number | null): LabDifficulty | null {
+  return areaLevel == null || isPlazaArea(areaId) ? null : difficultyForAreaLevel(areaLevel)
 }
 
 // poelab layout images carry the layout's date (e.g. …/2026-11-04_uber.jpg).
