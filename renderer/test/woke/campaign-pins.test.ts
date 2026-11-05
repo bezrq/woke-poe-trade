@@ -13,7 +13,7 @@ function run (over: Partial<CampaignRun> = {}): CampaignRun {
 }
 
 function inputs (over: Partial<PinInputs>): PinInputs {
-  return { pins: [], run: run(), cmp: null, now: NOW, delta: null, actMs: null, level: null, xp: null, step: null, ...over }
+  return { pins: [], run: run(), cmp: null, bosses: true, now: NOW, delta: null, actMs: null, level: null, xp: null, step: null, ...over }
 }
 
 describe('campaign pinned readouts', () => {
@@ -60,6 +60,10 @@ describe('campaign next boss', () => {
     const out = pinnedReadouts(inputs({ pins: ['boss'], run: run({ elapsedMs: 760_000 }), cmp }))[0]
     expect(out.text).toBe('Kaom +1:00')
     expect(out.tone).toBe('down')
+  })
+
+  it('leaves the pin out when boss times are switched off', () => {
+    expect(pinnedReadouts(inputs({ pins: ['boss'], bosses: false }))).toEqual([])
   })
 
   it('has none once the act has no bosses left', () => {

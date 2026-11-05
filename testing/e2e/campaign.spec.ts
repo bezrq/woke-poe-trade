@@ -69,6 +69,10 @@ test('pinned values stay on the icon and go when the route sleeps; the card open
   await icon.hover()
   await icon.getByRole('button', { name: 'Pin to screen' }).click()
   await expect(overlay.page.getByText('On screen while levelling')).toBeVisible()
+  await overlay.page.keyboard.press('Escape')
+
+  fakeApp.appendClientLog(['2026/11/04 19:00:00 1 abc [DEBUG Client 1] Generating level 83 area "MapWorldsAbomination" with seed 1'])
+  await expect(icon).toBeHidden()
 })
 
 test('run timer splits act 1 when act 2 starts, with the run time on the tracker card', async ({ overlay, fakeApp }) => {

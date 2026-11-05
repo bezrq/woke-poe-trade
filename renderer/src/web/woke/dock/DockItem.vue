@@ -80,8 +80,9 @@ watch(() => props.show, (show) => { if (!show) entry.pinned = null })
 watch(() => wm?.active.value, (active) => { if (!active && entry.pinned === 'click') entry.pinned = null })
 
 const clickPinned = computed(() => entry.pinned === 'click')
+const keyPinned = computed(() => entry.pinned === 'key')
 
-defineExpose({ peek, togglePin, clickPinned })
+defineExpose({ peek, togglePin, clickPinned, keyPinned })
 </script>
 
 <template>

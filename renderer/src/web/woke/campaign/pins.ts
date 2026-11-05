@@ -30,6 +30,8 @@ export interface PinInputs {
   run: CampaignRun | null
   // The run compared against.
   cmp: CampaignRun | null
+  // Boss times are being recorded (the run timer's sub-splits setting).
+  bosses: boolean
   now: number
   delta: number | null
   actMs: number | null
@@ -61,7 +63,7 @@ export function pinnedReadouts (input: PinInputs): Readout[] {
     } else if (id === 'delta') {
       if (input.delta != null) add(id, formatDelta(input.delta), input.delta <= 0 ? 'up' : 'down')
     } else if (id === 'boss') {
-      const boss = nextBoss(run!, input.cmp, now)
+      const boss = input.bosses ? nextBoss(run!, input.cmp, now) : null
       if (boss) {
         if (boss.leftMs == null) add(id, boss.label, 'dim')
         else if (boss.leftMs >= 0) add(id, `${boss.label} ${formatClock(boss.leftMs)}`, 'dim')

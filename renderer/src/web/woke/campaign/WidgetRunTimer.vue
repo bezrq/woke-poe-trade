@@ -182,6 +182,7 @@ import {
   migrateRunTimer, parseHotkeyTarget, pauseRun, personalBest, resumeRun, runElapsed, runTotal, splitRows, startRun, sumOfBest
 } from './run-timer'
 import { CAMPAIGN_TYPE } from './widget'
+import type { CampaignWidget } from './widget'
 import { isWidgetTypeOn } from '../modules'
 import { followGameLog } from '../shared/game-log'
 import type { LogLine } from '../shared/game-log'
@@ -213,8 +214,12 @@ if (!props.config.lastLogAt) props.config.lastLogAt = Date.now()
 // shows the splits panel.
 const docked = computed(() => {
   const cfg = AppConfig()
-  // Only while its icon is there to reach the run from, not in maps or asleep.
-  return isWidgetTypeOn(cfg, CAMPAIGN_TYPE) && cfg.widgets.some(w => w.wmType === CAMPAIGN_TYPE) && dockIconShowing('campaign')
+  if (!isWidgetTypeOn(cfg, CAMPAIGN_TYPE)) return false
+  const campaign = cfg.widgets.find(w => w.wmType === CAMPAIGN_TYPE) as CampaignWidget | undefined
+  if (!campaign) return false
+  // Past the campaign: nothing from the timer either. While levelling, it shows
+  // on its own only where the campaign icon doesn't (hideouts, maps).
+  return campaign.state?.asleep === true || dockIconShowing('campaign')
 })
 
 const tab = shallowRef<'splits' | 'history'>('splits')

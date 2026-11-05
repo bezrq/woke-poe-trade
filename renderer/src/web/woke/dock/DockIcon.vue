@@ -13,7 +13,7 @@
       </span>
       <span v-if="peekText" :class="$style.peekText">{{ peekText }}</span>
       <template v-else>
-        <span v-for="r in readouts" :key="r.id" :class="[$style.read, r.tone && $style['read-' + r.tone]]">{{ r.text }}</span>
+        <span v-for="r in readouts" :key="r.id" class="w-num" :class="[$style.read, r.tone && $style['read-' + r.tone]]">{{ r.text }}</span>
       </template>
       <span v-if="badge != null && badge !== ''" :class="[$style.badge, $style['tone-' + (host.props.tone ?? 'accent')]]">{{ badge }}</span>
       <span v-if="host.props.led" :class="[$style.led, $style['led-' + host.props.led]]" />
@@ -180,7 +180,9 @@ const styles = useCssModule()
 .ringFill { fill: none; stroke: var(--w-accent); stroke-width: 2.5; }
 .glyph { width: 28px; display: grid; place-items: center; font-size: 13px; }
 .art { width: 20px; height: 20px; object-fit: contain; }
-.withRead { opacity: 0.85; gap: 8px; padding-right: 12px; background: var(--w-panel); }
+.icon.withRead { opacity: 0.85; }
+.icon.withRead:hover, .icon.withRead.hot, .icon.withRead.peek { opacity: 1; }
+.withRead { gap: 8px; padding-right: 12px; background: var(--w-panel); }
 .read { font-size: 12px; color: var(--w-fg); white-space: nowrap; max-width: 18rem; overflow: hidden; text-overflow: ellipsis; }
 .read-up { color: var(--w-up); }
 .read-down { color: var(--w-down); }

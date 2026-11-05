@@ -259,7 +259,8 @@ const expanded = computed(() => dockRef.value?.clickPinned ?? false)
 // Only this button makes the overlay clickable: the card stays see-through,
 // so hovering it to read a step never opens the overlay.
 const pinBtn = shallowRef<HTMLElement | null>(null)
-useHoverZone(pinBtn, { enabled: () => cardShown.value, activate: () => true })
+// Held open by the hotkey while you play, it must not take focus as you pass.
+useHoverZone(pinBtn, { enabled: () => cardShown.value && !dockRef.value?.keyPinned, activate: () => true })
 
 const readouts = computed(() => {
   const w = timerWidget.value
@@ -269,6 +270,7 @@ const readouts = computed(() => {
     run,
     // No run yet can also mean the timer widget hasn't filled itself in.
     cmp: w && run ? comparisonRun(w) : null,
+    bosses: w?.subSplits !== false,
     now: now.value,
     delta: timer.value?.delta ?? null,
     actMs: timer.value?.act ?? null,
