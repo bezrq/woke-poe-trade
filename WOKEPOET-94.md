@@ -37,7 +37,18 @@ history:
     comment: >-
       Which bubble: A letter icon (recommended), B named pill, or C map
       thumbnail? Mocks: https://claude.ai/artifact/7fPodiRCXymABQDG8tk7H1
-swimlane: require-input
+  - type: comment
+    user: Agent
+    comment: 'Guy picked A, the letter icon in the dock row.'
+    date: '2026-11-05T11:12:16.269Z'
+    id: c-2026-11-05t11-12-16-269z
+  - type: swimlane_change
+    swimlane: require-input
+    action: cleared
+    user: Agent
+    date: '2026-11-05T11:12:16.269Z'
+    comment: 'Guy picked A, the letter icon in the dock row.'
+swimlane: null
 needsAction: null
 ---
 > **TL;DR** The poelab layout window stays on screen after you leave Shift+Space. It should go away with interact mode and leave a small bubble that shows a mid-size map on hover.
