@@ -259,7 +259,12 @@ export class Shortcuts {
             name: 'MAIN->CLIENT::widget-action',
             payload: { target: entry.action.target }
           })
-          if (entry.action.focusOverlay) this.overlay.assertOverlayActive()
+          if (entry.action.focusOverlay) {
+            // woke: a price check's tracker would pull focus back to the game
+            // on the next mouse move.
+            this.areaTracker.removeListeners()
+            this.overlay.assertOverlayActive()
+          }
         } else if (entry.action.type === 'stash-search') {
           stashSearch(entry.action.text, this.clipboard, this.overlay)
         } else if (entry.action.type === 'copy-item') {
