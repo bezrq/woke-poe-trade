@@ -1,43 +1,110 @@
 <script setup>
-// The landing page (index.md, layout: landing). Rooftap's landing page in the
-// overlay's Hybrid gold: a split hero on a real game frame, one map told as a
-// scroll story, the modules by group with their presets, install, FAQ.
+// The landing page (index.md, layout: landing), in the overlay's Hybrid gold:
+// a short hero, then the tool tour (the overlay's rail beside one tool in
+// action), a note that every tool is a module, the headline features as
+// cards, install, FAQ.
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { withBase } from 'vitepress'
-import { MODULES, MODULE_GROUPS, PRESETS } from '../../../../renderer/src/web/woke/modules.ts'
-import { REPO, DOWNLOAD, HERO_FACTS, STORY, INSTALL, FAQ } from './content.js'
+import { MODULES, PRESETS } from '../../../../renderer/src/web/woke/modules.ts'
+import { REPO, DOWNLOAD, HERO_FACTS, TOUR, FEATURES, MORE, INSTALL, FAQ } from './content.js'
 
 const shot = (name) => withBase(`/shots/${name}.webp`)
+const iconOf = (id) => MODULES.find(m => m.id === id)?.icon.fa ?? 'fas fa-circle'
 
 const toolkit = MODULES.filter(m => m.group !== 'apt')
-const groups = MODULE_GROUPS.filter(g => g.id !== 'apt').map(g => ({
-  ...g,
-  modules: toolkit.filter(m => m.group === g.id)
-}))
 
-// Presets: pick one to see which modules it switches on.
+// ---- the tour ----
+// Every screen in order: a stop with `frames` gives several.
+const stops = TOUR.flatMap(g => g.stops)
+const framesOf = (s) => s.frames ?? [s]
+const screens = stops.flatMap((s, si) => framesOf(s).map((f, fi) => ({ ...f, si, fi, key: `${s.id}-${fi}` })))
+const current = ref(0) // index into stops
+const frame = ref(0) // index into the stop's frames
+const hovering = ref(false)
+const stop = computed(() => stops[current.value])
+const frames = computed(() => framesOf(stop.value))
+// A hover stop shows its second frame while the mouse is on the picture.
+const shown = computed(() => stop.value.hover ? (hovering.value ? 1 : 0) : frame.value)
+const screen = computed(() => frames.value[shown.value])
+const isShown = (sc) => sc.si === current.value && sc.fi === shown.value
+// Pictures load as they're reached (and the stop ahead), not all at once.
+const loaded = ref(new Set([0, 1]))
+const railEl = ref(null)
+let timer = null
+// Stepping by itself: the caption isn't read out then (it isn't news).
+const auto = ref(false)
+// The mouse rests on the picture (a hover stop reached by the tour opens).
+let mouseOnStage = false
+
+function go (i, user = true, f = 0) {
+  const n = (i + stops.length) % stops.length
+  current.value = n
+  frame.value = f
+  hovering.value = Boolean(stops[n].hover && mouseOnStage)
+  if (hovering.value) stopAuto()
+  loaded.value = new Set([...loaded.value, n, (n + 1) % stops.length])
+  if (user) stopAuto()
+  // Keep the picked tool in view in the rail (it scrolls sideways on a
+  // phone). Only the rail scrolls: the page stays where the reader is.
+  const rail = railEl.value
+  const btn = rail?.querySelector(`[data-stop="${stops[n].id}"]`)
+  if (rail && btn) {
+    const pad = 8
+    if (btn.offsetTop < rail.scrollTop) rail.scrollTop = btn.offsetTop - pad
+    else if (btn.offsetTop + btn.offsetHeight > rail.scrollTop + rail.clientHeight) rail.scrollTop = btn.offsetTop + btn.offsetHeight - rail.clientHeight + pad
+    if (btn.offsetLeft < rail.scrollLeft) rail.scrollLeft = btn.offsetLeft - pad
+    else if (btn.offsetLeft + btn.offsetWidth > rail.scrollLeft + rail.clientWidth) rail.scrollLeft = btn.offsetLeft + btn.offsetWidth - rail.clientWidth + pad
+    if (user) btn.focus({ preventScroll: true })
+  }
+}
+function pickFrame (f) {
+  stopAuto()
+  if (stop.value.hover) hovering.value = f === 1
+  else frame.value = f
+}
+// The tour steps through a stop's frames before moving on.
+function advance () {
+  if (!stop.value.hover && frame.value + 1 < frames.value.length) frame.value++
+  else go(current.value + 1, false)
+}
+function stopAuto () { clearInterval(timer); timer = null; auto.value = false }
+function onStageEnter (e) {
+  if (e.pointerType !== 'mouse') return
+  mouseOnStage = true
+  if (stop.value.hover) { stopAuto(); hovering.value = true }
+}
+function onStageLeave (e) {
+  if (e.pointerType !== 'mouse') return
+  mouseOnStage = false
+  hovering.value = false
+}
+// No hover on a touch screen: a tap opens and closes it.
+function onStageTap (e) {
+  if (stop.value.hover && e.pointerType !== 'mouse') hovering.value = !hovering.value
+}
+function onRailKey (e) {
+  const next = { ArrowDown: 1, ArrowRight: 1, ArrowUp: -1, ArrowLeft: -1 }[e.key]
+  if (next == null) return
+  e.preventDefault()
+  go(current.value + next)
+}
+onMounted(() => {
+  // Steps by itself until the visitor picks a tool; never with reduced motion.
+  if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    timer = setInterval(advance, 6500)
+    auto.value = true
+  }
+})
+onBeforeUnmount(stopAuto)
+
+// ---- modules note: pick a preset to see what it switches on ----
 const presets = PRESETS.filter(p => p.id !== 'price-check-only')
-const preset = ref('everything')
+const preset = ref('mapper')
 const presetOn = computed(() => {
   const p = PRESETS.find(p => p.id === preset.value)
   return p.on === 'all' ? null : new Set(p.on)
 })
 const isOn = (id) => presetOn.value == null || presetOn.value.has(id)
-
-// The story: the step nearest the middle of the screen picks the frame.
-const current = ref(0)
-const stepEls = ref([])
-let observer
-onMounted(() => {
-  if (!('IntersectionObserver' in window)) return
-  observer = new IntersectionObserver((entries) => {
-    for (const e of entries) {
-      if (e.isIntersecting) current.value = Number(e.target.dataset.i)
-    }
-  }, { rootMargin: '-45% 0px -45% 0px' })
-  for (const el of stepEls.value) observer.observe(el)
-})
-onBeforeUnmount(() => observer?.disconnect())
 </script>
 
 <template>
@@ -47,7 +114,8 @@ onBeforeUnmount(() => observer?.disconnect())
       <div class="wrap nav-inner">
         <a class="word" :href="withBase('/')"><img :src="withBase('/favicon.png')" alt="" width="24" height="24">Woke PoE Trade</a>
         <nav class="nav-links" aria-label="Page">
-          <a href="#modules">Modules</a>
+          <a href="#tour">Tour</a>
+          <a href="#features">Features</a>
           <a href="#install">Install</a>
           <a :href="withBase('/quick-start')">Help</a>
           <a :href="REPO">GitHub</a>
@@ -58,58 +126,78 @@ onBeforeUnmount(() => observer?.disconnect())
 
     <main>
       <section class="wrap hero" aria-labelledby="hero-title">
-        <div class="hero-copy">
-          <h1 id="hero-title" class="display">Price check, plan maps and track profit <span>without leaving the game.</span></h1>
-          <p class="lede">An overlay for Path of Exile 1, built on Awakened PoE Trade. {{ toolkit.length }} modules sit on one rail at the edge of your screen, and you turn on only the ones you use.</p>
-          <div class="cta">
-            <a class="btn" :href="DOWNLOAD">Download for Windows</a>
-            <!-- target keeps VitePress's router off: the demo is its own page. -->
-            <a class="ghost" :href="withBase('/demo/')" target="_self">Try the demo</a>
-          </div>
-          <p class="facts"><span v-for="f in HERO_FACTS" :key="f">{{ f }}</span></p>
+        <h1 id="hero-title" class="display">Price check, plan maps and track profit <span>without leaving the game.</span></h1>
+        <p class="lede">An overlay for Path of Exile 1, built on Awakened PoE Trade. {{ toolkit.length }} tools on one rail at the edge of your screen.</p>
+        <div class="cta">
+          <a class="btn" :href="DOWNLOAD">Download for Windows</a>
+          <!-- target keeps VitePress's router off: the demo is its own page. -->
+          <a class="ghost" :href="withBase('/demo/')" target="_self">Try it in your browser</a>
         </div>
-        <figure class="frame hero-frame">
-          <img :src="shot('hero')" alt="The overlay open in a map: the rail on the left edge and the market tracker" width="1600" height="900">
-        </figure>
+        <p class="facts"><span v-for="f in HERO_FACTS" :key="f">{{ f }}</span></p>
       </section>
 
-      <section class="section" aria-labelledby="story-title">
-        <div class="wrap">
-          <h2 id="story-title" class="display title">One map, start to finish</h2>
-          <p class="sub">Every picture here is the real overlay drawn over a real game frame.</p>
-          <div class="story">
-            <ol class="steps">
-              <li v-for="(s, i) in STORY" :key="s.id" ref="stepEls" :data-i="i" :class="{ cur: current === i }">
-                <h3>{{ s.title }}</h3>
-                <p>{{ s.text }}</p>
-                <img class="step-shot" :src="shot(s.shot)" :alt="s.alt" width="1600" height="900" loading="lazy">
-              </li>
-            </ol>
-            <div class="story-stage">
-              <figure class="frame">
-                <img v-for="(s, i) in STORY" :key="s.id" :src="shot(s.shot)" :alt="s.alt" :class="{ on: current === i }" :aria-hidden="current !== i" width="1600" height="900" loading="lazy">
-              </figure>
+      <section id="tour" class="wrap tour-wrap" aria-label="Tool tour">
+        <div class="tour" @pointerdown="stopAuto" @focusin="stopAuto">
+          <nav ref="railEl" class="rail" aria-label="Tools" @keydown="onRailKey">
+            <template v-for="g in TOUR" :key="g.group">
+              <span class="rail-group">{{ g.group }}</span>
+              <button v-for="s in g.stops" :key="s.id" type="button" :data-stop="s.id"
+                :aria-current="stop.id === s.id" :tabindex="stop.id === s.id ? 0 : -1"
+                @click="go(stops.indexOf(s))">
+                <span class="ic" aria-hidden="true"><i :class="iconOf(s.module)"></i></span>{{ s.label }}
+              </button>
+            </template>
+          </nav>
+          <figure class="stage" :class="{ hoverable: stop.hover }"
+            @pointerenter="onStageEnter" @pointerleave="onStageLeave" @pointerup="onStageTap">
+            <template v-for="sc in screens" :key="sc.key">
+              <img v-if="loaded.has(sc.si)" :src="shot(sc.shot)" :alt="sc.alt" :class="{ on: isShown(sc) }" :aria-hidden="!isShown(sc)" width="1600" height="900">
+            </template>
+            <figcaption class="cap" :aria-live="auto ? 'off' : 'polite'">
+              <div v-if="frames.length > 1" class="frames" role="group" :aria-label="`${stop.label} screens`">
+                <button v-for="(f, i) in frames" :key="f.label" type="button" :aria-pressed="shown === i" @click.stop="pickFrame(i)">{{ f.label }}</button>
+              </div>
+              <b>{{ screen.title }}</b>
+              <span>{{ screen.text }}</span>
+            </figcaption>
+            <div class="arrows">
+              <button type="button" aria-label="Previous tool" @click.stop="go(current - 1)"><i class="fas fa-chevron-left"></i></button>
+              <button type="button" aria-label="Next tool" @click.stop="go(current + 1)"><i class="fas fa-chevron-right"></i></button>
             </div>
-          </div>
+          </figure>
         </div>
+        <p class="tour-note">Every picture is the real overlay over a real game frame.</p>
       </section>
 
-      <section id="modules" class="section" aria-labelledby="modules-title">
+      <section id="features" class="section" aria-labelledby="features-title">
         <div class="wrap">
-          <h2 id="modules-title" class="display title">Every module is off until you want it</h2>
-          <p class="sub">Pick a preset on first run, then switch modules one by one in Setup. A module that's off doesn't load and doesn't poll.</p>
-          <div class="presets" role="group" aria-label="Presets">
-            <button v-for="p in presets" :key="p.id" type="button" class="preset" :aria-pressed="preset === p.id" @click="preset = p.id">{{ p.label }}</button>
+          <div class="modnote">
+            <div class="modnote-copy">
+              <strong>Every tool is a module.</strong>
+              <span>Switch off what you don't play: it leaves the rail, frees its hotkeys and stops loading. Pick how you play:</span>
+            </div>
+            <div class="presets" role="group" aria-label="Presets">
+              <button v-for="p in presets" :key="p.id" type="button" class="preset" :aria-pressed="preset === p.id" @click="preset = p.id">{{ p.label }}</button>
+            </div>
+            <ul class="toggles" aria-label="Modules in this preset">
+              <li v-for="m in toolkit" :key="m.id" :class="{ off: !isOn(m.id) }"><span class="sw" aria-hidden="true"></span>{{ m.name }}<span class="sr">{{ isOn(m.id) ? ' (on)' : ' (off)' }}</span></li>
+            </ul>
           </div>
-          <div class="groups">
-            <div v-for="g in groups" :key="g.id" class="group" :data-group="g.id">
-              <h3><span class="dot" aria-hidden="true"></span>{{ g.label }}</h3>
-              <ul>
-                <li v-for="m in g.modules" :key="m.id" :class="{ off: !isOn(m.id) }">
-                  <b>{{ m.name }}</b>
-                  <span>{{ m.description }}</span>
-                </li>
-              </ul>
+
+          <h2 id="features-title" class="display title">What it does</h2>
+          <div class="bento">
+            <article v-for="(f, i) in FEATURES" :key="f.title" class="card" :class="i < 4 ? 'big' : 'mid'">
+              <img :src="shot(f.shot)" :alt="f.alt" width="1600" height="900" loading="lazy">
+              <div class="card-text">
+                <span class="n">{{ String(i + 1).padStart(2, '0') }}</span>
+                <h3>{{ f.title }}</h3>
+                <p>{{ f.text }}</p>
+                <ul v-if="f.points"><li v-for="pt in f.points" :key="pt">{{ pt }}</li></ul>
+              </div>
+            </article>
+            <div class="more">
+              <b>And more</b>
+              <span v-for="m in MORE" :key="m" class="chip">{{ m }}</span>
             </div>
           </div>
           <p class="apt">Plus everything from Awakened PoE Trade: price check, item info, wiki and poedb lookups, Craft of Exile, and heist gem reading.</p>
@@ -158,6 +246,9 @@ onBeforeUnmount(() => observer?.disconnect())
 <style>
 @import '@fontsource-variable/bricolage-grotesque/index.css';
 @import '@fontsource-variable/geist/index.css';
+/* The overlay's own icon font, for the rail. */
+@import '../../../../renderer/node_modules/@fortawesome/fontawesome-free/css/fontawesome.min.css';
+@import '../../../../renderer/node_modules/@fortawesome/fontawesome-free/css/solid.min.css';
 </style>
 
 <style scoped>
@@ -271,80 +362,212 @@ onBeforeUnmount(() => observer?.disconnect())
 /* ---------- hero ---------- */
 .hero {
   display: grid;
-  grid-template-columns: minmax(0, 0.82fr) minmax(0, 1.18fr);
-  gap: 48px;
-  align-items: center;
-  padding-block: 72px 80px;
+  justify-items: center;
+  text-align: center;
+  gap: 20px;
+  padding-block: 64px 40px;
 }
-.hero-copy { display: grid; gap: 22px; min-width: 0; }
-.hero h1 { font-size: clamp(40px, 5vw, 68px); }
+.hero h1 { font-size: clamp(38px, 5.4vw, 72px); max-width: 20ch; }
 .hero h1 span { color: var(--gold-hi); }
-.lede { color: var(--dim); font-size: 18.5px; max-width: 52ch; }
-.facts { display: flex; flex-wrap: wrap; gap: 4px 0; font-size: 14px; color: var(--faint); }
+.lede { color: var(--dim); font-size: 18.5px; max-width: 54ch; }
+.hero .cta { justify-content: center; }
+.facts { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 0; font-size: 14px; color: var(--faint); }
 .facts span + span::before { content: '·'; margin: 0 12px; color: var(--line-strong); }
-.frame {
-  position: relative;
-  border-radius: 18px;
+
+/* ---------- tour ---------- */
+.tour-wrap { padding-bottom: 72px; }
+.tour {
+  display: grid;
+  grid-template-columns: 228px minmax(0, 1fr);
+  border-radius: 20px;
   overflow: hidden;
   border: 1px solid var(--line-strong);
   background: var(--panel);
   box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55), 0 0 0 6px rgba(212, 166, 74, 0.04);
-  aspect-ratio: 16 / 9;
-  max-width: 100%;
 }
-.frame img { display: block; width: 100%; height: 100%; object-fit: cover; }
-
-/* ---------- sections ---------- */
-.section { padding-block: 88px; border-top: 1px solid var(--line); }
-.title { font-size: clamp(32px, 4vw, 52px); margin-bottom: 12px; }
-.sub { color: var(--dim); font-size: 17px; max-width: 60ch; margin-bottom: 36px; }
-
-/* ---------- story ---------- */
-.story { display: grid; grid-template-columns: minmax(0, 0.75fr) minmax(0, 1.25fr); gap: 40px; align-items: start; }
-.steps { display: grid; gap: 14px; padding-block: 8vh 30vh; }
-.steps li {
-  padding: 22px 24px;
-  border-radius: 18px;
-  border: 1px solid transparent;
+.rail {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px;
+  background: #110f0c;
+  border-right: 1px solid var(--line);
+  overflow-y: auto;
+  scrollbar-width: thin;
+  position: relative;
+  /* No height of its own: the picture sets the row, and the rail scrolls. */
+  contain: size;
+}
+.rail-group {
+  padding: 12px 10px 4px;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+.rail-group:first-child { padding-top: 4px; }
+.rail button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
   color: var(--dim);
-  transition: background 200ms ease, border-color 200ms ease;
+  font: 500 14.5px var(--font-body);
+  text-align: left;
+  cursor: pointer;
+  flex: none;
 }
-.steps li.cur { background: var(--panel); border-color: var(--line-strong); }
-.steps h3 { font: 700 22px/1.2 var(--font-display); letter-spacing: -0.025em; color: var(--fg); margin-bottom: 6px; }
-.steps li.cur h3 { color: var(--gold-hi); }
-.step-shot { display: none; }
-.story-stage { position: sticky; top: max(96px, calc(50vh - 240px)); }
-.story-stage img { position: absolute; inset: 0; opacity: 0; transition: opacity 350ms ease; }
-.story-stage img.on { opacity: 1; }
-.story-stage img:first-child { position: relative; }
+.rail button:hover { background: var(--panel-2); color: var(--fg); }
+.rail button[aria-current='true'] { background: rgba(212, 166, 74, 0.13); color: var(--fg); }
+.ic {
+  width: 28px;
+  height: 28px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  font-size: 12.5px;
+  color: var(--faint);
+}
+.rail button[aria-current='true'] .ic { border-color: var(--gold); color: var(--gold-hi); }
+.stage { position: relative; aspect-ratio: 16 / 9; min-width: 0; background: #0a0907; }
+.stage img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity 350ms ease; pointer-events: none; }
+/* On top, so saving or long-pressing the picture gets the one you see. */
+.stage img.on { opacity: 1; pointer-events: auto; z-index: 1; }
+.stage .cap, .stage .arrows { z-index: 2; }
+.cap {
+  position: absolute;
+  left: 18px;
+  bottom: 18px;
+  max-width: min(520px, calc(100% - 140px));
+  display: grid;
+  gap: 4px;
+  padding: 14px 18px;
+  border-radius: 14px;
+  border: 1px solid var(--line-strong);
+  background: rgba(13, 11, 9, 0.88);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+.cap b { font: 700 21px/1.2 var(--font-display); letter-spacing: -0.025em; color: var(--fg); }
+.cap span { color: var(--dim); font-size: 15px; }
+.arrows { position: absolute; right: 18px; bottom: 18px; display: flex; gap: 8px; }
+.arrows button {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: 1px solid var(--line-strong);
+  background: rgba(13, 11, 9, 0.88);
+  color: var(--fg);
+  cursor: pointer;
+}
+.arrows button:hover { background: var(--panel-3); }
+.frames { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
+.frames button {
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--line-strong);
+  background: transparent;
+  color: var(--dim);
+  font: 600 13px var(--font-body);
+  cursor: pointer;
+}
+.frames button:hover { color: var(--fg); background: var(--panel-2); }
+.frames button[aria-pressed='true'] { background: var(--gold); border-color: var(--gold); color: var(--gold-fg); }
+.stage.hoverable { cursor: zoom-in; }
+.tour-note { margin-top: 14px; text-align: center; color: var(--faint); font-size: 14px; }
 
-/* ---------- modules ---------- */
-.presets { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 22px; }
+/* ---------- modules note ---------- */
+.modnote {
+  display: grid;
+  gap: 14px;
+  padding: 20px 22px;
+  margin-bottom: 56px;
+  border-radius: 18px;
+  border: 1px dashed var(--line-strong);
+  background: var(--panel);
+}
+.modnote-copy { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; color: var(--dim); }
+.modnote-copy strong { font: 700 19px var(--font-display); letter-spacing: -0.02em; color: var(--fg); }
+.presets { display: flex; flex-wrap: wrap; gap: 8px; }
 .preset {
-  height: 40px;
-  padding: 0 18px;
+  height: 36px;
+  padding: 0 16px;
   border-radius: 999px;
   border: 1px solid var(--line-strong);
   background: transparent;
   color: var(--fg);
-  font: 600 14.5px var(--font-body);
+  font: 600 14px var(--font-body);
   cursor: pointer;
 }
 .preset:hover { background: var(--panel-2); }
 .preset[aria-pressed='true'] { background: var(--gold); border-color: var(--gold); color: var(--gold-fg); }
-.groups { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px; }
-.group { border-radius: 20px; background: var(--panel); border: 1px solid var(--line); padding: 22px; }
-.group h3 { display: flex; align-items: center; gap: 10px; font: 700 19px var(--font-display); letter-spacing: -0.02em; margin-bottom: 14px; }
-.dot { width: 10px; height: 10px; border-radius: 50%; background: var(--hue); box-shadow: 0 0 10px var(--hue); }
-.group[data-group='economy'] { --hue: #d4a64a; }
-.group[data-group='mapping'] { --hue: #d0743c; }
-.group[data-group='campaign'] { --hue: #6c9fc7; }
-.group[data-group='builds'] { --hue: #6cc77a; }
-.group ul { display: grid; gap: 12px; }
-.group li { font-size: 14.5px; color: var(--dim); transition: opacity 200ms ease; }
-.group li b { display: block; color: var(--fg); font-weight: 600; font-size: 15px; }
-.group li.off { opacity: 0.32; }
+.toggles { display: flex; flex-wrap: wrap; gap: 8px; }
+.toggles li {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px 4px 6px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  font-size: 13.5px;
+  color: var(--fg);
+  transition: opacity 200ms ease;
+}
+.sw { position: relative; width: 26px; height: 15px; border-radius: 999px; background: var(--gold); transition: background 200ms ease; }
+.sw::after { content: ''; position: absolute; top: 2px; left: 13px; width: 11px; height: 11px; border-radius: 50%; background: var(--gold-fg); transition: left 200ms ease; }
+.toggles li.off { color: var(--faint); }
+.toggles li.off .sw { background: #3a332b; }
+.toggles li.off .sw::after { left: 2px; background: var(--faint); }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* ---------- features ---------- */
+.bento { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 16px; margin-top: 28px; }
+.card {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  min-width: 0;
+  overflow: hidden;
+  border-radius: 20px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+}
+.card.big { grid-column: span 3; }
+.card.mid { grid-column: span 2; }
+.card img { display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; object-fit: cover; border-bottom: 1px solid var(--line); }
+.card-text { display: grid; gap: 6px; align-content: start; padding: 18px 20px 22px; }
+.card .n { font-size: 13px; font-weight: 600; color: var(--gold); letter-spacing: 0.06em; }
+.card h3 { font: 700 21px/1.2 var(--font-display); letter-spacing: -0.025em; }
+.card.mid h3 { font-size: 18.5px; }
+.card p { color: var(--dim); font-size: 15px; }
+.card ul { display: grid; gap: 4px; margin-top: 6px; }
+.card li { position: relative; padding-left: 16px; color: var(--dim); font-size: 14.5px; }
+.card li::before { content: ''; position: absolute; left: 2px; top: 0.62em; width: 6px; height: 6px; border-radius: 50%; background: var(--gold); }
+.more {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 20px;
+  border-radius: 20px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+}
+.more b { font: 700 18px var(--font-display); margin-right: 6px; }
+.chip { padding: 4px 12px; border-radius: 999px; border: 1px solid var(--line); color: var(--dim); font-size: 14px; }
 .apt { margin-top: 22px; color: var(--dim); font-size: 15px; }
+
+/* ---------- sections ---------- */
+.section { padding-block: 88px; border-top: 1px solid var(--line); }
+.title { font-size: clamp(32px, 4vw, 52px); margin-bottom: 12px; }
 
 /* ---------- install ---------- */
 .install { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; margin-block: 28px 32px; }
@@ -364,16 +587,25 @@ onBeforeUnmount(() => observer?.disconnect())
 .foot-inner { display: flex; flex-wrap: wrap; gap: 12px 24px; justify-content: space-between; }
 .foot-links { display: flex; gap: 18px; }
 
+@media (max-width: 960px) {
+  .card.big, .card.mid { grid-column: span 3; }
+}
 @media (max-width: 860px) {
-  .hero, .story { grid-template-columns: minmax(0, 1fr); }
-  .hero { padding-block: 44px 56px; gap: 36px; }
+  .hero { padding-block: 44px 32px; }
   .nav-links { display: none; }
-  .story-stage { display: none; }
-  .steps { padding-block: 0; }
-  .steps li { background: var(--panel); border-color: var(--line); }
-  .steps li h3 { color: var(--fg); }
-  .step-shot { display: block; width: 100%; height: auto; margin-top: 14px; border-radius: 12px; border: 1px solid var(--line-strong); }
+  /* The rail becomes a row of tools you swipe, above the picture. */
+  .tour { grid-template-columns: minmax(0, 1fr); }
+  .rail { contain: none; flex-direction: row; overflow-x: auto; overflow-y: hidden; border-right: 0; border-bottom: 1px solid var(--line); }
+  .rail-group { display: none; }
+  .cap { position: static; max-width: none; border-radius: 0; border-width: 1px 0 0; backdrop-filter: none; }
+  .arrows { display: none; }
+  .stage { aspect-ratio: auto; display: grid; }
+  .stage img { inset: 0 0 auto 0; height: auto; aspect-ratio: 16 / 9; }
+  .stage::before { content: ''; display: block; aspect-ratio: 16 / 9; }
   .section { padding-block: 64px; }
+}
+@media (max-width: 640px) {
+  .card.big, .card.mid { grid-column: 1 / -1; }
 }
 @media (prefers-reduced-motion: reduce) {
   .landing * { transition: none !important; }
