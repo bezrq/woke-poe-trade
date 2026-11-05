@@ -1,7 +1,7 @@
 ---
 id: WOKEPOET-9
 title: 'Settings window: centre sidebar icons and make the panel more opaque'
-status: Ready
+status: Done
 priority: Medium
 effort: XS
 assignee: Agent
@@ -43,6 +43,30 @@ history:
     to: Ready
     user: Agent
     date: '2026-11-05T02:28:37.634Z'
+  - type: comment
+    user: Agent
+    comment: >-
+      PR squash-merged for branch
+      `flux/WOKEPOET-9-settings-window-centre-sidebar-icons-and-make-the-panel-more`
+      — advanced to Done.
+    date: '2026-11-05T02:31:58.846Z'
+    id: c-2026-11-05t02-31-58-846z
+  - type: status_change
+    from: Ready
+    to: Done
+    user: Agent
+    date: '2026-11-05T02:31:58.846Z'
+  - type: activity
+    user: Agent
+    date: '2026-11-05T02:32:21.654Z'
+    comment: Updated implementation link.
+    id: a-2026-11-05t02-32-21-654z
+  - type: comment
+    user: Agent
+    comment: 'Merged in PR #81 (95cbada) with CI green.'
+    date: '2026-11-05T02:32:22.483Z'
+    completionComment: true
+    id: c-2026-11-05t02-32-22-483z
 branch: flux/WOKEPOET-9-settings-window-centre-sidebar-icons-and-make-the-panel-more
 baselineCommit: 301ac1fcb1ecf86b5d04d66b9a83b4e036d062ea
 needsAction: null

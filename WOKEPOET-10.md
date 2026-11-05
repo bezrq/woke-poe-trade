@@ -14,6 +14,17 @@ history:
     user: Agent
     date: '2026-11-05T02:31:12.414Z'
     comment: Created ticket.
+    id: a-2026-11-05t02-31-12-414z
+  - type: activity
+    user: Agent
+    date: '2026-11-05T02:32:55.641Z'
+    comment: >-
+      Created worktree for branch
+      flux/WOKEPOET-10-trade-search-window-can-t-be-moved-or-resized
+    event: worktree-created
+    id: a-2026-11-05t02-32-55-641z
+branch: flux/WOKEPOET-10-trade-search-window-can-t-be-moved-or-resized
+baselineCommit: 95cbada0b56969b164437487851fe1db57556125
 ---
 > **TL;DR:** The Trade searches browser panel ignores resizing, loses the mouse mid-drag over the embedded page, and starts jammed against the bottom-right of the screen. Fix all three so it drags, resizes and remembers.
 
