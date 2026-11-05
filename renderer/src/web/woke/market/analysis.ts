@@ -14,7 +14,7 @@ export interface Mover {
 
 export type MoveUnit = 'chaos' | 'div'
 
-// Items present in both lists, priced at least `minChaos` now or then,
+// Items present in both lists, priced at least `minChaos` now,
 // sorted by the size of the move.
 export function computeMovers (
   now: PriceItem[],
@@ -42,7 +42,7 @@ export function computeMovers (
     if (opts.type && item.type !== opts.type) continue
     const prev = before.get(itemKey(item))
     if (prev == null || prev <= 0) continue
-    if (Math.max(item.chaos, prev) < opts.minChaos) continue
+    if (item.chaos < opts.minChaos) continue
     if (opts.hideThin && isThin(item)) continue
     if (opts.corrupted === 'only' && !isCorrupted(item)) continue
     if (opts.corrupted === 'hide' && isCorrupted(item)) continue
