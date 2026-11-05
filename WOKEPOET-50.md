@@ -15,7 +15,19 @@ history:
   - type: activity
     user: Agent
     date: '2026-11-05T08:09:52.347Z'
+    comment: Created ticket.
+    id: a-2026-11-05t08-09-52-347z
+  - type: activity
+    user: Agent
+    date: '2026-11-05T08:09:52.347Z'
     comment: Created as subtask of WOKEPOET-36.
+    id: a-2026-11-05t08-09-52-347z
+  - type: activity
+    user: Agent
+    date: '2026-11-05T10:53:21.174Z'
+    comment: Updated implementation link.
+    id: a-2026-11-05t10-53-21-174z
+implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/150'
 ---
 > **TL;DR** C5. uIOhook starts once with no powerMonitor handling. A missed mouse-up leaves heldButtons stuck in woke/hover.ts, and the dock stops catching the mouse.
 

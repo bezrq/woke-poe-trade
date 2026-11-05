@@ -15,6 +15,18 @@ history:
   - type: activity
     user: Agent
     date: '2026-11-05T08:10:22.553Z'
+    comment: Created ticket.
+    id: a-2026-11-05t08-10-22-553z
+  - type: activity
+    user: Agent
+    date: '2026-11-05T08:10:22.553Z'
     comment: Created as subtask of WOKEPOET-36.
+    id: a-2026-11-05t08-10-22-553z
+  - type: activity
+    user: Agent
+    date: '2026-11-05T10:53:21.556Z'
+    comment: Updated implementation link.
+    id: a-2026-11-05t10-53-21-556z
+implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/150'
 ---
 > **TL;DR** C17. The hotkey callback has no repeat guard (Shortcuts.ts register), and GGG's rules allow one action per press. Whether Windows repeats these hotkeys needs a test. A guard keyed on the uIOhook keyup is cheap either way: ignore a hotkey until its key has been released.

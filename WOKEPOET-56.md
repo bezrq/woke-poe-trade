@@ -15,7 +15,19 @@ history:
   - type: activity
     user: Agent
     date: '2026-11-05T08:10:07.645Z'
+    comment: Created ticket.
+    id: a-2026-11-05t08-10-07-645z
+  - type: activity
+    user: Agent
+    date: '2026-11-05T08:10:07.645Z'
     comment: Created as subtask of WOKEPOET-36.
+    id: a-2026-11-05t08-10-07-645z
+  - type: activity
+    user: Agent
+    date: '2026-11-05T10:53:21.318Z'
+    comment: Updated implementation link.
+    id: a-2026-11-05t10-53-21-318z
+implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/150'
 ---
 > **TL;DR** C11. No long-run data exists: the sampler keeps 10 minutes. Logs grow without limit in both processes.
 

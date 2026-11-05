@@ -113,6 +113,18 @@ history:
     selfAttested: true
     pin: true
     id: c-2026-11-05t10-44-11-852z
+  - type: activity
+    user: Agent
+    date: '2026-11-05T10:53:50.962Z'
+    comment: >-
+      First adversarial review (81d7f7ba) found 7 issues. Fixing: final import
+      limited to heist marks with no profile creation (it could undo un-ratings
+      and revive deleted profiles); unrecognised Voyage implicits kept visible;
+      chart list and unrevealed Voyage match by stat ref for other languages;
+      sort refreshes on search and Quick chips; unidentified items no longer say
+      Safe; duplicate keys; a Map mods off hint. "Want on Charts narrows the map
+      search" is gone with per-tab ratings. PR #151.
+    id: a-2026-11-05t10-53-50-962z
 swimlane: null
 needsAction: null
 ---
