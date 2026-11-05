@@ -37,6 +37,30 @@ history:
       UI. Report: https://claude.ai/artifact/Du1efrqGyeBo1LyyHQHtTw
 swimlane: require-input
 needsAction: null
+subtasks:
+  - WOKEPOET-40
+  - WOKEPOET-41
+  - WOKEPOET-42
+  - WOKEPOET-43
+  - WOKEPOET-44
+  - WOKEPOET-45
+  - WOKEPOET-46
+  - WOKEPOET-47
+  - WOKEPOET-48
+  - WOKEPOET-49
+  - WOKEPOET-50
+  - WOKEPOET-51
+  - WOKEPOET-52
+  - WOKEPOET-53
+  - WOKEPOET-54
+  - WOKEPOET-55
+  - WOKEPOET-56
+  - WOKEPOET-57
+  - WOKEPOET-58
+  - WOKEPOET-59
+  - WOKEPOET-60
+  - WOKEPOET-61
+  - WOKEPOET-62
 ---
 Harsh critique of the overlay core, read-only on master be3d56a5.
 

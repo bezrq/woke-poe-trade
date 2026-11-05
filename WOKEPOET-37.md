@@ -31,8 +31,27 @@ history:
     comment: >-
       Which fixes should I start? I suggest fixes 1 to 4 from the report:
       https://claude.ai/artifact/NciFiZFWAd2WUQJBUrJhqU
-swimlane: require-input
+  - type: comment
+    user: Agent
+    comment: 'Guy: ticket everything and start.'
+    date: '2026-11-05T08:10:26.404Z'
+    id: c-2026-11-05t08-10-26-404z
+  - type: swimlane_change
+    swimlane: require-input
+    action: cleared
+    user: Agent
+    date: '2026-11-05T08:10:26.404Z'
+    comment: 'Guy: ticket everything and start.'
+swimlane: null
 needsAction: null
+subtasks:
+  - WOKEPOET-63
+  - WOKEPOET-64
+  - WOKEPOET-65
+  - WOKEPOET-66
+  - WOKEPOET-67
+  - WOKEPOET-68
+  - WOKEPOET-69
 ---
 Harsh critique of the price check on master be3d56a5: https://claude.ai/artifact/NciFiZFWAd2WUQJBUrJhqU
 
