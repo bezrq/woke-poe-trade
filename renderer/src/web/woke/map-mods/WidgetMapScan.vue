@@ -1,6 +1,6 @@
 <template>
   <Widget :config="config" move-handles="corners" :inline-edit="false">
-    <DockItem id="map-scan" title="Map scan" :show="running || paused || !!message"
+    <DockItem :menu="dockMenu" id="map-scan" title="Map scan" :show="running || paused || !!message"
       :led="message ? 'error' : paused ? 'warn' : running ? 'on' : null" :badge="rolling ? rolls.length : null"
       :wm-id="config.wmId" card-width="18rem">
       <template #card>
@@ -120,7 +120,8 @@ import Widget from '@/web/overlay/Widget.vue'
 import { WPanel, WButton, WEmpty, WKbd, toast } from '../ui'
 import { hostRequest } from '../shared/host'
 import DockItem from '../dock/DockItem.vue'
-import { hideWhilePlaying } from '../dock/dock'
+import type { DockMenuAction } from '../dock/dock'
+import { dockIconEl, hideWhilePlaying } from '../dock/dock'
 import { DEFAULT_JUICE_WEIGHTS, defaultProfile, juiceScore, rateMods, shortLabel } from './rules'
 import type { ModRating, Verdict } from './rules'
 import { TooltipMatcher } from './tooltip-parse'
@@ -314,13 +315,13 @@ async function roll () {
 }
 
 const panel = shallowRef<InstanceType<typeof WPanel> | null>(null)
-function clear () {
+function clear (from?: Event | 'icon') {
   const before = { entries: entries.value, rolls: rolls.value }
   entries.value = []
   rolls.value = []
   current.value = null
   hostRequest('map-scan-reread', null).catch(() => {})
-  toast('Scan list cleared', { anchor: panel.value?.el, undo: () => { entries.value = before.entries; rolls.value = before.rolls } })
+  toast('Scan list cleared', { anchor: from === 'icon' ? dockIconEl('map-scan') : panel.value?.el, dock: from === 'icon', undo: () => { entries.value = before.entries; rolls.value = before.rolls } })
 }
 
 const hotkeys = MainProcess.onEvent('MAIN->CLIENT::widget-action', (e) => {
@@ -341,6 +342,13 @@ onUnmounted(() => {
   // the scan (screenshots several times a second) until its idle timeout.
   if (running.value) hostRequest('map-scan-stop', null).catch(() => {})
 })
+
+// The icon's right-click menu.
+const dockMenu = computed<DockMenuAction[]>(() => [
+  { label: running.value && !paused.value ? 'Stop scanning' : 'Start scanning', icon: running.value && !paused.value ? 'fas fa-stop' : 'fas fa-play', action: () => { toggle().catch(() => {}) } },
+  { label: rolling.value ? 'Stop rolling' : 'Start rolling', icon: 'fas fa-dice', action: () => { roll().catch(() => {}) } },
+  { label: 'Clear the list', icon: 'fas fa-broom', disabled: !entries.value.length && !rolls.value.length, action: () => { clear('icon') } }
+])
 </script>
 
 <style module>

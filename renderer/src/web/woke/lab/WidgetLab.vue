@@ -1,7 +1,7 @@
 <template>
   <Widget :config="config" move-handles="corners" :inline-edit="false">
     <!-- In the lab: an icon (letter = difficulty) whose card shows the layout. -->
-    <DockItem ref="dockRef" id="lab" title="Labyrinth" :show="inLab" :badge="labDiff ? labLabel(labDiff)[0] : null"
+    <DockItem :menu="dockMenu" ref="dockRef" id="lab" title="Labyrinth" :show="inLab" :badge="labDiff ? labLabel(labDiff)[0] : null"
       :wm-id="config.wmId" card-width="34rem" @open-change="now = Date.now()">
       <template #card>
         <div class="flex justify-between w-dim text-xs" style="padding: 4px var(--w-pad);">
@@ -81,6 +81,7 @@ import { DEFAULT_LAB_URLS, DIFFICULTIES, FIND_LAYOUT_JS, difficultyForAreaLevel,
 import { useZone } from '../shared/zone'
 import { hostRequest } from '../shared/host'
 import DockItem from '../dock/DockItem.vue'
+import type { DockMenuAction } from '../dock/dock'
 import { hideWhilePlaying } from '../dock/dock'
 import type { LabDifficulty, OpenTarget } from './lab'
 
@@ -201,6 +202,14 @@ const hotkeys = MainProcess.onEvent('MAIN->CLIENT::widget-action', (e) => {
   open(props.config.defaultDifficulty, parsed.where)
 })
 onUnmounted(() => { hotkeys.abort() })
+
+// The icon's right-click menu.
+const dockMenu = computed<DockMenuAction[]>(() => labDiff.value
+  ? [
+      { label: "Open today's layout", icon: 'fas fa-map', action: () => { if (labDiff.value) open(labDiff.value, 'overlay') } },
+      { label: 'Open poelab in your browser', icon: 'fas fa-external-link-alt', action: () => { if (labDiff.value) open(labDiff.value, 'external') } }
+    ]
+  : [])
 </script>
 
 <style module>

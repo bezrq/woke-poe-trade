@@ -2,7 +2,7 @@
   <Widget :config="mode === 'card' ? { ...config, anchor: cardAnchor } : config"
     :move-handles="mode === 'card' ? 'none' : 'corners'" :inline-edit="false" :readonly="true">
     <!-- Strictness and anything that needs you, behind one dock icon. -->
-    <DockItem ref="dockRef" id="loot-filter" :art="dockArt" title="Loot filter" :show="dockShow"
+    <DockItem :menu="dockMenu" ref="dockRef" id="loot-filter" :art="dockArt" title="Loot filter" :show="dockShow"
       :badge="dockBadge" :tone="dockTone" :wm-id="config.wmId" card-width="22rem">
       <template #card>
         <div :class="$style.dock">
@@ -72,6 +72,8 @@ import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
 import { WPanel, WEmpty, WButton, WBanner, WSkeleton, WKbd, gameIcon, toast } from '../ui'
 import DockItem from '../dock/DockItem.vue'
+import { openOverlay } from '../dock/dock'
+import type { DockMenuAction } from '../dock/dock'
 import { LEVEL_NAMES, LEVEL_SHORT, stepLabel } from './strictness'
 import { canTurnOff, markSeen, visibleNotices } from './notices'
 import type { Notice } from './notices'
@@ -313,6 +315,24 @@ const cardAnchor = computed(() => {
       : ((width - poePanelWidth) / width) * 100
   }
 })
+
+// The icon's right-click menu.
+const dockMenu = computed<DockMenuAction[]>(() => [
+  // Each sets the filter once, from this click.
+  ...(props.config.neversink.on
+    ? [
+        { label: 'Stricter', icon: 'fas fa-filter', action: () => { store.stepLevel(1).catch(() => {}) } },
+        { label: 'Looser', icon: 'fas fa-border-none', action: () => { store.stepLevel(-1).catch(() => {}) } }
+      ]
+    : []),
+  ...(dismissable.value.length
+    ? [
+        { label: 'See the notice', icon: 'fas fa-eye', action: () => { openOverlay(); seeNotice() } },
+        { label: 'Got it', icon: 'fas fa-check', action: gotIt },
+        ...(dismissable.value.some(canTurnOff) ? [{ label: "Don't tell me about this", icon: 'fas fa-bell-slash', action: turnOff }] : [])
+      ]
+    : [])
+])
 </script>
 
 <style module>

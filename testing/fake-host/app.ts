@@ -62,6 +62,8 @@ export class FakeApp {
   readonly game = game
   readonly shellCalls = shellCalls
   clientLogPath: string
+  // Settles once the log watcher is following clientLogPath.
+  logWatcherReady: Promise<unknown> = Promise.resolve()
 
   private logCount = 0
 
@@ -119,9 +121,13 @@ export class FakeApp {
   }
 
   // Presses the left mouse button there, as the global mouse hook sees it.
-  pressMouse (x: number, y: number) {
+  pressMouse (x: number, y: number, button = 1) {
     game.cursor = { x: game.bounds.x + x, y: game.bounds.y + y }
-    fakeHook.emit({ type: EventType.EVENT_MOUSE_PRESSED, x: game.cursor.x, y: game.cursor.y, button: 1, clicks: 1, altKey: false, ctrlKey: false, metaKey: false, shiftKey: false, time: Date.now() })
+    fakeHook.emit({ type: EventType.EVENT_MOUSE_PRESSED, x: game.cursor.x, y: game.cursor.y, button, clicks: 1, altKey: false, ctrlKey: false, metaKey: false, shiftKey: false, time: Date.now() })
+  }
+
+  releaseMouse (button = 1) {
+    fakeHook.emit({ type: EventType.EVENT_MOUSE_RELEASED, x: game.cursor.x, y: game.cursor.y, button, clicks: 1, altKey: false, ctrlKey: false, metaKey: false, shiftKey: false, time: Date.now() })
   }
 
   // Hover an item in game: Ctrl+C now copies this text.
@@ -280,7 +286,7 @@ export async function startFakeApp (opts: FakeAppOptions): Promise<FakeApp> {
     shortcuts.updateActions(cfg.shortcuts, cfg.stashScroll, cfg.logKeys, cfg.restoreClipboard, cfg.language)
     // The fake game's Client.txt, whatever the settings say.
     if (cfg.wokeGameLog === false) gameLogWatcher.stop()
-    else gameLogWatcher.restart(app.clientLogPath)
+    else app.logWatcherReady = Promise.all([app.logWatcherReady, gameLogWatcher.restart(app.clientLogPath)])
     gameConfig.readConfig(cfg.gameConfig ?? '')
   })
   uIOhook.start()

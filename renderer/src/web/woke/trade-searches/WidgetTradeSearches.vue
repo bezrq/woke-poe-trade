@@ -1,7 +1,7 @@
 <template>
   <Widget :config="config" move-handles="corners" :inline-edit="false">
     <!-- A live search keeps running out of sight; its icon counts new results. -->
-    <DockItem ref="dockRef" id="trade-live" icon="fas fa-bolt" :title="openEntry?.name || 'Live search'" :show="liveOpen"
+    <DockItem :menu="dockMenu" :wake="unseen" ref="dockRef" id="trade-live" icon="fas fa-bolt" :title="openEntry?.name || 'Live search'" :show="liveOpen"
       :badge="unseen || null" :tone="unseen ? 'down' : 'accent'" :led="liveOpen ? 'on' : null" :wm-id="config.wmId"
       card-width="20rem" @open-change="onCard">
       <template #card>
@@ -98,7 +98,8 @@ import Widget from '@/web/overlay/Widget.vue'
 import { WPanel, WField, WChip, WKbd, WEmpty, WListItem, WButton, itemRefFromText, openMenu, toast, vItemTip } from '../ui'
 import { copyText } from '../ui/copy'
 import DockItem from '../dock/DockItem.vue'
-import { hideWhilePlaying } from '../dock/dock'
+import type { DockMenuAction } from '../dock/dock'
+import { hideWhilePlaying, saveDock } from '../dock/dock'
 import { useLeagues } from '@/web/background/Leagues'
 import { groupByCategory, isLiveSearch, isValidUrl, leagueOf, matchesFilter, parseHotkeyTarget, withLeague } from './widget'
 import type { OpenTarget, TradeSearchEntry } from './widget'
@@ -279,6 +280,19 @@ function tooltip (entry: TradeSearchEntry) {
   return [entry.url, entry.tags.length ? `Tags: ${entry.tags.join(', ')}` : '', entry.notes]
     .filter(Boolean).join('\n')
 }
+
+// The icon's right-click menu.
+const dockMenu = computed<DockMenuAction[]>(() => [
+  { label: 'Stop live search', icon: 'fas fa-stop', action: closeBrowser },
+  { label: 'Mark results as seen', icon: 'fas fa-check-double', disabled: unseen.value === 0, action: () => { unseen.value = 0 } },
+  {
+    label: 'Beep on new results',
+    icon: 'fas fa-volume-up',
+    checked: !!props.config.liveAlert,
+    action: () => { props.config.liveAlert = !props.config.liveAlert; saveDock() }
+  },
+  { label: 'Open in your browser', icon: 'fas fa-external-link-alt', action: () => { if (openEntry.value) open(openEntry.value, 'external') } }
+])
 </script>
 
 <style module>

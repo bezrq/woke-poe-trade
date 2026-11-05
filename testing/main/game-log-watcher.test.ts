@@ -11,10 +11,23 @@ let file: string
 let lines: string[]
 let watcher: GameLogWatcher
 
-const until = async (check: () => boolean, ms = 5000) => {
+// Generous: other test files share the machine, and the watcher polls.
+const until = async (check: () => boolean, ms = 20_000) => {
   const end = Date.now() + ms
   while (!check() && Date.now() < end) await new Promise(resolve => setTimeout(resolve, 50))
   expect(check()).toBe(true)
+}
+
+// watchFile's baseline is its first look at the file. A write landing before that
+// causes no change until the next write, so write again until the line arrives.
+const appendUntilSeen = async (line: string) => {
+  fs.appendFileSync(file, `${line}\n`)
+  const end = Date.now() + 20_000
+  while (!lines.includes(line) && Date.now() < end) {
+    await new Promise(resolve => setTimeout(resolve, 600))
+    if (!lines.includes(line)) fs.appendFileSync(file, 'nudge\n')
+  }
+  expect(lines).toContain(line)
 }
 
 beforeEach(async () => {
@@ -55,14 +68,12 @@ describe('startOffset', () => {
 
 describe('GameLogWatcher', () => {
   it('follows new lines and skips what was already there', async () => {
-    fs.appendFileSync(file, 'first\n')
-    await until(() => lines.includes('first'))
+    await appendUntilSeen('first')
     expect(lines).not.toContain('old line that was there before')
   })
 
   it('carries on after the file is cleared', async () => {
-    fs.appendFileSync(file, 'first\n')
-    await until(() => lines.includes('first'))
+    await appendUntilSeen('first')
     fs.writeFileSync(file, 'x\n')
     await until(() => lines.includes('x'))
     fs.appendFileSync(file, 'after clear\n')
@@ -70,11 +81,19 @@ describe('GameLogWatcher', () => {
   })
 
   it('lets go of a deleted file and picks up the new one', async () => {
-    fs.appendFileSync(file, 'first\n')
-    await until(() => lines.includes('first'))
+    await appendUntilSeen('first')
     fs.unlinkSync(file)
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    fs.writeFileSync(file, 'new file\n')
+    // Windows refuses the name until the watcher has let go of the old file.
+    const end = Date.now() + 20_000
+    for (;;) {
+      try {
+        fs.writeFileSync(file, 'new file\n')
+        break
+      } catch (e) {
+        if (Date.now() > end) throw e
+        await new Promise(resolve => setTimeout(resolve, 200))
+      }
+    }
     await until(() => lines.includes('new file'))
     fs.appendFileSync(file, 'more\n')
     await until(() => lines.includes('more'))

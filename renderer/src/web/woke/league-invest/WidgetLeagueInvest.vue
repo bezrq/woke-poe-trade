@@ -1,7 +1,7 @@
 <template>
   <Widget :config="config" move-handles="corners" :inline-edit="false" :readonly="true">
     <!-- First two weeks of a league, in town and hideout: today's best buys. -->
-    <DockItem id="league-invest" title="League start buys" :show="dockShow"
+    <DockItem :menu="dockMenu" id="league-invest" title="League start buys" :show="dockShow"
       :badge="day != null ? `D${day}` : null" :wm-id="config.wmId" card-width="21rem">
       <template #card>
         <div style="padding: 4px var(--w-pad) 6px;" class="flex flex-col gap-0.5">
@@ -153,6 +153,8 @@ import { allLeagues, deleteLeague, saveLeague } from './store'
 import { leagueDay, leagueStartDates } from './league-start'
 import { readZip } from './zip'
 import DockItem from '../dock/DockItem.vue'
+import { dockIconEl, saveDock } from '../dock/dock'
+import type { DockMenuAction } from '../dock/dock'
 import { useZone } from '../shared/zone'
 import { useVisibleClock } from '../shared/visible-clock'
 import type { LeagueInvestWidget } from './widget'
@@ -233,6 +235,7 @@ const day = computed<number | null>(() => {
 })
 
 const dockShow = computed(() => day.value != null && day.value <= 14 && histories.value.length > 0 &&
+  props.config.doneLeague !== league.value &&
   (zone.kind === 'town' || zone.kind === 'hideout'))
 
 function onDayInput (e: Event) {
@@ -402,6 +405,23 @@ function label (o: Opportunity) {
 function divOf (chaos: number) { return chaos / (snapshot.value?.divine || 1) }
 function fmt (chaos: number) { return formatChaos(chaos, snapshot.value?.divine ?? null) }
 function fmtDiv (div: number) { return `${formatAmount(div)} div` }
+
+// The icon's right-click menu.
+const dockMenu = computed<DockMenuAction[]>(() => [{
+  label: 'Done for this league',
+  icon: 'fas fa-calendar-check',
+  action: () => {
+    const el = dockIconEl('league-invest')
+    const before = props.config.doneLeague
+    props.config.doneLeague = league.value ?? undefined
+    saveDock()
+    toast('League start buys won\'t show again this league', {
+      anchor: el,
+      dock: true,
+      undo: () => { props.config.doneLeague = before; saveDock() }
+    })
+  }
+}])
 </script>
 
 <style module>
