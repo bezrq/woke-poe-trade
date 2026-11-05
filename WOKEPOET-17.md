@@ -1,7 +1,7 @@
 ---
 id: WOKEPOET-17
 title: Build panel tooltip can stay stuck on screen when the overlay closes
-status: In Progress
+status: Ready
 priority: High
 effort: XS
 assignee: unassigned
@@ -28,9 +28,38 @@ history:
     to: In Progress
     user: Agent
     date: '2026-11-05T03:33:37.972Z'
+  - type: comment
+    user: Agent
+    comment: >-
+      **Guards the build panel tooltip against getting stuck.** It now closes
+      with the overlay, on window blur, and on scroll. Also restores the hover
+      text on truncated gem sources and stops a duplicate key when a gem is
+      listed twice in a link.
+
+
+      Validated: vue-tsc and eslint clean, 181 renderer tests pass,
+      `testing/e2e/pob-builds.spec.ts` passes. The stuck tooltip did not
+      reproduce on the fake game: the new overlay-close test also passes without
+      the guard, so it doesn't prove the fix. It's a guard for the real overlay,
+      which the tests can't exercise. No docs needed: no visual or API change.
+    date: '2026-11-05T03:41:15.900Z'
+    completionComment: true
+    id: c-2026-11-05t03-41-15-900z
+  - type: activity
+    user: Agent
+    comment: 'PR created: https://github.com/guybnd/woke-poe-trade/pull/90'
+    date: '2026-11-05T03:41:23.691Z'
+    id: a-2026-11-05t03-41-23-691z
+  - type: status_change
+    from: In Progress
+    to: Ready
+    user: Agent
+    date: '2026-11-05T03:41:23.691Z'
 branch: flux/WOKEPOET-17-build-panel-tooltip-can-stay-stuck-on-screen-when-the-overla
 baselineCommit: a58632b0379617cbbaaebd67ac298914035552dd
 needsAction: null
+implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/90'
+swimlane: open-pr
 ---
 > **TL;DR:** Found reviewing PR #86 after it merged. The tooltip sits outside the panel, so closing the overlay while hovering leaves it on screen over the game. Fix that and two small regressions.
 
