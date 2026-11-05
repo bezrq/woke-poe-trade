@@ -69,8 +69,8 @@ watch(() => props.host.peek, (p) => {
 const showCard = shallowRef(false)
 
 // Hover works while the game has focus (main process watches the mouse).
-// Both take the mouse once it rests on them, so a click lands here instead of
-// walking the character there. Only a click faster than that reaches the game.
+// Both take the mouse while it's over them, so a click lands here instead of
+// walking the character there.
 const overIcon = useHoverZone(iconEl, { enabled: () => true, activate: () => true, onClick: openCard })
 const overCard = useHoverZone(cardEl, { enabled: () => showCard.value, activate: () => true })
 const hovering = computed(() => overIcon.value || overCard.value)

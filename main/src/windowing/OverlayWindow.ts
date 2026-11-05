@@ -10,6 +10,8 @@ export class OverlayWindow {
   // Interactable only so a hover card can be clicked: the overlay itself stays
   // closed, so the renderer isn't told about it (see assertCardActive).
   public isCardActive = false
+  // Taking clicks over a dock icon or card, with the game still focused.
+  public isMouseTaken = false
   public wasUsedRecently = true
   private window?: BrowserWindow
   private overlayKey: string = 'Shift + Space'
@@ -23,6 +25,11 @@ export class OverlayWindow {
     this.server.onEventAnyClient('OVERLAY->MAIN::focus-game', this.assertGameActive)
     this.poeWindow.on('active-change', this.handlePoeWindowActiveChange)
     this.poeWindow.onAttach(this.handleOverlayAttached)
+    // The library goes click-through whenever the game gets focus, which can
+    // arrive just after the mouse moved onto an icon.
+    OverlayController.events.on('focus', () => {
+      if (this.isMouseTaken) this.window?.setIgnoreMouseEvents(false)
+    })
 
     this.server.onEventAnyClient('CLIENT->MAIN::used-recently', (e) => {
       this.wasUsedRecently = e.isOverlay
@@ -78,7 +85,22 @@ export class OverlayWindow {
 
   get isGameActive () { return this.poeWindow.isActive }
 
+  // The mouse is over a dock icon or card: the window takes clicks while the
+  // game keeps focus, so keys still reach the game.
+  takeMouse = () => {
+    if (this.isMouseTaken || this.isInteractable || !this.isGameActive) return
+    this.isMouseTaken = true
+    this.window?.setIgnoreMouseEvents(false)
+  }
+
+  giveMouse = () => {
+    if (!this.isMouseTaken) return
+    this.isMouseTaken = false
+    if (!this.isInteractable) this.window?.setIgnoreMouseEvents(true)
+  }
+
   assertOverlayActive = () => {
+    this.isMouseTaken = false
     if (this.isCardActive) {
       // The window already has focus, so only the renderer has to find out.
       this.isCardActive = false
@@ -90,10 +112,11 @@ export class OverlayWindow {
     }
   }
 
-  // Takes the mouse so a dock icon or card gets the click, without opening the
-  // overlay: other widgets, the widget menu and the dimmed background stay away.
+  // A dock icon or card was clicked: the window takes focus too, without opening
+  // the overlay: other widgets, the widget menu and the dimmed background stay away.
   assertCardActive = () => {
     if (!this.isInteractable) {
+      this.isMouseTaken = false
       this.isCardActive = true
       this.isInteractable = true
       OverlayController.activateOverlay()
@@ -101,11 +124,11 @@ export class OverlayWindow {
     }
   }
 
-// The mouse left a dock icon or card. If you tabbed to another program in the
-  // meantime, the game mustn't jump back in front of it.
+  // The mouse left a clicked dock icon or card. If you tabbed to another program
+  // in the meantime, the game mustn't jump back in front of it.
   releaseCard = () => {
     if (!this.isCardActive) return
-    if (!this.window || this.window.isFocused()) {
+    if (!this.window || this.window.isFocused() || OverlayController.targetHasFocus) {
       this.assertGameActive()
     } else {
       this.isCardActive = false
@@ -113,6 +136,7 @@ export class OverlayWindow {
       this.window.setIgnoreMouseEvents(true)
     }
   }
+
   assertGameActive = () => {
     if (this.isInteractable) {
       this.isCardActive = false
@@ -189,6 +213,7 @@ export class OverlayWindow {
   }
 
   private handlePoeWindowActiveChange = (isActive: boolean) => {
+    if (!isActive) this.giveMouse()
     if (isActive && this.isInteractable) {
       this.isCardActive = false
       this.isInteractable = false
