@@ -124,6 +124,17 @@ history:
     selfAttested: true
     pin: true
     id: c-2026-11-05t14-29-02-395z
+  - type: comment
+    user: Agent
+    comment: >-
+      Guy asked about reading stack counts to show a per-stack total. Untested.
+      Plan: try digit matching on screenshot-0028 in the first build, with no
+      OCR worker. Show the total only if reads are reliable, counting full sets
+      of 3; otherwise keep Profit each. Totals overstate what the market can
+      absorb.
+    date: '2026-11-05T14:39:40.918Z'
+    selfAttested: true
+    id: c-2026-11-05t14-39-40-918z
 swimlane: require-input
 needsAction: null
 ---
