@@ -59,6 +59,11 @@ export function dismissToast (id: number) {
   toasts.value = toasts.value.filter(t => t.id !== id)
 }
 
+// After jumping through history, an older note's Undo would put back old settings.
+export function clearUndoToasts () {
+  toasts.value = toasts.value.filter(t => !t.undo)
+}
+
 export function hasUndoToast (): boolean {
   return toasts.value.some(t => t.undo)
 }

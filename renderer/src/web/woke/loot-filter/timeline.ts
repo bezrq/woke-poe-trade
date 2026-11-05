@@ -3,7 +3,7 @@
 // changes them can be missed, and a step keeps only the parts that changed: 200
 // price moves aren't saved again with every font size.
 import type { FilterEdit, StylePatch } from './edits'
-import { describeEdit } from './edits'
+import { DEFAULT_BG, DEFAULT_FONT, DEFAULT_TEXT, describeEdit, isPatch, isValidEdit } from './edits'
 import { ruleLabel } from './parse'
 import type { OwnRule } from './rules'
 import type { Presets } from './presets'
@@ -33,6 +33,8 @@ export interface Timeline {
 }
 
 export const TIMELINE_SIZE = 50
+// It's saved with your config, and steps with many price moves are big.
+const TIMELINE_MAX_CHARS = 1_000_000
 
 const KEYS: Array<keyof Settings> = ['edits', 'rules', 'presets', 'moves', 'locks']
 
@@ -52,11 +54,22 @@ export function emptyTimeline (): Timeline {
   return { steps: [], at: 0 }
 }
 
+function goodPart (p: SettingsPart): boolean {
+  return (p.edits === undefined || (Array.isArray(p.edits) && p.edits.every(isValidEdit))) &&
+    (p.rules === undefined || (Array.isArray(p.rules) && p.rules.every(r => r && typeof r.id === 'number' && Array.isArray(r.conditions) && isPatch(r.patch)))) &&
+    (p.moves === undefined || (Array.isArray(p.moves) && p.moves.every(m => m && typeof m.type === 'string' && typeof m.base === 'string'))) &&
+    (p.locks === undefined || (Array.isArray(p.locks) && p.locks.every(k => typeof k === 'string'))) &&
+    (p.presets === undefined || (Boolean(p.presets) && typeof p.presets === 'object'))
+}
+
 // A saved timeline, or a new one if it's damaged.
 export function normalizeTimeline (t: unknown): Timeline {
   const x = t as Partial<Timeline> | null | undefined
   if (!x || !Array.isArray(x.steps)) return emptyTimeline()
   const steps = x.steps.filter(s => s && typeof s.ts === 'number' && typeof s.label === 'string' && s.before && s.after && typeof s.before === 'object' && typeof s.after === 'object')
+  // Steps get applied as they are, and they depend on each other: one damaged
+  // step can't be skipped, so start over rather than break the filter later.
+  if (!steps.every(s => goodPart(s.before) && goodPart(s.after))) return emptyTimeline()
   const at = typeof x.at === 'number' ? Math.max(0, Math.min(steps.length, Math.round(x.at))) : steps.length
   return { steps, at }
 }
@@ -71,12 +84,15 @@ function same3 (s: Settings, part: SettingsPart): boolean {
 export function observe (t: Timeline, before: Settings, after: Settings, label: string, now = Date.now()): Timeline {
   const parts = changedParts(before, after)
   if (!parts.length) return t
+  // Only if nothing else moved with it: a second change must get its own step.
+  const only = (s: TimelineStep) => parts.every(k => k in s.before)
   const last = t.steps[t.at - 1]
-  if (last && same3(after, last.before) && same3(before, last.after)) return { ...t, at: t.at - 1 }
+  if (last && only(last) && same3(after, last.before) && same3(before, last.after)) return { ...t, at: t.at - 1 }
   const next = t.steps[t.at]
-  if (next && same3(after, next.after) && same3(before, next.before)) return { ...t, at: t.at + 1 }
+  if (next && only(next) && same3(after, next.after) && same3(before, next.before)) return { ...t, at: t.at + 1 }
   const step: TimelineStep = { ts: now, label, before: pick(before, parts), after: pick(after, parts) }
-  const steps = [...t.steps.slice(0, t.at), step].slice(-TIMELINE_SIZE)
+  let steps = [...t.steps.slice(0, t.at), step].slice(-TIMELINE_SIZE)
+  while (steps.length > 1 && JSON.stringify(steps).length > TIMELINE_MAX_CHARS) steps = steps.slice(1)
   return { steps, at: steps.length }
 }
 
@@ -121,7 +137,8 @@ export function describePatch (patch: StylePatch, was: StylePatch): string {
 
 function describeEditStep (prev: FilterEdit | undefined, next: FilterEdit, lookOf: (type: string, tier: string) => StylePatch): string {
   if (next.kind === 'style') {
-    const was = { ...lookOf(next.type, next.tier), ...(prev?.kind === 'style' ? prev.patch : {}) }
+    // With the game's defaults for what the rule doesn't set.
+    const was = { fontSize: DEFAULT_FONT, text: DEFAULT_TEXT, background: DEFAULT_BG, ...lookOf(next.type, next.tier), ...(prev?.kind === 'style' ? prev.patch : {}) }
     const what = describePatch(next.patch, was)
     if (what) return `${ruleLabel(next.type, next.tier)}: ${what}`
   }
@@ -144,7 +161,7 @@ export function describeStep (before: Settings, after: Settings, lookOf: (type: 
   }
   if (!same(before.moves, after.moves)) {
     const n = after.moves.length - before.moves.length
-    parts.push(n > 0 ? `Price moves: ${n} more` : (after.moves.length ? `Price moves: ${-n || 'some'} changed` : 'Back to NeverSink\'s tiers'))
+    parts.push(!after.moves.length ? 'Back to NeverSink\'s tiers' : n > 0 ? `Price moves: ${n} more` : n < 0 ? `Price moves: ${-n} fewer` : 'Price moves changed')
   }
   if (!same(before.rules, after.rules)) {
     const names = new Map(before.rules.map(r => [r.id, r]))

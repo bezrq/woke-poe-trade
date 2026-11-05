@@ -29,7 +29,7 @@
     <button type="button" class="w-focusable" :class="$style.fold" :aria-expanded="open === 'sound'" @click="toggle('sound')">
       <i aria-hidden="true" :class="open === 'sound' ? 'fas fa-chevron-down' : 'fas fa-chevron-right'" />Sound
       <span class="grow" /><span class="w-dim text-xs w-trunc">{{ look.sound ? `${soundLabel(look.sound.id)}, ${look.sound.volume}` : 'None' }}</span>
-      <span v-if="changed('sound')" role="button" tabindex="0" :class="$style.mark" title="Back to the filter's own sound" aria-label="Reset sound" @click.stop="reset('sound')" @keydown.enter.stop="reset('sound')" />
+      <span v-if="changed('sound')" role="button" tabindex="0" :class="$style.mark" title="Back to the filter's own sound" aria-label="Reset sound" @click.stop="reset('sound')" @keydown.enter.stop="reset('sound')" @keydown.space.prevent.stop="reset('sound')" />
     </button>
     <div v-if="open === 'sound'" :class="$style.foldBody">
       <span class="flex flex-col gap-1" style="min-width: 0;">
@@ -63,7 +63,7 @@
     <button type="button" class="w-focusable" :class="$style.fold" :aria-expanded="open === 'beam'" @click="toggle('beam')">
       <i aria-hidden="true" :class="open === 'beam' ? 'fas fa-chevron-down' : 'fas fa-chevron-right'" />Beam
       <span class="grow" /><span v-if="look.effect" :class="$style.beam" :style="{ background: poeColour(look.effect.color) }" /><span class="w-dim text-xs">{{ look.effect ? `${look.effect.color}${look.effect.temp ? ', on drop' : ''}` : 'None' }}</span>
-      <span v-if="changed('effect')" role="button" tabindex="0" :class="$style.mark" title="Back to the filter's own beam" aria-label="Reset beam" @click.stop="reset('effect')" @keydown.enter.stop="reset('effect')" />
+      <span v-if="changed('effect')" role="button" tabindex="0" :class="$style.mark" title="Back to the filter's own beam" aria-label="Reset beam" @click.stop="reset('effect')" @keydown.enter.stop="reset('effect')" @keydown.space.prevent.stop="reset('effect')" />
     </button>
     <div v-if="open === 'beam'" :class="$style.foldBody">
       <span class="flex items-center gap-1 flex-wrap">
@@ -83,7 +83,7 @@
     <button type="button" class="w-focusable" :class="$style.fold" :aria-expanded="open === 'icon'" @click="toggle('icon')">
       <i aria-hidden="true" :class="open === 'icon' ? 'fas fa-chevron-down' : 'fas fa-chevron-right'" />Map icon
       <span class="grow" /><span v-if="look.icon" :style="{ color: poeColour(look.icon.color) }">{{ shapeGlyph(look.icon.shape) }}</span><span class="w-dim text-xs">{{ look.icon ? `${['Large', 'Medium', 'Small'][look.icon.size] ?? ''} ${look.icon.color.toLowerCase()}` : 'None' }}</span>
-      <span v-if="changed('icon')" role="button" tabindex="0" :class="$style.mark" title="Back to the filter's own map icon" aria-label="Reset map icon" @click.stop="reset('icon')" @keydown.enter.stop="reset('icon')" />
+      <span v-if="changed('icon')" role="button" tabindex="0" :class="$style.mark" title="Back to the filter's own map icon" aria-label="Reset map icon" @click.stop="reset('icon')" @keydown.enter.stop="reset('icon')" @keydown.space.prevent.stop="reset('icon')" />
     </button>
     <div v-if="open === 'icon'" :class="$style.foldBody">
       <span class="flex flex-col gap-1">

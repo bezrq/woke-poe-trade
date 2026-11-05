@@ -325,6 +325,20 @@ describe('the step-by-step list', () => {
     expect(config.timeline.at).toBe(0)
   })
 
+  it('a change in the last moment before the window closes still becomes a step', async () => {
+    const { store, config } = await opened()
+    store.edit({ kind: 'visibility', type: 'currency', tier: 't1exalted', visibility: 'Hide' })
+    store.redoStep()
+    expect(config.timeline.steps).toHaveLength(1)
+  })
+
+  it('presets count as how the filter came, so they show no changes to reset', async () => {
+    const { store, config } = await opened()
+    const size = store.sourceLook('currency', 't9armour').fontSize ?? 32
+    config.presets.bigger = { on: true, size: Math.max(size + 1, 44) }
+    expect(store.sourceLook('currency', 't9armour').fontSize).toBe(Math.max(size + 1, 44))
+  })
+
   it('tells the look in the filter as it came', async () => {
     const { store } = await opened()
     const before = store.sourceLook('currency', 't1exalted').fontSize

@@ -4,7 +4,8 @@ import { MainProcess } from '@/web/background/IPC'
 import { hostRequest } from '../shared/host'
 import { customSoundsIn, installPackSounds } from './sounds'
 import { ruleBlocks } from './rules'
-import { applyPresetChanges, presetBlocks, presetsOn } from './presets'
+import { applyPresetChanges, normalizePresets, presetBlocks, presetsOn } from './presets'
+import { clearUndoToasts } from '../ui/layer'
 import { isTownLike } from '../campaign/log-parse'
 import { onGameLog } from '../shared/game-log'
 import { parseFilter, serializeFilter } from './parse'
@@ -133,7 +134,7 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
   onUnmounted(() => {
     stopLog()
     clearTimeout(reloadTimer)
-    clearTimeout(settleTimer)
+    if (settleTimer) settle()
   })
 
   const dirty = computed(() => signature() !== savedEdits.value)
@@ -279,12 +280,18 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
 
   function sourceLook (type: string, tier: string): StylePatch {
     if (baseText.value == null) return {}
-    if (sourceDoc?.text !== baseText.value) sourceDoc = { text: baseText.value, doc: parseFilter(baseText.value) }
+    // With your presets on it: bigger labels aren't a change to reset, tier by tier.
+    const presets = JSON.stringify(cfg().presets)
+    if (sourceDoc?.text !== baseText.value || sourceDoc.presets !== presets) {
+      const doc = parseFilter(baseText.value)
+      applyPresetChanges(doc, cfg().presets)
+      sourceDoc = { text: baseText.value, presets, doc }
+    }
     const blocks = sourceDoc.doc.blocks.filter(b => b.type === type && b.tier === tier)
     const b = blocks.find(x => !x.disabled) ?? blocks[0]
     return b ? readStyle(b.actions) : {}
   }
-  let sourceDoc: { text: string, doc: FilterDoc } | null = null
+  let sourceDoc: { text: string, presets: string, doc: FilterDoc } | null = null
 
   function settle () {
     clearTimeout(settleTimer)
@@ -315,11 +322,12 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
     const c = cfg()
     if (part.edits) c.edits = part.edits
     if (part.rules) c.rules = part.rules
-    if (part.presets) c.presets = part.presets
+    if (part.presets) c.presets = normalizePresets(part.presets)
     if (part.moves) c.priceTiers.moves = part.moves
     if (part.locks) c.priceTiers.locks = part.locks
     c.timeline = { ...t, at }
     settled = copySettings()
+    clearUndoToasts()
     rebuild()
   }
 

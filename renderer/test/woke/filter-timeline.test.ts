@@ -163,7 +163,54 @@ describe('in words', () => {
   })
 })
 
+describe('what a step records', () => {
+  it('an undo that came with another change is a new step, so nothing is lost', () => {
+    const a = settings()
+    const b = settings({ edits: [hide(1)] })
+    const t = walk([a, b])
+    const also = settings({ locks: ['x'] })
+    const next = observe(t, b, also, 'both')
+    expect(next.steps).toHaveLength(2)
+    expect(next.at).toBe(2)
+  })
+
+  it('drops the oldest steps when they get too big to save', () => {
+    const moves = (n: number) => Array.from({ length: 4000 }, (_, i) => ({ type: 'currency', base: `Item number ${i}`, from: 't1', to: `t${n}`, chaos: 1 }))
+    let t = emptyTimeline()
+    let prev = settings()
+    for (let i = 0; i < 20; i++) {
+      const next = settings({ moves: moves(i) })
+      t = observe(t, prev, next, 's', i + 1)
+      prev = next
+    }
+    expect(JSON.stringify(t.steps).length).toBeLessThanOrEqual(1_000_000)
+    expect(t.at).toBe(t.steps.length)
+    expect(t.steps.length).toBeGreaterThan(0)
+  })
+
+  it('reads the game default for what a rule leaves unset', () => {
+    const e: FilterEdit = { id: 1, kind: 'style', type: 'c', tier: 't1', patch: { fontSize: 45 } }
+    expect(describeStep(settings(), settings({ edits: [e] }))).toContain('font size 32 → 45')
+  })
+
+  it('counts fewer moves as fewer', () => {
+    const m = (b: string) => ({ type: 'c', base: b, from: 'a', to: 'b', chaos: 1 })
+    expect(describeStep(settings({ moves: [m('x'), m('y'), m('z')] }), settings({ moves: [m('x')] }))).toBe('Price moves: 2 fewer')
+    expect(describeStep(settings({ moves: [m('x')] }), settings({ moves: [m('y')] }))).toBe('Price moves changed')
+  })
+})
+
 describe('a saved timeline', () => {
+  it.each([
+    ['edits that are not a list', { edits: 'x' }],
+    ['a broken edit', { edits: [{ id: 1, kind: 'style', type: 'c', tier: 't' }] }],
+    ['moves that are empty', { moves: null }],
+    ['a rule with a broken look', { rules: [{ id: 1, conditions: [], patch: { text: 'red' } }] }],
+    ['locks that are not names', { locks: [1] }]
+  ])('starts over on %s, so going back can\'t break the filter', (_name, before) => {
+    expect(normalizeTimeline({ steps: [{ ts: 1, label: 'x', before, after: {} }], at: 1 })).toEqual(emptyTimeline())
+  })
+
   it('reads back, and a damaged one starts over', () => {
     const good = walk([settings(), settings({ edits: [hide(1)] })])
     expect(normalizeTimeline(JSON.parse(JSON.stringify(good)))).toEqual(good)

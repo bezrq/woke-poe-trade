@@ -780,9 +780,12 @@ function useShared (how: 'add' | 'replace') {
 const shownSteps = computed(() => props.config.timeline.steps.map((step, n) => ({ step, n })).reverse())
 
 function onUndoKeys (e: KeyboardEvent) {
+  // Only with this window up, and not when something else already took the key
+  // (the Undo note, whichever heard it first) or you're typing somewhere.
+  if (e.defaultPrevented || props.config.wmWants !== 'show') return
   if (!(e.ctrlKey || e.metaKey) || e.altKey) return
   const t = e.target as HTMLElement | null
-  if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT')) return
+  if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) return
   const key = e.key.toLowerCase()
   // A note on screen with Undo on it takes Ctrl + Z first, and it ends in the same place.
   if (key === 'z' && !e.shiftKey) {
