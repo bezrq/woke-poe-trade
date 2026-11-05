@@ -70,7 +70,7 @@
             <span class="flex items-center gap-2 w-full min-w-0">
               <LabelPreview :text="r.base" :actions="r.block.actions" :visibility="r.block.visibility" :extras="false" />
               <span class="grow" />
-              <span class="w-dim text-xs w-trunc">{{ groupName(r.type) }} › {{ r.tier }}</span>
+              <span class="w-dim text-xs w-trunc">{{ groupName(r.type) }}<template v-if="!r.tier.startsWith('#')"> › {{ r.tier }}</template></span>
             </span>
           </WListItem>
         </template>
@@ -416,7 +416,7 @@ function conditionSummary (t: TierNode): string {
 }
 
 const copyFrom = computed(() => group.value
-  ? group.value.tiers.filter(t => t.tier !== selTier.value).map(t => ({ tier: t.tier, look: readStyle(firstLive(t).actions) as StylePatch }))
+  ? group.value.tiers.filter(t => t.tier !== selTier.value && !t.tier.startsWith('#')).map(t => ({ tier: t.tier, look: readStyle(firstLive(t).actions) as StylePatch }))
   : [])
 
 function selectGroup (type: string) {

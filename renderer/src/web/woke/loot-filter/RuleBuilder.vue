@@ -147,7 +147,7 @@ const copyFrom = computed(() => {
   const seen = new Set<string>()
   for (const b of doc?.blocks ?? []) {
     if (b.disabled || b.visibility === 'Hide' || !b.type || !b.tier || b.type.startsWith('woke->')) continue
-    const label = `${groupName(b.type)} › ${b.tier}`
+    const label = b.tier.startsWith('#') ? groupName(b.type) : `${groupName(b.type)} › ${b.tier}`
     if (seen.has(label)) continue
     seen.add(label)
     out.push({ tier: label, look: readStyle(b.actions) })

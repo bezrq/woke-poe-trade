@@ -84,6 +84,7 @@ import type { LootFilterStore } from './store'
 import type { LootFilterWidget } from './widget'
 import { ECONOMY_GROUPS, tierRank } from './economy'
 import type { PriceMove } from './economy'
+import { conditionSignature } from './edits'
 import { SAFETY_LOOK } from './safety'
 import type { BaseVerdict } from './safety'
 import { groupName } from './groups'
@@ -171,7 +172,7 @@ function moveMenu (e: MouseEvent, m: PriceMove) {
 function showIt (v: BaseVerdict) {
   const b = v.block
   if (!b?.type || !b.tier) return
-  const undo = props.store.editWithUndo({ kind: 'item', type: b.type, tier: b.tier, base: v.base, visibility: 'Show', patch: v.state === 'hidden' ? SAFETY_LOOK : { fontSize: 40 } })
+  const undo = props.store.editWithUndo({ kind: 'item', type: b.type, tier: b.tier, base: v.base, visibility: 'Show', patch: v.state === 'hidden' ? SAFETY_LOOK : { fontSize: 40 }, anchor: conditionSignature(b), pin: true })
   toast(`${v.base} now shows`, { anchor: props.anchor, undo })
 }
 </script>

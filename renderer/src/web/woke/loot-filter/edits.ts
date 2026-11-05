@@ -1,6 +1,7 @@
 // User edits to a filter, stored as a list of operations rather than a
 // modified file. They are keyed by NeverSink's $type/$tier tags and base type
 // names, so the same list can be reapplied to every new NeverSink version.
+import { ruleLabel } from './parse'
 import type { FilterAction, FilterBlock, FilterCondition, FilterDoc, Visibility } from './parse'
 
 export type Colour = [number, number, number, number]
@@ -125,14 +126,16 @@ export function applyStyle (block: FilterBlock, patch: StylePatch): void {
   block.dirty = true
 }
 
+// A hidden drop shouldn't still beam, ping or show on the minimap.
+function silence (block: FilterBlock): void {
+  block.actions = block.actions.filter(a => !['PlayAlertSound', 'PlayAlertSoundPositional', 'CustomAlertSound', 'CustomAlertSoundOptional', 'PlayEffect', 'MinimapIcon'].includes(a.key))
+  if (!block.actions.some(a => a.key === 'DisableDropSound')) block.actions.push({ key: 'DisableDropSound', args: ['True'] })
+}
+
 function setVisibility (block: FilterBlock, visibility: Visibility): void {
   if (block.visibility === visibility) return
   block.visibility = visibility
-  if (visibility === 'Hide') {
-    // A hidden drop shouldn't still beam, ping or show on the minimap.
-    block.actions = block.actions.filter(a => !['PlayAlertSound', 'PlayAlertSoundPositional', 'CustomAlertSound', 'CustomAlertSoundOptional', 'PlayEffect', 'MinimapIcon'].includes(a.key))
-    if (!block.actions.some(a => a.key === 'DisableDropSound')) block.actions.push({ key: 'DisableDropSound', args: ['True'] })
-  }
+  if (visibility === 'Hide') silence(block)
   block.dirty = true
 }
 
@@ -151,11 +154,13 @@ export function blockHasBase (b: FilterBlock, base: string): boolean {
 }
 
 // Tiers of a group that list base types, i.e. where an item can be moved to.
-// That includes a tier commented out for being empty: an item brings it back.
+// That includes a tier this strictness level has commented out: moved there,
+// an item goes wherever that tier's items go. Rules with no tags aren't tiers
+// of anything, so items don't move between them.
 export function moveTargets (doc: FilterDoc, type: string): string[] {
   const out: string[] = []
   for (const b of blocksOf(doc, type)) {
-    if (b.tier && baseTypeCondition(b) && !out.includes(b.tier)) out.push(b.tier)
+    if (b.tier && !b.tier.startsWith('#') && baseTypeCondition(b) && !out.includes(b.tier)) out.push(b.tier)
   }
   return out
 }
@@ -214,12 +219,13 @@ function applyOne (doc: FilterDoc, edit: FilterEdit): EditStatus {
       }
       for (const b of targets) {
         const c = baseTypeCondition(b)!
+        // A tier commented out for being empty is back now it has an item. One
+        // the strictness level turned off, with items of its own, stays off.
+        if (b.disabled && !c.values.length) { b.disabled = false; b.dirty = true }
         if (!c.values.includes(edit.base)) {
           c.values = [...c.values, edit.base].sort((a, z) => a.localeCompare(z))
           b.dirty = true
         }
-        // It has an item now, so a tier commented out for being empty is back.
-        if (b.disabled) { b.disabled = false; b.dirty = true }
       }
       return { edit, ok: true, blocks: sources.length + targets.length }
     }
@@ -246,9 +252,10 @@ function applyOne (doc: FilterDoc, edit: FilterEdit): EditStatus {
         index: -1,
         line: source.line,
         disabled: false,
-        comment: `$type->${OWN_RULE_TYPE} $tier->${slug(edit.base)} woke: own rule for ${edit.base} (from ${edit.type} ${edit.tier})`,
+        comment: `$type->${OWN_RULE_TYPE} $tier->${slug(edit.base)}-${slug(edit.tier)} woke: own rule for ${edit.base} (from ${edit.type} ${edit.tier})`,
         type: OWN_RULE_TYPE,
-        tier: slug(edit.base),
+        // With the source tier: a rare and a magic of one base are two rules.
+        tier: `${slug(edit.base)}-${slug(edit.tier)}`,
         conditions,
         actions: source.actions.map(a => ({ ...a, args: [...a.args] })),
         continue: false,
@@ -258,8 +265,10 @@ function applyOne (doc: FilterDoc, edit: FilterEdit): EditStatus {
         inherited: true,
         editId: edit.id
       }
-      setVisibility(clone, edit.visibility)
       applyStyle(clone, edit.patch)
+      setVisibility(clone, edit.visibility)
+      // Also over a look kept from when this rule showed the item.
+      if (edit.visibility === 'Hide') silence(clone)
       const before = edit.pin ? doc.blocks[0] : source
       doc.chunks.splice(doc.chunks.indexOf(before), 0, clone)
       doc.blocks.splice(doc.blocks.indexOf(before), 0, clone)
@@ -270,8 +279,12 @@ function applyOne (doc: FilterDoc, edit: FilterEdit): EditStatus {
 }
 
 // Mutates `doc` (a fresh parse of the source filter).
+// Own rules go last, whatever order you made them in, so each one sits above
+// wherever the moves left its item.
 export function applyEdits (doc: FilterDoc, edits: FilterEdit[]): EditStatus[] {
-  return edits.map(e => applyOne(doc, e))
+  const order = [...edits.filter(e => e.kind !== 'item'), ...edits.filter(e => e.kind === 'item')]
+  const results = new Map(order.map(e => [e, applyOne(doc, e)]))
+  return edits.map(e => results.get(e)!)
 }
 
 // ---- recording ----
@@ -287,7 +300,9 @@ export function addEdit (list: FilterEdit[], edit: FilterEdit): FilterEdit[] {
   const same = (e: FilterEdit): boolean => {
     if (e.kind !== edit.kind || e.type !== edit.type) return false
     switch (edit.kind) {
-      case 'move': return (e as typeof edit).base === edit.base
+      // A chain of moves of one base is one move; a base listed in several
+      // tiers (by stack size) can have a separate move for each.
+      case 'move': return (e as typeof edit).base === edit.base && (e as typeof edit).to === edit.from
       // One own rule per tier: a rare and a magic of one base can differ.
       case 'item': return (e as typeof edit).base === edit.base && (e as typeof edit).tier === edit.tier
       case 'style': return (e as typeof edit).tier === edit.tier
@@ -322,11 +337,11 @@ export function addEdit (list: FilterEdit[], edit: FilterEdit): FilterEdit[] {
 }
 
 export function describeEdit (e: FilterEdit): string {
-  const group = e.type.replace(/->/g, ' › ')
+  const group = ruleLabel(e.type, null)
   switch (e.kind) {
     case 'move': return `${e.base}: ${group} ${e.from} → ${e.to}`
-    case 'style': return `Restyled ${group} ${e.tier}`
-    case 'visibility': return `${e.visibility} ${group} ${e.tier}`
+    case 'style': return `Restyled ${ruleLabel(e.type, e.tier)}`
+    case 'visibility': return `${e.visibility} ${ruleLabel(e.type, e.tier)}`
     case 'group': return `Hid the whole ${group} group`
     case 'item': return `Own rule for ${e.base} (${e.visibility === 'Hide' ? 'hidden' : 'restyled'})`
   }
@@ -370,7 +385,7 @@ function typesWithBase (doc: FilterDoc, base: string): string[] {
   return out
 }
 
-const pretty = (type: string) => type.replace(/->/g, ' › ')
+const pretty = (type: string) => ruleLabel(type, null)
 
 // Where a failed edit could go in this filter version, best guesses first.
 export function rehomeOptions (doc: FilterDoc, edit: FilterEdit): RehomeOption[] {
@@ -386,13 +401,13 @@ export function rehomeOptions (doc: FilterDoc, edit: FilterEdit): RehomeOption[]
       break
     case 'style':
     case 'visibility':
-      for (const t of types()) for (const tier of tiersOf(doc, t)) out.push({ type: t, tier, label: `${pretty(t)} ${tier}` })
+      for (const t of types()) for (const tier of tiersOf(doc, t)) out.push({ type: t, tier, label: ruleLabel(t, tier) })
       break
     case 'move':
-      for (const t of types(edit.base)) for (const tier of tiersOf(doc, t, true)) out.push({ type: t, tier, label: `${pretty(t)} ${tier}` })
+      for (const t of types(edit.base)) for (const tier of tiersOf(doc, t, true)) out.push({ type: t, tier, label: ruleLabel(t, tier) })
       break
     case 'item':
-      for (const t of types(edit.base)) for (const tier of tiersOf(doc, t)) out.push({ type: t, tier, label: `${pretty(t)} ${tier}` })
+      for (const t of types(edit.base)) for (const tier of tiersOf(doc, t)) out.push({ type: t, tier, label: ruleLabel(t, tier) })
       break
   }
   return out

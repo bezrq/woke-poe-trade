@@ -137,7 +137,7 @@ export function parseCondition (key: string, rest: string): FilterCondition {
     count = Number(countMatch[1])
     text = text.slice(countMatch[0].length)
   }
-  return { key, op, count, values: tokenize(text.trim()), bare: !text.includes('"') }
+  return { key, op, count, values: tokenize(text.trim()), bare: text.trim() ? !text.includes('"') : undefined }
 }
 
 function parseTags (comment: string): { type: string | null, tier: string | null } {
@@ -181,6 +181,16 @@ export function untaggedTier (conditions: FilterCondition[]): string {
 }
 
 export const UNTAGGED_PREFIX = 'untagged:'
+
+// A group and tier the way a person reads them; a rule with no tags has no
+// tier name worth showing.
+export function ruleLabel (type: string | null, tier: string | null): string {
+  if (!type) return 'no rule'
+  const group = type.startsWith(UNTAGGED_PREFIX)
+    ? (type.slice(UNTAGGED_PREFIX.length) || 'Rule')
+    : type.split('->').map(part => part.charAt(0).toUpperCase() + part.slice(1)).join(' › ')
+  return tier && !tier.startsWith('#') ? `${group} › ${tier}` : group
+}
 
 export function parseFilter (source: string): FilterDoc {
   const bom = source.charCodeAt(0) === 0xFEFF
@@ -323,7 +333,7 @@ export function formatBlock (b: FilterBlock): string[] {
   for (const a of b.actions) out.push(`${prefix}\t${formatAction(a)}`)
   if (b.continue) out.push(`${prefix}\tContinue`)
   // Comments inside the block stay: someone may have commented out a rule.
-  if (!b.disabled) out.push(...b.raw.slice(1).filter(l => l.trimStart().startsWith('#')))
+  if (!b.raw[0]?.trimStart().startsWith('#')) out.push(...b.raw.slice(1).filter(l => l.trimStart().startsWith('#')))
   return out
 }
 

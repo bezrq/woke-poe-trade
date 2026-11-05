@@ -53,26 +53,26 @@
             <LabelPreview :text="facts.baseType ?? facts.name" :actions="match.actions" :visibility="match.visibility" :scale="1.15" />
           </div>
           <div v-if="match.layers.length" class="text-xs w-dim">
-            Also styled by: {{ match.layers.map(l => `${groupName(l.block.type)} ${l.block.tier ?? ''}`).join(', ') }}
+            Also styled by: {{ match.layers.map(l => placeOf(l.block)).join(', ') }}
           </div>
           <div v-for="u in match.uncertain.slice(0, 2)" :key="u.block.index" class="text-xs" style="color: var(--w-warn);">
-            Might be caught earlier by {{ groupName(u.block.type) }} {{ u.block.tier }} (can't tell {{ unknownKeys(u).join(', ') }} from the copy).
+            Might be caught earlier by {{ placeOf(u.block) }} (can't tell {{ unknownKeys(u).join(', ') }} from the copy).
           </div>
         </div>
 
         <div v-if="alsoIn.length" class="text-xs w-dim flex flex-wrap items-center gap-1">
           <span>Also listed in</span>
-          <WChip v-for="a in alsoIn" :key="a.type + a.tier" clickable @click="emit('open-editor', { type: a.type, tier: a.tier })">{{ groupName(a.type) }} › {{ a.tier }}</WChip>
+          <WChip v-for="a in alsoIn" :key="a.type + a.tier" clickable @click="emit('open-editor', { type: a.type, tier: a.tier })">{{ placeOf(a) }}</WChip>
         </div>
 
         <div v-if="moveTiers.length" :class="$style.section">
           <div class="w-group-label" :class="$style.label">Move this item to tier</div>
           <button v-for="t in moveTiers" :key="t.tier" :class="[$style.tierRow, { [$style.current]: t.tier === final.tier }]"
             @click="moveTo(t.tier)">
-            <span :class="$style.tierName">{{ t.tier }}</span>
+            <span :class="$style.tierName" :title="t.off ? 'This strictness turns this tier off, so an item moved here goes wherever that tier\'s items go' : t.tier">{{ t.tier }}</span>
             <LabelPreview :text="facts.baseType ?? ''" :actions="t.actions" :visibility="t.visibility" :extras="false" />
             <span class="grow" />
-            <span class="text-xs" :class="t.tier === final.tier ? 'w-accent' : 'w-faint'">{{ t.tier === final.tier ? 'current' : `${t.count} items` }}</span>
+            <span class="text-xs" :class="t.tier === final.tier ? 'w-accent' : 'w-faint'">{{ t.tier === final.tier ? 'current' : (t.off ? 'off at this strictness' : `${t.count} items`) }}</span>
           </button>
         </div>
         <div v-else-if="!isOwn" class="text-xs w-dim">
@@ -143,6 +143,11 @@ const areaLevelModel = computed({
   }
 })
 
+// A group and tier in words; a rule with no tags has no tier name to show.
+function placeOf (r: { type: string | null, tier: string | null }): string {
+  return r.tier && !r.tier.startsWith('#') ? `${groupName(r.type)} › ${r.tier}` : groupName(r.type)
+}
+
 const final = computed(() => props.match.final!.block)
 const isOwn = computed(() => final.value.type === OWN_RULE_TYPE)
 const base = computed(() => props.facts.baseType ?? '')
@@ -162,7 +167,7 @@ function tierInfo (tier: string) {
   const blocks = live.length ? live : all
   const first = blocks[0]
   const count = blocks.reduce((n, b) => n + (b.conditions.find(c => c.key === 'BaseType' && c.op === '==')?.values.length ?? 0), 0)
-  return { tier, actions: first?.actions ?? [], visibility: first?.visibility ?? 'Show', count, look: readStyle(first?.actions ?? []) }
+  return { tier, actions: first?.actions ?? [], visibility: first?.visibility ?? 'Show', count, look: readStyle(first?.actions ?? []), off: !live.length }
 }
 
 const moveTiers = computed(() => {

@@ -3,11 +3,11 @@
 // game, and every result is checked by parsing what was written.
 import { describe, it, expect, vi, beforeAll, beforeEach } from 'vitest'
 import { reactive, ref, shallowRef } from 'vue'
-import { parseFilter, serializeFilter } from '@/web/woke/loot-filter/parse'
+import { formatBlock, parseFilter, serializeFilter } from '@/web/woke/loot-filter/parse'
 import { itemFacts } from '@/web/woke/loot-filter/item-facts'
 import type { ItemFacts } from '@/web/woke/loot-filter/item-facts'
 import { matchItem } from '@/web/woke/loot-filter/match'
-import { OWN_RULE_TYPE, conditionSignature, moveTargets, readStyle } from '@/web/woke/loot-filter/edits'
+import { OWN_RULE_TYPE, conditionSignature, describeEdit as describeOf, moveTargets, readStyle, rehomeOptions } from '@/web/woke/loot-filter/edits'
 import type { FilterEdit } from '@/web/woke/loot-filter/edits'
 import { WOKE_MARK, useLootFilter } from '@/web/woke/loot-filter/store'
 import { initLootFilterWidget, outputName } from '@/web/woke/loot-filter/widget'
@@ -38,6 +38,8 @@ vi.mock('@/web/woke/loot-filter/sounds', () => ({ customSoundsIn: () => [], inst
 vi.mock('@/web/woke/ui', () => ({ toast: () => {} }))
 
 beforeAll(loadGameData)
+
+const rehomeLabels = (doc: ReturnType<typeof parseFilter>, edit: FilterEdit) => rehomeOptions(doc, edit).map(o => o.label)
 
 let host: FakeHost
 beforeEach(() => {
@@ -393,7 +395,8 @@ describe('the edit you made is the edit the game sees', () => {
         const [res] = applyAll(doc, [{ id: 1, kind: 'move', type, base, from: from.tier!, to }])
         expect(res.ok, `${type}: ${base} to ${to}`).toBe(true)
         const out = parseFilter(serializeFilter(doc))
-        const live = out.blocks.filter(b => b.type === type && !b.disabled && b.conditions.some(c => c.key === 'BaseType' && c.op === '==' && c.values.includes(base))).map(b => b.tier)
+        // A tier this strictness turned off lists it too, and stays off.
+        const live = out.blocks.filter(b => b.type === type && b.conditions.some(c => c.key === 'BaseType' && c.op === '==' && c.values.includes(base))).map(b => b.tier)
         expect(live, `${type}: ${base} to ${to}`).toContain(to)
         expect(live, `${type}: ${base} still in ${from.tier}`).not.toContain(from.tier)
         tried++
@@ -484,7 +487,7 @@ describe('regressions', () => {
   })
 
   it('moving into a tier commented out for being empty brings it back', () => {
-    const source = 'Show # $type->currency $tier->t1\n\tBaseType == "Mirror of Kalandra"\n\n#Show # $type->currency $tier->t2\n#\tBaseType == \n\tSetFontSize 40\n'
+    const source = 'Show # $type->currency $tier->t1\n\tBaseType == "Mirror of Kalandra"\n\n#Show # $type->currency $tier->t2\n#\tBaseType == \n#\tSetFontSize 40\n'
     const doc = parseFilter(source)
     expect(moveTargets(doc, 'currency')).toEqual(['t1', 't2'])
     const [res] = applyAll(doc, [{ id: 1, kind: 'move', type: 'currency', base: 'Mirror of Kalandra', from: 't1', to: 't2' }])
@@ -513,10 +516,103 @@ describe('regressions', () => {
     expect(readStyle(out.actions).fontSize).toBe(40)
   })
 
-  it('the update check counts changes the way the file gets them', async () => {
+  it('moving into a tier this strictness turned off leaves that tier off', () => {
+    const source = neverSink('3-STRICT')
+    const start = parseFilter(source)
+    const off = start.blocks.find(b => b.disabled && b.type === 'rr' && b.conditions.some(c => c.key === 'BaseType' && c.values.length > 5))!
+    const live = start.blocks.find(b => !b.disabled && b.type === 'rr' && b.conditions.some(c => c.key === 'BaseType' && c.values.length))!
+    const base = live.conditions.find(c => c.key === 'BaseType')!.values[0]
+    expect(moveTargets(start, 'rr')).toContain(off.tier)
+    const doc = parseFilter(source)
+    const [res] = applyAll(doc, [{ id: 1, kind: 'move', type: 'rr', base, from: live.tier!, to: off.tier! }])
+    expect(res.ok).toBe(true)
+    const out = parseFilter(serializeFilter(doc))
+    const after = out.blocks.filter(b => b.tier === off.tier && b.type === 'rr')
+    expect(after.every(b => b.disabled)).toBe(true)
+    expect(after[0].conditions.find(c => c.key === 'BaseType')!.values).toContain(base)
+    // Everything else about the file's live rules stays put.
+    const live2 = (d: ReturnType<typeof parseFilter>) => d.blocks.filter(b => !b.disabled && b.tier !== live.tier).map(b => b.tier)
+    expect(live2(out)).toEqual(live2(start))
+  })
+
+  it('separate moves of a base listed in several tiers stay separate', () => {
+    let list: FilterEdit[] = []
+    list = addTo(list, { id: 1, kind: 'move', type: 'h', base: 'Wild', from: 'single', to: 'low' })
+    list = addTo(list, { id: 2, kind: 'move', type: 'h', base: 'Wild', from: 'stack3', to: 'other' })
+    expect(list).toHaveLength(2)
+    list = addTo(list, { id: 3, kind: 'move', type: 'h', base: 'Wild', from: 'single2', to: 'stack3' })
+    expect(list).toHaveLength(3)
+    // A chain still folds, and going back still undoes it.
+    list = addTo(list, { id: 4, kind: 'move', type: 'h', base: 'Wild', from: 'low', to: 'lower' })
+    expect(list).toHaveLength(3)
+    expect(list[0]).toMatchObject({ from: 'single', to: 'lower' })
+    list = addTo(list, { id: 5, kind: 'move', type: 'h', base: 'Wild', from: 'lower', to: 'single' })
+    expect(list).toHaveLength(2)
+  })
+
+  it('an own rule stays above its item when the item is moved up afterwards', () => {
+    const source = 'Show # $type->currency $tier->t1\n\tBaseType == "Mirror of Kalandra"\n\nShow # $type->currency $tier->t3\n\tBaseType == "Chaos Orb"\n'
+    const doc = parseFilter(source)
+    const res = applyAll(doc, [
+      { id: 2, kind: 'item', type: 'currency', tier: 't3', base: 'Chaos Orb', visibility: 'Hide', patch: {} },
+      { id: 1, kind: 'move', type: 'currency', base: 'Chaos Orb', from: 't3', to: 't1' }
+    ])
+    expect(res.map(r => r.edit.id)).toEqual([2, 1])
+    const f: ItemFacts = { name: 'x', itemClass: 'Stackable Currency', baseType: 'Chaos Orb', influences: [], explicitModNames: [] }
+    expect(matchItem(parseFilter(serializeFilter(doc)), f).visibility).toBe('Hide')
+  })
+
+  it('an edit made while a save runs still reads as unsaved', async () => {
     const { store } = await opened()
+    let release!: () => void
+    host.writeGate = new Promise<void>(resolve => { release = resolve })
     store.edit({ kind: 'visibility', type: 'currency', tier: 't1exalted', visibility: 'Hide' })
-    expect(store.failed.value).toEqual([])
+    const saving = store.save()
+    await new Promise(resolve => setTimeout(resolve, 0))
+    store.edit({ kind: 'visibility', type: 'currency', tier: 't2divine', visibility: 'Hide' })
+    release()
+    await saving
+    expect(store.dirty.value).toBe(true)
+    await store.save()
+    expect(store.dirty.value).toBe(false)
+    expect(inGame().blocks.find(b => b.tier === 't2divine')?.visibility).toBe('Hide')
+  })
+
+  it('rules with no tags are not tiers to move items between, and read in words', () => {
+    const doc = parseFilter('#[[1000]] Mine\nShow\n\tBaseType == "A"\n\nShow\n\tBaseType == "B"\n')
+    const type = doc.blocks[0].type!
+    expect(moveTargets(doc, type)).toEqual([])
+    const label = describeOf({ id: 1, kind: 'style', type, tier: doc.blocks[0].tier!, patch: {} })
+    expect(label).toBe('Restyled Mine')
+    expect(rehomeLabels(doc, { id: 1, kind: 'style', type, tier: '#gone', patch: {} }).every(l => !l.includes('#') && !l.includes('untagged'))).toBe(true)
+  })
+
+  it('a rare and a magic own rule of one base are separate rules to restyle', () => {
+    const doc = parseFilter('Show # $type->rings $tier->rare\n\tRarity Rare\n\nShow # $type->rings $tier->magic\n\tRarity Magic\n')
+    applyAll(doc, [
+      { id: 1, kind: 'item', type: 'rings', tier: 'rare', base: 'Gold Ring', visibility: 'Hide', patch: {} },
+      { id: 2, kind: 'item', type: 'rings', tier: 'magic', base: 'Gold Ring', visibility: 'Show', patch: {} }
+    ])
+    const own = doc.blocks.filter(b => b.type === OWN_RULE_TYPE)
+    expect(own.map(b => b.editId)).toEqual([1, 2])
+    expect(new Set(own.map(b => b.tier)).size).toBe(2)
+  })
+
+  it('always show, then hide, leaves no beam or icon on the hidden item', () => {
+    let list: FilterEdit[] = []
+    list = addTo(list, { id: 1, kind: 'item', type: 'c', tier: 't', base: 'X', visibility: 'Show', patch: { effect: { color: 'Red', temp: true }, icon: { size: 1, color: 'Red', shape: 'Star' }, sound: { id: '1', volume: 100 } } })
+    list = addTo(list, { id: 2, kind: 'item', type: 'c', tier: 't', base: 'X', visibility: 'Hide', patch: {} })
+    expect(list).toHaveLength(1)
+    const doc = parseFilter('Show # $type->c $tier->t\n\tBaseType == "X"\n')
+    applyAll(doc, list)
+    const own = doc.blocks.find(b => b.type === OWN_RULE_TYPE)!
+    expect(own.actions.map(a => a.key).filter(k => /Effect|Icon|Sound$/.test(k) && k !== 'DisableDropSound')).toEqual([])
+  })
+
+  it('a block brought back from commented out writes clean lines', () => {
+    const doc = parseFilter('#Show # $type->c $tier->t\n#\tBaseType == \n\nShow # $type->c $tier->u\n\tBaseType == "X"\n')
+    applyAll(doc, [{ id: 1, kind: 'move', type: 'c', base: 'X', from: 'u', to: 't' }])
+    expect(formatBlock(doc.blocks[0])).toEqual(['Show # $type->c $tier->t', '\tBaseType == "X"'])
   })
 })
 

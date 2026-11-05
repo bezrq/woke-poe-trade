@@ -2,8 +2,7 @@
 // line and quietly keeps the old one, which looks like "my change did nothing",
 // so problems are caught here and named by rule instead.
 import type { FilterBlock, FilterDoc } from './parse'
-import { ACTION_KEYS } from './parse'
-import { groupName } from './groups'
+import { ACTION_KEYS, UNTAGGED_PREFIX, ruleLabel } from './parse'
 
 export interface FilterProblem {
   block: FilterBlock
@@ -88,6 +87,6 @@ export function validateFilter (doc: FilterDoc): FilterProblem[] {
 }
 
 export function describeProblem (p: FilterProblem): string {
-  const where = p.block.type ? `${groupName(p.block.type)}${p.block.tier ? ` › ${p.block.tier}` : ''}` : `rule at line ${p.block.line}`
+  const where = p.block.type && !p.block.type.startsWith(UNTAGGED_PREFIX) ? ruleLabel(p.block.type, p.block.tier) : `rule at line ${p.block.line}`
   return `${where}: ${p.message}`
 }

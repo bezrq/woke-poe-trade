@@ -619,12 +619,11 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
     ]
   }
 
-  function pushHistory () {
+  function pushHistory (edits: FilterEdit[], moves: PriceMove[]) {
     const last = cfg().history[0]
-    const moves = cfg().priceTiers.moves
-    if (last && JSON.stringify([last.edits, last.moves]) === JSON.stringify([cfg().edits, moves])) return
-    const label = `${cfg().edits.length} change(s)${moves.length ? `, ${moves.length} price move(s)` : ''}`
-    cfg().history = [{ ts: Date.now(), label, edits: cfg().edits, moves }, ...cfg().history].slice(0, HISTORY_SIZE)
+    if (last && JSON.stringify([last.edits, last.moves]) === JSON.stringify([edits, moves])) return
+    const label = `${edits.length} change(s)${moves.length ? `, ${moves.length} price move(s)` : ''}`
+    cfg().history = [{ ts: Date.now(), label, edits, moves }, ...cfg().history].slice(0, HISTORY_SIZE)
   }
 
   // Puts the changes back as they were at an earlier save.
@@ -666,12 +665,22 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
       }
       // Pack sounds the filter uses go into the folder first, so the game finds them.
       await installPackSounds(customSoundsIn(doc.value), cfg().folder).catch(() => 0)
+      // What this write holds, taken now: an edit made while it runs is not in
+      // the file and must still read as unsaved.
+      const written = {
+        sig: signature(),
+        build: hash(buildSig.value),
+        extra: extraSig(),
+        edits: cfg().edits,
+        moves: cfg().priceTiers.moves,
+        version: doc.value.version
+      }
       await hostRequest('filter-write', { dir: cfg().folder, name, text: serializeFilter(doc.value, header()) })
-      savedEdits.value = signature()
-      cfg().savedBuildSig = hash(buildSig.value)
-      cfg().savedExtraSig = extraSig()
-      pushHistory()
-      cfg().lastVersion = doc.value.version
+      savedEdits.value = written.sig
+      cfg().savedBuildSig = written.build
+      cfg().savedExtraSig = written.extra
+      pushHistory(written.edits, written.moves)
+      cfg().lastVersion = written.version
       lastSaved.value = Date.now()
       if (cfg().reloadViaChat) reloadInGame(opts.reloadNow === true)
       setTimeout(() => { readGameFilter().catch(() => {}) }, 8000)
