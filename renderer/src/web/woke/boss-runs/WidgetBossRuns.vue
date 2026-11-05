@@ -523,8 +523,9 @@ const dockMenu = computed<DockMenuAction[]>(() => [{
   icon: 'fas fa-plus',
   action: () => {
     openArenaBoss()
-    startLog()
     showWithOverlay(wm, props.config.wmId)
+    // After the watcher that clears the form when the boss changes.
+    nextTick(startLog).catch(() => {})
   }
 }])
 </script>

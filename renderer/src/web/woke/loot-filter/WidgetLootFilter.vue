@@ -2,7 +2,7 @@
   <Widget :config="mode === 'card' ? { ...config, anchor: cardAnchor } : config"
     :move-handles="mode === 'card' ? 'none' : 'corners'" :inline-edit="false" :readonly="true">
     <!-- Strictness and anything that needs you, behind one dock icon. -->
-    <DockItem :menu="dockMenu" :wake="dismissable.length" ref="dockRef" id="loot-filter" :art="dockArt" title="Loot filter" :show="dockShow"
+    <DockItem :menu="dockMenu" ref="dockRef" id="loot-filter" :art="dockArt" title="Loot filter" :show="dockShow"
       :badge="dockBadge" :tone="dockTone" :wm-id="config.wmId" card-width="22rem">
       <template #card>
         <div :class="$style.dock">

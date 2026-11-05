@@ -110,6 +110,41 @@ test('a new offer brings a dismissed icon back, but not one dismissed for good',
   await expect(overlay.dockIcon('trade')).toHaveCount(0)
 })
 
+test('a click on a menu row leaves no card behind', async ({ overlay, fakeApp }) => {
+  await overlay.boot({ widgets: [TRADE, { wmType: 'woke-mechanics' }] })
+  await overlay.log(WHISPER)
+  await rightClickIcon(overlay, fakeApp, 'trade')
+  const row = overlay.dockIcon('trade').getByRole('menuitem', { name: 'Sound on new offers' })
+  const box = await row.boundingBox()
+  // Across the gap, onto the row, long enough for the card's hover delay.
+  await overlay.moveMouse(1000, 900)
+  await overlay.moveMouse(Math.round(box!.x + 20), Math.round(box!.y + 5))
+  await overlay.page.waitForTimeout(300)
+  await row.click()
+  await overlay.page.waitForTimeout(300)
+  await expect(overlay.dockIcon('trade').locator('[data-dock-menu]')).toHaveCount(0)
+  await expect(overlay.dockIcon('trade').getByText('Kaltenhalt')).toHaveCount(0)
+})
+
+test('undoing one dismissal leaves another alone', async ({ overlay, fakeApp }) => {
+  await overlay.boot({ widgets: [TRADE, { wmType: 'woke-mechanics' }] })
+  await overlay.log(WHISPER)
+  await overlay.log(hideout)
+  await rightClickIcon(overlay, fakeApp, 'trade')
+  await overlay.dockIcon('trade').getByRole('menuitem', { name: '30 min' }).click()
+  const first = overlay.page.getByRole('status').filter({ hasText: 'Trades dismissed' })
+  await expect(first).toBeVisible()
+  // The game gets focus back once the icon has gone.
+  await overlay.moveMouse(1000, 900)
+  await expect.poll(() => fakeApp.game.focused).toBe(true)
+  await rightClickIcon(overlay, fakeApp, 'regex-library')
+  await overlay.dockIcon('regex-library').getByRole('menuitem', { name: '30 min' }).click()
+  await expect(overlay.dockIcon('regex-library')).toHaveCount(0)
+  await first.getByRole('button', { name: 'Undo' }).click()
+  await expect(overlay.dockIcon('trade')).toBeVisible()
+  await expect(overlay.dockIcon('regex-library')).toHaveCount(0)
+})
+
 test('dismissed for 30 minutes: the note can undo it, and it survives a restart', async ({ overlay, fakeApp }) => {
   await bootInHideout(overlay)
   await rightClickIcon(overlay, fakeApp, 'regex-library')

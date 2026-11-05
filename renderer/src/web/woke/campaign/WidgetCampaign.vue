@@ -73,7 +73,7 @@ import { formatClock } from '../ui/format'
 import RouteParts from './RouteParts.vue'
 import DockItem from '../dock/DockItem.vue'
 import type { DockMenuAction } from '../dock/dock'
-import { hideWhilePlaying, tickWhile } from '../dock/dock'
+import { hideWhilePlaying, showWithOverlay, tickWhile } from '../dock/dock'
 import { reportProblem } from '../dock/health'
 import { pinnedReadouts, pinsTick } from './pins'
 import { actFromAreaId, actLabel } from './log-parse'
@@ -385,7 +385,18 @@ onUnmounted(() => {
 const dockMenu = computed<DockMenuAction[]>(() => [
   { label: 'Next step', icon: 'fas fa-step-forward', action: () => { move(1) } },
   { label: 'Previous step', icon: 'fas fa-step-backward', action: () => { move(-1) } },
-  ...(timerWidget.value ? [{ label: 'Splits and past runs', icon: 'far fa-clock', action: toggleSplits }] : []),
+  ...(timerWidget.value
+    ? [{
+        label: 'Splits and past runs',
+        icon: 'far fa-clock',
+        action: () => {
+          const w = timerWidget.value
+          if (!w) return
+          w.expanded = true
+          showWithOverlay(wm, w.wmId)
+        }
+      }]
+    : []),
   { label: 'Choose what stays on screen', icon: 'fas fa-thumbtack', action: openSettings }
 ])
 </script>
