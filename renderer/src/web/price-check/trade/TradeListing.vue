@@ -124,10 +124,11 @@
   </div>
   <ui-error-box v-else>
     <template #name>{{ t(':error') }}</template>
-    <p v-if="error.includes('JSON')">{{ t('app.leagues_failed_help') }}</p>
+    <p v-if="rateLimited">The trade site is limiting requests. Searching again too soon makes the wait longer.</p>
+    <p v-else-if="error.includes('JSON')">{{ t('app.leagues_failed_help') }}</p>
     <p v-else>Error: {{ error }}</p>
     <template #actions>
-      <button class="btn" @click="execSearch">{{ t('Retry') }}</button>
+      <button class="btn" :disabled="retryIn > 0" @click="execSearch">{{ t('Retry') }}<template v-if="retryIn > 0"> ({{ retryIn }}s)</template></button>
       <button class="btn" @click="openTradeLink">{{ t('Browser') }}</button>
     </template>
   </ui-error-box>
@@ -144,6 +145,7 @@ import { PriceCheckWidget } from '@/web/overlay/interfaces'
 import { ItemFilters, FilterOrGroup } from '../filters/interfaces'
 import { ParsedItem } from '@/parser'
 import { artificialSlowdown } from './artificial-slowdown'
+import { useRetryCountdown } from './retry-countdown'
 import OnlineFilter from './OnlineFilter.vue'
 import TradeLinks from './TradeLinks.vue'
 import PriceVerdict from '@/web/woke/price-insight/PriceVerdict.vue'
@@ -292,6 +294,7 @@ export default defineComponent({
     }, { immediate: true })
 
     const { error, searchResult, groupedResults, fetchResults, fetching, search } = useTradeApi()
+    const { retryIn, rateLimited } = useRetryCountdown(error)
 
     // woke: improved view reads the same listings, nothing extra is requested
     const { insight, divine, options: insightOptions } = useInsight(groupedResults)
@@ -372,6 +375,8 @@ export default defineComponent({
       slowdownReady: slowdown.isReady,
       execSearch: () => { search(props.filters, props.stats) },
       error,
+      retryIn,
+      rateLimited,
       showSeller: computed(() => widget.value.showSeller),
       makeTradeLink,
       openTradeLink () {

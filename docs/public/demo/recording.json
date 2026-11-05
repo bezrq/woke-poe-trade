@@ -1,0 +1,363 @@
+{
+ "config": {
+  "version": "0.0.0-test",
+  "updater": {
+   "state": "update-not-available",
+   "checkedAt": 0
+  },
+  "contents": "{\n  \"configVersion\": 18,\n  \"overlayKey\": \"Shift + Space\",\n  \"overlayBackground\": \"rgba(129, 139, 149, 0.15)\",\n  \"overlayBackgroundClose\": true,\n  \"restoreClipboard\": false,\n  \"showAttachNotification\": true,\n  \"commands\": [\n    {\n      \"text\": \"/hideout\",\n      \"hotkey\": \"F5\",\n      \"send\": true\n    },\n    {\n      \"text\": \"/exit\",\n      \"hotkey\": \"F9\",\n      \"send\": true\n    },\n    {\n      \"text\": \"@last ty\",\n      \"hotkey\": null,\n      \"send\": true\n    },\n    {\n      \"text\": \"/invite @last\",\n      \"hotkey\": null,\n      \"send\": true\n    },\n    {\n      \"text\": \"/tradewith @last\",\n      \"hotkey\": null,\n      \"send\": true\n    },\n    {\n      \"text\": \"/hideout @last\",\n      \"hotkey\": null,\n      \"send\": true\n    }\n  ],\n  \"clientLog\": null,\n  \"gameConfig\": null,\n  \"windowTitle\": \"Path of Exile\",\n  \"logKeys\": false,\n  \"accountName\": \"\",\n  \"stashScroll\": true,\n  \"language\": \"en\",\n  \"realm\": \"pc-ggg\",\n  \"useIntlSite\": false,\n  \"fontSize\": 16,\n  \"widgets\": [\n    {\n      \"wmId\": 1,\n      \"wmType\": \"menu\",\n      \"wmTitle\": \"\",\n      \"wmWants\": \"show\",\n      \"wmZorder\": 1,\n      \"wmFlags\": [\n        \"invisible-on-blur\",\n        \"menu::skip\"\n      ],\n      \"anchor\": {\n        \"pos\": \"tl\",\n        \"x\": 0,\n        \"y\": 10.5\n      },\n      \"alwaysShow\": false,\n      \"pinned\": [\n        10,\n        11,\n        13,\n        15,\n        18,\n        21,\n        24\n      ],\n      \"rail\": true,\n      \"dismissed\": []\n    },\n    {\n      \"wmId\": 2,\n      \"wmType\": \"settings\",\n      \"wmTitle\": \"{icon=fa-cog}\",\n      \"wmWants\": \"hide\",\n      \"wmZorder\": \"exclusive\",\n      \"wmFlags\": [\n        \"invisible-on-blur\",\n        \"ignore-ui-visibility\"\n      ]\n    },\n    {\n      \"wmId\": 3,\n      \"wmType\": \"item-search\",\n      \"wmTitle\": \"{icon=fa-search}\",\n      \"wmWants\": \"hide\",\n      \"wmZorder\": null,\n      \"wmFlags\": [\n        \"invisible-on-blur\"\n      ],\n      \"anchor\": {\n        \"pos\": \"tl\",\n        \"x\": 10,\n        \"y\": 20\n      },\n      \"ocrGemsKey\": null\n    },\n    {\n      \"wmId\": 4,\n      \"wmType\": \"price-check\",\n      \"wmTitle\": \"\",\n      \"wmWants\": \"hide\",\n      \"wmZorder\": \"exclusive\",\n      \"wmFlags\": [\n        \"hide-on-blur\",\n        \"menu::skip\"\n      ],\n      \"showRateLimitState\": false,\n      \"apiLatencySeconds\": 2,\n      \"collapseListings\": \"api\",\n      \"smartInitialSearch\": true,\n      \"lockedInitialSearch\": true,\n      \"activateStockFilter\": false,\n      \"builtinBrowser\": false,\n      \"hotkey\": \"D\",\n      \"hotkeyHold\": \"Ctrl\",\n      \"hotkeyLocked\": \"Ctrl + Alt + D\",\n      \"showSeller\": false,\n      \"searchStatRange\": 10,\n      \"showCursor\": true,\n      \"requestPricePrediction\": false,\n      \"merchantOnly\": true,\n      \"defaultCurrency\": null\n    },\n    {\n      \"wmId\": 5,\n      \"wmType\": \"item-check\",\n      \"wmTitle\": \"\",\n      \"wmWants\": \"hide\",\n      \"wmZorder\": \"exclusive\",\n      \"wmFlags\": [\n        \"hide-on-blur\",\n        \"menu::skip\"\n      ],\n      \"hotkey\": null,\n      \"wikiKey\": null,\n      \"poedbKey\": null,\n      \"craftOfExileKey\": null,\n      \"stashSearchKey\": null,\n      \"maps\": {\n        \"profile\": 1,\n        \"showNewStats\": false,\n        \"selectedStats\": [\n          {\n            \"matcher\": \"Players have #% to all maximum Resistances\",\n            \"decision\": \"w--\"\n          },\n          {\n            \"matcher\": \"Monsters reflect #% of Physical Damage\",\n            \"decision\": \"d--\"\n          },\n          {\n            \"matcher\": \"Monsters reflect #% of Elemental Damage\",\n            \"decision\": \"d--\"\n          },\n          {\n            \"matcher\": \"Area contains two Unique Bosses\",\n            \"decision\": \"g--\"\n          }\n        ]\n      }\n    },\n    {\n      \"wmId\": 6,\n      \"wmType\": \"image-strip\",\n      \"wmTitle\": \"Cheat sheets\",\n      \"wmWants\": \"hide\",\n      \"wmZorder\": null,\n      \"wmFlags\": [\n        \"invisible-on-blur\"\n      ],\n      \"anchor\": {\n        \"pos\": \"tc\",\n        \"x\": 50,\n        \"y\": 10\n      },\n      \"images\": [\n        {\n          \"id\": 1,\n          \"url\": \"syndicate.jpg\"\n        }\n      ]\n    },\n    {\n      \"wmId\": 7,\n      \"wmType\": \"delve-grid\",\n      \"wmTitle\": \"\",\n      \"wmWants\": \"hide\",\n      \"wmZorder\": null,\n      \"wmFlags\": [\n        \"hide-on-focus\",\n        \"menu::skip\"\n      ],\n      \"toggleKey\": null\n    },\n    {\n      \"wmId\": 8,\n      \"wmType\": \"woke-regex-library\",\n      \"wmTitle\": \"Regex library\",\n      \"wmWants\": \"hide\",\n      \"wmZorder\": null,\n      \"wmFlags\": [\n        \"invisible-on-blur\"\n      ],\n      \"anchor\": {\n        \"pos\": \"tl\",\n        \"x\": 10,\n        \"y\": 12\n      },\n      \"enableHotkeys\": true,\n      \"entries\": [\n        {\n          \"id\": 1,\n          \"hotkey\": null,\n          \"name\": \"No reflect\",\n          \"text\": \"\\\"!eflec\\\"\",\n          \"category\": \"Maps\",\n          \"tags\": [\n            \"safe\"\n          ],\n          \"notes\": \"Highlights maps without physical or elemental reflect.\"\n        },\n        {\n          \"id\": 2,\n          \"hotkey\": null,\n          \"name\": \"No reflect, no regen\",\n          \"text\": \"\\\"!eflec|t regen\\\"\",\n          \"category\": \"Maps\",\n          \"tags\": [\n            \"safe\"\n          ],\n          \"notes\": \"Also skips \\\"Players cannot Regenerate…\\\".\"\n        },\n        {\n          \"id\": 3,\n          \"hotkey\": null,\n          \"name\": \"Quantity 80%+\",\n          \"text\": \"\\\"tity: \\\\+([89]\\\\d|\\\\d{3})%\\\"\",\n          \"category\": \"Maps\",\n          \"tags\": [\n            \"juice\"\n          ],\n          \"notes\": \"Item Quantity of 80% or more.\"\n        },\n        {\n          \"id\": 4,\n          \"hotkey\": null,\n          \"name\": \"Pack size 30%+\",\n          \"text\": \"\\\"ze: \\\\+([3-9]\\\\d|\\\\d{3})%\\\"\",\n          \"category\": \"Maps\",\n          \"tags\": [\n            \"juice\"\n          ],\n          \"notes\": \"Monster Pack Size of 30% or more.\"\n        },\n        {\n          \"id\": 5,\n          \"hotkey\": null,\n          \"name\": \"Chaos recipe (ilvl 60-74)\",\n          \"text\": \"\\\"m level: (6\\\\d|7[0-4])\\\"\",\n          \"category\": \"Dump sorting\",\n          \"tags\": [\n            \"vendor\"\n          ],\n          \"notes\": \"Item level 60 to 74, for the chaos recipe.\"\n        },\n        {\n          \"id\": 6,\n          \"hotkey\": null,\n          \"name\": \"Unidentified\",\n          \"text\": \"unidentified\",\n          \"category\": \"Dump sorting\",\n          \"tags\": [\n            \"vendor\"\n          ],\n          \"notes\": \"\"\n        },\n        {\n          \"id\": 7,\n          \"hotkey\": null,\n          \"name\": \"20% quality\",\n          \"text\": \"\\\"quality: \\\\+20%\\\"\",\n          \"category\": \"Dump sorting\",\n          \"tags\": [\n            \"vendor\"\n          ],\n          \"notes\": \"Gems and flasks for the quality recipe.\"\n        }\n      ]\n    },\n    {\n      \"wmId\": 9,\n      \"wmType\": \"woke-map-check\",\n      \"wmTitle\": \"\",\n      \"wmWants\": \"hide\",\n      \"wmZorder\": \"exclusive\",\n      \"wmFlags\": [\n        \"hide-on-blur\",\n        \"menu::skip\"\n      ],\n      \"anchor\": {\n        \"pos\": \"cl\",\n        \"x\": 50,\n        \"y\": 50\n      },\n      \"moved\": false\n    },\n    {\n      \"wmId\": 10,\n      \"wmType\": \"woke-market-tracker\",\n      \"wmTitle\": \"\",\n      \"wmWants\": \"hide\",\n      \"wmZorder\": null,\n      \"wmFlags\": [\n        \"uninitialized\"\n      ],\n      \"anchor\": {\n        \"pos\": \"tl\",\n        \"x\": 40,\n        \"y\": 30\n      }\n    },\n    {\n      \"wmId\": 11,\n      \"wmType\": \"woke-farming\",\n      \"wmTitle\": \"\",\n      \"wmWants\": \"hide\",\n      \"wmZorder\": null,\n      \"wmFlags\": [\n        \"uninitialized\"\n      ],\n      \"anchor\": {\n        \"pos\": \"tl\",\n        \"x\": 40,\n        \"y\": 30\n      }\n    },\n    {\n      \"wmId\": 12,\n      \"wmType\": \"woke-session-analytics\",\n      \"wmTitle\": \"\",\n      \"wmWants\": \"hide\",\n      \"wmZorder\": null,\n      \"wmFlags\": [\n        \"uninitialized\"\n      ],\n      \"anchor\": {\n        \"pos\": \"tl\",\n        \"x\": 40,\n        \"y\": 30\n      }\n    },\n    {\n      \"wmId\": 13,\n      \"wmType\": \"woke-map-mods\",\n      \"wmTitle\": \"\",\n      \"wmWants\": \"hide\",\n      \"wmZorder\": null,\n      \"wmFlags\": [\n        \"uninitialized\"\n      ],\n      \"anchor\": {\n        \"pos\": \"tl\",\n        \"x\": 40,\n        \"y\": 30\n      }\n    },\n    {\n      \"wmId\": 14,\n      \"wmType\": \"woke-map-scan\",\n      \"wmTitle\": \"\",\n      \"wmWants\": \"hide\",\n      \"wmZorder\": null,\n      \"wmFlags\": [\n        \"uninitialized\"\n      ],\n      \"anchor\": {\n        \"pos\": \"tl\",\n        \"x\": 40,\n        \"y\": 30\n      }\n    },\n    {\n      \"wmId\": 15,\n      \"wmType\": \"woke-essence-scan\",\n      \"wmTitle\": \"\",\n      \"wmWants\": \"hide\",\n      \"wmZorder\": null,\n      \"wmFlags\": [\n        \"uninitialized\"\n      ],\n      \"anchor\": {\n        \"pos\": \"tl\",\n        \"x\": 40,\n        \"y\": 30\n      }\n    },\n    {\n      \"wmId\": 16,\n      \"wmType\": \"woke-atlas-strategies\",\n      \"wmTitle\": \"\",\n      \"wmWants\": \"hide\",\n      \"wmZorder\": null,\n      \"wmFlags\": [\n        \"uninitialized\"\n      ],\n      \"anchor\": {\n        \"pos\": \"tl\",\n        \"x\": 40,\n        \"y\": 30\n      }\n    },\n    {\n      \"wmId\": 17,\n      \"wmType\": \"woke-mechanics\",\n      \"wmTitle\": \"\",\n      \"wmWants\": \"hide\",\n      \"wmZorder\": null,\n      \"wmFlags\": [\n        \"uninitialized\"\n      ],\n      \"anchor\": {\n        \"pos\": \"tl\",\n        \"x\": 40,\n        \"y\": 30\n      }\n    },\n    {\n      \"wmId\": 18,\n      \"wmType\": \"woke-lab\",\n      \"wmTitle\": \"\",\n      \"wmWants\": \"hide\",\n      \"wmZorder\": null,\n      \"wmFlags\": [\n        \"uninitialized\"\n      ],\n      \"anchor\": {\n        \"pos\": \"tl\",\n        \"x\": 40,\n        \"y\": 30\n      }\n    },\n    {\n      \"wmId\": 19,\n      \"wmType\": \"woke-lab-gems\",\n      \"wmTitle\": \"\",\n      \"wmWants\": \"hide\",\n      \"wmZorder\": null,\n      \"wmFlags\": [\n        \"uninitialized\"\n      ],\n      \"anchor\": {\n        \"pos\": \"tl\",\n        \"x\": 40,\n        \"y\": 30\n      }\n    },\n    {\n      \"wmId\": 20,\n      \"wmType\": \"woke-scarab-flip\",\n      \"wmTitle\": \"\",\n      \"wmWants\": \"hide\",\n      \"wmZorder\": null,\n      \"wmFlags\": [\n        \"uninitialized\"\n      ],\n      \"anchor\": {\n        \"pos\": \"tl\",\n        \"x\": 40,\n        \"y\": 30\n      }\n    },\n    {\n      \"wmId\": 21,\n      \"wmType\": \"woke-trade\",\n      \"wmTitle\": \"\",\n      \"wmWants\": \"hide\",\n      \"wmZorder\": null,\n      \"wmFlags\": [\n        \"uninitialized\"\n      ],\n      \"anchor\": {\n        \"pos\": \"tl\",\n        \"x\": 40,\n        \"y\": 30\n      }\n    },\n    {\n      \"wmId\": 22,\n      \"wmType\": \"woke-regex-library\",\n      \"wmTitle\": \"\",\n      \"wmWants\": \"hide\",\n      \"wmZorder\": null,\n      \"wmFlags\": [\n        \"uninitialized\"\n      ],\n      \"anchor\": {\n        \"pos\": \"tl\",\n        \"x\": 40,\n        \"y\": 30\n      }\n    },\n    {\n      \"wmId\": 23,\n      \"wmType\": \"woke-trade-searches\",\n      \"wmTitle\": \"\",\n      \"wmWants\": \"hide\",\n      \"wmZorder\": null,\n      \"wmFlags\": [\n        \"uninitialized\"\n      ],\n      \"anchor\": {\n        \"pos\": \"tl\",\n        \"x\": 40,\n        \"y\": 30\n      }\n    },\n    {\n      \"wmId\": 24,\n      \"wmType\": \"woke-loot-filter\",\n      \"wmTitle\": \"\",\n      \"wmWants\": \"hide\",\n      \"wmZorder\": null,\n      \"wmFlags\": [\n        \"invisible-on-blur\"\n      ],\n      \"sampleHotkey\": \"Alt + F\",\n      \"editorHotkey\": \"Alt + Shift + F\",\n      \"folder\": \"/tmp/woke-demo-filters-6DjaTX\",\n      \"sourceName\": \"NeverSink.filter\"\n    }\n  ],\n  \"woke\": {\n    \"setupDone\": true,\n    \"off\": [],\n    \"dock\": {\n      \"x\": 35,\n      \"y\": 1.2,\n      \"vertical\": false,\n      \"peeks\": true,\n      \"noPeek\": [],\n      \"hidden\": []\n    }\n  },\n  \"leagueId\": \"Testleague\"\n}"
+ },
+ "boot": [
+  {
+   "dir": "in",
+   "name": "MAIN->OVERLAY::focus-change",
+   "payload": {
+    "game": false,
+    "overlay": true,
+    "usingHotkey": true
+   }
+  },
+  {
+   "dir": "in",
+   "name": "MAIN->OVERLAY::focus-change",
+   "payload": {
+    "game": true,
+    "overlay": false,
+    "usingHotkey": false
+   }
+  }
+ ],
+ "actions": {
+  "price-unique": [
+   {
+    "dir": "in",
+    "name": "MAIN->CLIENT::item-text",
+    "payload": {
+     "target": "price-check",
+     "clipboard": "Item Class: Body Armours\r\nRarity: Unique\r\nKaom's Heart\r\nGlorious Plate\r\n--------\r\nArmour: 1013 (augmented)\r\n--------\r\nRequirements:\r\nLevel: 68\r\nStr: 191\r\n--------\r\nSockets: R\r\n--------\r\nItem Level: 86\r\n--------\r\n{ Unique Modifier — Damage, Elemental, Fire }\r\n40(20-40)% increased Fire Damage\r\n{ Unique Modifier — Life }\r\n+500 to maximum Life\r\n--------\r\nThe warrior who fears will fall.\r\n",
+     "position": {
+      "x": 960,
+      "y": 540
+     },
+     "focusOverlay": false
+    }
+   }
+  ],
+  "price-rare": [
+   {
+    "dir": "in",
+    "name": "MAIN->CLIENT::item-text",
+    "payload": {
+     "target": "price-check",
+     "clipboard": "Item Class: Rings\r\nRarity: Rare\r\nWoe Loop\r\nTwo-Stone Ring\r\n--------\r\nRequirements:\r\nLevel: 56\r\n--------\r\nItem Level: 84\r\n--------\r\n{ Implicit Modifier — Elemental, Fire, Cold, Resistance }\r\n+14(12-16)% to Fire and Cold Resistances\r\n--------\r\n{ Prefix Modifier \"Rotund\" (Tier: 3) — Life }\r\n+64(60-69) to maximum Life\r\n{ Prefix Modifier \"Resplendent\" (Tier: 3) — Damage, Physical, Attack }\r\nAdds 7(6-9) to 13(12-15) Physical Damage to Attacks\r\n{ Suffix Modifier \"of the Rainbow\" (Tier: 4) — Elemental, Fire, Cold, Lightning, Resistance }\r\n+11(11-12)% to all Elemental Resistances\r\n{ Suffix Modifier \"of the Volcano\" (Tier: 3) — Elemental, Fire, Resistance }\r\n+38(36-41)% to Fire Resistance\r\n{ Suffix Modifier \"of Tzteosh\" (Tier: 1) — Elemental, Lightning, Resistance }\r\n+46(46-48)% to Lightning Resistance\r\n",
+     "position": {
+      "x": 960,
+      "y": 540
+     },
+     "focusOverlay": false
+    }
+   }
+  ],
+  "price-currency": [
+   {
+    "dir": "in",
+    "name": "MAIN->CLIENT::item-text",
+    "payload": {
+     "target": "price-check",
+     "clipboard": "Item Class: Stackable Currency\r\nRarity: Currency\r\nDivine Orb\r\n--------\r\nStack Size: 7/20\r\n--------\r\nRandomises the values of the random modifiers on an item\r\n--------\r\nRight click this item then left click a magic, rare or unique item to apply it.\r\nShift click to unstack.\r\n",
+     "position": {
+      "x": 960,
+      "y": 540
+     },
+     "focusOverlay": false
+    }
+   }
+  ],
+  "price-map": [
+   {
+    "dir": "in",
+    "name": "MAIN->CLIENT::item-text",
+    "payload": {
+     "target": "price-check",
+     "clipboard": "Item Class: Maps\r\nRarity: Rare\r\nGrim Hollow\r\nMap (Tier 16)\r\n--------\r\nMap Area: Cemetery\r\nItem Quantity: +64% (augmented)\r\nItem Rarity: +38% (augmented)\r\nMonster Pack Size: +22% (augmented)\r\n--------\r\nItem Level: 83\r\n--------\r\nMonster Level: 83\r\n--------\r\n{ Prefix Modifier \"Twinned\" }\r\nArea contains two Unique Bosses\r\n{ Suffix Modifier \"of Exposure\" }\r\nPlayers have -20% to all maximum Resistances\r\n{ Suffix Modifier \"of Stasis\" }\r\nPlayers cannot Regenerate Life, Mana or Energy Shield\r\n{ Prefix Modifier \"Hexproof\" }\r\nMonsters are Hexproof\r\n--------\r\nTravel to this Map by using it in a personal Map Device. Maps can only be used once.\r\n",
+     "position": {
+      "x": 960,
+      "y": 540
+     },
+     "focusOverlay": false
+    }
+   }
+  ],
+  "filter-card": [
+   {
+    "dir": "in",
+    "name": "MAIN->CLIENT::item-text",
+    "payload": {
+     "target": "woke-loot-filter",
+     "clipboard": "Item Class: Stackable Currency\r\nRarity: Currency\r\nDivine Orb\r\n--------\r\nStack Size: 7/20\r\n--------\r\nRandomises the values of the random modifiers on an item\r\n--------\r\nRight click this item then left click a magic, rare or unique item to apply it.\r\nShift click to unstack.\r\n",
+     "position": {
+      "x": 960,
+      "y": 540
+     },
+     "focusOverlay": true
+    }
+   },
+   {
+    "dir": "in",
+    "name": "MAIN->OVERLAY::focus-change",
+    "payload": {
+     "game": false,
+     "overlay": true,
+     "usingHotkey": false
+    }
+   }
+  ],
+  "essence-scan": [
+   {
+    "dir": "in",
+    "name": "MAIN->CLIENT::widget-action",
+    "payload": {
+     "target": "woke-essence-scan:15"
+    }
+   },
+   {
+    "dir": "in",
+    "name": "MAIN->CLIENT::woke-event",
+    "payload": {
+     "topic": "essence-scan",
+     "data": {
+      "type": "state",
+      "running": true,
+      "paused": false,
+      "rolling": false,
+      "locked": false
+     }
+    }
+   },
+   {
+    "dir": "in",
+    "name": "MAIN->CLIENT::woke-event",
+    "payload": {
+     "topic": "essence-scan",
+     "data": {
+      "type": "reading",
+      "reading": {
+       "lines": [
+        "Hinder Aura",
+        "Cold, chill and Freeze Resistant",
+        "4 screaming Essence of Misery",
+        "Screaming Essence of Rage",
+        "Screaming Essence of Scorn"
+       ],
+       "at": {
+        "x": 0.371875,
+        "y": 0.3715277777777778
+       },
+       "sig": "98,46:s3kno5",
+       "ocrMs": 274,
+       "rolling": false
+      }
+     }
+    }
+   }
+  ],
+  "essence-scan-stop": [
+   {
+    "dir": "in",
+    "name": "MAIN->CLIENT::widget-action",
+    "payload": {
+     "target": "woke-essence-scan:15"
+    }
+   },
+   {
+    "dir": "in",
+    "name": "MAIN->CLIENT::woke-event",
+    "payload": {
+     "topic": "essence-scan",
+     "data": {
+      "type": "state",
+      "running": false,
+      "paused": false,
+      "rolling": false,
+      "locked": false
+     }
+    }
+   }
+  ],
+  "map-scan": [
+   {
+    "dir": "in",
+    "name": "MAIN->CLIENT::widget-action",
+    "payload": {
+     "target": "woke-map-scan:14"
+    }
+   },
+   {
+    "dir": "in",
+    "name": "MAIN->CLIENT::woke-event",
+    "payload": {
+     "topic": "map-scan",
+     "data": {
+      "type": "state",
+      "running": true,
+      "paused": false,
+      "rolling": false,
+      "locked": false
+     }
+    }
+   },
+   {
+    "dir": "in",
+    "name": "MAIN->CLIENT::woke-event",
+    "payload": {
+     "topic": "map-scan",
+     "data": {
+      "type": "reading",
+      "reading": {
+       "lines": [
+        "Monster Level: 83",
+        "Item Quantity: +64%",
+        "Item Rarity: +83%",
+        "Monster Pack Size: +37%",
+        "Area is Influenced by the Originator's Memories",
+        "Players are Cursed with Enfeeble",
+        "Players are Cursed with Temporal Chains",
+        "Players have -20% to all maximum Resistances",
+        "27% increased Monster Movement Speed",
+        "43% increased Monster Attack Speed",
+        "35% increased Monster Cast Speed"
+       ],
+       "at": {
+        "x": 0.236328125,
+        "y": 0.5625
+       },
+       "sig": "40,58:1n8cd2h",
+       "ocrMs": 393,
+       "rolling": false
+      }
+     }
+    }
+   }
+  ],
+  "map-scan-stop": [
+   {
+    "dir": "in",
+    "name": "MAIN->CLIENT::widget-action",
+    "payload": {
+     "target": "woke-map-scan:14"
+    }
+   },
+   {
+    "dir": "in",
+    "name": "MAIN->CLIENT::woke-event",
+    "payload": {
+     "topic": "map-scan",
+     "data": {
+      "type": "state",
+      "running": false,
+      "paused": false,
+      "rolling": false,
+      "locked": false
+     }
+    }
+   }
+  ]
+ },
+ "requests": {
+  "hotkey-failures null": {
+   "ok": true,
+   "data": {
+    "failed": []
+   }
+  },
+  "game-log-tail {}": {
+   "ok": true,
+   "data": {
+    "path": null,
+    "lines": []
+   }
+  },
+  "sessions-list {}": {
+   "ok": true,
+   "data": []
+  },
+  "trades-list {}": {
+   "ok": true,
+   "data": []
+  },
+  "ocr-check null": {
+   "ok": true,
+   "data": {
+    "ok": true,
+    "windows": true,
+    "dir": "/tmp/woke-e2e-0-YbtmQG/apt-data/cv-ocr",
+    "missing": [],
+    "message": null
+   }
+  },
+  "map-scan-status null": {
+   "ok": true,
+   "data": {
+    "running": false,
+    "paused": false,
+    "rolling": false
+   }
+  },
+  "essence-scan-status null": {
+   "ok": true,
+   "data": {
+    "running": false,
+    "paused": false,
+    "rolling": false
+   }
+  },
+  "filter-list {\"dir\":\"/tmp/woke-demo-filters-6DjaTX\"}": {
+   "ok": true,
+   "data": {
+    "dir": "/tmp/woke-demo-filters-6DjaTX",
+    "files": [
+     {
+      "name": "NeverSink.filter",
+      "size": 3202,
+      "mtime": 1793865685703.179
+     }
+    ]
+   }
+  },
+  "crash-pending {}": {
+   "ok": false,
+   "error": "Unknown op: crash-pending"
+  },
+  "market-import-status null": {
+   "ok": true,
+   "data": {
+    "imported": false
+   }
+  },
+  "filter-read {\"dir\":\"/tmp/woke-demo-filters-6DjaTX\",\"name\":\"NeverSink.filter\",\"online\":false}": {
+   "ok": true,
+   "data": {
+    "text": "#===============================================================================================================\r\n# NeverSink's Indepth Loot Filter - for Path of Exile\r\n#===============================================================================================================\r\n# VERSION:  8.17.3\r\n# TYPE:     1-REGULAR\r\n# STYLE:    DEFAULT\r\n# AUTHOR:   NeverSink\r\n# (A small hand-made sample in NeverSink's format, for the toolkit's tests.)\r\n\r\n#===============================================================================================================\r\n# [[0100]] Global overriding rules\r\n#===============================================================================================================\r\n\r\nShow # $type->decorator->craftingrare $tier->corruptedrare\r\n\tCorrupted True\r\n\tRarity Rare\r\n\tSetBorderColor 210 0 0\r\n\tContinue\r\n\r\n#===============================================================================================================\r\n# [[1100]] Rings\r\n#===============================================================================================================\r\n\r\nShow # %D5 $type->rings $tier->rare\r\n\tItemLevel >= 75\r\n\tRarity Rare\r\n\tClass == \"Rings\"\r\n\tSetFontSize 40\r\n\tSetTextColor 255 255 119 255\r\n\tSetBorderColor 255 255 119 255\r\n\tSetBackgroundColor 0 0 0 255\r\n\r\n#===============================================================================================================\r\n# [[3400]] Maps\r\n#===============================================================================================================\r\n\r\nShow # %H7 $type->maps $tier->t16\r\n\tMapTier >= 16\r\n\tClass == \"Maps\"\r\n\tSetFontSize 45\r\n\tSetTextColor 0 0 0 255\r\n\tSetBackgroundColor 235 235 235 255\r\n\tPlayAlertSound 1 300\r\n\tMinimapIcon 0 White Square\r\n\r\nShow # %D3 $type->maps $tier->low\r\n\tClass == \"Maps\"\r\n\tSetFontSize 35\r\n\r\n#===============================================================================================================\r\n# [[4000]] Currency\r\n#===============================================================================================================\r\n\r\n# [4001] Regular currency\r\nShow # %H7 $type->currency $tier->t1exalted\r\n\tClass == \"Stackable Currency\"\r\n\tBaseType == \"Divine Orb\" \"Mirror of Kalandra\"\r\n\tSetFontSize 45\r\n\tSetTextColor 255 0 0 255\r\n\tSetBorderColor 255 0 0 255\r\n\tSetBackgroundColor 255 255 255 255\r\n\tPlayAlertSound 6 300\r\n\tPlayEffect Red\r\n\tMinimapIcon 0 Red Star\r\n\r\nShow # %H5 $type->currency $tier->t2divine\r\n\tClass == \"Stackable Currency\"\r\n\tBaseType == \"Exalted Orb\" \"Orb of Annulment\"\r\n\tSetFontSize 45\r\n\tSetTextColor 255 255 255 255\r\n\tPlayEffect Yellow\r\n\r\nShow # %D4 $type->currency $tier->t3chaos\r\n\tClass == \"Stackable Currency\"\r\n\tBaseType == \"Chaos Orb\" \"Orb of Alchemy\" \"Orb of Scouring\"\r\n\tSetFontSize 40\r\n\r\nHide # $type->currency $tier->t9scrolls\r\n\tClass == \"Stackable Currency\"\r\n\tBaseType == \"Portal Scroll\" \"Scroll of Wisdom\"\r\n\tSetFontSize 18\r\n\r\n#===============================================================================================================\r\n# [[9900]] Hide everything else\r\n#===============================================================================================================\r\n\r\nHide # $type->restex $tier->hideall\r\n\tSetFontSize 18\r\n",
+    "mtime": 1793865685703.179
+   }
+  },
+  "filter-sounds {\"dir\":\"/tmp/woke-demo-filters-6DjaTX\"}": {
+   "ok": true,
+   "data": {
+    "files": []
+   }
+  },
+  "market-latest {\"league\":\"Testleague\",\"count\":1}": {
+   "ok": true,
+   "data": []
+  },
+  "market-save {\"snapshot\":{\"league\":\"Testleague\",\"ts\":1793865687338,\"divine\":180,\"items\":[{\"type\":\"Currency\",\"name\":\"Divine Orb\",\"variant\":\"\",\"chaos\":180,\"gaps\":0,\"d7\":171.42857142857142,\"d1\":178.2857142857143},{\"type\":\"Currency\",\"name\":\"Exalted Orb\",\"variant\":\"\",\"chaos\":12,\"gaps\":0,\"d7\":12,\"d1\":12},{\"type\":\"Currency\",\"name\":\"Orb of Annulment\",\"variant\":\"\",\"chaos\":6,\"gaps\":0,\"d7\":6,\"d1\":6},{\"type\":\"Currency\",\"name\":\"Orb of Alchemy\",\"variant\":\"\",\"chaos\":0.4,\"gaps\":0,\"d7\":0.4,\"d1\":0.4},{\"type\":\"Currency\",\"name\":\"Vaal Orb\",\"variant\":\"\",\"chaos\":0.8,\"gaps\":0,\"d7\":0.8,\"d1\":0.8},{\"type\":\"Currency\",\"name\":\"Mirror of Kalandra\",\"variant\":\"\",\"chaos\":90000,\"gaps\":0,\"d7\":90000,\"d1\":90000},{\"type\":\"Fragment\",\"name\":\"Sacrifice at Midnight\",\"variant\":\"\",\"chaos\":1,\"gaps\":0,\"d7\":1,\"d1\":1},{\"type\":\"Scarab\",\"name\":\"Ambush Scarab of Containment\",\"variant\":\"\",\"chaos\":8,\"gaps\":0,\"d7\":8,\"d1\":8},{\"type\":\"Scarab\",\"name\":\"Bestiary Scarab of the Herd\",\"variant\":\"\",\"chaos\":4,\"gaps\":0,\"d7\":4,\"d1\":4},{\"type\":\"Scarab\",\"name\":\"Divination Scarab of The Cloister\",\"variant\":\"\",\"chaos\":30,\"gaps\":0,\"d7\":21.42857142857143,\"d1\":27.857142857142858},{\"type\":\"Essence\",\"name\":\"Deafening Essence of Misery\",\"variant\":\"\",\"chaos\":6,\"gaps\":0,\"d7\":6,\"d1\":6},{\"type\":\"Essence\",\"name\":\"Deafening Essence of Envy\",\"variant\":\"\",\"chaos\":4,\"gaps\":0,\"d7\":4,\"d1\":4},{\"type\":\"Essence\",\"name\":\"Deafening Essence of Dread\",\"variant\":\"\",\"chaos\":3.5,\"gaps\":0,\"d7\":3.5,\"d1\":3.5},{\"type\":\"Essence\",\"name\":\"Deafening Essence of Scorn\",\"variant\":\"\",\"chaos\":3,\"gaps\":0,\"d7\":3,\"d1\":3},{\"type\":\"Essence\",\"name\":\"Deafening Essence of Greed\",\"variant\":\"\",\"chaos\":1.5,\"gaps\":0,\"d7\":1.5,\"d1\":1.5},{\"type\":\"Essence\",\"name\":\"Essence of Horror\",\"variant\":\"\",\"chaos\":45,\"gaps\":0,\"d7\":45,\"d1\":45},{\"type\":\"Essence\",\"name\":\"Essence of Hysteria\",\"variant\":\"\",\"chaos\":20,\"gaps\":0,\"d7\":20,\"d1\":20},{\"type\":\"Essence\",\"name\":\"Essence of Insanity\",\"variant\":\"\",\"chaos\":25,\"gaps\":0,\"d7\":25,\"d1\":25},{\"type\":\"Essence\",\"name\":\"Essence of Delirium\",\"variant\":\"\",\"chaos\":30,\"gaps\":0,\"d7\":30,\"d1\":30},{\"type\":\"DivinationCard\",\"name\":\"The Apothecary\",\"variant\":\"\",\"chaos\":1800,\"gaps\":0,\"d7\":1800,\"d1\":1800},{\"type\":\"DivinationCard\",\"name\":\"The Doctor\",\"variant\":\"\",\"chaos\":900,\"gaps\":0,\"d7\":900,\"d1\":900},{\"type\":\"DivinationCard\",\"name\":\"Rain of Chaos\",\"variant\":\"\",\"chaos\":0.5,\"gaps\":0,\"d7\":0.5,\"d1\":0.5},{\"type\":\"SkillGem\",\"name\":\"Enlighten Support\",\"variant\":\"4/20c\",\"chaos\":2000,\"gaps\":0,\"d7\":2000,\"d1\":2000},{\"type\":\"SkillGem\",\"name\":\"Enlighten Support\",\"variant\":\"3\",\"chaos\":450,\"gaps\":0,\"d7\":450,\"d1\":450},{\"type\":\"SkillGem\",\"name\":\"Empower Support\",\"variant\":\"3\",\"chaos\":700,\"gaps\":0,\"d7\":700,\"d1\":700},{\"type\":\"SkillGem\",\"name\":\"Enhance Support\",\"variant\":\"3\",\"chaos\":150,\"gaps\":0,\"d7\":150,\"d1\":150},{\"type\":\"SkillGem\",\"name\":\"Awakened Multistrike Support\",\"variant\":\"5/20c\",\"chaos\":300,\"gaps\":0,\"d7\":300,\"d1\":300},{\"type\":\"SkillGem\",\"name\":\"Vaal Grace\",\"variant\":\"20/20c\",\"chaos\":20,\"gaps\":0,\"d7\":20,\"d1\":20},{\"type\":\"SkillGem\",\"name\":\"Arc\",\"variant\":\"20/20\",\"chaos\":1,\"gaps\":0,\"d7\":1,\"d1\":1},{\"type\":\"UniqueArmour\",\"name\":\"Headhunter\",\"variant\":\"\",\"chaos\":9000,\"gaps\":0,\"d7\":9000,\"d1\":9000},{\"type\":\"UniqueArmour\",\"name\":\"Kaom's Heart\",\"variant\":\"\",\"chaos\":15,\"gaps\":0,\"d7\":15,\"d1\":15},{\"type\":\"UniqueAccessory\",\"name\":\"Mageblood\",\"variant\":\"\",\"chaos\":36000,\"gaps\":0,\"d7\":36000,\"d1\":36000},{\"type\":\"UniqueJewel\",\"name\":\"Watcher's Eye\",\"variant\":\"\",\"chaos\":20,\"gaps\":0,\"d7\":20,\"d1\":20},{\"type\":\"Map\",\"name\":\"Strand Map\",\"variant\":\"Tier 16\",\"chaos\":2,\"gaps\":0,\"d7\":2,\"d1\":2},{\"type\":\"UniqueWeapon\",\"name\":\"Kingmaker\",\"variant\":\"\",\"chaos\":91,\"gaps\":0,\"d7\":91,\"d1\":91},{\"type\":\"UniqueWeapon\",\"name\":\"Debeon's Dirge\",\"variant\":\"\",\"chaos\":1,\"gaps\":0,\"d7\":1,\"d1\":1}]},\"daily\":[{\"league\":\"Testleague\",\"date\":\"2026-11-05\",\"divine\":180,\"ts\":1793865687338,\"type\":\"Currency\",\"name\":\"Divine Orb\",\"variant\":\"\",\"chaos\":180,\"gaps\":0},{\"league\":\"Testleague\",\"date\":\"2026-11-05\",\"divine\":180,\"ts\":1793865687338,\"type\":\"Currency\",\"name\":\"Exalted Orb\",\"variant\":\"\",\"chaos\":12,\"gaps\":0},{\"league\":\"Testleague\",\"date\":\"2026-11-05\",\"divine\":180,\"ts\":1793865687338,\"type\":\"Currency\",\"name\":\"Orb of Annulment\",\"variant\":\"\",\"chaos\":6,\"gaps\":0},{\"league\":\"Testleague\",\"date\":\"2026-11-05\",\"divine\":180,\"ts\":1793865687338,\"type\":\"Currency\",\"name\":\"Orb of Alchemy\",\"variant\":\"\",\"chaos\":0.4,\"gaps\":0},{\"league\":\"Testleague\",\"date\":\"2026-11-05\",\"divine\":180,\"ts\":1793865687338,\"type\":\"Currency\",\"name\":\"Vaal Orb\",\"variant\":\"\",\"chaos\":0.8,\"gaps\":0},{\"league\":\"Testleague\",\"date\":\"2026-11-05\",\"divine\":180,\"ts\":1793865687338,\"type\":\"Currency\",\"name\":\"Mirror of Kalandra\",\"variant\":\"\",\"chaos\":90000,\"gaps\":0},{\"league\":\"Testleague\",\"date\":\"2026-11-05\",\"divine\":180,\"ts\":1793865687338,\"type\":\"Fragment\",\"name\":\"Sacrifice at Midnight\",\"variant\":\"\",\"chaos\":1,\"gaps\":0},{\"league\":\"Testleague\",\"date\":\"2026-11-05\",\"divine\":180,\"ts\":1793865687338,\"type\":\"Scarab\",\"name\":\"Ambush Scarab of Containment\",\"variant\":\"\",\"chaos\":8,\"gaps\":0},{\"league\":\"Testleague\",\"date\":\"2026-11-05\",\"divine\":180,\"ts\":1793865687338,\"type\":\"Scarab\",\"name\":\"Bestiary Scarab of the Herd\",\"variant\":\"\",\"chaos\":4,\"gaps\":0},{\"league\":\"Testleague\",\"date\":\"2026-11-05\",\"divine\":180,\"ts\":1793865687338,\"type\":\"Scarab\",\"name\":\"Divination Scarab of The Cloister\",\"variant\":\"\",\"chaos\":30,\"gaps\":0},{\"league\":\"Testleague\",\"date\":\"2026-11-05\",\"divine\":180,\"ts\":1793865687338,\"type\":\"Essence\",\"name\":\"Deafening Essence of Misery\",\"variant\":\"\",\"chaos\":6,\"gaps\":0},{\"league\":\"Testleague\",\"date\":\"2026-11-05\",\"divine\":180,\"ts\":1793865687338,\"type\":\"Essence\",\"name\":\"Deafening Essence of Envy\",\"variant\":\"\",\"chaos\":4,\"gaps\":0},{\"league\":\"Testleague\",\"date\":\"2026-11-05\",\"divine\":180,\"ts\":1793865687338,\"type\":\"Essence\",\"name\":\"Deafening Essence of Dread\",\"variant\":\"\",\"chaos\":3.5,\"gaps\":0},{\"league\":\"Testleague\",\"date\":\"2026-11-05\",\"divine\":180,\"ts\":1793865687338,\"type\":\"Essence\",\"name\":\"Deafening Essence of Scorn\",\"variant\":\"\",\"chaos\":3,\"gaps\":0},{\"league\":\"Testleague\",\"date\":\"2026-11-05\",\"divine\":180,\"ts\":1793865687338,\"type\":\"Essence\",\"name\":\"Deafening Essence of Greed\",\"variant\":\"\",\"chaos\":1.5,\"gaps\":0},{\"league\":\"Testleague\",\"date\":\"2026-11-05\",\"divine\":180,\"ts\":1793865687338,\"type\":\"Essence\",\"name\":\"Essence of Horror\",\"variant\":\"\",\"chaos\":45,\"gaps\":0},{\"league\":\"Testleague\",\"date\":\"2026-11-05\",\"divine\":180,\"ts\":1793865687338,\"type\":\"Essence\",\"name\":\"Essence of Hysteria\",\"variant\":\"\",\"chaos\":20,\"gaps\":0},{\"league\":\"Testleague\",\"date\":\"2026-11-05\",\"divine\":180,\"ts\":1793865687338,\"type\":\"Essence\",\"name\":\"Essence of Insanity\",\"variant\":\"\",\"chaos\":25,\"gaps\":0},{\"league\":\"Testleague\",\"date\":\"2026-11-05\",\"divine\":180,\"ts\":1793865687338,\"type\":\"Essence\",\"name\":\"Essence of Delirium\",\"variant\":\"\",\"chaos\":30,\"gaps\":0},{\"league\":\"Testleague\",\"date\":\"2026-11-05\",\"divine\":180,\"ts\":1793865687338,\"type\":\"DivinationCard\",\"name\":\"The Apothecary\",\"variant\":\"\",\"chaos\":1800,\"gaps\":0},{\"league\":\"Testleague\",\"date\":\"2026-11-05\",\"divine\":180,\"ts\":1793865687338,\"type\":\"DivinationCard\",\"name\":\"The Doctor\",\"variant\":\"\",\"chaos\":900,\"gaps\":0},{\"league\":\"Testleague\",\"date\":\"2026-11-05\",\"divine\":180,\"ts\":1793865687338,\"type\":\"DivinationCard\",\"name\":\"Rain of Chaos\",\"variant\":\"\",\"chaos\":0.5,\"gaps\":0},{\"league\":\"Testleague\",\"date\":\"2026-11-05\",\"divine\":180,\"ts\":1793865687338,\"type\":\"SkillGem\",\"name\":\"Enlighten Support\",\"variant\":\"4/20c\",\"chaos\":2000,\"gaps\":0},{\"league\":\"Testleague\",\"date\":\"2026-11-05\",\"divine\":180,\"ts\":1793865687338,\"type\":\"SkillGem\",\"name\":\"Enlighten Support\",\"variant\":\"3\",\"chaos\":450,\"gaps\":0},{\"league\":\"Testleague\",\"date\":\"2026-11-05\",\"divine\":180,\"ts\":1793865687338,\"type\":\"SkillGem\",\"name\":\"Empower Support\",\"variant\":\"3\",\"chaos\":700,\"gaps\":0},{\"league\":\"Testleague\",\"date\":\"2026-11-05\",\"divine\":180,\"ts\":1793865687338,\"type\":\"SkillGem\",\"name\":\"Enhance Support\",\"variant\":\"3\",\"chaos\":150,\"gaps\":0},{\"league\":\"Testleague\",\"date\":\"2026-11-05\",\"divine\":180,\"ts\":1793865687338,\"type\":\"SkillGem\",\"name\":\"Awakened Multistrike Support\",\"variant\":\"5/20c\",\"chaos\":300,\"gaps\":0},{\"league\":\"Testleague\",\"date\":\"2026-11-05\",\"divine\":180,\"ts\":1793865687338,\"type\":\"SkillGem\",\"name\":\"Vaal Grace\",\"variant\":\"20/20c\",\"chaos\":20,\"gaps\":0},{\"league\":\"Testleague\",\"date\":\"2026-11-05\",\"divine\":180,\"ts\":1793865687338,\"type\":\"SkillGem\",\"name\":\"Arc\",\"variant\":\"20/20\",\"chaos\":1,\"gaps\":0},{\"league\":\"Testleague\",\"date\":\"2026-11-05\",\"divine\":180,\"ts\":1793865687338,\"type\":\"UniqueArmour\",\"name\":\"Headhunter\",\"variant\":\"\",\"chaos\":9000,\"gaps\":0},{\"league\":\"Testleague\",\"date\":\"2026-11-05\",\"divine\":180,\"ts\":1793865687338,\"type\":\"UniqueArmour\",\"name\":\"Kaom's Heart\",\"variant\":\"\",\"chaos\":15,\"gaps\":0},{\"league\":\"Testleague\",\"date\":\"2026-11-05\",\"divine\":180,\"ts\":1793865687338,\"type\":\"UniqueAccessory\",\"name\":\"Mageblood\",\"variant\":\"\",\"chaos\":36000,\"gaps\":0},{\"league\":\"Testleague\",\"date\":\"2026-11-05\",\"divine\":180,\"ts\":1793865687338,\"type\":\"UniqueJewel\",\"name\":\"Watcher's Eye\",\"variant\":\"\",\"chaos\":20,\"gaps\":0},{\"league\":\"Testleague\",\"date\":\"2026-11-05\",\"divine\":180,\"ts\":1793865687338,\"type\":\"Map\",\"name\":\"Strand Map\",\"variant\":\"Tier 16\",\"chaos\":2,\"gaps\":0},{\"league\":\"Testleague\",\"date\":\"2026-11-05\",\"divine\":180,\"ts\":1793865687338,\"type\":\"UniqueWeapon\",\"name\":\"Kingmaker\",\"variant\":\"\",\"chaos\":91,\"gaps\":0},{\"league\":\"Testleague\",\"date\":\"2026-11-05\",\"divine\":180,\"ts\":1793865687338,\"type\":\"UniqueWeapon\",\"name\":\"Debeon's Dirge\",\"variant\":\"\",\"chaos\":1,\"gaps\":0}]}": {
+   "ok": true,
+   "data": true
+  },
+  "market-at {\"league\":\"Testleague\",\"ts\":1793779287338}": {
+   "ok": true,
+   "data": null
+  }
+ }
+}
