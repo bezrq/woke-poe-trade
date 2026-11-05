@@ -52,7 +52,8 @@ export function shortAge (ageMs: number): string {
   if (ageMs < 60_000) return 'now'
   if (ageMs < HOUR) return `${Math.floor(ageMs / 60_000)}m`
   if (ageMs < DAY) return `${Math.floor(ageMs / HOUR)}h`
-  return `${Math.floor(ageMs / DAY)}d`
+  if (ageMs < 30 * DAY) return `${Math.floor(ageMs / DAY)}d`
+  return `${Math.floor(ageMs / (30 * DAY))}mo`
 }
 
 const STATUS_RANK: Record<RowListing['accountStatus'], number> = { online: 2, afk: 1, offline: 0 }

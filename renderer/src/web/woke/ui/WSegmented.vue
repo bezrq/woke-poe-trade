@@ -26,7 +26,7 @@ const emit = defineEmits<{ (e: 'update:modelValue', v: string): void }>()
 .seg button {
   font-size: 12px;
   color: var(--w-dim);
-  padding: 0 7px;
+  padding: 0 6px;
   line-height: 22px;
   white-space: nowrap;
   font-family: var(--w-body);

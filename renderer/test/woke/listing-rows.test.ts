@@ -45,6 +45,7 @@ describe('shortAge', () => {
     expect(shortAge(5 * 60_000)).toBe('5m')
     expect(shortAge(23 * HOUR)).toBe('23h')
     expect(shortAge(3 * DAY + HOUR)).toBe('3d')
+    expect(shortAge(65 * DAY)).toBe('2mo')
   })
 })
 

@@ -73,8 +73,8 @@
               :class="{
                 'w-pc-ignored': improved && row.dropped,
                 'w-pc-in-range': improved && inRange(row),
-                'w-pc-aging': improved && row.band === 'aging',
-                'w-pc-stale': improved && row.band === 'stale' && !row.dropped
+                'w-pc-aging': improved && (row.band === 'aging' || (allStale && row.band === 'stale')),
+                'w-pc-stale': improved && row.band === 'stale' && !row.dropped && !allStale
               }"
               :title="improved ? rowTitle(row) : undefined">
               <td class="px-2 whitespace-nowrap">
@@ -116,7 +116,7 @@
       </table>
     </div>
     <div v-if="improved && listSettled && list && rows.length" class="w-pc-foot"
-      title="Prices come from the cheapest listings the trade site returned">{{ shownCount }} of {{ list.total }}{{ list.inexact ? '+' : '' }} listings</div>
+      title="Prices come from the cheapest listings the trade site returned"><span v-if="allStale" class="w-warn">All over a week old, so they may be gone · </span>{{ shownCount }} of {{ list.total }}{{ list.inexact ? '+' : '' }} listings</div>
   </div>
   <ui-error-box v-else>
     <template #name>{{ t(':error') }}</template>
@@ -320,6 +320,9 @@ export default defineComponent({
       }
     }))
 
+    // Fading only helps when something stays bright: a dead market gets a note instead.
+    const allStale = computed(() => rows.value.length > 0 && rows.value.every(r => r.band === 'stale'))
+
     const maxCount = computed(() => Math.max(1, ...rows.value.map(r => r.count)))
 
     function inRange (row: ListingRow<PricingResult & { listedTimes: number }>) {
@@ -345,6 +348,7 @@ export default defineComponent({
       coinFor: (currency: string) => COINS[currency],
       inRange,
       maxCount,
+      allStale,
       showCountBar: computed(() => improved.value && maxCount.value > 1),
       shownCount: computed(() => rows.value.reduce((sum, row) => sum + row.count, 0)),
       tableLoading,

@@ -7,7 +7,7 @@
           <span>{{ loading ? 'Reading listings…' : emptyText }}</span>
         </div>
         <div v-if="!loading && headline" :class="$style.value">
-          <w-price :class="$style.headline" :chaos="headline.chaos" :divine="divine" />
+          <w-price :class="[$style.headline, $style.headlinePrice]" :chaos="headline.chaos" :divine="divine" />
           <span class="w-dim text-xs" :title="blendTitle">other sources say</span>
         </div>
         <div v-else-if="ninjaInfo" :class="$style.value">
@@ -29,7 +29,7 @@
           </div>
           <div :class="$style.value">
             <span v-if="lowValue" :class="$style.headline">Not worth listing</span>
-            <w-price v-else :class="$style.headline" :chaos="headline?.chaos ?? insight.range.fair" :divine="divine" />
+            <w-price v-else :class="[$style.headline, $style.headlinePrice]" :chaos="headline?.chaos ?? insight.range.fair" :divine="divine" />
             <span v-if="!expanded && !showStrip" :class="$style.range" class="whitespace-nowrap">
               <w-price :chaos="insight.range.low" :divine="divine" :unit="rangeUnit" /> – <w-price :chaos="insight.range.high" :divine="divine" :unit="rangeUnit" />
             </span>
@@ -40,7 +40,7 @@
             <button v-if="ranges.length" type="button" :class="[$style.sparkBtn, { [$style.on]: historyOpen }]"
               :title="historyOpen ? 'Hide price history' : 'Show price history'" @click="historyOpen = !historyOpen">
               <w-spark :values="sparkValues" :width="46" :height="16" />
-              <span v-if="sparkChange != null" class="text-xs w-num" :class="sparkChange >= 0 ? 'w-up' : 'w-down'">{{ sparkChange >= 0 ? '+' : '' }}{{ Math.round(sparkChange * 100) }}%</span>
+              <span v-if="sparkChange != null && !historyOpen" class="text-xs w-num" :class="sparkChange >= 0 ? 'w-up' : 'w-down'">{{ sparkChange >= 0 ? '+' : '' }}{{ Math.round(sparkChange * 100) }}%</span>
             </button>
             <button type="button" class="w-icon-btn" :title="expanded ? 'Show less' : 'Show sources, listing notes and what drives the price'"
               @click="verdictExpanded = !verdictExpanded">
@@ -269,6 +269,8 @@ async function copy (n: { key: string, text: string }) {
   color: var(--w-accent);
   white-space: nowrap;
 }
+/* Fontin's old-style digits dip and rise: a price wants even figures. */
+.headlinePrice { font-family: var(--w-num); font-size: var(--w-fs-xl); font-weight: 600; letter-spacing: 0; }
 .risk {
   flex: none;
   font-size: var(--w-fs-xs);
