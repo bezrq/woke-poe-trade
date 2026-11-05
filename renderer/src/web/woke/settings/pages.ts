@@ -7,7 +7,6 @@ import { MODULES } from '../modules'
 
 import SettingsPricecheck from '@/web/price-check/settings-price-check.vue'
 import SettingsItemcheck from '@/web/item-check/settings-item-check.vue'
-import SettingsMaps from '@/web/map-check/settings-maps.vue'
 import SettingsChat from '@/web/settings/chat.vue'
 import SettingsDebug from '@/web/settings/debug.vue'
 import PerfSettings from '../ui/PerfSettings.vue'
@@ -144,15 +143,15 @@ export const PAGES: SettingsPage[] = [
   },
   {
     id: 'item-info',
-    name: 'Item info & map check',
+    name: 'Item info',
     group: 'modules',
     sub: 'Trade & prices',
     icon: modulePageIcon('apt-item-info'),
-    description: 'Item details, wiki and poedb links, and APT\'s map mod check.',
+    description: 'Item details, and wiki and poedb links.',
     modules: ['apt-item-info'],
-    parts: [SettingsItemcheck, SettingsMaps],
-    find: ['Item info', 'Wiki', 'poedb', 'Craft of Exile', 'Map check', 'Map mods (APT)'],
-    aliases: ['item.info', 'map_check.name']
+    parts: [SettingsItemcheck],
+    find: ['Item info', 'Wiki', 'poedb', 'Craft of Exile'],
+    aliases: ['item.info']
   },
   {
     id: 'trade-searches',
@@ -229,7 +228,8 @@ export const PAGES: SettingsPage[] = [
     description: 'Danger strip for map mods, profiles and weights, and the on-screen map scan.',
     modules: ['map-mods', 'map-scan'],
     widgets: ['woke-map-mods', 'woke-map-scan'],
-    find: ['Map mod weights', 'Profiles', 'Danger strip', 'Map regex', 'Rolling mode', 'Alert when a map passes']
+    find: ['Map mod weights', 'Profiles', 'Danger strip', 'Map regex', 'Rolling mode', 'Alert when a map passes', 'Map check', 'Heist', 'Charts', 'T17', 'Nightmare'],
+    aliases: ['map_check.name']
   },
   {
     id: 'essence-scan',

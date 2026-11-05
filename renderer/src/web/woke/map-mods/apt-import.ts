@@ -1,6 +1,6 @@
-// Map mods replaced APT's own map check (Settings → Item info → maps). The
-// first time Map mods sets up, it brings over the mods rated there, so
-// nothing marked deadly in APT's list is lost. Pure logic, no Vue.
+// Map mods replaced APT's own map check. It brings over the mods rated there,
+// kept in the item-check widget's `maps` config, so nothing marked deadly is
+// lost. Pure logic, no Vue.
 import type { MapCheckConfig } from '@/web/map-check/common'
 import { defaultProfile } from './rules'
 import type { MapModProfile, ModRating } from './rules'

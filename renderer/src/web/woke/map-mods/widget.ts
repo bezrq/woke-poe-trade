@@ -21,8 +21,10 @@ export interface MapModsWidget extends Widget {
   activeProfile: number
   profiles: MapModProfile[]
   weights: JuiceWeights
-  // APT's map check ratings were brought over (once).
+  // APT's map check ratings were brought over.
   aptImported?: boolean
+  // ...again when its list and card were removed, for marks made after that.
+  aptImportedFinal?: boolean
 }
 
 export function initMapModsWidget (w: MapModsWidget) {
@@ -40,9 +42,12 @@ export function initMapModsWidget (w: MapModsWidget) {
 }
 
 // APT's item info map check is replaced by this module: bring its ratings over.
-function importAptOnce (w: MapModsWidget) {
-  if (w.aptImported) return
+// Marks still in APT's list count once more, since its heist card stayed in use
+// after the first import. A mod already rated here keeps its rating.
+export function importAptOnce (w: MapModsWidget) {
+  if (w.aptImportedFinal) return
   w.aptImported = true
+  w.aptImportedFinal = true
   try {
     const itemCheck = AppConfig().widgets.find(_ => _.wmType === 'item-check') as { maps?: MapCheckConfig } | undefined
     importAptMapRatings(w.profiles, itemCheck?.maps)

@@ -8,14 +8,20 @@
       <slot name="actions" />
     </template>
     <template #toolbar>
-      <div :class="$style.regexBar">
+      <div class="flex items-center gap-2 w-full">
+        <WTabs v-model="mode" :options="modeOptions" />
+        <span class="flex-1" />
+        <WToggle v-if="mode === 'maps'" :model-value="!profile.hideT17" @update:model-value="profile.hideT17 = !$event">Include T17 mods</WToggle>
+      </div>
+      <div v-if="mode !== 'maps'" class="w-dim text-xs w-full">{{ MODE_HINT[mode] }}</div>
+      <div v-if="mode === 'maps'" :class="$style.regexBar">
         <code :class="$style.regex" :title="regex.text">{{ regex.text || 'Pick mods or minimums below' }}</code>
         <span class="w-num text-xs" :class="regex.tooLong ? 'w-down' : 'w-up'">{{ regex.length }}/{{ MAX_SEARCH_LENGTH }}</span>
         <WButton size="sm" variant="primary" :icon="copied ? 'fas fa-check' : 'far fa-copy'" :disabled="!regex.text" @click="copy">Copy</WButton>
         <WButton size="sm" icon="fas fa-search" :disabled="!regex.text" @click="paste" title="Type it into the open stash's search box">Stash</WButton>
         <WButton size="sm" variant="ghost" icon="far fa-bookmark" :disabled="!regex.text" @click="saveToLibrary" title="Keep this search in the Regex library">Save</WButton>
       </div>
-      <div class="flex items-center gap-2 w-full text-xs">
+      <div v-if="mode === 'maps'" class="flex items-center gap-2 w-full text-xs">
         <WChip clickable :active="!!profile.autoTrim" @click="profile.autoTrim = !profile.autoTrim"
           title="When the search is too long, leave out wanted mods first, then avoided mods that aren't in a Quick preset, longest first">
           <i class="fas fa-cut" /> Auto-trim to fit
@@ -27,49 +33,39 @@
           Left out {{ regex.dropped.length }} to fit: {{ regex.dropped.slice(0, 3).join(', ') }}{{ regex.dropped.length > 3 ? '…' : '' }}
         </span>
       </div>
-      <div v-if="regex.missing.length" class="w-warn text-xs w-full">No unique text found for: {{ regex.missing.join(', ') }}</div>
-      <div v-if="pickGroups.length || minChips.length" :class="$style.picks">
-        <div v-for="g in pickGroups" :key="g.rating" :class="$style.pickRow">
-          <span :class="[$style.pickHead, $style[g.rating]]">{{ g.label }}</span>
-          <span v-for="c in g.chips" :key="c.matcher" :class="[$style.chip, $style[g.rating]]">
-            <button type="button" :class="$style.chipText" :title="`Show “${c.matcher}” in the list`" @click="jumpTo(c.matcher)">{{ c.label }}</button>
-            <button type="button" :class="$style.chipX" :aria-label="`Remove ${c.label}`" title="Remove" @click="setRating(c.matcher, 'ok')">×</button>
-          </span>
-        </div>
-        <div v-if="minChips.length" :class="$style.pickRow">
-          <span :class="$style.pickHead">Min</span>
-          <span v-for="c in minChips" :key="c.key" :class="[$style.chip, $style.min]">
-            <span :class="$style.chipText">{{ c.label }}</span>
-            <button type="button" :class="$style.chipX" :aria-label="`Remove minimum ${c.label}`" title="Remove" @click="setMin(c.key, 0)">×</button>
-          </span>
-        </div>
-      </div>
-      <div class="flex flex-wrap gap-1 w-full">
+      <div v-if="t17Kept" class="w-warn text-xs w-full">T17 picks are kept but left out of the search. Checking a T17 map still flags them.</div>
+      <div v-if="mode === 'maps' && regex.missing.length" class="w-warn text-xs w-full">No unique text found for: {{ regex.missing.join(', ') }}</div>
+      <div v-if="mode === 'maps'" class="flex flex-wrap gap-1 w-full">
         <span class="w-dim text-xs self-center mr-1">Quick:</span>
         <button v-for="p in presets" :key="p.preset.id" type="button"
           :class="[$style.preset, $style[p.rating]]" @click="cyclePreset(p.preset, p.rating)"
           :title="'Click: careful → can\'t run → off'">{{ p.preset.label }}</button>
       </div>
       <div class="flex items-center gap-2 w-full">
-        <WField v-model="search" type="search" icon="fas fa-search" :placeholder="`Search ${allMods.length} map mods`" class="flex-1" />
+        <WField v-model="search" type="search" icon="fas fa-search" :placeholder="searchHint" class="flex-1" />
         <WTabs v-model="filter" :options="filterOptions" />
       </div>
     </template>
-    <div v-for="m in visible" :key="m" :class="$style.row">
-      <span class="flex-1 min-w-0" :class="{ 'w-dim': !profile.ratings[m] }">
-        {{ m }}<span v-if="t17.has(m)" :class="$style.t17">T17</span>
-      </span>
-      <span v-if="regex.tokens[m]" :class="$style.cost"
-        :title="`Shortened to &quot;${regex.tokens[m]}&quot;, costs ${tokenCost(regex.tokens[m])} characters`">
-        <code>{{ regex.tokens[m] }}</code> {{ tokenCost(regex.tokens[m]) }}
-      </span>
-      <span v-else-if="regex.dropped.includes(m)" class="w-warn text-xs" title="Left out by auto-trim">trimmed</span>
-      <WSegmented :model-value="profile.ratings[m] ?? 'ok'" :options="RATING_OPTIONS"
-        @update:model-value="setRating(m, $event as ModRating)" />
-    </div>
+    <template v-for="row in visible" :key="row.kind === 'head' ? `head:${row.rating}` : row.matcher">
+      <div v-if="row.kind === 'head'" :class="[$style.groupHead, $style[row.rating]]">{{ HEAD_LABEL[row.rating] }} · {{ row.count }}</div>
+      <div v-else :class="$style.row">
+        <span class="flex-1 min-w-0" :class="{ 'w-dim': !profile.ratings[row.matcher] }">
+          {{ row.matcher }}<span v-if="mode === 'maps' && t17.has(row.matcher)" :class="$style.t17">T17</span>
+        </span>
+        <template v-if="mode === 'maps'">
+          <span v-if="regex.tokens[row.matcher]" :class="$style.cost"
+            :title="`Shortened to &quot;${regex.tokens[row.matcher]}&quot;, costs ${tokenCost(regex.tokens[row.matcher])} characters`">
+            <code>{{ regex.tokens[row.matcher] }}</code> {{ tokenCost(regex.tokens[row.matcher]) }}
+          </span>
+          <span v-else-if="regex.dropped.includes(row.matcher)" class="w-warn text-xs" title="Left out by auto-trim">trimmed</span>
+        </template>
+        <WSegmented :model-value="profile.ratings[row.matcher] ?? 'ok'" :options="RATING_OPTIONS"
+          @update:model-value="setRating(row.matcher, $event as ModRating)" />
+      </div>
+    </template>
     <WEmpty v-if="!visible.length" icon="fas fa-search">No mods match.</WEmpty>
     <div v-if="hiddenCount" class="w-dim text-xs p-2 text-center">{{ hiddenCount }} more. Search to narrow the list.</div>
-    <template #footer>
+    <template v-if="mode === 'maps'" #footer>
       <div class="flex items-center gap-2 text-xs w-full">
         <span class="w-dim">A map needs</span>
         <WSegmented :model-value="profile.minsAny ? 'any' : 'all'" :options="MINS_MODE_OPTIONS"
@@ -91,14 +87,15 @@
 import { computed, shallowRef, watch } from 'vue'
 import { MainProcess } from '@/web/background/IPC'
 import { pushHostConfig } from '@/web/Config'
-import { WPanel, WButton, WChip, WField, WSegmented, WSelect, WTabs, WEmpty, toast } from '../ui'
+import { WPanel, WButton, WChip, WField, WSegmented, WSelect, WTabs, WToggle, WEmpty, toast } from '../ui'
 import { useCopy } from '../ui/copy'
 import { SAVE_MESSAGE, saveToRegexLibrary } from '../regex-library/save'
-import { PRESETS, applyPreset, nextPresetRating, presetRating, shortLabel, withRating } from './rules'
+import { PRESETS, applyPreset, modListRows, nextPresetRating, presetRating, withRating } from './rules'
 import type { MapModPreset, ModRating } from './rules'
 import { MAX_SEARCH_LENGTH, MIN_LABELS, tokenCost } from './regex'
 import type { MinStat } from './regex'
-import { allAreaMods, profileRegex, tier17Mods } from './data'
+import { modsForMode, profileRegex, tier17Mods } from './data'
+import type { ModMode } from './data'
 import { activeProfile } from './widget'
 import type { MapModsWidget } from './widget'
 
@@ -120,13 +117,21 @@ const MINS_MODE_OPTIONS = [
 ]
 const MIN_KEYS: MinStat[] = ['quantity', 'rarity', 'packSize', 'quality', 'currency', 'scarabs', 'maps', 'divCards']
 const MAX_ROWS = 200
+const MODE_HINT: Record<string, string> = {
+  heist: 'Rates contracts and blueprints when you check one. A mod that also rolls on maps shares its rating. Nothing here goes in the map search.',
+  charts: 'Rates charts when you check one, including Voyage mods once charted. These mods also roll on maps, so they share a rating, and an avoid here goes in the map search too.'
+}
+const HEAD_LABEL: Record<ModRating, string> = { deadly: 'Avoid', warn: 'Careful', good: 'Want', ok: 'Not rated' }
 
 const profile = computed(() => activeProfile(props.config))
 const profileOptions = computed(() => props.config.profiles.map(p => ({ value: String(p.id), label: p.name || 'Unnamed' })))
-const presets = computed(() => PRESETS.map(preset => ({ preset, rating: presetRating(profile.value, preset) })))
+const presets = computed(() => PRESETS
+  .filter(preset => !(profile.value.hideT17 && preset.id === 't17-killers'))
+  .map(preset => ({ preset, rating: presetRating(profile.value, preset) })))
 
 const search = shallowRef('')
 const filter = shallowRef('all')
+const mode = shallowRef<ModMode>('maps')
 
 // Mods the player hurts themselves with vs. mods that add monsters/rewards.
 function isDanger (m: string) {
@@ -134,72 +139,55 @@ function isDanger (m: string) {
     !/(more Quantity|Pack size|Rarity of Items)/i.test(m)
 }
 
-const allMods = computed(() => {
-  // Rated mods missing from today's stat data (renamed by a patch) stay visible.
-  return [...new Set([...allAreaMods(), ...Object.keys(profile.value.ratings)])]
+const t17 = computed(() => tier17Mods())
+const modeMods = computed(() => modsForMode(mode.value, profile.value))
+const searchHint = computed(() => {
+  const noun = { maps: 'map', heist: 'heist', charts: 'chart' }[mode.value]
+  return `Search ${modeMods.value.length} ${noun} mods`
 })
+
+const modeOptions = computed(() => ([['maps', 'Maps'], ['heist', 'Heist'], ['charts', 'Charts']] as Array<[ModMode, string]>).map(([value, label]) => ({
+  value,
+  label,
+  count: modsForMode(value, profile.value).filter(m => profile.value.ratings[m]).length
+})))
 
 const filterOptions = computed(() => [
   { value: 'all', label: 'All' },
-  { value: 'picked', label: 'Picked', count: Object.keys(profile.value.ratings).length },
-  { value: 'danger', label: 'Danger' },
-  { value: 'reward', label: 'Reward' },
-  { value: 't17', label: 'T17' }
+  { value: 'picked', label: 'Picked', count: modeMods.value.filter(m => profile.value.ratings[m]).length },
+  ...(mode.value === 'maps' ? [{ value: 'danger', label: 'Danger' }, { value: 'reward', label: 'Reward' }] : [])
 ])
 
-const t17 = computed(() => tier17Mods())
+const t17Kept = computed(() => mode.value === 'maps' && !!profile.value.hideT17 &&
+  Object.keys(profile.value.ratings).some(m => t17.value.has(m)))
 
 const filtered = computed(() => {
   const q = search.value.trim().toLowerCase()
   const ratings = profile.value.ratings
-  return allMods.value.filter(m => {
+  return modeMods.value.filter(m => {
     if (q && !m.toLowerCase().includes(q)) return false
     if (filter.value === 'picked') return ratings[m] != null
     if (filter.value === 'danger') return isDanger(m)
     if (filter.value === 'reward') return !isDanger(m)
-    if (filter.value === 't17') return t17.value.has(m)
     return true
   })
 })
-const visible = computed(() => filtered.value.slice(0, MAX_ROWS))
-const hiddenCount = computed(() => Math.max(0, filtered.value.length - MAX_ROWS))
+
+// Picked mods go on top. The order only refreshes when the view changes, so a
+// row doesn't jump away from the cursor while it's being rated.
+const orderBy = shallowRef(profile.value.ratings)
+watch(mode, () => {
+  filter.value = 'all'
+  search.value = ''
+})
+watch([mode, filter, () => profile.value.hideT17, () => props.config.activeProfile, () => props.config.wmWants], () => {
+  orderBy.value = profile.value.ratings
+})
+const rows = computed(() => modListRows(filtered.value, orderBy.value))
+const visible = computed(() => rows.value.slice(0, MAX_ROWS))
+const hiddenCount = computed(() => rows.value.slice(MAX_ROWS).filter(row => row.kind === 'mod').length)
 
 const regex = computed(() => profileRegex(profile.value))
-
-// Everything picked, at a glance above the list.
-const PICK_GROUPS: Array<{ rating: ModRating, label: string }> = [
-  { rating: 'deadly', label: 'Avoid' },
-  { rating: 'warn', label: 'Careful' },
-  { rating: 'good', label: 'Want' }
-]
-const MIN_SHORT: Record<MinStat, string> = {
-  quantity: 'quant',
-  rarity: 'rarity',
-  packSize: 'pack',
-  quality: 'quality',
-  currency: 'currency',
-  scarabs: 'scarabs',
-  maps: 'maps',
-  divCards: 'div cards'
-}
-const pickGroups = computed(() => {
-  const ratings = profile.value.ratings
-  return PICK_GROUPS.map(g => ({
-    ...g,
-    chips: Object.keys(ratings)
-      .filter(m => ratings[m] === g.rating)
-      .map(m => ({ matcher: m, label: shortLabel(m) }))
-      .sort((a, b) => a.label.localeCompare(b.label))
-  })).filter(g => g.chips.length)
-})
-const minChips = computed(() => MIN_KEYS
-  .filter(key => (profile.value.mins[key] ?? 0) > 0)
-  .map(key => ({ key, label: `${MIN_SHORT[key]} ${profile.value.mins[key]!}%` })))
-
-function jumpTo (matcher: string) {
-  filter.value = 'all'
-  search.value = matcher
-}
 
 // The three picked mods that cost the most characters.
 const costliest = computed(() => Object.entries(regex.value.tokens)
@@ -288,41 +276,15 @@ function paste () {
   border-color: color-mix(in srgb, var(--w-down) 50%, transparent);
   background: color-mix(in srgb, var(--w-down) 14%, transparent);
 }
-.picks {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  width: 100%;
-  max-height: 9.5rem;
-  overflow-y: auto;
-  padding: 6px 8px;
-  border-radius: var(--w-r-sm);
-  background: var(--w-panel-2);
-  border: 1px solid var(--w-line);
+.groupHead {
+  padding: 6px var(--w-pad) 3px;
+  font-size: var(--w-fs-xs);
+  font-weight: 600;
+  color: var(--w-dim);
 }
-.pickRow { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
-.pickHead { width: 52px; flex: none; font-size: var(--w-fs-xs); color: var(--w-accent); }
-.pickHead.deadly { color: var(--w-down); }
-.pickHead.warn { color: var(--w-warn); }
-.pickHead.good { color: var(--w-up); }
-.chip {
-  display: inline-flex;
-  align-items: center;
-  font-size: var(--w-fs-sm);
-  border-radius: var(--w-r-pill);
-  border: 1px solid color-mix(in srgb, var(--chip) 48%, transparent);
-  background: color-mix(in srgb, var(--chip) 13%, transparent);
-  color: var(--chip);
-  --chip: var(--w-accent);
-}
-.chip.deadly { --chip: var(--w-down); }
-.chip.warn { --chip: var(--w-warn); }
-.chip.good { --chip: var(--w-up); }
-.chip.min { font-family: var(--w-num); background: transparent; }
-.chipText { padding: 1px 2px 1px 8px; color: inherit; background: none; border: 0; font: inherit; }
-button.chipText:hover { text-decoration: underline; }
-.chipX { padding: 0 6px 0 3px; color: inherit; background: none; border: 0; font: inherit; opacity: 0.7; }
-.chipX:hover { opacity: 1; }
+.groupHead.deadly { color: var(--w-down); }
+.groupHead.warn { color: var(--w-warn); }
+.groupHead.good { color: var(--w-up); }
 .row {
   display: flex;
   align-items: center;

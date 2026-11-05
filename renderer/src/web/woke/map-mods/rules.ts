@@ -17,6 +17,9 @@ export interface MapModProfile {
   minsAny?: boolean
   // When the search is over 250 characters, leave out the least important mods.
   autoTrim?: boolean
+  // The T17 switch is off: T17 mods leave the Maps list and the stash regex.
+  // Their ratings stay, and a check of a T17 map still flags them.
+  hideT17?: boolean
 }
 
 export interface JuiceWeights {
@@ -173,6 +176,26 @@ export function nextPresetRating (r: ModRating): ModRating {
   if (r === 'ok') return 'warn'
   if (r === 'warn') return 'deadly'
   return 'ok'
+}
+
+export type ModListRow =
+  | { kind: 'head', rating: ModRating, count: number }
+  | { kind: 'mod', matcher: string }
+
+// The Map mods list: picked mods on top, by rating, then the rest, with a
+// heading over each group. `ratings` is the order to sort by, not always the
+// live ratings, so a row doesn't jump away while it's being rated.
+export function modListRows (mods: string[], ratings: Record<string, ModRating>): ModListRow[] {
+  const groups: Record<ModRating, string[]> = { deadly: [], warn: [], good: [], ok: [] }
+  for (const m of mods) groups[ratings[m] ?? 'ok'].push(m)
+  if (groups.ok.length === mods.length) return mods.map(matcher => ({ kind: 'mod', matcher }))
+  const rows: ModListRow[] = []
+  for (const rating of ['deadly', 'warn', 'good', 'ok'] as ModRating[]) {
+    if (!groups[rating].length) continue
+    rows.push({ kind: 'head', rating, count: groups[rating].length })
+    for (const matcher of groups[rating]) rows.push({ kind: 'mod', matcher })
+  }
+  return rows
 }
 
 // Rating cycle when clicking a mod in the popup.

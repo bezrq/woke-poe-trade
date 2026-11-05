@@ -10,7 +10,7 @@
         <span class="w-dim text-xs w-trunc">Profile: {{ profileName }}</span>
       </div>
     </div>
-    <div :class="$style.juice">
+    <div v-if="result.juice" :class="$style.juice">
       <div class="flex items-baseline gap-2">
         <span class="w-group-label flex-1" style="padding: 0;">Juice</span>
         <span class="w-num w-accent" :class="$style.score">{{ result.juice.score }}</span>

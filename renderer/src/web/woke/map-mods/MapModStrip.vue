@@ -5,8 +5,10 @@
       <span :class="$style.badge">{{ VERDICT_LABEL[result.verdict.verdict] }}</span>
       <span :class="$style.headline" class="w-trunc">{{ headline }}</span>
       <span class="flex-1" />
-      <span class="w-dim text-xs">Juice</span>
-      <span class="w-num w-accent font-semibold">{{ result.juice.score }}</span>
+      <template v-if="result.juice">
+        <span class="w-dim text-xs">Juice</span>
+        <span class="w-num w-accent font-semibold">{{ result.juice.score }}</span>
+      </template>
       <i class="fas w-dim text-xs" :class="open ? 'fa-chevron-up' : 'fa-chevron-down'" />
     </button>
     <div :class="$style.chips">

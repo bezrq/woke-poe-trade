@@ -7,7 +7,7 @@ import { ModifierType } from '@/parser/modifiers'
 import { prepareMapStat } from '@/web/map-check/prepare-map-stats'
 import { juiceScore, rateMods } from './rules'
 import type { JuiceResult, MapVerdict } from './rules'
-import { MAP_MODS_TYPE, activeProfile, initMapModsWidget } from './widget'
+import { MAP_MODS_TYPE, activeProfile, importAptOnce, initMapModsWidget } from './widget'
 import type { MapModsWidget } from './widget'
 
 export function isMapLike (item: ParsedItem): boolean {
@@ -15,27 +15,39 @@ export function isMapLike (item: ParsedItem): boolean {
   return (
     (category === ItemCategory.Map && rarity !== ItemRarity.Unique) ||
     category === ItemCategory.Invitation ||
+    isHeistItem(item) ||
+    category === ItemCategory.Chart ||
     refName === 'Expedition Logbook'
   )
 }
+
+function isHeistItem (item: ParsedItem): boolean {
+  return item.category === ItemCategory.HeistContract || item.category === ItemCategory.HeistBlueprint
+}
+
+// A chart's implicit is its Voyage mod once charted, and until then this line.
+const VOYAGE_UNREVEALED = 'Voyage Modifier will be revealed once Charted'
 
 export interface MapCheckResult {
   name: string
   sub: string
   verdict: MapVerdict
-  juice: JuiceResult
+  // Null on heist items: nothing on them feeds the score.
+  juice: JuiceResult | null
   props: Array<{ label: string, value: number }>
   unknown: string[]
 }
 
 export function checkMap (item: ParsedItem, config: MapModsWidget): MapCheckResult {
   const profile = activeProfile(config)
+  const isChart = item.category === ItemCategory.Chart
   const stats = item.statsByType
-    .filter(calc => calc.type === ModifierType.Explicit)
+    .filter(calc => calc.type === ModifierType.Explicit || (isChart && calc.type === ModifierType.Implicit))
     .map(calc => prepareMapStat(calc))
+    .filter(stat => stat.matcher !== VOYAGE_UNREVEALED)
   const verdict = rateMods(stats, profile)
 
-  const juice = juiceScore({
+  const juice = isHeistItem(item) ? null : juiceScore({
     quantity: item.areaItemQuantity,
     rarity: item.areaItemRarity,
     packSize: item.areaPackSize,
@@ -103,11 +115,12 @@ export function ensureMapModsConfig (): MapModsWidget | null {
     w = widgets[widgets.length - 1] as MapModsWidget
   }
   if (w.wmFlags[0] === 'uninitialized' || !Array.isArray(w.profiles)) initMapModsWidget(w)
+  importAptOnce(w)
   return w
 }
 
-// APT's item info window shows this instead of its own map check when Map
-// mods is on (null: not a map we rate, or the module is off).
+// APT's item info window shows this for maps, invitations, logbooks, heist items
+// and charts (null: not one of those, or the Map mods module is off).
 export function wokeMapCheck (item: ParsedItem): { result: MapCheckResult, config: MapModsWidget } | null {
   if (!isMapLike(item)) return null
   const config = findMapModsConfig()
