@@ -35,7 +35,7 @@ Pick a preset on first run (Mapper, Leveling, Trader, Everything or Price check 
 | Mapping | Essence scan | Reads essence monoliths and flags MEDS |
 | Mapping | Loot filter editor | Edit the NeverSink rule for a sampled item |
 | Mapping | Atlas strategies | Tree, scarabs and regex per strategy |
-| Mapping | League mechanics | Picks and Betrayal board for the zone |
+| Mapping | League mechanics | Prices and picks for each league mechanic |
 | Campaign & lab | Campaign tracker | Next steps for the act you are in |
 | Campaign & lab | Run timer | Act splits and personal bests |
 | Campaign & lab | Lab layouts | Today's poelab layout and reset countdown |

@@ -60,7 +60,7 @@ export const MODULES: ModuleDef[] = [
   { id: 'essence-scan', name: 'Essence scan', description: 'Reads essence monoliths and flags MEDS', group: 'mapping', widgetTypes: ['woke-essence-scan'], icon: { fa: 'fas fa-flask', mechanic: 'essence' }, needs: ['ocr', 'hotkeys', 'prices'] },
   { id: 'loot-filter', name: 'Loot filter editor', description: 'Edit the NeverSink rule for a sampled item', group: 'mapping', widgetTypes: ['woke-loot-filter'], icon: { fa: 'fas fa-filter', item: 'Orb of Scouring' }, needs: ['log', 'hotkeys'] },
   { id: 'atlas', name: 'Atlas strategies', description: 'Tree, scarabs and regex per strategy', group: 'mapping', widgetTypes: ['woke-atlas-strategies'], icon: { fa: 'fas fa-globe', item: 'Cartography Scarab of Risk' }, needs: ['network', 'prices'] },
-  { id: 'mechanics', name: 'League mechanics', description: 'Picks and Betrayal board for the zone', group: 'mapping', widgetTypes: ['woke-mechanics'], icon: { fa: 'fas fa-puzzle-piece', mechanic: 'incursion' }, needs: ['log', 'prices'] },
+  { id: 'mechanics', name: 'League mechanics', description: 'Prices and picks for each league mechanic', group: 'mapping', widgetTypes: ['woke-mechanics'], icon: { fa: 'fas fa-puzzle-piece', mechanic: 'incursion' }, needs: ['log', 'prices'] },
 
   { id: 'campaign', name: 'Campaign tracker', description: 'Next steps for the act you are in', group: 'campaign', widgetTypes: ['woke-campaign'], icon: { fa: 'fas fa-route', currency: 'wisdom' }, needs: ['log'] },
   { id: 'run-timer', name: 'Run timer', description: 'Act splits and personal bests', group: 'campaign', widgetTypes: ['woke-run-timer'], icon: { fa: 'fas fa-stopwatch' }, needs: ['log'] },
