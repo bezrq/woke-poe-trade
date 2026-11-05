@@ -251,6 +251,8 @@ export interface PricingResult {
   indexedAt?: string
   // woke: the listed item for the hover tooltip, or null when it has no mods
   tipItem: PobItem | null
+  // woke: the listing as sent, for the columns of ticked stats
+  listedItem?: ListingItem
   priceAmount: number
   priceCurrency: string
   isMine: boolean
@@ -838,6 +840,7 @@ export async function requestResults (
       relativeDate: DateTime.fromISO(result.listing.indexed).toRelative({ style: 'short' }) ?? '',
       indexedAt: result.listing.indexed,
       tipItem: listingTipItem(result.item),
+      listedItem: result.item,
       priceAmount: result.listing.price?.amount ?? 0,
       priceCurrency: result.listing.price?.currency ?? 'no price',
       hasNote: result.item.note != null,

@@ -30,6 +30,17 @@ export interface ListingItem {
   craftedMods?: ListingMod[]
   sockets?: Array<{ group: number, sColour: string }>
   properties?: Array<{ name?: string, type?: number, values: Array<[string, number]> }>
+  // Defences and dps at 20% quality, the numbers the trade filters search on.
+  extended?: {
+    ar?: number
+    ev?: number
+    es?: number
+    ward?: number
+    dps?: number
+    pdps?: number
+    edps?: number
+    base_defence_percentile?: number
+  }
 }
 
 const RARITY: Record<number, PobRarity> = { 0: 'NORMAL', 1: 'MAGIC', 2: 'RARE', 3: 'UNIQUE', 9: 'RELIC' }
@@ -37,11 +48,11 @@ const RARITY: Record<number, PobRarity> = { 0: 'NORMAL', 1: 'MAGIC', 2: 'RARE', 
 // Quality goes by type: its name varies, as in "Quality (Attack Modifiers)".
 const QUALITY_TYPE = 6
 
-function modText (mod: ListingMod): string {
+export function modText (mod: ListingMod): string {
   return typeof mod === 'string' ? mod : mod.description ?? ''
 }
 
-function modDomain (mod: ListingMod): string {
+export function modDomain (mod: ListingMod): string {
   if (typeof mod === 'string') return ''
   if (mod.flags?.fractured) return 'fractured'
   if (mod.flags?.crafted) return 'crafted'
