@@ -259,7 +259,7 @@
     if (msg.demo === 'locate') {
       var icon = document.querySelector('[data-dock="' + msg.dock + '"]')
       var r = icon && icon.getBoundingClientRect()
-      parent.postMessage({ demo: 'spot', dock: msg.dock, tries: msg.tries, x: r ? r.x + r.width / 2 : null, y: r ? r.y + r.height / 2 : null }, '*')
+      parent.postMessage({ demo: 'spot', dock: msg.dock, gen: msg.gen, tries: msg.tries, x: r ? r.x + r.width / 2 : null, y: r ? r.y + r.height / 2 : null }, '*')
     }
     if (msg.demo === 'action') {
       var events = socket.rec.actions[msg.name] || []

@@ -186,7 +186,10 @@ select { padding-right: 28px; }
     if (s.spot) {
       document.getElementById('spot-label').textContent = s.spot.label
       if (s.spot.dock) locate()
-      else place(s.spot.x, s.spot.y)
+      else { clearTimeout(loc.timer); loc.gen++; place(s.spot.x, s.spot.y) }
+    } else {
+      clearTimeout(loc.timer)
+      loc.gen++
     }
     enterZone()
     if (state.ready) hint.textContent = s.hint
@@ -200,12 +203,37 @@ select { padding-right: 28px; }
     spot.dataset.placed = 'true'
     sync()
   }
-  // A dock icon moves as icons come and go: ask the overlay where it is.
-  function locate (tries) {
+  // A dock icon moves as icons come and go: ask the overlay where it is, and
+  // keep asking while the row settles. A newer ask (another screen, the
+  // overlay closing) drops the older one.
+  var loc = { gen: 0, timer: null, last: null, same: 0 }
+  function locate () {
+    clearTimeout(loc.timer)
+    loc.gen++
+    loc.last = null
+    loc.same = 0
     spot.dataset.placed = 'false'
-    tries = tries || 0
-    if (tries > 8) return
-    setTimeout(function () { if (state.ready) send({ demo: 'locate', dock: SCREENS[state.screen].spot.dock, tries: tries }) }, 600)
+    var s = SCREENS[state.screen].spot
+    if (s && s.dock) ask(s.dock, 0, 600)
+  }
+  function ask (dock, tries, wait) {
+    var gen = loc.gen
+    loc.timer = setTimeout(function () {
+      if (state.ready && gen === loc.gen) send({ demo: 'locate', dock: dock, gen: gen, tries: tries })
+    }, wait)
+  }
+  function located (msg) {
+    var want = SCREENS[state.screen].spot
+    if (msg.gen !== loc.gen || !want || !want.dock || want.dock !== msg.dock) return
+    if (msg.x != null) {
+      var key = Math.round(msg.x) + ',' + Math.round(msg.y)
+      loc.same = key === loc.last ? loc.same + 1 : 0
+      loc.last = key
+      place(msg.x, msg.y)
+      // Settled: the same spot three times running.
+      if (loc.same >= 2) return
+    }
+    if (msg.tries < 12) ask(msg.dock, msg.tries + 1, 400)
   }
   // The game writes Client.txt as you change zones: replay that once per zone.
   function enterZone () {
@@ -213,6 +241,14 @@ select { padding-right: 28px; }
     if (!state.ready || zone === state.zone) return
     state.zone = zone
     act(zone)
+  }
+  // The icon row may have changed while the overlay hid it: find the icon again.
+  function overlay (open) {
+    var was = state.overlay
+    state.overlay = open
+    var s = SCREENS[state.screen].spot
+    if (was && !open && s && s.dock) locate()
+    sync()
   }
   function sync () {
     // The marker points at what to scan or hover; once scanning, or with the
@@ -232,7 +268,7 @@ select { padding-right: 28px; }
         hint.textContent = ITEMS[document.getElementById('item').value]
         break
       case 'Shift+Space':
-        state.overlay = !state.overlay
+        overlay(!state.overlay)
         send({ demo: 'overlay', open: state.overlay })
         hint.textContent = state.overlay
           ? 'The overlay is open: click around. The rail on the left edge holds every tool. Shift+Space closes it.'
@@ -281,17 +317,11 @@ select { padding-right: 28px; }
       document.getElementById('loading').hidden = true
       showScreen(state.screen)
     }
-    if (msg.demo === 'spot') {
-      var want = SCREENS[state.screen].spot
-      if (want && want.dock === msg.dock) {
-        if (msg.x != null) place(msg.x, msg.y)
-        else locate(msg.tries + 1)
-      }
-    }
+    if (msg.demo === 'spot') located(msg)
     // The card covers the marker: hide it while the mouse rests on an icon.
     if (msg.demo === 'hover') { state.hovering = msg.inside; sync() }
     if (msg.demo === 'key') press(msg.combo)
-    if (msg.demo === 'overlay') { state.overlay = msg.open; sync() }
+    if (msg.demo === 'overlay') overlay(msg.open)
   })
   showScreen('jungle')
 })()
