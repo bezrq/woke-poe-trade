@@ -135,6 +135,23 @@ history:
     date: '2026-11-05T14:39:40.918Z'
     selfAttested: true
     id: c-2026-11-05t14-39-40-918z
+  - type: comment
+    user: Agent
+    comment: >-
+      Guy asked for graded hues from light to bright green. Added mock Outlines
+      2b: pale to bright green scaled across the open tab, profit each written
+      on the slot, amber near break-even. Waiting on his go.
+    date: '2026-11-05T14:40:56.462Z'
+    selfAttested: true
+    id: c-2026-11-05t14-40-56-462z
+  - type: comment
+    user: Agent
+    comment: >-
+      Guy confirmed: colour grade by per-item profit, not stack total. Mock 2b
+      already does this.
+    date: '2026-11-05T14:41:05.281Z'
+    selfAttested: true
+    id: c-2026-11-05t14-41-05-281z
 swimlane: require-input
 needsAction: null
 ---
