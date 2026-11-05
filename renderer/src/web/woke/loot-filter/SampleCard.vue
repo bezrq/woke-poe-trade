@@ -82,7 +82,7 @@
         <div ref="lookSection" :class="$style.section">
           <div class="w-group-label" :class="$style.label">Change the look</div>
           <WSegmented v-if="!isOwn" v-model="scope" :options="scopeOptions" />
-          <StyleEditor :look="editLook" :visibility="editVisibility" :preview-text="facts.baseType ?? facts.name"
+          <StyleEditor :source="origin.type && origin.tier ? store.sourceLook(origin.type, origin.tier) : null" :look="editLook" :visibility="editVisibility" :preview-text="facts.baseType ?? facts.name"
             :copy-from="scope === 'tier' ? [] : copyFrom"
             @patch="onPatch" @visibility="onVisibility" />
           <WButton v-if="isOwn" size="sm" variant="ghost" icon="fas fa-undo" @click="removeOwnRule">Remove my own rule for this item</WButton>

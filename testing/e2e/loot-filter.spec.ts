@@ -149,6 +149,38 @@ test('rules: add an item by search, move one from its menu, take one off, and th
   expect(text).not.toMatch(/Mirror of Kalandra/)
 })
 
+test('history: a change shows before and after, a dot resets it, Ctrl + Z and the list undo it', async ({ overlay, fakeApp }) => {
+  const folder = filterFolder()
+  await overlay.boot({ widgets: [lootFilter(folder)] })
+  await openEditor(overlay, fakeApp)
+  const page = overlay.page
+  await page.getByRole('tab', { name: 'Rules' }).click()
+  await page.getByRole('button', { name: /Tier 1/ }).first().click()
+
+  const slider = page.locator('input[type="range"]').first()
+  const start = await slider.inputValue()
+  await slider.fill('20')
+  await slider.dispatchEvent('change')
+  // The dot on the setting takes it back to the filter's value.
+  await page.getByRole('button', { name: 'Reset size' }).click()
+  await expect(slider).toHaveValue(start)
+  await slider.fill('20')
+  await slider.dispatchEvent('change')
+  await page.waitForTimeout(700)
+
+  await page.getByRole('tab', { name: /^Changes/ }).click()
+  await expect(page.getByText(new RegExp(`Tier 1: font size ${start} → 20`)).first()).toBeVisible()
+  await overlay.snap('history')
+  await page.getByRole('button', { name: 'Undo', exact: true }).first().click()
+  await page.getByRole('tab', { name: 'Rules' }).click()
+  await expect(slider).toHaveValue(start)
+  await page.keyboard.press('Control+y')
+  await expect(slider).toHaveValue('20')
+  await page.locator('body').click({ position: { x: 5, y: 5 }, force: true }).catch(() => {})
+  await page.keyboard.press('Control+z')
+  await expect(slider).toHaveValue(start)
+})
+
 test('pasting a copied item into the search box opens its rule card', async ({ overlay, fakeApp }) => {
   const folder = filterFolder()
   await overlay.boot({ widgets: [lootFilter(folder)] })

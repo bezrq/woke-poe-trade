@@ -130,7 +130,7 @@
             <WButton v-if="tierChanged(tier.tier) && !isOwnGroup" size="sm" variant="ghost" icon="fas fa-undo" title="Take back your changes to this tier" @click="resetTier(tier.tier)">Reset tier</WButton>
           </div>
           <div class="text-xs w-faint">{{ tier.blocks.length > 1 ? `${tier.blocks.length} rules` : `line ${tier.blocks[0].line}` }}<span v-if="tier.disabled"> · commented out in the filter</span></div>
-          <StyleEditor :look="readStyle(firstLive(tier).actions)" :visibility="firstLive(tier).visibility"
+          <StyleEditor :source="isOwnGroup || !selType ? null : store.sourceLook(selType, tier.tier)" :look="readStyle(firstLive(tier).actions)" :visibility="firstLive(tier).visibility"
             :preview-text="tier.bases[0] ?? previewName(tier)" :copy-from="copyFrom"
             @patch="patchTier" @visibility="setTierVisibility" />
 
@@ -203,6 +203,22 @@
           <WButton v-if="p.block.type && p.block.tier" size="sm" variant="ghost" @click="jumpTo(p.block.type!, p.block.tier!)">Open rule</WButton>
         </div>
       </div>
+      <template v-if="config.timeline.steps.length">
+        <div class="flex items-center gap-2" :class="$style.historyLabel">
+          <span class="w-group-label" style="padding: 0;">History</span>
+          <span class="w-faint text-xs">newest first</span>
+          <span class="grow" />
+          <WButton size="sm" variant="ghost" icon="fas fa-undo" :disabled="config.timeline.at === 0" title="Ctrl + Z" @click="store.undoStep()">Undo</WButton>
+          <WButton size="sm" variant="ghost" icon="fas fa-redo" :disabled="config.timeline.at >= config.timeline.steps.length" title="Ctrl + Y" @click="store.redoStep()">Redo</WButton>
+        </div>
+        <div v-for="s in shownSteps" :key="s.n" :class="[$style.changeRow, { [$style.undone]: s.n >= config.timeline.at }]">
+          <span class="grow min-w-0 w-trunc" :title="s.step.label">{{ s.step.label }}</span>
+          <span class="w-faint text-xs w-num" :title="new Date(s.step.ts).toLocaleString()">{{ agoPhrase(s.step.ts) }}</span>
+          <WButton v-if="s.n + 1 !== config.timeline.at" size="sm" variant="ghost" title="Your settings go back to right after this step. You can redo." @click="store.goToStep(s.n + 1)">{{ s.n >= config.timeline.at ? 'Redo to here' : 'Back to here' }}</WButton>
+          <WButton v-else size="sm" variant="ghost" @click="store.undoStep()">Undo</WButton>
+        </div>
+      </template>
+      <div class="w-group-label" v-if="config.edits.length || activePriceMoves" :class="$style.historyLabel">In effect now</div>
       <div v-if="activePriceMoves" :class="$style.changeRow">
         <i class="fas fa-chart-line w-dim" />
         <span class="grow min-w-0">{{ activePriceMoves }} item{{ activePriceMoves === 1 ? '' : 's' }} moved by prices</span>
@@ -275,6 +291,7 @@
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { WPanel, WButton, WSelect, WField, WTabs, WListItem, WChip, WEmpty, WKbd, WBanner, WSkeleton, agoPhrase, openMenu, toast, useCopy } from '../ui'
 import { copyText } from '../ui/copy'
+import { hasUndoToast } from '../ui/layer'
 import LabelPreview from './LabelPreview.vue'
 import PricesTab from './PricesTab.vue'
 import PreviewTab from './PreviewTab.vue'
@@ -759,6 +776,25 @@ function useShared (how: 'add' | 'replace') {
   shareInput.value = ''
 }
 
+// Newest first, with each step's place in the list.
+const shownSteps = computed(() => props.config.timeline.steps.map((step, n) => ({ step, n })).reverse())
+
+function onUndoKeys (e: KeyboardEvent) {
+  if (!(e.ctrlKey || e.metaKey) || e.altKey) return
+  const t = e.target as HTMLElement | null
+  if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT')) return
+  const key = e.key.toLowerCase()
+  // A note on screen with Undo on it takes Ctrl + Z first, and it ends in the same place.
+  if (key === 'z' && !e.shiftKey) {
+    if (!hasUndoToast()) { e.preventDefault(); props.store.undoStep() }
+  } else if (key === 'y' || (key === 'z' && e.shiftKey)) {
+    e.preventDefault()
+    props.store.redoStep()
+  }
+}
+onMounted(() => window.addEventListener('keydown', onUndoKeys))
+onUnmounted(() => window.removeEventListener('keydown', onUndoKeys))
+
 const groupHiddenByMe = computed(() => props.config.edits.some(e => e.kind === 'group' && e.type === selType.value))
 function toggleGroup () {
   if (!selType.value) return
@@ -959,6 +995,7 @@ function openFolder () {
   gap: 4px;
   border-bottom: 1px solid var(--w-line-soft);
 }
+.undone { opacity: 0.45; }
 .historyLabel {
   padding: 12px var(--w-pad) 4px;
 }

@@ -59,6 +59,10 @@ export function dismissToast (id: number) {
   toasts.value = toasts.value.filter(t => t.id !== id)
 }
 
+export function hasUndoToast (): boolean {
+  return toasts.value.some(t => t.undo)
+}
+
 export function undoToast (id?: number) {
   const t = id != null ? toasts.value.find(o => o.id === id) : [...toasts.value].reverse().find(o => o.undo)
   if (!t?.undo) return false
