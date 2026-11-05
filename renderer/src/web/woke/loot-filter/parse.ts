@@ -56,6 +56,8 @@ export interface FilterBlock {
   // Its conditions were copied from a block in the source file, so a keyword
   // the save check doesn't know is the game's business, not a mistake.
   inherited?: boolean
+  // The edit that added this block.
+  editId?: number
 }
 
 export interface FilterRaw {
@@ -135,7 +137,7 @@ export function parseCondition (key: string, rest: string): FilterCondition {
     count = Number(countMatch[1])
     text = text.slice(countMatch[0].length)
   }
-  return { key, op, count, values: tokenize(text.trim()), bare: !text.includes('"') }
+  return { key, op, count, values: tokenize(text.trim()), bare: text.trim() ? !text.includes('"') : undefined }
 }
 
 function parseTags (comment: string): { type: string | null, tier: string | null } {
@@ -167,6 +169,43 @@ function scanGap (lines: string[], from: number): { end: number, rule: boolean }
     i++
   }
   return { end: i, rule: i > from && i < lines.length && isBlockLine(lines[i], false) }
+}
+
+// A key for a rule with no $type/$tier tags, so a filter from anywhere can be
+// edited rule by rule. Made from its conditions, so it survives lines moving.
+export function untaggedTier (conditions: FilterCondition[]): string {
+  const text = JSON.stringify(conditions.map(c => [c.key, c.op, c.count, c.values]))
+  let h = 5381
+  for (let i = 0; i < text.length; i++) h = ((h << 5) + h + text.charCodeAt(i)) | 0
+  return `#${(h >>> 0).toString(36)}`
+}
+
+export const UNTAGGED_PREFIX = 'untagged:'
+
+// Rule groups the editor adds to a filter, by display name.
+export const EDITOR_GROUPS: Record<string, string> = {
+  'woke->own': 'Your own rules',
+  'woke->build': 'Your build',
+  'woke->safety': 'Safety net',
+  'woke->rule': 'Rules you made',
+  'woke->preset': 'Presets'
+}
+
+// A group and tier the way a person reads them; a rule with no tags has no
+// tier name worth showing.
+export function ruleLabel (type: string | null, tier: string | null): string {
+  if (!type) return 'no rule'
+  const group = EDITOR_GROUPS[type] ?? (type.startsWith(UNTAGGED_PREFIX)
+    ? (type.slice(UNTAGGED_PREFIX.length) || 'Rule')
+    : type.split('->').map(part => part.charAt(0).toUpperCase() + part.slice(1)).join(' › '))
+  return tier && !tier.startsWith('#') && type !== 'woke->own' ? `${group} › ${tier}` : group
+}
+
+// A tier's name for a person: an own rule goes by its item, an untagged rule
+// has no name.
+export function tierName (b: Pick<FilterBlock, 'tier' | 'editId' | 'conditions'>): string {
+  if (b.editId != null) return b.conditions.find(c => c.key === 'BaseType')?.values[0] ?? 'own rule'
+  return !b.tier || b.tier.startsWith('#') ? 'rule' : b.tier
 }
 
 export function parseFilter (source: string): FilterDoc {
@@ -249,6 +288,8 @@ export function parseFilter (source: string): FilterDoc {
         block.conditions.push(parseCondition(parsed.key, parsed.rest))
       }
     }
+    block.type ??= `${UNTAGGED_PREFIX}${section}`
+    block.tier ??= untaggedTier(block.conditions)
     chunks.push(block)
     blocks.push(block)
   }
@@ -308,7 +349,7 @@ export function formatBlock (b: FilterBlock): string[] {
   for (const a of b.actions) out.push(`${prefix}\t${formatAction(a)}`)
   if (b.continue) out.push(`${prefix}\tContinue`)
   // Comments inside the block stay: someone may have commented out a rule.
-  if (!b.disabled) out.push(...b.raw.slice(1).filter(l => l.trimStart().startsWith('#')))
+  if (!b.raw[0]?.trimStart().startsWith('#')) out.push(...b.raw.slice(1).filter(l => l.trimStart().startsWith('#')))
   return out
 }
 

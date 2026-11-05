@@ -215,7 +215,7 @@ const sides = computed(() => {
 })
 
 function ruleName (d: ShownDrop): string {
-  return d.type ? `${groupName(d.type)}${d.tier ? ` › ${d.tier}` : ''}` : 'no rule (shows by default)'
+  return d.type ? `${groupName(d.type)}${d.tier && !d.tier.startsWith('#') ? ` › ${d.tier}` : ''}` : 'no rule (shows by default)'
 }
 
 function describe (d: ShownDrop): string {
@@ -239,7 +239,7 @@ function dropMenu (e: MouseEvent, d: ShownDrop) {
   const base = d.drop.facts.baseType
   const canOwn = Boolean(base && d.type && d.tier && !d.type.startsWith('woke->'))
   const own = (visibility: 'Show' | 'Hide', text: string) => () => {
-    const undo = props.store.editWithUndo({ kind: 'item', type: d.type!, tier: d.tier!, base: base!, visibility, patch: {} })
+    const undo = props.store.editWithUndo({ kind: 'item', type: d.type!, tier: d.tier!, base: base!, visibility, patch: {}, anchor: d.anchor, pin: visibility === 'Show' })
     toast(text, { anchor: props.anchor, undo })
   }
   openMenu(e, [

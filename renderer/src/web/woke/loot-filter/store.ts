@@ -293,11 +293,7 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
   // Parses a text with everything applied, the way rebuild() does, to see how
   // many of your changes would fit.
   function fitOf (text: string): { ok: number, total: number } {
-    const d = parseFilter(text)
-    const input = buildInput.value
-    if (input) insertBuildBlocks(d, buildRuleBlocks(input, cfg().buildRules))
-    if (cfg().priceTiers.on) applyPriceMoves(d, cfg().priceTiers.moves)
-    const res = applyEdits(d, cfg().edits)
+    const res = [...compose(text).results.values()]
     return { ok: res.filter(r => r.ok).length, total: res.length }
   }
 
@@ -519,12 +515,25 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
             text = (await hostRequest<{ text: string }>('filter-read', { dir: cfg().folder, name: from })).text
             if (seq !== loadSeq) return
             cfg().sourceName = from
-          } else if (isWokeCopy(source)) {
-            // Original gone: recover it from the copy, and keep it for next time.
-            text = baseFromCopy(text)
-            baseNeedsBackup.value = true
           } else {
-            throw e
+            // A copy of an online filter names it by title, if it's still there.
+            const title = /^# Made from "(.+?) \(online filter/m.exec(text)?.[1]
+            await listFiles()
+            if (seq !== loadSeq) return
+            const online = files.value.find(f => f.online && f.title === title)
+            if (title && online) {
+              text = (await hostRequest<{ text: string }>('filter-read', { dir: cfg().folder, name: online.name, online: true })).text
+              if (seq !== loadSeq) return
+              cfg().sourceName = online.name
+              cfg().sourceOnline = true
+              cfg().sourceTitle = title
+            } else if (isWokeCopy(source)) {
+              // Original gone: recover it from the copy, and keep it for next time.
+              text = baseFromCopy(text)
+              baseNeedsBackup.value = true
+            } else {
+              throw new Error(`${source} is a copy this editor made. Pick the filter it was made from.`, { cause: e })
+            }
           }
         }
         if (seq !== loadSeq) return
@@ -544,8 +553,30 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
     }
   }
 
+  // How many tiers of its group list each base in the filter as it came, to
+  // tell moves apart from a chain of one move.
+  let listings: { text: string, tiers: Map<string, Set<string>> } | null = null
+  function separateMoves (e: NewFilterEdit | FilterEdit): boolean {
+    if (e.kind !== 'move' || baseText.value == null) return false
+    if (listings?.text !== baseText.value) {
+      const tiers = new Map<string, Set<string>>()
+      for (const b of parseFilter(baseText.value).blocks) {
+        for (const c of b.conditions) {
+          if (c.key !== 'BaseType' || c.op !== '==' || !b.type || !b.tier) continue
+          for (const v of c.values) {
+            const key = `${b.type}|${v}`
+            if (!tiers.has(key)) tiers.set(key, new Set())
+            tiers.get(key)!.add(b.tier)
+          }
+        }
+      }
+      listings = { text: baseText.value, tiers }
+    }
+    return (listings.tiers.get(`${e.type}|${e.base}`)?.size ?? 0) > 1
+  }
+
   function edit (e: NewFilterEdit | FilterEdit) {
-    cfg().edits = addEdit(cfg().edits, { ...e, id: nextEditId() } as FilterEdit)
+    cfg().edits = addEdit(cfg().edits, { ...e, id: nextEditId() } as FilterEdit, { separateMoves: separateMoves(e) })
     rebuild()
   }
 
@@ -560,7 +591,7 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
   function editsWithUndo (list: Array<NewFilterEdit | FilterEdit>): () => void {
     const before = cfg().edits
     let edits = before
-    for (const e of list) edits = addEdit(edits, { ...e, id: nextEditId() } as FilterEdit)
+    for (const e of list) edits = addEdit(edits, { ...e, id: nextEditId() } as FilterEdit, { separateMoves: separateMoves(e) })
     cfg().edits = edits
     rebuild()
     return () => { cfg().edits = before; rebuild() }
@@ -610,12 +641,11 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
     ]
   }
 
-  function pushHistory () {
+  function pushHistory (edits: FilterEdit[], moves: PriceMove[]) {
     const last = cfg().history[0]
-    const moves = cfg().priceTiers.moves
-    if (last && JSON.stringify([last.edits, last.moves]) === JSON.stringify([cfg().edits, moves])) return
-    const label = `${cfg().edits.length} change(s)${moves.length ? `, ${moves.length} price move(s)` : ''}`
-    cfg().history = [{ ts: Date.now(), label, edits: cfg().edits, moves }, ...cfg().history].slice(0, HISTORY_SIZE)
+    if (last && JSON.stringify([last.edits, last.moves]) === JSON.stringify([edits, moves])) return
+    const label = `${edits.length} change(s)${moves.length ? `, ${moves.length} price move(s)` : ''}`
+    cfg().history = [{ ts: Date.now(), label, edits, moves }, ...cfg().history].slice(0, HISTORY_SIZE)
   }
 
   // Puts the changes back as they were at an earlier save.
@@ -631,7 +661,16 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
 
   // reloadNow: you pressed Save + reload, so it reloads wherever you are. Saves
   // you didn't ask to reload (quick fixes) follow reloadWhenSafe.
-  async function save (opts: { reloadNow?: boolean } = {}): Promise<boolean> {
+  // Saves run one at a time: two quick fixes in a row must not race for the
+  // same temp file, and the last one writes the latest edits.
+  let saveQueue: Promise<unknown> = Promise.resolve()
+  function save (opts: { reloadNow?: boolean } = {}): Promise<boolean> {
+    const run = saveQueue.then(() => saveNow(opts))
+    saveQueue = run.catch(() => {})
+    return run
+  }
+
+  async function saveNow (opts: { reloadNow?: boolean }): Promise<boolean> {
     if (!doc.value || baseText.value == null) return false
     problems.value = validateFilter(doc.value)
     if (problems.value.length) {
@@ -648,12 +687,22 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
       }
       // Pack sounds the filter uses go into the folder first, so the game finds them.
       await installPackSounds(customSoundsIn(doc.value), cfg().folder).catch(() => 0)
+      // What this write holds, taken now: an edit made while it runs is not in
+      // the file and must still read as unsaved.
+      const written = {
+        sig: signature(),
+        build: hash(buildSig.value),
+        extra: extraSig(),
+        edits: cfg().edits,
+        moves: cfg().priceTiers.moves,
+        version: doc.value.version
+      }
       await hostRequest('filter-write', { dir: cfg().folder, name, text: serializeFilter(doc.value, header()) })
-      savedEdits.value = signature()
-      cfg().savedBuildSig = hash(buildSig.value)
-      cfg().savedExtraSig = extraSig()
-      pushHistory()
-      cfg().lastVersion = doc.value.version
+      savedEdits.value = written.sig
+      cfg().savedBuildSig = written.build
+      cfg().savedExtraSig = written.extra
+      pushHistory(written.edits, written.moves)
+      cfg().lastVersion = written.version
       lastSaved.value = Date.now()
       if (cfg().reloadViaChat) reloadInGame(opts.reloadNow === true)
       setTimeout(() => { readGameFilter().catch(() => {}) }, 8000)

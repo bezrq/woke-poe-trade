@@ -102,8 +102,24 @@ export async function writeFilter (args: { dir?: string, name: string, text: str
   if (typeof args.text !== 'string' || !args.text) throw new Error('Nothing to write')
   const tmp = full + '.tmp'
   await fs.writeFile(tmp, args.text, 'utf8')
-  await fs.rename(tmp, full)
+  await renameRetrying(tmp, full)
   return { path: full }
+}
+
+// The game holds the filter open for a moment while it reads it, and Windows
+// refuses to replace an open file.
+async function renameRetrying (from: string, to: string, waits = [50, 150, 400, 1000]): Promise<void> {
+  for (const wait of waits) {
+    try {
+      await fs.rename(from, to)
+      return
+    } catch (e) {
+      const code = (e as NodeJS.ErrnoException).code
+      if (code !== 'EPERM' && code !== 'EBUSY' && code !== 'EACCES') throw e
+      await new Promise(resolve => setTimeout(resolve, wait))
+    }
+  }
+  await fs.rename(from, to)
 }
 
 export async function showFilterFolder (args: { dir?: string }): Promise<void> {

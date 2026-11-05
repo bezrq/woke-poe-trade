@@ -18,7 +18,7 @@ import { toast } from '../ui'
 import { useActiveFilter } from './active-filter'
 import { itemFacts } from './item-facts'
 import { matchItem } from './match'
-import { readStyle } from './edits'
+import { conditionSignature, readStyle } from './edits'
 import type { StylePatch } from './edits'
 import { SAFETY_LOOK, SAFETY_RULE_TYPE } from './safety'
 import { groupName } from './groups'
@@ -49,13 +49,13 @@ const verdict = computed<Verdict | null>(() => {
   const facts = itemFacts(props.item.rawText, props.item)
   const m = matchItem(doc, { ...facts, areaLevel: store.areaLevel.value ?? store.config.fallbackAreaLevel })
   const b = m.final?.block
-  const where = b?.type ? `${groupName(b.type)}${b.tier ? ` › ${b.tier}` : ''}` : 'no rule'
+  const where = b?.type ? `${groupName(b.type)}${b.tier && !b.tier.startsWith('#') ? ` › ${b.tier}` : ''}` : 'no rule'
   const price = chaos.value
   const line = store.config.safetyNet.minChaos
   const base = facts.baseType
   const canOwn = Boolean(base && b?.type && b.tier && !b.type.startsWith('woke->'))
   const own = (visibility: 'Show', patch: StylePatch, text: string) => () => {
-    const undo = store.editWithUndo({ kind: 'item', type: b!.type!, tier: b!.tier!, base: base!, visibility, patch })
+    const undo = store.editWithUndo({ kind: 'item', type: b!.type!, tier: b!.tier!, base: base!, visibility, patch, anchor: conditionSignature(b!), pin: true })
     store.save()
     toast(text, { undo: () => { undo(); store.save() } })
   }

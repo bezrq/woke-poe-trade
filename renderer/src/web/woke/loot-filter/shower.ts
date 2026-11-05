@@ -3,7 +3,7 @@
 import type { FilterDoc } from './parse'
 import type { Drop } from './drops'
 import { matchItem } from './match'
-import { DEFAULT_FONT, readStyle } from './edits'
+import { DEFAULT_FONT, conditionSignature, readStyle } from './edits'
 import type { StylePatch } from './edits'
 
 export interface ShownDrop {
@@ -12,13 +12,15 @@ export interface ShownDrop {
   look: StylePatch
   type: string | null
   tier: string | null
+  // Which block of the tier it hit, for an own rule to copy.
+  anchor?: string
 }
 
 export function runDrops (doc: FilterDoc, drops: Drop[]): ShownDrop[] {
   return drops.map(drop => {
     const m = matchItem(doc, drop.facts)
     const b = m.final?.block
-    return { drop, visibility: m.visibility, look: readStyle(m.actions), type: b?.type ?? null, tier: b?.tier ?? null }
+    return { drop, visibility: m.visibility, look: readStyle(m.actions), type: b?.type ?? null, tier: b?.tier ?? null, anchor: b ? conditionSignature(b) : undefined }
   })
 }
 
