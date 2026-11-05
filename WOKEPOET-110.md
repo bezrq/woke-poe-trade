@@ -170,6 +170,43 @@ history:
     selfAttested: true
     pin: true
     id: c-2026-11-05t15-12-35-874z
+  - type: comment
+    user: Agent
+    comment: >-
+      Faustus and no-folder-row: real screenshot 0035 passes, added to tests in
+      PR 198 head 2c097cbe.
+
+
+      Other tabs, findings so far (scripts in the session scratchpad only):
+
+      - Filled check: corner blueness (B minus R at the slot's corners) splits
+      filled from empty better than brightness. Essence filled 7.6+, empty up to
+      1.6. Oil filled 4+ (Black Oil is dark, brightness 36), empty below 0.
+      Scarab filled 18.8+, empty up to 3.2. Delve's 2 filled fossils not
+      measured yet: its fossil grid needs a position fix. Use about 3.6, and
+      replace the brightness check.
+
+      - Blight: row 1 x=65+82.7c y=265 (Clear to Indigo), row 2 x=107+82.7c
+      y=340 (Violet, Crimson, Black, Opalescent, Silver, Golden), by order and
+      colour; icon scores are weak. Tainted (680,265), Reflective (680,340),
+      Prismatic (763,340). Needs a marker, ANOINT button is a candidate.
+
+      - Essence: grid x=58+66c, y=247+65.3r, left 7 columns, right group
+      x=570+66c. Tier by column and row types not settled: 7-tier rows only fit
+      Greed, Contempt, Hatred, Woe; vote per row with that constraint. Column
+      direction needs Guy's hover check.
+
+      - Delve: only 2 filled, ghost icons too faint to name (scores 0.03-0.56).
+      Needs more fossils in slots or a list.
+
+      - Delirium: 0031 was cut off mid-draw. Asked for new Delirium, Currency
+      and runegraft shots.
+
+      Asked Guy which tab is next.
+    date: '2026-11-05T15:19:21.892Z'
+    selfAttested: true
+    pin: true
+    id: c-2026-11-05t15-19-21-892z
 swimlane: require-input
 needsAction: null
 implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/198'
