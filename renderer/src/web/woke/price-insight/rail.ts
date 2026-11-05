@@ -34,7 +34,7 @@ const LABEL_GAP = 10
 export function railMarks (input: RailInput): RailMark[] {
   const raw: Array<Pick<RailMark, 'chaos' | 'label' | 'kind'>> = [
     { chaos: input.low, label: 'Cheapest', kind: 'plain' },
-    { chaos: input.likely, label: 'Likely', kind: 'likely' },
+    { chaos: input.likely, label: 'Typical', kind: 'likely' },
     input.ninja && input.ninja > 0
       ? { chaos: input.ninja, label: input.ninjaSuspect ? 'poe.ninja, not counted' : 'poe.ninja', kind: 'ninja' }
       : { chaos: input.high, label: 'Top of range', kind: 'plain' }

@@ -17,7 +17,7 @@
         <template v-else>
           <div :class="$style.eyebrow">
             <span :class="$style.badge" :title="CONFIDENCE_HINT[insight.confidence]">{{ CONFIDENCE_LABEL[insight.confidence] }}</span>
-            <span class="whitespace-nowrap" :title="blendTitle">{{ lowValue ? `Under ${LOW_VALUE}c` : 'Likely sells for' }}</span>
+            <span class="whitespace-nowrap" :title="blendTitle">{{ lowValue ? `Under ${LOW_VALUE}c` : 'Asking around' }}</span>
             <span v-if="insight.risk !== 'none'" :class="[$style.risk, $style['risk-' + insight.risk]]" :title="riskTitle"
               @click="verdictExpanded = true">⚑ {{ RISK_LABEL[insight.risk] }}</span>
           </div>
@@ -154,7 +154,7 @@ const railInput = computed(() => ({
 // Warnings stay out of the way unless they change what the price means.
 const showSignals = computed(() => props.insight.signals.length > 0 && (
   expanded.value || props.insight.risk === 'medium' || props.insight.risk === 'high' ||
-  props.insight.signals.some(s => s.kind === 'old' || s.kind === 'norate')
+  props.insight.signals.some(s => s.kind === 'old' || s.kind === 'norate' || s.kind === 'snipe' || s.kind === 'oneseller')
 ))
 
 const accountMissing = computed(() => !AppConfig().accountName?.trim())
@@ -233,8 +233,8 @@ const blendTitle = computed(() => {
   const lines = blend.value.points.map(p =>
     `${p.label}: ${Math.round(p.low)}${p.high > p.low ? '–' + Math.round(p.high) : ''}c${p.weight === 0 ? ' (not counted)' : ''}. ${p.note}`)
   if (headline.value?.from === 'blend') lines.unshift('Blend of every source, listings count most:')
-  else if (headline.value?.chaos === props.insight.range?.low) lines.unshift('What it is likely to sell for: the cheapest trusted listing.')
-  else lines.unshift('What it is likely to sell for: the middle of the cheapest trusted listings, counting online and recent sellers more.')
+  else if (headline.value?.chaos === props.insight.range?.low) lines.unshift('What sellers ask, since the trade site shows no sales: the cheapest trusted listing.')
+  else lines.unshift('What sellers ask, since the trade site shows no sales: the middle of the cheapest trusted listings, counting online and recent sellers more.')
   return lines.join('\n')
 })
 

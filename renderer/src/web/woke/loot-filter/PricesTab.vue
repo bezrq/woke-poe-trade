@@ -47,6 +47,7 @@
         <span class="grow" />
         <span class="w-num text-xs w-dim w-trunc" :title="m.note">{{ m.note ? `${m.note} · ` : '' }}</span>
         <WPrice :chaos="m.chaos" :divine="divine" />
+        <WButton size="sm" variant="ghost" icon="fas fa-times" :title="`Keep ${m.base} in ${tierLabel(m.from)}. It stops being suggested, and you can unlock it under Not moved.`" :aria-label="`Keep ${m.base} where it is`" @click="keepOne(m)">Keep</WButton>
       </div>
       <template v-if="skipped.length">
         <div class="w-group-label" :class="$style.label">Not moved · {{ allSkipped.length }}</div>
@@ -296,6 +297,11 @@ function unlock (s: PriceSkip) {
   // Only your own move changes the file.
   if (ownMove) moved(`Dropped your move of ${s.base}, so prices can move it again`, undo)
   else toast(`Prices can move ${s.base} again`, { anchor: props.anchor, undo })
+}
+
+function keepOne (m: PriceMove) {
+  const undo = props.store.lockItem(m.type, m.base)
+  toast(`${m.base} stays in ${tierLabel(m.from)}`, { anchor: props.anchor, undo })
 }
 
 function keepAll () {
