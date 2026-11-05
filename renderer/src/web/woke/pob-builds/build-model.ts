@@ -24,7 +24,7 @@ export function stageOf (title: string): Stage | null {
   const inRange = (n: number) => n >= 1 && n <= 100
   const named = /\b(?:level|lvl|lv)\.?\s*(\d{1,3})/i.exec(title)
   if (named && inRange(Number(named[1]))) return { kind: 'level', at: Number(named[1]) }
-  if (/\b(?:end\s*game|maps?|mapping|final|late)\b/i.test(title)) return { kind: 'level', at: 70 }
+  if (/\bend\s*game|\bmaps?(?![a-z])|\bmapping|\bfinal(?![a-z])|\blate(?:game|maps?)?(?![a-z])/i.test(title)) return { kind: 'level', at: 70 }
   // A bare number, but not "6L"/"5 link", "T16" or "20%": those aren't levels.
   // The \d stops "20%" from backing off to a "2" followed by "0%".
   const bare = /(?<![\w.])(\d{1,3})(?!\d|\s*(?:l\b|links?\b|-?link|%|\.\d))/i.exec(title)

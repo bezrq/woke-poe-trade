@@ -166,6 +166,10 @@ describe('bug hunt: build details', () => {
     expect(stageOf('Act 5')).toEqual({ kind: 'act', at: 5 })
     expect(stageOf('Late game')).toEqual({ kind: 'level', at: 70 })
     expect(stageOf('Endgame')).toEqual({ kind: 'level', at: 70 })
+    for (const t of ['Lategame', 'LateGame', 'Late_game', 'Latemaps', 'late90', 'Endgame2', 'Final']) {
+      expect(stageOf(t)).toEqual({ kind: 'level', at: 70 })
+    }
+    expect(stageOf('Latest')).toBeNull()
     expect(stageOf('Maps')).toEqual({ kind: 'level', at: 70 })
     expect(stageOf('68')).toEqual({ kind: 'level', at: 68 })
     expect(stageOf('6L')).toBeNull()

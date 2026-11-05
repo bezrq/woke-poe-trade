@@ -4,7 +4,8 @@
 import { describe, it, expect } from 'vitest'
 import { strategyScarabCosts } from '@/web/woke/atlas/guide'
 import type { AtlasStrategy } from '@/web/woke/atlas/widget'
-import { withScarabCosts } from '@/web/woke/farming/farming'
+import { initFarmingData, withScarabCosts } from '@/web/woke/farming/farming'
+import type { FarmingWidget } from '@/web/woke/farming/farming'
 import { exportRows, sessionTotals, strategyRows } from '@/web/woke/analytics/stats'
 import type { MapRun, SessionRecord } from '@/web/woke/analytics/types'
 
@@ -33,6 +34,23 @@ function session (over: Partial<SessionRecord> = {}): SessionRecord {
   return { id: 's', league: 'L', strategy: 'Boxes', startedAt: 0, endedAt: 1, durationMs: 1_200_000, maps: 2, costPerMapChaos: 10, loot: [], extraChaos: 0, divine: 100, runs: [run(), run()], ...over }
 }
 
+describe('Farming profit first mount', () => {
+  it('keeps what Atlas strategies set before it mounted', () => {
+    const costs = [{ type: 'Scarab', name: 'Ambush Scarab', variant: '', qty: 2 }]
+    const w = { strategy: 'Boxes', costs } as unknown as FarmingWidget
+    initFarmingData(w)
+    expect(w.strategy).toBe('Boxes')
+    expect(w.costs).toEqual(costs)
+    expect(w.history).toEqual([])
+  })
+
+  it('starts empty otherwise', () => {
+    const w = {} as unknown as FarmingWidget
+    initFarmingData(w)
+    expect(w).toMatchObject({ strategy: '', costs: [], autoCountMaps: true, session: null })
+  })
+})
+
 describe('session analytics', () => {
   it('maps you left out do not count in maps per hour or cost per map', () => {
     const [row] = strategyRows([session({ runs: [run(), run({ excluded: true })] })], 'chaos', null)
@@ -52,6 +70,19 @@ describe('session analytics', () => {
     expect(rows.reduce((n, r) => n + Number(r.profit_chaos), 0)).toBe(sessionTotals(s).profit)
     expect(Object.keys(rows[2])).toEqual(Object.keys(rows[0]))
     expect(rows[2].drops).toBe('1x Divine Orb')
+  })
+
+  it('the CSV charges maps counted by hand, so it adds up then too', () => {
+    const s = session({ maps: 3, runs: [run()] })
+    const rows = exportRows([s])
+    expect(rows).toHaveLength(2)
+    expect(rows[1].cost_chaos).toBe(20)
+    expect(rows.reduce((n, r) => n + Number(r.profit_chaos), 0)).toBe(sessionTotals(s).profit)
+  })
+
+  it('share of time in maps leaves out maps you left out', () => {
+    const [row] = strategyRows([session({ runs: [run({ otherMs: 600_000 }), run({ excluded: true, otherMs: 0 })] })], 'chaos', null)
+    expect(row.mapShare).toBeCloseTo(0.5, 5)
   })
 
   it('adds no extra row when everything is tied to a map', () => {

@@ -112,6 +112,16 @@ export function sellPrice (r: PricedRef, ninja: number | null, rules: SellRules)
   return BULK_TYPES.has(r.type) ? ninja * rules.bulkFactor : ninja
 }
 
+// First mount. Atlas strategies may already have set a strategy and costs on a
+// widget that hasn't mounted yet (its module was off): those stay.
+export function initFarmingData (w: FarmingWidget) {
+  w.strategy ??= ''
+  w.costs ??= []
+  w.autoCountMaps = true
+  w.session = null
+  w.history = []
+}
+
 export function newSession (strategy: string, now: number): FarmingSession {
   return { strategy, startedAt: now, elapsedMs: 0, runningSince: now, maps: 0, loot: [], extraChaos: 0 }
 }

@@ -231,7 +231,11 @@ export function strategyRows (sessions: SessionRecord[], unit: AnalyticsUnit, fa
       if (rate) {
         costSum += (s.imported ? s.imported.costChaos : s.costPerMapChaos * counted) / rate
       }
-      for (const r of s.runs) { mapMs += r.mapMs; allMs += r.mapMs + r.otherMs }
+      for (const r of s.runs) {
+        if (r.excluded) continue
+        mapMs += r.mapMs
+        allMs += r.mapMs + r.otherMs
+      }
     }
     rows.push(buildRow(`maps:${name}`, name, 'maps', units, {
       sessions: list.length,
@@ -327,10 +331,12 @@ export function exportRows (sessions: SessionRecord[]): Array<Record<string, str
         drops: dropsText(r.loot)
       })
     }
-    // Loot and typed-in chaos not tied to a map, so the rows add up to the session.
+    // Loot, typed-in chaos and map costs not tied to a run (maps counted by hand),
+    // so the rows add up to the session.
     const loose = lootValue(s.loot) + (s.extraChaos || 0)
-    if (loose) {
-      out.push({ ...base, map: '(not tied to a map)', area_level: '', entered: '', minutes_in_map: '', minutes_other: '', loot_chaos: Math.round(loose), cost_chaos: 0, profit_chaos: Math.round(loose), left_out: '', drops: dropsText(s.loot) })
+    const looseCost = (s.maps - s.runs.length) * s.costPerMapChaos
+    if (loose || looseCost) {
+      out.push({ ...base, map: '(not tied to a map)', area_level: '', entered: '', minutes_in_map: '', minutes_other: '', loot_chaos: Math.round(loose), cost_chaos: Math.round(looseCost), profit_chaos: Math.round(loose - looseCost), left_out: '', drops: dropsText(s.loot) })
     }
   }
   return out
