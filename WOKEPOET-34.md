@@ -15,6 +15,9 @@ history:
     user: Agent
     date: '2026-11-05T07:12:58.613Z'
     comment: Created ticket.
+    id: a-2026-11-05t07-12-58-613z
+subtasks:
+  - WOKEPOET-35
 ---
 > **TL;DR** — Guy asked to **fix every gap** in the loot filter critique (https://claude.ai/artifact/KbtK2xQdjtpMf9W4CHrxJ6). Done means the safety net **really shows what it promises** on every strictness and on Hardcore, and each pitfall is fixed or has Guy's decision.
 
