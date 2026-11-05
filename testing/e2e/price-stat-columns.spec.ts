@@ -104,8 +104,10 @@ test('ticked stats get columns, coloured against the checked item', async ({ ove
 
   // A fifth ticked stat goes behind the header's +1, and the table still fits.
   await panel.getByText('18% increased Stun and Block Recovery').first().click()
-  // Moving from a filter onto Search runs the search, so a click would find it gone.
-  await panel.getByRole('button', { name: 'Search' }).hover()
+  // Moving from a filter onto Search runs the search and removes the button,
+  // so Playwright's click or hover would wait for it forever.
+  const search = (await panel.getByRole('button', { name: 'Search' }).boundingBox())!
+  await overlay.page.mouse.move(search.x + search.width / 2, search.y + search.height / 2)
   await expect(panel.locator('thead')).toContainText('+1')
   await expect(panel.locator('thead th.w-pc-stat-head')).toHaveCount(5)
   await overlay.snap('stat columns over the cap')

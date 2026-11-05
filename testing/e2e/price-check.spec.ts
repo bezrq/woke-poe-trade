@@ -118,8 +118,10 @@ test('rare: the Generic / Base switch changes the title and the search', async (
 
   await scope.getByText('Base').click()
   await expect(title).toHaveText('Two-Stone Ring')
-  // Moving from a filter onto Search runs the search, so a click would find it gone.
-  await panel.getByRole('button', { name: 'Search', exact: true }).hover()
+  // Moving from a filter onto Search runs the search and removes the button,
+  // so Playwright's click or hover would wait for it forever.
+  const search = (await panel.getByRole('button', { name: 'Search', exact: true }).boundingBox())!
+  await overlay.page.mouse.move(search.x + search.width / 2, search.y + search.height / 2)
   await expect.poll(() => {
     const r = fakeApp.requests.filter(r => r.url.includes('/api/trade/search/')).pop()
     return r ? JSON.parse(r.body).query.type : undefined
