@@ -24,12 +24,6 @@
       </WBanner>
     </template>
 
-    <!-- Outside the v-if chain, so leaving the tab keeps it cached and Back
-         returns to the same pile. -->
-    <KeepAlive>
-      <PreviewTab v-if="store.doc.value && tab === 'preview'" :store="store" :config="config" :anchor="panel?.el" @open-rule="openRule" />
-    </KeepAlive>
-
     <div v-if="!store.doc.value && store.loading.value" :class="$style.layout" aria-busy="true">
       <WSkeleton :rows="10" :value="true" />
       <WSkeleton :rows="8" :value="false" />
@@ -153,6 +147,8 @@
       </div>
     </div>
 
+    <!-- Rendered below, kept alive so Back returns to the same pile. -->
+    <template v-else-if="tab === 'preview'" />
     <PresetsTab v-else-if="tab === 'presets'" :store="store" :config="config" />
     <PricesTab v-else-if="tab === 'prices'" :store="store" :config="config" :anchor="panel?.el" />
     <NeverSinkTab v-else-if="tab === 'neversink'" :store="store" :config="config" :anchor="panel?.el" />
@@ -182,7 +178,7 @@
     </div>
 
     <!-- changes -->
-    <div v-else-if="tab === 'changes'" :class="$style.changes" class="w-scroll">
+    <div v-else :class="$style.changes" class="w-scroll">
       <div v-if="store.problems.value.length" :class="$style.problems">
         <div v-for="(p, i) in store.problems.value.slice(0, 6)" :key="i" class="text-sm">
           <i class="fas fa-exclamation-triangle" style="color: var(--w-down);" /> {{ describeProblem(p) }}
@@ -229,6 +225,10 @@
       </template>
     </div>
 
+    <KeepAlive>
+      <PreviewTab v-if="store.doc.value && tab === 'preview'" :store="store" :config="config" :anchor="panel?.el" @open-rule="openRule" />
+    </KeepAlive>
+
     <template #footer>
       <div class="flex items-center gap-2 w-full">
         <span class="text-xs grow w-trunc" :style="store.error.value ? 'color: var(--w-down)' : ''" :class="store.error.value ? '' : 'w-dim'">
@@ -241,7 +241,7 @@
           </template>
         </span>
         <WButton size="sm" variant="ghost" icon="fas fa-folder-open" @click="openFolder">Folder</WButton>
-        <WButton v-if="config.reloadViaChat" size="sm" variant="ghost" title="Type /itemfilter in chat now to reload the saved filter" @click="store.reloadInGame(true)">Reload now</WButton>
+        <WButton v-if="config.reloadViaChat && store.outputSaved.value" size="sm" variant="ghost" title="Type /itemfilter in chat now to reload the saved filter" @click="store.reloadInGame(true)">Reload now</WButton>
         <WButton size="sm" variant="primary" :disabled="store.saving.value || !store.doc.value" @click="store.save({ reloadNow: true })">{{ config.reloadViaChat ? 'Save + reload' : 'Save' }}</WButton>
       </div>
     </template>
@@ -346,7 +346,6 @@ const sourceKey = computed(() => props.config.neversink.on ? 'github' : props.co
 
 const fileOptions = computed(() => {
   const opts = props.store.files.value
-    .filter(f => f.online || !/\(woke\)\.filter$/i.test(f.name))
     .map(f => f.online
       ? { value: `online:${f.name}`, label: `${f.title ?? f.name} (online, read only)` }
       : { value: f.name, label: f.name.replace(/\.filter$/i, '') })
@@ -447,7 +446,8 @@ function goBack () {
 }
 
 function onMouseBack (e: MouseEvent) {
-  if (e.button !== 3 || !trail.value.length || props.config.wmWants !== 'show') return
+  // The editor stays mounted while hidden: only clicks on it count.
+  if (e.button !== 3 || !trail.value.length || !panel.value?.el?.contains(e.target as Node)) return
   e.preventDefault()
   goBack()
 }

@@ -161,9 +161,6 @@ export function seedLootFilterWidget (wmId: number, taken: string[] = []): LootF
 }
 
 export function normalizeLootFilterWidget (w: LootFilterWidget) {
-  // Left over if the app closed while the sample card was open.
-  if (w.wmZorder === 'exclusive') w.wmZorder = null
-  w.wmFlags = w.wmFlags.filter(f => f !== 'hide-on-blur')
   if (!w.anchor) w.anchor = popupAnchor()
   if (w.sampleHotkey === undefined) w.sampleHotkey = null
   if (w.editorHotkey === undefined) w.editorHotkey = null
@@ -245,8 +242,36 @@ export function parseStrictnessTarget (target: string): { wmId: number, dir: 'st
   return m ? { wmId: Number(m[1]), dir: m[2] as 'stricter' | 'looser' } : null
 }
 
+export function isWokeCopy (name: string): boolean {
+  return /\(woke\)\.filter$/i.test(name)
+}
+
+// The filter a copy saved by this editor was made from, when the original is
+// gone (the game empties OnlineFilters): its text without our header and rules.
+export function baseFromCopy (text: string): string {
+  const lines = text.split(/\r?\n/)
+  const out: string[] = []
+  let i = 0
+  if (/^# WOKE-LOOT-FILTER-EDITOR\b/.test(lines[0] ?? '')) {
+    while (i < lines.length && lines[i].startsWith('#') && lines[i].trim() !== '' && i < 3) i++
+    if (lines[i]?.trim() === '') i++
+  }
+  for (; i < lines.length; i++) {
+    if (/^(Show|Hide|Minimal)\b.*\$type->woke->/.test(lines[i])) {
+      i++
+      while (i < lines.length && /^\s+\S/.test(lines[i])) i++
+      if (lines[i]?.trim() !== '') i--
+      continue
+    }
+    out.push(lines[i])
+  }
+  return out.join('\n')
+}
+
 export function outputName (w: Pick<LootFilterWidget, 'sourceName' | 'saveMode' | 'sourceOnline' | 'sourceTitle'> & { neversink?: { on: boolean } }): string {
   if (w.neversink?.on) return NEVERSINK_OUTPUT
+  // Working on an edited copy itself: it stays the copy.
+  if (!w.sourceOnline && isWokeCopy(w.sourceName)) return w.sourceName
   if (w.sourceOnline) {
     const safe = (w.sourceTitle || w.sourceName).replace(/[<>:"/\\|?*]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 80)
     return `${safe || 'Online filter'} (woke).filter`
