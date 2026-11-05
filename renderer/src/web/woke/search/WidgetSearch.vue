@@ -46,7 +46,7 @@
                 <span class="w-dim" :class="$style.small">{{ typeLabel(selected.group.type) }}</span>
               </div>
               <div :class="[$style.grid, $style.gridHead]"><span>Variant</span><span class="text-right">Now</span><span class="text-right">24h ago</span><span class="text-right">7d ago</span><span class="text-right">24h</span><span class="text-right">7d</span><span /></div>
-              <div v-for="v in selected.group.variants" :key="key(v)" :class="[$style.grid, $style.row]">
+              <div v-for="v in selected.group.variants" :key="key(v)" v-item-tip="v" :class="[$style.grid, $style.row]">
                 <span class="w-trunc">{{ v.variant || selected.group.name }}
                   <i v-if="isThin(v)" class="fas fa-exclamation-circle w-faint" :title="thinTitle(v)" /></span>
                 <WPrice :chaos="v.chaos" :divine="divine" class="text-right" />
@@ -128,7 +128,7 @@ import { ITEM_BY_REF, ITEMS_ITERATOR } from '@/assets/data'
 import { getTradeEndpoint } from '@/web/price-check/trade/common'
 import type { BaseType } from '@/assets/data/interfaces'
 import { createVirtualItem, ItemRarity } from '@/parser/ParsedItem'
-import { WPanel, WButton, WPrice, WDelta, WIcon, WKbd, ninjaIcon, toast } from '../ui'
+import { WPanel, WButton, WPrice, WDelta, WIcon, WKbd, ninjaIcon, toast, vItemTip } from '../ui'
 import WCorruptedFilter from '../ui/WCorruptedFilter.vue'
 import { copyText } from '../ui/copy'
 import { MODULES, isWidgetTypeOn } from '../modules'

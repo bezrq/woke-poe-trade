@@ -5,10 +5,10 @@
     </div>
     <template v-if="'related' in result && result.related.length > 1">
       <div :class="$style.hd">Related to {{ item!.info.name }}</div>
-      <div v-for="row in result.related" :key="row.name"
+      <div v-for="row in result.related" :key="row.name" v-item-tip="{ name: row.name }"
         :class="[$style.row, { [$style.me]: row.highlight }]">
         <img :class="$style.art" :src="row.icon" :alt="''">
-        <span :class="$style.name" :title="row.name">{{ row.name }}</span>
+        <span :class="$style.name">{{ row.name }}</span>
         <span :class="$style.price">
           <template v-if="row.price">{{ priceText(row.price) }}<img :class="$style.coin" :src="coin(row.price)" :alt="row.price.currency"></template>
           <span v-else :class="$style.none" title="poe.ninja has no price for this">?</span>
@@ -17,9 +17,9 @@
     </template>
     <template v-if="'items' in result && result.items.length">
       <div :class="$style.hd">Drops in {{ item!.info.name }}</div>
-      <div v-for="row in result.items" :key="row.name" :class="$style.row">
+      <div v-for="row in result.items" :key="row.name" v-item-tip="{ name: row.name }" :class="$style.row">
         <img :class="$style.art" :src="row.icon" :alt="''">
-        <span :class="$style.name" :title="row.name">{{ row.name }}</span>
+        <span :class="$style.name">{{ row.name }}</span>
         <span :class="$style.price">
           <template v-if="row.price">{{ priceText(row.price) }}<img :class="$style.coin" :src="coin(row.price)" :alt="row.price.currency"></template>
           <span v-else :class="$style.none" title="poe.ninja has no price for this">?</span>
@@ -34,6 +34,7 @@ import { computed, defineComponent, PropType } from 'vue'
 import { BaseType, ITEM_BY_REF, ITEM_DROP } from '@/assets/data'
 import { usePoeninja, CurrencyValue, displayRounding } from '@/web/background/Prices'
 import { getDetailsId } from '../trends/getDetailsId'
+import { vItemTip } from '@/web/woke/ui/tooltip/item-tip'
 import { ParsedItem } from '@/parser'
 
 const { findPriceByQuery, autoCurrency, xchgRate } = usePoeninja()
@@ -96,6 +97,7 @@ function getItemPrices (queryId: string) {
 }
 
 export default defineComponent({
+  directives: { itemTip: vItemTip },
   props: {
     item: {
       type: Object as PropType<ParsedItem | null>,
