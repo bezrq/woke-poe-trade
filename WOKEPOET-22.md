@@ -49,6 +49,11 @@ history:
     to: Ready
     user: Agent
     date: '2026-11-05T04:08:07.139Z'
+  - type: activity
+    user: Agent
+    date: '2026-11-05T04:11:23.944Z'
+    comment: Task worktree automatically reclaimed (ready-or-terminal-status)
+    id: a-2026-11-05t04-11-23-944z
 branch: flux/WOKEPOET-22-let-the-price-check-window-be-moved-and-resized
 baselineCommit: a4c85a758a73046c8f54268117154f06f5082670
 needsAction: null
