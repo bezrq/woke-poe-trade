@@ -1,27 +1,52 @@
 import { WebSocketServer, type WebSocket } from 'ws'
 import { type AddressInfo } from 'net'
-import { createServer } from 'http'
+import { createServer, type IncomingMessage, type ServerResponse } from 'http'
 import { EventEmitter } from 'events'
-import * as fs from 'fs'
+import { networkInterfaces } from 'os'
 import * as path from 'path'
 import { app } from 'electron'
 import { IpcEvent, IpcEventPayload, HostState } from '../../ipc/types'
 import { ConfigStore } from './host-files/ConfigStore'
 import { addFileUploadRoutes } from './host-files/file-uploads'
+import { isOwnPageRequest, sendFile } from './host-files/request-guard'
 import type { AppUpdater } from './AppUpdater'
 import type { Logger } from './RemoteLogger'
 
-export const server = createServer()
-const websocketServer = new WebSocketServer({ noServer: true })
-let lastActiveClient: WebSocket
+// woke: every route hangs off this, so none can be reached without the check.
+export const httpRoutes = new EventEmitter()
+const listenOpt = process.argv.find(arg => arg.startsWith('--listen'))
 
-addFileUploadRoutes(server)
+// With --listen, this PC's own addresses and the host named in the option.
+function extraHosts (): Set<string> | undefined {
+  if (!listenOpt) return undefined
+  const hosts = new Set<string>()
+  const named = listenOpt.split('=')[1]?.split(':')[0]
+  if (named) hosts.add(named.toLowerCase())
+  for (const addresses of Object.values(networkInterfaces())) {
+    for (const a of addresses ?? []) hosts.add(a.family === 'IPv6' ? `[${a.address}]` : a.address)
+  }
+  return hosts
+}
+
+export const server = createServer((req, res) => {
+  if (!isOwnPageRequest(req.headers, extraHosts())) {
+    res.statusCode = 403
+    res.end()
+    return
+  }
+  httpRoutes.emit('request', req, res)
+})
+const websocketServer = new WebSocketServer({ noServer: true })
+let lastActiveClient: WebSocket | undefined
+
+addFileUploadRoutes(httpRoutes)
 
 if (!process.env.VITE_DEV_SERVER_URL) {
-  server.addListener('request', (req, res) => {
+  httpRoutes.addListener('request', (req: IncomingMessage, res: ServerResponse) => {
     if (req.url?.startsWith('/config') || req.url?.startsWith('/uploads') || req.url?.startsWith('/proxy')) return
 
-    const filePath = (req.url === '/') ? '/index.html' : req.url!
+    const urlPath = req.url!.split(/[?#]/, 1)[0]
+    const filePath = (urlPath === '/') ? '/index.html' : urlPath
     switch (path.extname(filePath)) {
       case '.html': res.setHeader('content-type', 'text/html'); break;
       case '.js': res.setHeader('content-type', 'text/javascript'); break;
@@ -29,8 +54,7 @@ if (!process.env.VITE_DEV_SERVER_URL) {
       case '.svg': res.setHeader('content-type', 'image/svg+xml'); break;
     }
 
-    fs.createReadStream(path.join(__dirname, filePath))
-      .pipe(res)
+    sendFile(__dirname, filePath, res)
   })
 }
 
@@ -53,7 +77,8 @@ export function sendEventTo (
       client.send(msg)
     }
   } else {
-    lastActiveClient.send(msg)
+    // woke: a hotkey can fire before the page has connected.
+    lastActiveClient?.send(msg)
   }
 }
 
@@ -67,7 +92,7 @@ export const eventPipe = {
 }
 
 server.on('upgrade', (req, socket, head) => {
-  if (req.url !== '/events' && req.url !== '/events?role=setup') {
+  if ((req.url !== '/events' && req.url !== '/events?role=setup') || !isOwnPageRequest(req.headers, extraHosts())) {
     return req.destroy()
   }
   websocketServer.handleUpgrade(req, socket, head, (ws) => {
@@ -86,7 +111,17 @@ export async function startServer (
     const isSetupWindow = Boolean((req as { url?: string } | undefined)?.url?.includes('role=setup'))
     if (!isSetupWindow || !lastActiveClient) lastActiveClient = socket
     socket.on('message', (bytes) => {
-      const event = JSON.parse(bytes.toString('utf-8')) as IpcEvent
+      let event: IpcEvent
+      try {
+        event = JSON.parse(bytes.toString('utf-8')) as IpcEvent
+      } catch {
+        event = null as unknown as IpcEvent
+      }
+      // 'error' is special on an EventEmitter: it throws with no listener.
+      if (typeof event?.name !== 'string' || event.name as string === 'error') {
+        logger.write('warn [server] Ignored a message it couldn\'t read.')
+        return
+      }
       if (event.name === 'CLIENT->MAIN::used-recently') {
         lastActiveClient = socket
       }
@@ -105,7 +140,7 @@ export async function startServer (
     } satisfies IpcEvent))
   })
 
-  server.addListener('request', async (req, res) => {
+  httpRoutes.addListener('request', async (req: IncomingMessage, res: ServerResponse) => {
     if (req.url === '/config') {
       res.setHeader('content-type', 'application/json')
       const resBody: HostState = {
@@ -122,7 +157,6 @@ export async function startServer (
   let port = (process.env.VITE_DEV_SERVER_URL) ? 8584 : 8585
   let host = '127.0.0.1'
   // --listen=[host][:port]
-  const listenOpt = process.argv.find(arg => arg.startsWith('--listen'))
   if (listenOpt) {
     const [hostArg, portArg] = listenOpt.split('=')[1].split(':')
     if (hostArg) host = hostArg
