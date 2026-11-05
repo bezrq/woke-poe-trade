@@ -1,0 +1,483 @@
+diff --git a/renderer/src/web/woke/boss-runs/WidgetBossRuns.vue b/renderer/src/web/woke/boss-runs/WidgetBossRuns.vue
+index 134d654d..b7ad9ff5 100644
+--- a/renderer/src/web/woke/boss-runs/WidgetBossRuns.vue
++++ b/renderer/src/web/woke/boss-runs/WidgetBossRuns.vue
+@@ -1,23 +1,29 @@
+ <template>
+   <Widget :config="config" move-handles="corners" :inline-edit="false" :readonly="true">
+-    <!-- In a boss arena: what this fight costs and pays, and what to look for. Click: this boss's drops. -->
++    <!-- In a boss arena: what can drop and how often, then your own runs if you log any. Click: this boss's drops. -->
+     <DockItem id="boss-runs" title="Boss runs" :show="arenaBosses.length > 0"
+       :badge="arenaBosses.length === 1 && arenaBosses[0].kills ? arenaBosses[0].kills : null" :wm-id="config.wmId" card-width="22rem" @activate="openArenaBoss">
+       <template #card>
+         <div style="padding: 4px var(--w-pad) 6px;" class="flex flex-col gap-2">
+           <div v-for="r in arenaBosses" :key="r.boss.id" class="flex flex-col gap-0.5 w-num">
+             <div class="w-head-font w-accent w-trunc">{{ r.boss.name }}</div>
+-            <div class="flex justify-between"><span class="w-dim">Entry</span>
+-              <span class="w-down"><template v-if="r.entryMissing.length">?</template><WPrice v-else :chaos="-r.entry" :divine="divine" /></span></div>
+-            <div class="flex justify-between"><span class="w-dim">{{ r.myLoot != null ? 'Your average drop' : 'Average drop' }}</span><WPrice :chaos="r.myLoot ?? (r.hasRates ? r.loot : null)" :divine="divine" /></div>
+-            <div v-if="r.ready" class="flex justify-between"><span class="w-dim">Per run</span>
+-              <span :class="r.profit >= 0 ? 'w-up' : 'w-down'"><WPrice :chaos="r.profit" :divine="divine" /></span></div>
+-            <div v-if="r.kills" class="w-dim text-xs">{{ r.kills }} kill{{ r.kills === 1 ? '' : 's' }} logged</div>
+-            <div v-for="d in r.drops.filter(x => x.included).slice(0, CARD_DROPS)" :key="d.name" :class="$style.cardDrop">
++            <div v-for="d in cardDrops(r.drops, CARD_DROPS)" :key="d.name" :class="$style.cardDrop">
+               <span class="w-trunc" :title="d.name">{{ d.name }}</span>
+-              <span class="w-dim text-right">{{ d.chance == null ? '?' : pct(d.chance) }}</span>
++              <span class="text-right" :class="d.chance == null ? 'w-faint' : 'w-dim'">{{ d.chance == null ? '?' : pct(d.chance) }}</span>
+               <span class="text-right"><WPrice :chaos="d.price" :divine="divine" /></span>
+             </div>
++            <div v-if="!r.drops.length" class="w-faint text-xs">No drop list for this boss yet.</div>
++            <div v-else-if="r.drops.length > CARD_DROPS" class="w-faint text-xs">+{{ r.drops.length - CARD_DROPS }} more</div>
++            <div v-if="r.drops.length && !r.hasRates" class="w-faint text-xs">Drop chances aren't known yet.</div>
++            <!-- Your own runs, once you've logged any. -->
++            <template v-if="r.kills">
++              <div class="flex justify-between" :class="$style.cardStats"><span class="w-dim">Entry</span>
++                <span class="w-down"><template v-if="r.entryMissing.length">?</template><WPrice v-else :chaos="-r.entry" :divine="divine" /></span></div>
++              <div class="flex justify-between"><span class="w-dim">Your average drop</span><WPrice :chaos="r.myLoot" :divine="divine" /></div>
++              <div v-if="r.ready" class="flex justify-between"><span class="w-dim">Per run</span>
++                <span :class="r.profit >= 0 ? 'w-up' : 'w-down'"><WPrice :chaos="r.profit" :divine="divine" /></span></div>
++              <div class="w-dim text-xs">{{ r.kills }} kill{{ r.kills === 1 ? '' : 's' }} logged</div>
++            </template>
+           </div>
+         </div>
+       </template>
+@@ -267,7 +273,7 @@ import { useLeagues } from '@/web/background/Leagues'
+ import { BOSSES } from './bosses'
+ import DockItem from '../dock/DockItem.vue'
+ import { arenaBosses as arenaBossIds, useZone } from '../shared/zone'
+-import { evaluateBoss, formatRunTime, luck, parseRunTime, priceResolver, unidentifiedTradeUrl } from './calc'
++import { bossesAtLevel, cardDrops, evaluateBoss, formatRunTime, killDropPrice, luck, parseRunTime, priceResolver, unidentifiedTradeUrl } from './calc'
+ import type { BossResult, DropRow, KillRecord, PriceMode, RateSource } from './calc'
+ import { OWN_RATE_KILLS } from './calc'
+ 
+@@ -333,13 +339,13 @@ const ranked = computed(() => {
+ const zone = useZone()
+ const arenaBosses = computed(() => {
+   const ids = zone.kind === 'boss' ? arenaBossIds(zone.areaId, zone.name) : []
+-  return BOSSES.filter(b => ids.includes(b.id)).map(b => evaluateBoss(b, props.config, px.value))
++  return bossesAtLevel(BOSSES.filter(b => ids.includes(b.id)), zone.areaLevel).map(b => evaluateBoss(b, props.config, px.value))
+ })
+ 
+-const CARD_DROPS = 6
++const CARD_DROPS = 8
+ 
+ // Keeps your pick when it's one of this arena's bosses (normal or uber), else
+-// the first with a drop list; the log can't tell which tier you're fighting.
++// the first with a drop list.
+ // The tier filter must not hide the boss the icon opened.
+ function openArenaBoss () {
+   const here = arenaBosses.value
+@@ -506,7 +512,7 @@ function killMenu (e: MouseEvent, id: string, index: number) {
+   openMenu(e, [{ label: 'Delete kill', icon: 'fas fa-trash', danger: true, action: () => deleteKill(id, index) }])
+ }
+ function killValue (kill: KillRecord) {
+-  return kill.drops.reduce((n, d) => n + (px.value.price(d.name, d.variant) ?? 0) * d.qty, 0)
++  return kill.drops.reduce((n, d) => n + (killDropPrice(d, px.value, props.config) ?? 0) * d.qty, 0)
+ }
+ </script>
+ 
+@@ -537,6 +543,7 @@ function killValue (kill: KillRecord) {
+ .kv { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 3px 10px; font-size: var(--w-fs-md); align-items: center; }
+ .dropGrid { grid-template-columns: 16px minmax(0, 1fr) 62px 72px 72px 70px; }
+ .off { opacity: 0.45; }
++.cardStats { margin-top: 4px; }
+ .cardDrop { display: grid; grid-template-columns: minmax(0, 1fr) 46px 58px; gap: 6px; align-items: center; }
+ .editor { padding: 8px var(--w-pad); background: var(--w-panel-2); border-bottom: 1px solid var(--w-line); }
+ .rateGrid { grid-template-columns: minmax(0, 1fr) 80px 80px 22px; }
+diff --git a/renderer/src/web/woke/boss-runs/bosses.ts b/renderer/src/web/woke/boss-runs/bosses.ts
+index e2d00ea2..c3db9152 100644
+--- a/renderer/src/web/woke/boss-runs/bosses.ts
++++ b/renderer/src/web/woke/boss-runs/bosses.ts
+@@ -58,6 +58,7 @@ export interface Boss {
+ }
+ 
+ const POE_HOW = 'https://poe.how/economy/bosses/'
++const POEDB = 'https://poedb.tw/us/'
+ 
+ export const BOSSES: Boss[] = ([
+   {
+@@ -161,8 +162,21 @@ export const BOSSES: Boss[] = ([
+     tier: 'uber',
+     entry: [{ name: 'Blazing Fragment', qty: 4 }],
+     runSeconds: 240,
+-    source: null,
+-    drops: []
++    source: { label: 'poe.how drop list, no rates yet', url: POE_HOW + 'uber-searing-exarch', kills: null },
++    drops: [
++      { name: 'The Celestial Brace', chance: null },
++      { name: 'Forbidden Flame', chance: null },
++      { name: 'Archive Reliquary Key', chance: null },
++      { name: 'Exceptional Eldritch Ember', chance: null },
++      { name: 'Curio of Absorption', chance: null },
++      { name: "Annihilation's Approach", chance: null },
++      { name: 'Eldritch Chaos Orb', chance: null },
++      { name: 'Eldritch Orb of Annulment', chance: null },
++      { name: 'The Annihilating Light', chance: null },
++      { name: 'Crystallised Omniscience', chance: null },
++      { name: 'Eldritch Exalted Orb', chance: null },
++      { name: 'Overheat Support', chance: null, variant: '1' }
++    ]
+   },
+   {
+     id: 'uber-eater',
+@@ -170,8 +184,24 @@ export const BOSSES: Boss[] = ([
+     tier: 'uber',
+     entry: [{ name: 'Devouring Fragment', qty: 4 }],
+     runSeconds: 240,
+-    source: null,
+-    drops: []
++    source: { label: 'poe.how drop list, no rates yet', url: POE_HOW + 'uber-eater-of-worlds', kills: null },
++    drops: [
++      { name: 'Nimis', chance: null },
++      { name: 'Forbidden Flesh', chance: null },
++      { name: 'Visceral Reliquary Key', chance: null },
++      { name: 'Melding of the Flesh', chance: null },
++      { name: 'Exceptional Eldritch Ichor', chance: null },
++      { name: 'Curio of Absorption', chance: null },
++      { name: 'Fruiting Astrolabe', chance: null },
++      { name: 'Curio of Consumption', chance: null },
++      { name: 'Templar Astrolabe', chance: null },
++      { name: 'Ashes of the Stars', chance: null },
++      { name: 'Eldritch Chaos Orb', chance: null },
++      { name: 'Eldritch Orb of Annulment', chance: null },
++      { name: 'Eldritch Exalted Orb', chance: null },
++      { name: 'Ravenous Passion', chance: null },
++      { name: 'Gluttony Support', chance: null, variant: '1' }
++    ]
+   },
+   {
+     id: 'uber-shaper',
+@@ -179,8 +209,22 @@ export const BOSSES: Boss[] = ([
+     tier: 'uber',
+     entry: [{ name: 'Cosmic Fragment', qty: 4 }],
+     runSeconds: 300,
+-    source: null,
+-    drops: []
++    source: { label: 'poe.how community runs (3.29)', url: POE_HOW + 'uber-shaper', kills: 50, note: 'Small sample: treat rare drops as rough.' },
++    drops: [
++      { name: 'Sublime Vision', chance: 0.06 },
++      { name: 'The Tides of Time', chance: 0.12 },
++      { name: "Shaper's Exalted Orb", chance: 0.18 },
++      { name: 'Fragment of Shape', chance: 0.48 },
++      { name: 'Fragment of Knowledge', chance: 0.52 },
++      { name: 'Orb of Dominance', chance: 0.02 },
++      { name: 'Entropic Devastation', chance: 0.28 },
++      { name: 'Echoes of Creation', chance: 0.4 },
++      { name: 'Cosmic Reliquary Key', chance: null },
++      { name: 'Starforge', chance: null },
++      { name: 'Templar Astrolabe', chance: null },
++      { name: 'Fungal Astrolabe', chance: null },
++      { name: 'Voidstorm Support', chance: null, variant: '1' }
++    ]
+   },
+   {
+     id: 'uber-cortex',
+@@ -188,8 +232,18 @@ export const BOSSES: Boss[] = ([
+     tier: 'uber',
+     entry: [{ name: 'Synthesising Fragment', qty: 4 }],
+     runSeconds: 240,
+-    source: null,
+-    drops: []
++    source: { label: 'community wiki via poedb', url: POEDB + 'Venarius', kills: null, note: 'Wiki figures with no stated sample.' },
++    drops: [
++      { name: 'Rational Doctrine', chance: 0.05 },
++      { name: 'Forgotten Reliquary Key', chance: 0.015 },
++      { name: 'The Apostate', chance: 0.15 },
++      { name: 'The Hook', chance: 0.03 },
++      { name: 'Nebulis', chance: 0.40 },
++      { name: 'Imperfect Memories', chance: null },
++      { name: 'Circle of Ambition', chance: 0.10 },
++      { name: 'Mask of the Tribunal', chance: 0.30 },
++      { name: 'Greater Kinetic Instability Support', chance: null, variant: '1' }
++    ]
+   },
+   {
+     id: 'maven',
+@@ -235,8 +289,18 @@ export const BOSSES: Boss[] = ([
+     tier: 'pinnacle',
+     entry: [{ name: 'Incandescent Invitation', qty: 1 }],
+     runSeconds: 210,
+-    source: null,
+-    drops: []
++    source: { label: 'poe.how drop list, no rates yet', url: POE_HOW + 'searing-exarch', kills: null },
++    drops: [
++      { name: 'Forbidden Flame', chance: null },
++      { name: 'Exceptional Eldritch Ember', chance: null },
++      { name: 'Dissolution of the Flesh', chance: null },
++      { name: 'Eldritch Chaos Orb', chance: null },
++      { name: 'Eldritch Orb of Annulment', chance: null },
++      { name: 'Dawnbreaker', chance: null },
++      { name: 'Eldritch Exalted Orb', chance: null },
++      { name: 'Dawnstrider', chance: null },
++      { name: 'Overheat Support', chance: null, variant: '1' }
++    ]
+   },
+   {
+     id: 'uber-elder',
+@@ -249,8 +313,21 @@ export const BOSSES: Boss[] = ([
+       { name: 'Fragment of Emptiness', qty: 1 }
+     ],
+     runSeconds: 240,
+-    source: null,
+-    drops: []
++    source: { label: 'poe.how drop list, no rates yet', url: POE_HOW + 'uber-elder', kills: null },
++    drops: [
++      { name: 'Orb of Dominance', chance: null },
++      { name: "Watcher's Eye", chance: null },
++      { name: 'Indigon', chance: null },
++      { name: "Shaper's Exalted Orb", chance: null },
++      { name: "Elder's Exalted Orb", chance: null },
++      { name: 'Void of the Elements', chance: null },
++      { name: 'Auspicious Ambitions', chance: null },
++      { name: 'Disintegrator', chance: null },
++      { name: 'Void Shockwave Support', chance: null, variant: '1' },
++      { name: 'Mark of the Shaper', chance: null },
++      { name: 'Mark of the Elder', chance: null },
++      { name: 'Voidfletcher', chance: null }
++    ]
+   },
+   {
+     id: 'shaper',
+@@ -263,8 +340,19 @@ export const BOSSES: Boss[] = ([
+       { name: 'Fragment of the Chimera', qty: 1 }
+     ],
+     runSeconds: 240,
+-    source: null,
+-    drops: []
++    source: { label: 'poe.how drop list, no rates yet', url: POE_HOW + 'shaper', kills: null },
++    drops: [
++      { name: 'Dying Sun', chance: null },
++      { name: 'Orb of Dominance', chance: null },
++      { name: "Shaper's Exalted Orb", chance: null },
++      { name: 'Templar Astrolabe', chance: null },
++      { name: 'Fragment of Shape', chance: null },
++      { name: 'Fragment of Knowledge', chance: null },
++      { name: "Shaper's Touch", chance: null },
++      { name: 'Voidwalker', chance: null },
++      { name: 'Solstice Vigil', chance: null },
++      { name: 'Voidstorm Support', chance: null, variant: '1' }
++    ]
+   },
+   {
+     id: 'atziri',
+@@ -291,6 +379,45 @@ export const BOSSES: Boss[] = ([
+       { name: 'Triumvirate Authority', chance: null }
+     ]
+   },
++  {
++    id: 'sirus',
++    name: 'Sirus',
++    tier: 'pinnacle',
++    entry: [
++      { name: "Al-Hezmin's Crest", qty: 1 },
++      { name: "Baran's Crest", qty: 1 },
++      { name: "Drox's Crest", qty: 1 },
++      { name: "Veritania's Crest", qty: 1 }
++    ],
++    runSeconds: 180,
++    source: { label: 'community wiki via poedb', url: POEDB + 'Sirus%2C_Awakener_of_Worlds', kills: null, note: 'Wiki figures with no stated sample.' },
++    drops: [
++      { name: 'Hands of the High Templar', chance: 0.40 },
++      { name: 'Crown of the Inward Eye', chance: 0.35 },
++      { name: 'The Burden of Truth', chance: 0.20 },
++      { name: 'Thread of Hope', chance: 0.05 },
++      { name: "Awakener's Orb", chance: 0.15 },
++      { name: 'Orb of Dominance', chance: 0.10 },
++      { name: 'A Fate Worse Than Death', chance: 0.04 },
++      { name: 'Annihilation Support', chance: null, variant: '1' }
++    ]
++  },
++  {
++    id: 'venarius',
++    name: 'Venarius',
++    tier: 'pinnacle',
++    entry: [{ name: 'Cortex', qty: 1 }],
++    runSeconds: 180,
++    source: { label: 'community wiki via poedb', url: POEDB + 'Venarius', kills: null, note: 'Wiki figures with no stated sample.' },
++    drops: [
++      { name: 'Offering to the Serpent', chance: 0.45 },
++      { name: 'Perepiteia', chance: 0.35 },
++      { name: 'Garb of the Ephemeral', chance: 0.15 },
++      { name: 'Bottled Faith', chance: 0.05 },
++      { name: 'The Hook', chance: 0.03 },
++      { name: 'Greater Kinetic Instability Support', chance: null, variant: '1' }
++    ]
++  },
+   {
+     id: 'feared',
+     name: 'The Feared',
+diff --git a/renderer/src/web/woke/boss-runs/calc.ts b/renderer/src/web/woke/boss-runs/calc.ts
+index f287aea0..2253f4e2 100644
+--- a/renderer/src/web/woke/boss-runs/calc.ts
++++ b/renderer/src/web/woke/boss-runs/calc.ts
+@@ -150,6 +150,26 @@ export function observedRates (kills: KillRecord[]): Map<string, number> {
+   return out
+ }
+ 
++// A logged drop, priced the same way as its row in the drop list.
++export function killDropPrice (d: { name: string, variant?: string }, prices: Prices, prefs: BossPrefs): number | null {
++  return dropPrice({ name: d.name, chance: null, variant: d.variant, variable: VARIABLE_ITEMS.has(d.name) }, prices, prefs).price
++}
++
++// The log doesn't name the tier of a shared arena, but its level does: uber
++// fights are level 85, normal ones 83 or 84 (real Client.txt logs).
++export function bossesAtLevel<T extends { tier: Boss['tier'] }> (bosses: T[], level: number | null): T[] {
++  if (level == null) return bosses
++  const tier = level >= 85 ? 'uber' : 'pinnacle'
++  const match = bosses.filter(b => b.tier === tier)
++  return match.length ? match : bosses
++}
++
++// For the icon's card: the most valuable first, so an expensive drop with no
++// known chance isn't hidden behind cheap ones that have one.
++export function cardDrops (drops: DropRow[], n: number): DropRow[] {
++  return [...drops].sort((a, b) => (b.price ?? -1) - (a.price ?? -1)).slice(0, n)
++}
++
+ function dropList (boss: Boss, prefs: BossPrefs): BossDrop[] {
+   const list: BossDrop[] = [...boss.drops]
+   const known = new Set(list.map(d => d.name))
+@@ -168,6 +188,9 @@ function dropList (boss: Boss, prefs: BossPrefs): BossDrop[] {
+ // With this many logged kills, your own drop rates replace the community
+ // ones (rates are per patch and community samples age quickly).
+ export const OWN_RATE_KILLS = 20
++// A boss with no other rates uses yours from this many kills: one kill would
++// make every drop read 100% or 0%.
++export const OWN_RATE_MIN_KILLS = 5
+ 
+ export function evaluateBoss (
+   boss: Boss,
+@@ -201,7 +224,7 @@ export function evaluateBoss (
+       chance = mine.get(d.name) ?? 0; rateSource = 'mine'
+     } else if (d.chance != null) {
+       chance = d.chance; rateSource = 'community'
+-    } else if (kills.length) {
++    } else if (kills.length >= OWN_RATE_MIN_KILLS) {
+       chance = mine.get(d.name) ?? 0; rateSource = 'mine'
+     }
+     const qty = d.qty ?? 1
+@@ -226,7 +249,7 @@ export function evaluateBoss (
+   if (kills.length) {
+     let total = 0
+     for (const kill of kills) {
+-      for (const d of kill.drops) total += (price(d.name, d.variant) ?? 0) * d.qty
++      for (const d of kill.drops) total += (killDropPrice(d, prices, prefs) ?? 0) * d.qty
+     }
+     myLoot = total / kills.length
+   }
+diff --git a/renderer/src/web/woke/shared/boss-areas.ts b/renderer/src/web/woke/shared/boss-areas.ts
+index 244a8422..f6c33a1f 100644
+--- a/renderer/src/web/woke/shared/boss-areas.ts
++++ b/renderer/src/web/woke/shared/boss-areas.ts
+@@ -26,8 +26,8 @@ const ARENAS: Arena[] = [
+   { areaIds: ['MavenBoss'], names: ['Absence of Mercy and Empathy'], bosses: ['maven', 'uber-maven'] },
+   // Maven's Invitations, not the Maven fight.
+   { areaIds: ['MavenHub'], names: ["The Maven's Crucible"], bosses: ['feared'] },
+-  { areaIds: ['AtlasExilesBoss5'], names: ['Eye of the Storm'], bosses: ['uber-sirus'] },
+-  { areaIds: ['Synthesis_MapBoss'], names: ['Cortex'], bosses: ['uber-cortex'] },
++  { areaIds: ['AtlasExilesBoss5'], names: ['Eye of the Storm'], bosses: ['sirus', 'uber-sirus'] },
++  { areaIds: ['Synthesis_MapBoss'], names: ['Cortex'], bosses: ['venarius', 'uber-cortex'] },
+   { areaIds: [], names: ['The Feared'], bosses: ['feared'] },
+   // The Infinite Hunger and The Black Star.
+   { areaIds: [], names: ['Seething Chyme', 'Polaric Void'], bosses: [] }
+diff --git a/renderer/test/woke/boss-runs-card.test.ts b/renderer/test/woke/boss-runs-card.test.ts
+new file mode 100644
+index 00000000..74ee3249
+--- /dev/null
++++ b/renderer/test/woke/boss-runs-card.test.ts
+@@ -0,0 +1,57 @@
++import { describe, expect, it } from 'vitest'
++import { BOSSES } from '@/web/woke/boss-runs/bosses'
++import { bossesAtLevel, cardDrops, evaluateBoss, killDropPrice, priceResolver } from '@/web/woke/boss-runs/calc'
++import type { BossPrefs, DropRow } from '@/web/woke/boss-runs/calc'
++import { arenaBosses } from '@/web/woke/shared/zone'
++
++const prefs = (over: Partial<BossPrefs> = {}) => ({
++  runSeconds: {}, rates: {}, extraDrops: {}, kills: {}, ownEntry: false, plannedRuns: 0, dropToggles: {}, priceModes: {}, customPrices: {}, ...over
++}) as BossPrefs
++const boss = (id: string) => BOSSES.find(b => b.id === id)!
++const noPrices = priceResolver([])
++const inArena = (areaId: string) => BOSSES.filter(b => arenaBosses(areaId, '').includes(b.id))
++
++describe('boss runs card', () => {
++  it('picks the tier from the area level', () => {
++    const ids = (areaId: string, level: number | null) => bossesAtLevel(inArena(areaId), level).map(b => b.id)
++    expect(ids('MapWorldsPrimordialBoss4', 84)).toEqual(['eater'])
++    expect(ids('MapWorldsPrimordialBoss4', 85)).toEqual(['uber-eater'])
++    expect(ids('MapWorldsElderArenaUber', 84)).toEqual(['uber-elder'])
++    expect(ids('MapWorldsElderArenaUber', 85)).toEqual(['uber-uber-elder'])
++    expect(ids('AtlasExilesBoss5', 84)).toEqual(['sirus'])
++    expect(ids('Synthesis_MapBoss', 85)).toEqual(['uber-cortex'])
++    expect(ids('MapWorldsPrimordialBoss4', null).sort()).toEqual(['eater', 'uber-eater'])
++    // Only one tier in this arena: keep it at any level.
++    expect(ids('MapAtziri2', 80)).toEqual(['uber-atziri'])
++  })
++
++  it('every arena boss but The Feared has a drop list', () => {
++    expect(BOSSES.filter(b => !b.drops.length).map(b => b.id)).toEqual(['feared'])
++  })
++
++  it('leads with the most valuable drops, known chance or not', () => {
++    const row = (name: string, price: number | null, value: number) => ({ name, price, value }) as DropRow
++    const rows = [row('cheap', 40, 16), row('key', 8000, 0), row('unpriced', null, 0)]
++    expect(cardDrops(rows, 2).map(d => d.name)).toEqual(['key', 'cheap'])
++    expect(rows[0].name).toBe('cheap')
++  })
++
++  it("doesn't turn a few kills into rates for a boss with none", () => {
++    const kills = (n: number) => Array.from({ length: n }, (_, i) => ({ ts: i, drops: [{ name: 'Forbidden Flame', qty: 1 }] }))
++    const flame = (n: number) => evaluateBoss(boss('exarch'), prefs({ kills: { exarch: kills(n) } }), noPrices)
++      .drops.find(d => d.name === 'Forbidden Flame')!
++    expect(flame(1).chance).toBeNull()
++    expect(flame(4).chance).toBeNull()
++    expect(flame(5).chance).toBe(1)
++  })
++
++  it('prices a logged drop like its row', () => {
++    const prices = priceResolver([
++      { name: 'Forbidden Flame', variant: 'a', chaos: 100 },
++      { name: 'Forbidden Flame', variant: 'b', chaos: 300 },
++      { name: 'Forbidden Flame', variant: 'c', chaos: 900 }
++    ] as Parameters<typeof priceResolver>[0])
++    expect(killDropPrice({ name: 'Forbidden Flame' }, prices, prefs())).toBe(300)
++    expect(killDropPrice({ name: 'Forbidden Flame' }, prices, prefs({ priceModes: { 'Forbidden Flame': 'custom' }, customPrices: { 'Forbidden Flame': 5000 } }))).toBe(5000)
++  })
++})
+diff --git a/renderer/test/woke/game-log.test.ts b/renderer/test/woke/game-log.test.ts
+index 78f2c623..9bd1c927 100644
+--- a/renderer/test/woke/game-log.test.ts
++++ b/renderer/test/woke/game-log.test.ts
+@@ -169,6 +169,10 @@ describe('farming', () => {
+     expect(arenaBosses('', 'The Alluring Abyss')).toEqual(['uber-atziri'])
+     expect(arenaBosses('Unknown', 'The Alluring Abyss')).toEqual(['uber-atziri'])
+     expect(arenaBosses('MapWorldsCemetery', 'Cemetery')).toEqual([])
++    // Exarch and Eater arenas have something to show on the icon's card.
++    for (const id of [...arenaBosses('MapWorldsPrimordialBoss3', ''), ...arenaBosses('MapWorldsPrimordialBoss4', '')]) {
++      expect(BOSSES.find(b => b.id === id)!.drops.length).toBeGreaterThan(0)
++    }
+   })
+ 
+   it('auto-pauses after idling, counting time only up to the limit', () => {
+diff --git a/testing/e2e/in-game.spec.ts b/testing/e2e/in-game.spec.ts
+index b3a736f4..4488cb8d 100644
+--- a/testing/e2e/in-game.spec.ts
++++ b/testing/e2e/in-game.spec.ts
+@@ -85,6 +85,9 @@ test('boss runs icon: The Alluring Abyss shows Uber Atziri, and a click opens it
+   await overlay.hoverDockIcon('boss-runs')
+   await expect(icon.getByText('Uber Atziri')).toBeVisible()
+   await expect(icon.getByText('The Vertex')).toBeVisible()
++  await expect(icon.getByText('41.7%')).toBeVisible()
++  // Run stats wait until you've logged a kill.
++  await expect(icon.getByText('Entry', { exact: true })).toHaveCount(0)
+   await overlay.snap('uber atziri card from the dock icon')
+ 
+   // A shared arena name doesn't mix in the other boss.
+@@ -96,6 +99,8 @@ test('boss runs icon: The Alluring Abyss shows Uber Atziri, and a click opens it
+   await overlay.hoverDockIcon('boss-runs')
+   await expect(icon.getByText('The Uber Elder')).toBeVisible()
+   await expect(icon.getByText('The Shaper', { exact: true })).toHaveCount(0)
++  // Level 84 is the normal fight, not Uber Uber Elder.
++  await expect(icon.getByText('Uber Uber Elder')).toHaveCount(0)
+ })
+ 
+ test('boss runs icon: a click opens the arena boss that has a drop list', async ({ overlay }) => {

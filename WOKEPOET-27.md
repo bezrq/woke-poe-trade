@@ -1,7 +1,7 @@
 ---
 id: WOKEPOET-27
 title: 'Boss runs card leads with drops and chances, run stats only with logged kills'
-status: Ready
+status: Done
 priority: Medium
 effort: S
 assignee: unassigned
@@ -64,6 +64,24 @@ history:
     to: Ready
     user: Agent
     date: '2026-11-05T05:08:36.318Z'
+  - type: comment
+    user: Agent
+    comment: >-
+      Boss runs card leads with drops and chances; run stats wait for logged
+      kills. Reviewed adversarially, checks pass locally. No docs needed.
+    completionComment: true
+    date: '2026-11-05T05:09:06.556Z'
+    id: c-2026-11-05t05-09-06-556z
+  - type: status_change
+    from: Ready
+    to: Done
+    user: Agent
+    date: '2026-11-05T05:09:06.944Z'
+  - type: activity
+    user: Agent
+    date: '2026-11-05T05:09:21.659Z'
+    comment: Updated implementation link.
+    id: a-2026-11-05t05-09-21-659z
 branch: flux/WOKEPOET-27-boss-runs-card-leads-with-drops-and-chances-run-stats-only-w
 baselineCommit: 902cbb4b8e52d836935a1829cc7263b093bbc787
 needsAction: null
@@ -71,6 +89,28 @@ reviewState: approved
 lastReviewedCommit: 4cb1b27a5c9c5d6436e6d5f7963921a246e14abc
 lastReviewVerdict: approved
 implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/107'
-swimlane: open-pr
+swimlane: null
+diffSummary:
+  - file: renderer/src/web/woke/boss-runs/WidgetBossRuns.vue
+    additions: 21
+    deletions: 14
+  - file: renderer/src/web/woke/boss-runs/bosses.ts
+    additions: 141
+    deletions: 14
+  - file: renderer/src/web/woke/boss-runs/calc.ts
+    additions: 25
+    deletions: 2
+  - file: renderer/src/web/woke/shared/boss-areas.ts
+    additions: 2
+    deletions: 2
+  - file: renderer/test/woke/boss-runs-card.test.ts
+    additions: 57
+    deletions: 0
+  - file: renderer/test/woke/game-log.test.ts
+    additions: 4
+    deletions: 0
+  - file: testing/e2e/in-game.spec.ts
+    additions: 5
+    deletions: 0
 ---
 > **TL;DR:** Guy's feedback on the arena icon card: show the boss's drops and drop chances first, and show entry and run stats only when kills are logged. Exarch and other bosses have empty drop lists, so fill them from poe.how.
