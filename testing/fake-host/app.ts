@@ -112,6 +112,12 @@ export class FakeApp {
     fakeHook.emit({ type: EventType.EVENT_MOUSE_MOVED, x: game.cursor.x, y: game.cursor.y, button: 0, clicks: 0, altKey: false, ctrlKey: false, metaKey: false, shiftKey: false, time: Date.now() })
   }
 
+  // Moves the mouse with a button held: the cursor moves, but uiohook-napi
+  // drops drag events, so the global mouse hook reports nothing.
+  dragMouse (x: number, y: number) {
+    game.cursor = { x: game.bounds.x + x, y: game.bounds.y + y }
+  }
+
   // Presses the left mouse button there, as the global mouse hook sees it.
   pressMouse (x: number, y: number) {
     game.cursor = { x: game.bounds.x + x, y: game.bounds.y + y }
