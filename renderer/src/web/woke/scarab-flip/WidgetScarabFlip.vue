@@ -127,10 +127,10 @@ export default {
 
 <script setup lang="ts">
 import { popupAnchor } from '../ui/window-anchor'
-import { computed, defineComponent, h, inject, shallowRef, watch } from 'vue'
+import { computed, defineComponent, h, inject, onUnmounted, shallowRef, watch } from 'vue'
 import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
-import { Host } from '@/web/background/IPC'
+import { Host, MainProcess } from '@/web/background/IPC'
 import { useLeagues } from '@/web/background/Leagues'
 import { WInfo, WPanel, WTabs, WSegmented, WPrice, WEmpty, WSkeleton, openMenu, toast, vItemTip } from '../ui'
 import { copyText } from '../ui/copy'
@@ -143,11 +143,15 @@ import DockItem from '../dock/DockItem.vue'
 import { dockIconEl } from '../dock/dock'
 import type { DockMenuAction } from '../dock/dock'
 import { useZone } from '../shared/zone'
-import { JACKPOT_CHAOS, buyList, flipOdds, parseExchange, rareCheapList } from './calc'
+import { JACKPOT_CHAOS, buyList, isTraded, flipOdds, parseExchange, rareCheapList } from './calc'
 import type { FlipRow, UpgradeRow } from './calc'
 import { DEFAULT_LIFEFORCE_PER_ITEM, FAMILIES, bestFlip, familyById, parseLifeforce, priceFlip, shortName, unpricedShare } from './families'
 import type { Exchanges, FlipMethodId } from './families'
+import { stashHotkeyTarget } from './widget'
 import type { ScarabFlipWidget } from './widget'
+import { hostRequest } from '../shared/host'
+import { buildMarks, clearStashMarks, justCleared, stashClearCount, stashMarks } from './stash-marks'
+import type { StashRead } from './stash-marks'
 
 const props = defineProps<{
   config: ScarabFlipWidget
@@ -353,6 +357,49 @@ const FlipName = defineComponent({
     }
   }
 })
+
+// The shortcut: outlines on the open stash tab, or clears them.
+function stashNote (text: string) {
+  toast(text, { anchor: dockIconEl('scarab-flip'), dock: true, ms: 2500 })
+}
+
+let readingStash = false
+
+async function toggleOutlines () {
+  if (readingStash || justCleared()) return
+  if (stashMarks.value.length) { clearStashMarks(); return }
+  if (!snapshot.value) { stashNote('No prices yet, so nothing to outline'); return }
+  const scarabs = familyById('scarabs')
+  const priced = priceFlip(scarabs, scarabs.methods[0], snapshot.value.items, exchanges.value, options.value, lifeforcePerItem.value)
+  if (priced?.kind !== 'pool') { stashNote('No scarab prices yet, so nothing to outline'); return }
+  const clearsBefore = stashClearCount()
+  readingStash = true
+  let read: StashRead
+  try {
+    read = await hostRequest<StashRead>('stash-read', null)
+  } finally {
+    readingStash = false
+  }
+  if (!read.found) {
+    stashNote("Can't read this tab. Flips reads the Scarab tab for now, with no tooltip over its top.")
+    return
+  }
+  // The same advice as the panel: no untraded prices, and hold rare and cheap ones.
+  const rows = priced.model.rows.filter(r => !r.rareCheap && (!props.config.hideUntraded || isTraded(r)))
+  const marks = buildMarks(read.slots, new Map(rows.map(r => [r.name, r.profitEach])))
+  // A zone change or the like while reading: these would have no click watcher.
+  if (!marks.length || clearsBefore !== stashClearCount()) {
+    hostRequest('stash-watch-stop', null).catch(() => {})
+    if (!marks.length) stashNote('Nothing here is worth flipping right now')
+    return
+  }
+  stashMarks.value = marks
+}
+
+const stashHotkey = MainProcess.onEvent('MAIN->CLIENT::widget-action', (e) => {
+  if (e.target === stashHotkeyTarget(props.config.wmId)) toggleOutlines().catch(() => { stashNote("Couldn't read the screen") })
+})
+onUnmounted(() => { stashHotkey.abort() })
 
 function itemName (r: FlipRow | UpgradeRow) { return 'from' in r ? r.from : r.name }
 
