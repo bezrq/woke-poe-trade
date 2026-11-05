@@ -247,6 +247,33 @@ export function dismiss (o: Offer, at: number) {
   close(o, 'dismissed', at)
 }
 
+// Closed offers worth keeping: traded ones are in the sales log already.
+export function belongsInHistory (o: Offer): boolean {
+  return o.closed != null && !o.traded
+}
+
+// Puts a closed offer back in the queue where it left off, whether it's still
+// in the book or only in the history. If the same offer is open again (they
+// whispered once more), that one stands. Returns the open offer.
+export function reopen (book: TradeBook, o: Offer, at: number): Offer {
+  const same = book.offers.find(x => x.id !== o.id && sameOffer(x, o.dir, o.who, o.item))
+  if (same) return same
+  const live = book.offers.find(x => x.id === o.id)
+  const open = live ?? { ...o, inArea: false }
+  open.closed = null
+  open.closedAt = null
+  open.skippedAt = null
+  // Fresh, or the next prune would expire it again.
+  open.lastAt = at
+  if (!live) book.offers.push(open)
+  return open
+}
+
+// Reading Client.txt again after a restart finds whispers you already closed.
+export function alreadyClosed (history: Offer[], o: Pick<Offer, 'dir' | 'who' | 'item' | 'at'>): boolean {
+  return history.some(h => h.dir === o.dir && h.who === o.who && h.item === o.item && (h.closedAt ?? 0) >= o.at)
+}
+
 // Marks a trade as done by hand (no "Trade accepted" seen). Returns the offer
 // to log, or null if it was already logged.
 export function markTraded (o: Offer, at: number): Offer | null {

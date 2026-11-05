@@ -43,6 +43,10 @@ export const REPLY_LABELS: Record<keyof TradeReplies, string> = {
   buyThanks: 'Thanks (buying)'
 }
 
+// How closed offer rows look. 'hover': one line, next step button when the mouse
+// is on it. 'button': one line, button always there. 'full': two lines, no button.
+export type TradeRowStyle = 'hover' | 'button' | 'full'
+
 export interface TradeWidget extends Widget {
   anchor: Anchor
   // One key: the next step for the offer in front (C1).
@@ -54,6 +58,7 @@ export interface TradeWidget extends Widget {
   // Also follow trade whispers you send (E1).
   trackBuying: boolean
   tab: 'offers' | 'log'
+  rowStyle?: TradeRowStyle
 }
 
 export function hotkeyTarget (wmId: number, what: 'step' | 'busy' | 'skip'): string {

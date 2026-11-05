@@ -23,9 +23,40 @@ async function readFile (file: string): Promise<TradeRecord[]> {
 
 const queued = writeQueue()
 
+// Offers you dismissed or that ran out, so none is ever lost: one file for all
+// leagues, newest last. <userData>/woke-offer-history/offers.json
+interface OfferRecord { id: string, [k: string]: unknown }
+const historyFile = () => path.join(dataDir('woke-offer-history'), 'offers.json')
+async function readHistory (): Promise<OfferRecord[]> {
+  const list = await readJsonStrict<unknown>(historyFile(), [])
+  return Array.isArray(list) ? list.filter((o): o is OfferRecord => o && typeof o.id === 'string') : []
+}
+
 type Args = Record<string, unknown>
 
 export const tradeLogHandlers: Record<string, (args: Args) => Promise<unknown>> = {
+  'offer-history-list': async () => await readHistory(),
+  'offer-history-add': async ({ offer }) => {
+    const o = offer as OfferRecord
+    if (!o || typeof o.id !== 'string') throw new Error('Offer has no id.')
+    return await queued(async () => {
+      const list = await readHistory()
+      const i = list.findIndex(x => x.id === o.id)
+      if (i >= 0) list[i] = o
+      else list.push(o)
+      await writeAtomic(historyFile(), JSON.stringify(list))
+      return true
+    })
+  },
+  // Only when an offer is reopened: it's back in the queue.
+  'offer-history-delete': async ({ id }) => {
+    return await queued(async () => {
+      const list = await readHistory()
+      const keep = list.filter(x => x.id !== id)
+      if (keep.length !== list.length) await writeAtomic(historyFile(), JSON.stringify(keep))
+      return true
+    })
+  },
   'trades-list': async () => {
     const names = await listDir(root())
     const out: TradeRecord[] = []

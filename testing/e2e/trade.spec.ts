@@ -69,6 +69,93 @@ test('the trade card lists offers with the stash spot, and its buttons send repl
   await expect.poll(() => fakeApp.game.chat.at(-1)).toBe('@xXLeagueStartXx Sorry, 10 × Divine Orb is already sold.')
 })
 
+test('offers close on click, show the next step on hover, and a dismissed one can be reopened', async ({ overlay, fakeApp }) => {
+  await overlay.boot({ widgets: [TRADE] })
+  await overlay.log(upTo('#Spammer'))
+  await overlay.hoverDockIcon('trade')
+  const icon = overlay.dockIcon('trade')
+  const row = icon.locator('[data-offer="Kaltenhalt"]')
+  const dismiss = row.locator('[data-reply="dismiss"]')
+  await expect(dismiss).toBeVisible({ timeout: 5000 })
+  await overlay.snap('trade card, top offer open')
+
+  // The top offer closes, and they all stay closed.
+  await row.locator('button').first().click()
+  await expect(dismiss).toHaveCount(0)
+  await expect(icon.locator('[data-reply="dismiss"]')).toHaveCount(0)
+
+  // The next step waits for the mouse.
+  const next = row.locator('[data-next]')
+  await icon.locator('[data-offer="xXLeagueStartXx"]').hover()
+  await expect(next).toHaveCSS('opacity', '0')
+  await row.hover()
+  await expect(next).toHaveCSS('opacity', '1')
+  await overlay.snap('trade card, one-line rows with the next step on hover')
+  await next.click()
+  await expect.poll(() => fakeApp.game.chat).toEqual(['/invite Kaltenhalt'])
+
+  // Dismissed: dimmed with a way back, and saved.
+  await row.locator('button').first().click()
+  await dismiss.click()
+  const reopen = row.locator('[data-reopen]')
+  await expect(reopen).toBeVisible()
+  const saved = path.join(fakeApp.opts.userData, 'woke-offer-history', 'offers.json')
+  await expect.poll(() => fs.existsSync(saved) && fs.readFileSync(saved, 'utf8')).toContain('Kaltenhalt')
+  await overlay.snap('dismissed offer with Reopen')
+
+  // Back where it left off: Trade is next, not Invite.
+  await reopen.click()
+  await expect(row.locator('[data-reply="trade"]')).toBeVisible()
+  await expect(reopen).toHaveCount(0)
+  await expect.poll(() => fs.readFileSync(saved, 'utf8')).not.toContain('Kaltenhalt')
+})
+
+test('the row style setting: next step always shown, or two lines', async ({ overlay }) => {
+  await overlay.boot({ widgets: [{ ...TRADE, rowStyle: 'button' }] })
+  await overlay.log(upTo('#Spammer'))
+  await overlay.hoverDockIcon('trade')
+  const icon = overlay.dockIcon('trade')
+  const second = icon.locator('[data-offer="xXLeagueStartXx"]')
+  await expect(second.locator('[data-next]')).toHaveCSS('opacity', '1', { timeout: 5000 })
+  await overlay.snap('next step always shown')
+})
+
+test('two-line rows have no next step button and close on click too', async ({ overlay }) => {
+  await overlay.boot({ widgets: [{ ...TRADE, rowStyle: 'full' }] })
+  await overlay.log(upTo('#Spammer'))
+  await overlay.hoverDockIcon('trade')
+  const icon = overlay.dockIcon('trade')
+  const row = icon.locator('[data-offer="Kaltenhalt"]')
+  await expect(row.locator('[data-reply="dismiss"]')).toBeVisible({ timeout: 5000 })
+  await row.locator('button').first().click()
+  await expect(row.locator('[data-reply="dismiss"]')).toHaveCount(0)
+  await expect(icon.locator('[data-next]')).toHaveCount(0)
+  await expect(row).toContainText('Headhunter Leather Belt')
+  await overlay.snap('two-line rows')
+})
+
+test('the history keeps old offers across restarts and reopens them', async ({ overlay, fakeApp }) => {
+  const dir = path.join(fakeApp.opts.userData, 'woke-offer-history')
+  fs.mkdirSync(dir, { recursive: true })
+  const at = Date.now() - 3 * 86_400_000
+  fs.writeFileSync(path.join(dir, 'offers.json'), JSON.stringify([{
+    id: 'old-1', dir: 'sell', who: 'Ignithor', body: 'x', item: "Doedre's Damning, Paua Ring", qty: 1, bulk: false,
+    price: { amount: 10, currency: 'Chaos Orb' }, league: 'Testleague', tab: { name: '~b/o 10 chaos', left: 20, top: 3 }, note: '',
+    at, lastAt: at, repeats: 2, step: 0, inArea: false, traded: false, offline: false, messages: [],
+    skippedAt: null, actedAt: null, closedAt: at + 60_000, closed: 'dismissed'
+  }]))
+  await overlay.boot({ widgets: [{ ...TRADE, wmWants: 'show' as const, tab: 'offers' }], overlayActive: true })
+  const trade = overlay.widget('woke-trade')
+  const toggle = trade.locator('[data-offer-history] > button').first()
+  await expect(toggle).toContainText('History')
+  await expect(trade.locator('[data-offer="Ignithor"]')).toHaveCount(0)
+  await toggle.click()
+  await overlay.snap('offer history open')
+  await trade.locator('[data-offer="Ignithor"] [data-reopen]').click()
+  await expect(trade.locator('[data-offer="Ignithor"] [data-reply="invite"]')).toBeVisible()
+  await expect(trade.locator('[data-offer-history]')).toHaveCount(0)
+})
+
 test('whispers you send show under the offers; the sales log and Session analytics show the sale', async ({ overlay }) => {
   await overlay.boot({
     widgets: [{ ...TRADE, wmWants: 'show' as const, tab: 'log' }, { wmType: 'woke-session-analytics', wmWants: 'show' as const }],

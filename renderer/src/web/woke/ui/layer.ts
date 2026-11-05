@@ -42,7 +42,9 @@ let nextId = 1
 // Short note after an action, with Undo when given (P9: no "are you sure").
 // Shown at the bottom of `anchor` (usually the panel), else the screen; 5 s.
 export function toast (text: string, opts: { undo?: () => void, anchor?: Element | null, ms?: number } = {}) {
-  const r = opts.anchor?.getBoundingClientRect()
+  const box = opts.anchor?.getBoundingClientRect()
+  // A hidden anchor measures 0 at the screen's corner: use the screen instead.
+  const r = box?.width ? box : undefined
   const t: Toast = {
     id: nextId++,
     text,

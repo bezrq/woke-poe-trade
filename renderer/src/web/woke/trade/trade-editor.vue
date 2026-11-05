@@ -12,6 +12,9 @@
       </w-setting-row>
     </w-setting-section>
     <w-setting-section title="Offers">
+      <w-setting-row label="Offer rows" hint="How offers look until you click one open. Clicking opens all the options either way.">
+        <w-select v-model="rowStyle" :options="ROW_STYLES" class="w-64" />
+      </w-setting-row>
       <w-setting-row label="Ping on a new offer" hint="A short sound when a buyer whispers you.">
         <w-toggle v-model="ping" />
       </w-setting-row>
@@ -35,17 +38,22 @@
 
 <script lang="ts">
 import { computed, defineComponent } from 'vue'
-import { WButton, WHotkeyCell, WSettingRow, WSettingSection, WToggle } from '../ui'
+import { WButton, WHotkeyCell, WSelect, WSettingRow, WSettingSection, WToggle } from '../ui'
 import { configProp } from '@/web/settings/utils'
 import { pushHostConfig } from '@/web/Config'
 import { DEFAULT_REPLIES, REPLY_LABELS } from './widget'
-import type { TradeReplies, TradeWidget } from './widget'
+import type { TradeReplies, TradeRowStyle, TradeWidget } from './widget'
 
 const REPLY_KEYS = Object.keys(DEFAULT_REPLIES) as Array<keyof TradeReplies>
+const ROW_STYLES: Array<{ value: TradeRowStyle, label: string }> = [
+  { value: 'hover', label: 'One line, next step on hover' },
+  { value: 'button', label: 'One line, next step always shown' },
+  { value: 'full', label: 'Two lines' }
+]
 
 export default defineComponent({
   name: 'Trade assistant',
-  components: { WButton, WHotkeyCell, WSettingRow, WSettingSection, WToggle },
+  components: { WButton, WHotkeyCell, WSelect, WSettingRow, WSettingSection, WToggle },
   props: configProp<TradeWidget>(),
   setup (props) {
     const w = () => props.configWidget
@@ -56,6 +64,8 @@ export default defineComponent({
     const replies = computed<TradeReplies>(() => ({ ...DEFAULT_REPLIES, ...(w().replies ?? {}) }))
     return {
       REPLY_KEYS,
+      ROW_STYLES,
+      rowStyle: computed<TradeRowStyle>({ get: () => w().rowStyle ?? 'hover', set: (v) => { w().rowStyle = v } }),
       REPLY_LABELS,
       DEFAULT_REPLIES,
       stepHotkey: key('stepHotkey'),

@@ -3,7 +3,7 @@
 import { shallowRef } from 'vue'
 import { createGlobalState } from '@vueuse/core'
 import { hostRequest } from '../shared/host'
-import type { TradeRecord } from './book'
+import type { Offer, TradeRecord } from './book'
 
 export const useTradeLog = createGlobalState(() => {
   const trades = shallowRef<TradeRecord[]>([])
@@ -38,6 +38,37 @@ export const useTradeLog = createGlobalState(() => {
   }
 
   return { trades, loaded, error, load, add, remove }
+})
+
+// Offers closed without a trade (dismissed, sold elsewhere, ran out), kept for
+// good so a wrong click is never final. Newest first.
+export const useOfferHistory = createGlobalState(() => {
+  const offers = shallowRef<Offer[]>([])
+  const byClosed = (a: Offer, b: Offer) => (b.closedAt ?? 0) - (a.closedAt ?? 0)
+
+  async function load (): Promise<void> {
+    const list = await hostRequest<Offer[]>('offer-history-list', {})
+    // Anything added while this was on its way wins.
+    const mine = new Set(offers.value.map(o => o.id))
+    offers.value = [...offers.value, ...list.filter(o => !mine.has(o.id))].sort(byClosed)
+  }
+
+  function has (id: string): boolean {
+    return offers.value.some(o => o.id === id)
+  }
+
+  async function add (o: Offer): Promise<void> {
+    const plain = JSON.parse(JSON.stringify(o)) as Offer
+    offers.value = [plain, ...offers.value.filter(x => x.id !== plain.id)].sort(byClosed)
+    await hostRequest('offer-history-add', { offer: plain })
+  }
+
+  async function remove (id: string): Promise<void> {
+    offers.value = offers.value.filter(x => x.id !== id)
+    await hostRequest('offer-history-delete', { id })
+  }
+
+  return { offers, load, has, add, remove }
 })
 
 const DAY_MS = 24 * 3_600_000

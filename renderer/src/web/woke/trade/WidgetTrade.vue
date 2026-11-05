@@ -7,9 +7,11 @@
       card-width="23rem" @open-change="onCard">
       <template #card>
         <div v-if="book.afk" class="text-xs" style="padding: 2px var(--w-pad); color: var(--w-warn);">You're AFK: buyers get your autoreply.</div>
-        <OfferRow v-for="o in shown" :key="o.id" :offer="o" :expanded="o.id === expandedId" :now="now"
+        <OfferRow v-for="o in shown" :key="o.id" :offer="o" :expanded="o.id === expandedId" :now="now" :row-style="rowStyle"
           :step-key="o.id === frontId ? config.stepHotkey : null" :value="valueText(o)" :delta="deltaOf(o)" :art="artFor(o)"
-          @expand="expand(o)" @reply="reply(o, $event)" @traded="traded(o)" @dismiss="dismissOffer(o)" />
+          @expand="expand(o)" @reply="reply(o, $event)" @traded="traded(o)" @dismiss="dismissOffer(o)" @reopen="reopenOffer(o)" />
+        <OfferHistory :offers="older" :open="historyOpen" :now="now" :row-style="rowStyle" :art-for="artFor"
+          @toggle="toggleHistory" @reopen="reopenOffer" />
         <div class="w-faint text-xs" style="padding: 4px var(--w-pad) 6px;">
           <template v-if="config.stepHotkey"><WKbd :keys="config.stepHotkey" /> next step for the top offer</template>
           <template v-else>Set a "next step" key in Settings → Trade assistant to answer without the mouse.</template>
@@ -31,9 +33,11 @@
         <WEmpty v-if="!shown.length" :art="{ currency: 'divine' }">
           No open offers. Trade whispers you get (and send) show up here and in the trade icon while you play.
         </WEmpty>
-        <OfferRow v-for="o in shown" :key="o.id" :offer="o" :expanded="o.id === expandedId" :now="now"
+        <OfferRow v-for="o in shown" :key="o.id" :offer="o" :expanded="o.id === expandedId" :now="now" :row-style="rowStyle"
           :step-key="o.id === frontId ? config.stepHotkey : null" :value="valueText(o)" :delta="deltaOf(o)" :art="artFor(o)"
-          @expand="expand(o)" @reply="reply(o, $event)" @traded="traded(o)" @dismiss="dismissOffer(o)" />
+          @expand="expand(o)" @reply="reply(o, $event)" @traded="traded(o)" @dismiss="dismissOffer(o)" @reopen="reopenOffer(o)" />
+        <OfferHistory :offers="older" :open="historyOpen" :now="now" :row-style="rowStyle" :art-for="artFor"
+          @toggle="toggleHistory" @reopen="reopenOffer" />
       </template>
 
       <template v-else>
@@ -95,14 +99,15 @@ import { useLeagues } from '@/web/background/Leagues'
 import { logTail } from '../campaign/log-tail'
 import { onGameLog } from '../shared/game-log'
 import OfferRow from './OfferRow.vue'
-import { applyEvent, dismiss, front, markSent, markTraded, newBook, prune, queue, recordFor, skip } from './book'
+import OfferHistory from './OfferHistory.vue'
+import { alreadyClosed, applyEvent, belongsInHistory, dismiss, front, markSent, markTraded, newBook, prune, queue, recordFor, reopen, skip } from './book'
 import type { Offer, TradeBook, TradeRecord } from './book'
 import { DEFAULT_REPLIES, parseHotkeyTarget, replyText } from './widget'
 import type { ReplyId } from './widget'
-import { offerLabel, parseTradeLine, priceLabel } from './whispers'
+import { artNames, offerLabel, parseTradeLine, priceLabel } from './whispers'
 import { bulkDelta, priceChaos } from './value'
 import { formatChaos } from '../ui/format'
-import { tradeTotals, tradesInRange, useTradeLog } from './log-store'
+import { tradeTotals, tradesInRange, useOfferHistory, useTradeLog } from './log-store'
 
 const props = defineProps<{
   config: TradeWidget
@@ -130,6 +135,7 @@ hideWhilePlaying(props.config)
 const book = reactive<TradeBook>(newBook())
 const log = useTradeLog()
 log.load()
+const history = useOfferHistory()
 
 // --- Prices ---
 const prices = usePriceIndex()
@@ -151,9 +157,7 @@ function deltaOf (o: Offer): number | null {
 // Item art: bulk currency by name; uniques by their name without the base.
 function artFor (o: Offer): string | null {
   if (o.bulk) return gameIcon(o.item)
-  const words = o.item.replace(/^level \d+ \d+% /, '').split(' ')
-  for (let n = words.length; n >= 1 && n >= words.length - 3; n--) {
-    const name = words.slice(0, n).join(' ')
+  for (const name of artNames(o.item)) {
     const art = gameIcon(name, 'UNIQUE') ?? gameIcon(name, 'GEM')
     if (art) return art
   }
@@ -171,15 +175,34 @@ const frontId = computed(() => frontOffer.value?.id ?? null)
 const sellCount = computed(() => shown.value.filter(o => !o.closed && o.dir === 'sell').length)
 const anyInArea = computed(() => shown.value.some(o => !o.closed && o.inArea))
 
-// The front offer is open; another one opens when clicked.
+// The history, minus what's still on show above it.
+const older = computed(() => {
+  const onShow = new Set(shown.value.map(o => o.id))
+  return history.offers.value.filter(o => !onShow.has(o.id) && (props.config.trackBuying !== false || o.dir === 'sell'))
+})
+const historyOpen = shallowRef(false)
+function toggleHistory () {
+  historyOpen.value = !historyOpen.value
+  // The clock only runs while there are offers.
+  now.value = Date.now()
+}
+const rowStyle = computed(() => props.config.rowStyle ?? 'hover')
+
+// The front offer is open; clicking an offer opens it, clicking it again closes
+// it. Once you've closed one they all stay closed until you open one.
+const ALL_CLOSED = 'all-closed'
 const picked = shallowRef<string | null>(null)
 const expandedId = computed(() => {
+  if (picked.value === ALL_CLOSED) return null
   const p = picked.value && shown.value.find(o => o.id === picked.value && !o.closed)
   return p ? p.id : frontId.value
 })
 function expand (o: Offer) {
-  picked.value = expandedId.value === o.id && o.id !== frontId.value ? null : o.id
+  if (o.closed) return
+  picked.value = expandedId.value === o.id ? ALL_CLOSED : o.id
 }
+// The next offer after an empty queue opens by itself again.
+watch(frontId, (id) => { if (id == null) picked.value = null })
 
 const now = shallowRef(Date.now())
 // Ticks only while there are offers to age (the perf checks count wakeups
@@ -211,6 +234,11 @@ function handle (line: string, live: boolean) {
   if (live) ev.at = Date.now()
   if (ev.kind === 'whisper-out' && ev.offer && props.config.trackBuying === false) return
   const res = applyEvent(book, ev)
+  if (!live && res.added && alreadyClosed(history.offers.value, res.added)) {
+    const id = res.added.id
+    book.offers = book.offers.filter(o => o.id !== id)
+    return
+  }
   if (res.finished) logTrade(res.finished, lineAt, false)
   if (res.added && live) announce(res.added)
   now.value = Date.now()
@@ -235,8 +263,9 @@ onGameLog((lines) => {
   }
 })
 
-// After a restart, pick up offers from the last half hour of Client.txt.
-logTail().then(tail => {
+// After a restart, pick up offers from the last half hour of Client.txt. The
+// history comes first, so offers you already closed stay closed.
+history.load().catch(() => {}).then(() => logTail()).then(tail => {
   const since = Date.now() - 30 * 60_000
   const until = Date.now() + 60_000
   for (const line of tail.lines) {
@@ -306,9 +335,25 @@ function dismissOffer (o: Offer) {
   dismiss(o, Date.now())
   toast(`Removed ${o.who}'s offer`, {
     anchor: panel.value?.$el,
-    undo: () => { o.closed = null; o.closedAt = null }
+    undo: () => reopenOffer(o)
   })
 }
+
+function reopenOffer (o: Offer) {
+  const open = reopen(book, o, Date.now())
+  history.remove(o.id).catch(() => {})
+  picked.value = open.id
+  now.value = Date.now()
+}
+
+// Closed offers go into the history as they close, so a restart can't lose them.
+watch(() => book.offers.filter(belongsInHistory).map(o => o.id).join(), () => {
+  for (const o of book.offers) {
+    if (belongsInHistory(o) && !history.has(o.id)) {
+      history.add(o).catch((err: Error) => toast(`Couldn't save the offer history: ${err.message}`))
+    }
+  }
+})
 
 function logTrade (o: Offer, at: number, manual: boolean) {
   const chaos = priceChaos(o.price, px.value)
