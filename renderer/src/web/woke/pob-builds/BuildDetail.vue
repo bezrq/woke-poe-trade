@@ -69,7 +69,7 @@
         <div v-for="row in setChips" :key="row.label" class="flex flex-wrap items-center gap-1 pt-1">
           <span v-if="row.label" class="w-faint text-xs">{{ row.label }}</span>
           <WChip v-if="pick && row.first" clickable :title="AUTO_HINT" @click="clearPick">Auto</WChip>
-          <WChip v-for="c in row.chips" :key="c.title" clickable :active="c.active" :title="c.hint" @click="c.choose()">
+          <WChip v-for="(c, i) in row.chips" :key="i" clickable :active="c.active" :title="c.hint" @click="c.choose()">
             <i v-if="pick && c.active" class="fas fa-thumbtack text-xs" /> {{ c.title }}<span v-if="c.active" class="w-accent"> · now</span>
           </WChip>
         </div>
@@ -88,7 +88,7 @@
         <template v-if="layout.loose.length">
           <div :class="$style.heading">Gems PoB doesn't tie to an item</div>
           <div v-for="(g, i) in layout.loose" :key="i" :class="$style.loose">
-            <div v-if="g.label || g === mainLink" class="w-dim text-xs">{{ g.label }}<span v-if="g === mainLink" class="w-accent"><template v-if="g.label"> · </template>Main skill</span></div>
+            <div v-if="g === mainLink" class="w-accent text-xs">Main skill</div>
             <GemChain :group="g" />
           </div>
         </template>
@@ -294,8 +294,8 @@ const mainLink = computed(() => shownSet.value ? mainGroupOf(shownSet.value.grou
 const layout = computed(() => gearLayout(shownItemSet.value?.slots ?? [], shownSet.value?.groups ?? []))
 const hasGear = computed(() => Boolean(layout.value.main || layout.value.loose.length || layout.value.linked.length || layout.value.plain.length))
 
-// One row of chips while skill and item sets go together; two when PoB's names
-// differ or the two are showing different sets, as either can be picked alone.
+// One row of chips while skill and item sets go together, where a pick moves
+// both; two when PoB's names differ or the two are showing different sets.
 const setChips = computed(() => {
   const skills = skillSets.value
   const items = itemSets.value

@@ -3,6 +3,7 @@
     @mouseenter="row.item && showTip($event, { kind: 'item', item: row.item })" @mouseleave="hideTip">
     <span :class="[$style.cell, small && $style.cellSmall, cellClass]">
       <img v-if="art" :src="art" alt="" :class="['w-game-icon', small ? $style.artSmall : $style.art]" loading="lazy" draggable="false">
+      <i v-else-if="item" class="fas fa-question w-faint" />
     </span>
     <span class="min-w-0 flex flex-col">
       <span class="w-trunc" :class="nameClass">{{ name }}</span>

@@ -323,8 +323,9 @@ export function gearLayout (slots: PobItemSet['slots'], groups: PobSkillGroup[])
   const loose: PobSkillGroup[] = []
   for (const g of shown) {
     if (!g.slot) {
-      // Granted by the tree or a mechanic: nothing for you to socket.
-      if (!g.source) loose.push(g)
+      // Granted by the tree or a mechanic: nothing for you to socket, unless
+      // it is what the build is about.
+      if (!g.source || g === mainGroup) loose.push(g)
       continue
     }
     const row = rows.get(g.slot)

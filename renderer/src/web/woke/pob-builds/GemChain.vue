@@ -1,8 +1,9 @@
 <template>
   <div :class="[$style.chain, { 'opacity-50': !group.enabled }]">
+    <div v-if="group.label" class="w-dim text-xs">{{ group.label }}</div>
     <div v-for="(g, i) in lines" :key="i" :class="[$style.line, { [$style.linked]: g.linked }]">
       <span :class="[$style.dot, { [$style.hollow]: !g.socketed }]" :style="g.socketed ? { background: `var(--w-s-${g.colour})` } : undefined" />
-      <GemName :class="$style.name" :name="g.name" :level="g.level" :quality="g.quality" size="sm" :off="!g.socketed" :struck="!g.socketed" />
+      <GemName :class="$style.name" :name="g.name" :level="g.level" :quality="g.quality" size="sm" :off="!g.enabled" :struck="!g.enabled" />
       <span v-if="g.level != null" class="ml-auto w-faint text-xs w-num" :class="$style.lq">{{ g.level }}/{{ g.quality ?? 0 }}</span>
     </div>
   </div>

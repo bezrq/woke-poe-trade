@@ -214,6 +214,11 @@ describe('gear layout', () => {
     expect(l.loose).toEqual([free])
   })
 
+  it('keeps a granted group with no slot when it is the main skill', () => {
+    const main = group('', ['Granted'], { source: 'Tree:1', isMain: true })
+    expect(gearLayout([], [main]).loose).toEqual([main])
+  })
+
   it('draws a slot with gems when this item set leaves it empty', () => {
     const l = gearLayout([], [group('Boots', ['A', 'B'], { isMain: true }), group('Helmet', ['C'])])
     expect(l.main).toMatchObject({ slot: 'Boots', item: null })
