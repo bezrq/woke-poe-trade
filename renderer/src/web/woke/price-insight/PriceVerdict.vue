@@ -18,8 +18,8 @@
         <span :class="$style.ninjaName">poe.ninja</span>
         <w-price :class="[$style.ninjaPrice, { [$style.notCounted]: ninjaNotCounted }]" :chaos="ninjaInfo.chaos" :divine="divine" />
       </span>
-      <button v-if="hasWarning" type="button" :class="[$style.warn, { [$style.warnHigh]: insight.risk === 'high' }]" :title="warningTitle"
-        @click="verdictExpanded = true">⚑<template v-if="insight.risk === 'medium' || insight.risk === 'high'"> {{ RISK_LABEL[insight.risk] }}</template></button>
+      <button v-if="hasWarning" type="button" :class="[$style.warn, { [$style.warnHigh]: insight.range && insight.risk === 'high' }]" :title="warningTitle"
+        @click="verdictExpanded = true">⚑<template v-if="riskLabel"> {{ riskLabel }}</template></button>
       <span class="flex-1" />
       <button type="button" class="w-icon-btn" :title="expanded ? 'Show less' : 'Show more detail and what drives the price'"
         @click="verdictExpanded = !verdictExpanded">
@@ -40,7 +40,7 @@
         </button>
       </div>
 
-      <div :class="$style.line">
+      <div v-if="insight.range || ranges.length" :class="$style.line">
         <template v-if="insight.range">
           <span class="w-num" :class="$style.fact">Cheapest <w-price :class="$style.factPrice" :chaos="insight.range.low" :divine="divine" :unit="rangeUnit" /></span>
           <span v-if="insight.range.high > insight.range.low" class="w-num" :class="$style.fact">up to <w-price :class="$style.factPrice" :chaos="insight.range.high" :divine="divine" :unit="rangeUnit" /></span>
@@ -147,12 +147,14 @@ const missingDivines = computed(() => props.insight.signals.some(s => s.kind ===
 const lowValue = computed(() => !props.skipsTopMods && !missingDivines.value && (headline.value?.chaos ?? props.insight.range?.fair ?? 0) < LOW_VALUE)
 
 // A flag on the row, only for what changes what the price means. The text opens with the chevron.
-const hasWarning = computed(() => Boolean(age.value?.stale) || (props.insight.range != null && (
-  props.insight.risk === 'medium' || props.insight.risk === 'high' ||
-  props.insight.signals.some(s => s.kind === 'old' || s.kind === 'norate' || s.kind === 'snipe' || s.kind === 'oneseller')
-)))
+// With no listings to go on, a price from other sources needs its reason flagged too.
+const hasWarning = computed(() => Boolean(age.value?.stale) || (props.insight.range != null
+  ? riskLabel.value !== '' ||
+    props.insight.signals.some(s => s.kind === 'old' || s.kind === 'norate' || s.kind === 'snipe' || s.kind === 'oneseller')
+  : !props.loading && headline.value != null))
+const riskLabel = computed(() => props.insight.range && (props.insight.risk === 'medium' || props.insight.risk === 'high') ? RISK_LABEL[props.insight.risk] : '')
 const warningTitle = computed(() => [
-  ...props.insight.signals.map(s => s.text),
+  ...(props.insight.range ? props.insight.signals.map(s => s.text) : (!props.loading && headline.value ? [emptyText.value] : [])),
   ...(age.value?.stale ? [age.value.text] : [])
 ].join('\n') || 'Some listings look placed to fake the price')
 
