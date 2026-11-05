@@ -45,7 +45,7 @@ test('the hotkey opens the palette ready to type, and Esc leaves it', async ({ o
   // The same key closes it, since global hotkeys are off while it has the keyboard.
   await overlay.pressHotkey(SEARCH_KEY)
   await expect(box).toBeFocused()
-  await overlay.page.keyboard.press('Ctrl+Space')
+  await overlay.page.keyboard.press('Control+Space')
   await expect(box).toBeHidden()
 })
 
