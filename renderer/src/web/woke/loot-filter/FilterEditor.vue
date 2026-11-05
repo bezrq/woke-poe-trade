@@ -375,7 +375,7 @@ function priceOf (base: string): number | null {
   const group = ECONOMY_GROUPS.find(g => g.type === selType.value)
   return (lookup && group && lookup(group, base)?.chaos) ?? null
 }
-const priceText = (chaos: number) => chaos >= 10 ? `${Math.round(chaos)}c` : `${Math.round(chaos * 10) / 10}c`
+const priceText = (chaos: number) => chaos >= 10 ? `${Math.round(chaos)}c` : (chaos < 0.1 ? '<0.1c' : `${Math.round(chaos * 10) / 10}c`)
 const tierItems = computed(() => byPrice(tier.value?.bases ?? [], priceOf))
 
 const tree = computed(() => props.store.doc.value ? buildTree(props.store.doc.value) : [])
@@ -628,6 +628,11 @@ function pickBase (b: string, e: MouseEvent) {
 
 // ---- several items at once ----
 
+function ownVisibility (type: string, t: string, base: string): Visibility | undefined {
+  const own = props.config.edits.find(e => e.kind === 'item' && e.type === type && e.tier === t && e.base === base)
+  return own?.kind === 'item' ? own.visibility : undefined
+}
+
 // Changes the picked items' own rules, one undo for all of them.
 function bulkOwnRules (t: TierNode, change: { visibility?: Visibility, patch?: StylePatch }) {
   const type = selType.value
@@ -638,7 +643,8 @@ function bulkOwnRules (t: TierNode, change: { visibility?: Visibility, patch?: S
     type,
     tier: t.tier,
     base,
-    visibility: change.visibility ?? block.visibility,
+    // A look change leaves an item you already hid hidden.
+    visibility: change.visibility ?? ownVisibility(type, t.tier, base) ?? block.visibility,
     patch: change.patch ?? {},
     anchor: conditionSignature(block)
   })))
@@ -744,7 +750,9 @@ function baseMenu (ev: MouseEvent, b: string) {
   openMenu(ev, [
     ...tierMoveEntries(() => picked.value.includes(b) ? [...picked.value] : [b]),
     { separator: true as const },
-    { label: moved ? 'Back to where it was' : 'Take it off this tier', icon: 'fas fa-times', action: () => { takeOff(b) } }
+    picked.value.includes(b) && picked.value.length > 1
+      ? { label: `Take ${picked.value.length} off this tier`, icon: 'fas fa-times', action: bulkTakeOff }
+      : { label: moved ? 'Back to where it was' : 'Take it off this tier', icon: 'fas fa-times', action: () => { takeOff(b) } }
   ])
 }
 

@@ -207,6 +207,14 @@ test('rules: pick several chips, move them together, hide them together, and see
   await page.getByRole('toolbar', { name: 'Picked items' }).getByRole('button', { name: 'Hide' }).click()
   await expect(page.getByText('Hid 1 item')).toBeVisible()
 
+  // Giving a hidden item its own look leaves it hidden.
+  await page.getByText('Chaos Orb', { exact: true }).last().click()
+  await page.getByRole('toolbar', { name: 'Picked items' }).getByRole('button', { name: 'Own look' }).click()
+  await expect(page.getByText(/Changes here go to the 1 item/)).toBeVisible()
+  const slider = page.locator('input[type="range"]').first()
+  await slider.fill('30')
+  await slider.dispatchEvent('change')
+
   await page.getByRole('button', { name: /^Save/ }).click()
   const out = path.join(folder, 'NeverSink (woke).filter')
   await expect.poll(() => fs.existsSync(out) ? fs.readFileSync(out, 'utf8') : '').toMatch(/\$tier->t2divine[^\n]*\n(\t[^\n]*\n)*\tBaseType == [^\n]*"Orb of Alchemy"/)
