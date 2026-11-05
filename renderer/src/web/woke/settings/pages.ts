@@ -18,6 +18,8 @@ import LookPage from './LookPage.vue'
 import ScreenPage from './ScreenPage.vue'
 import InstallPage from './InstallPage.vue'
 import AboutPage from './AboutPage.vue'
+import CreditsPage from './CreditsPage.vue'
+import { CREDIT_NAMES } from './credits'
 
 export type PageGroup = 'general' | 'modules' | 'app'
 
@@ -342,10 +344,19 @@ export const PAGES: SettingsPage[] = [
     name: 'About',
     group: 'app',
     icon: { fa: 'fas fa-info-circle' },
-    description: 'Version, credits and the people who support Awakened PoE Trade.',
+    description: 'Version, updates and the people who support Awakened PoE Trade.',
     parts: [AboutPage],
-    find: ['About', 'Patreon', 'Credits', 'Check for updates'],
+    find: ['About', 'Patreon', 'Check for updates'],
     aliases: ['settings.about']
+  },
+  {
+    id: 'credits',
+    name: 'Credits',
+    group: 'app',
+    icon: { fa: 'fas fa-heart' },
+    description: 'The projects this toolkit is built on, uses data from or took ideas from.',
+    parts: [CreditsPage],
+    find: ['Credits', 'License', ...CREDIT_NAMES]
   }
 ]
 
