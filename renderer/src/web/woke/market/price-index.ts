@@ -3,6 +3,8 @@
 import { computed, shallowRef, watch } from 'vue'
 import { createGlobalState } from '@vueuse/core'
 import { useLeagues } from '@/web/background/Leagues'
+import { AppConfig } from '@/web/Config'
+import { isModuleOn } from '../modules'
 import { useCollectorState, useMarketCollector } from './collector'
 import { latestSnapshots } from './db'
 import { itemKey } from './types'
@@ -47,6 +49,23 @@ const usePriceIndexState = createGlobalState(() => {
 
   return { snapshot, price, search }
 })
+
+// The search boxes touch nothing until one is first opened, so an unused box
+// costs nothing at startup. From then on prices keep being saved, unless the
+// Market module is off: then there are no prices to show at all.
+const searchStarted = shallowRef(false)
+let heldForSearch = false
+export function holdPricesForSearch (): void {
+  searchStarted.value = true
+  if (heldForSearch || !isModuleOn(AppConfig(), 'market')) return
+  heldForSearch = true
+  useMarketCollector()
+}
+export function useSearchSnapshot () {
+  return computed(() => searchStarted.value && isModuleOn(AppConfig(), 'market')
+    ? usePriceIndexState().snapshot.value
+    : null)
+}
 
 // Holds the collector (saving only, no polling) while the caller is mounted.
 export function usePriceIndex () {

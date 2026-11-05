@@ -186,7 +186,7 @@ function fuzzyFindHeistGem (badStr: string) {
 </script>
 
 <script setup lang="ts">
-import { shallowRef, computed, nextTick, inject } from 'vue'
+import { shallowRef, computed, nextTick, inject, watch } from 'vue'
 import { useI18nNs } from '@/web/i18n'
 import { WidgetManager } from '../overlay/interfaces'
 import { usePoeninja } from '@/web/background/Prices'
@@ -220,8 +220,15 @@ const typeFilter = shallowRef<'gem' | 'replica'>('gem')
 Host.onEvent('MAIN->CLIENT::ocr-text', (e) => {
   if (e.target !== 'heist-gems') return
 
+  let shown = false
   for (const para of e.paragraphs) {
     const res = fuzzyFindHeistGem(para)
+    if (!res) continue
+    if (!shown) {
+      shown = true
+      wm.show(props.config.wmId)
+      showTimeout.value?.reset()
+    }
     selectItem(
       ITEM_BY_TRANSLATED('GEM', res.name)![0],
       { altQuality: res.altQuality, withTimeout: true }
@@ -280,11 +287,22 @@ function clearSelectedItems () {
   props.config.wmFlags = ['invisible-on-blur']
 }
 
-const showSearch = wm.active
+// The search itself moved to the search palette. This window only shows the
+// gems the heist reader found.
+const showSearch = shallowRef(false)
 
 function makeInvisible () {
   props.config.wmFlags = ['invisible-on-blur']
+  if (!selected.value.length) wm.hide(props.config.wmId)
 }
+
+// The gems stay for the next overlay open, to click for a price check. Leaving
+// the overlay ends them.
+watch(wm.active, (active) => {
+  if (active) return
+  clearSelectedItems()
+  wm.hide(props.config.wmId)
+})
 
 function selectedItemClick (e: MouseEvent, item: SelectedItem) {
   const parsed = (item.info.namespace === 'GEM')
