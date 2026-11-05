@@ -44,10 +44,10 @@ function Listener ($port) {
 }
 
 function Find-Electrons {
-  # Dev Electrons of any clone of this repo. Matching on the path keeps other
-  # Electron apps on the machine safe.
+  # Dev Electrons of any clone of this repo, started as `electron .`. Matching on
+  # both keeps other Electron apps and test scripts run with this Electron safe.
   Get-CimInstance Win32_Process -Filter "Name='electron.exe'" |
-    Where-Object { $_.ExecutablePath -like '*woke-poe-trade*\main\node_modules\electron\*' }
+    Where-Object { $_.ExecutablePath -like '*woke-poe-trade*\main\node_modules\electron\*' -and $_.CommandLine -match '\s\.$' }
 }
 
 function Kill-Tree ($procId) {
