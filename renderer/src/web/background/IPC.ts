@@ -1,4 +1,4 @@
-import type { IpcEvent, IpcEventPayload, UpdateInfo, HostState } from '@ipc/types'
+import type { IpcEvent, IpcEventPayload, UpdateInfo, HostState, ConfigNotice } from '@ipc/types'
 import { shallowRef } from 'vue'
 import Sockette from 'sockette'
 
@@ -8,6 +8,7 @@ class HostTransport {
   logs = shallowRef('')
   version = shallowRef('0.0.00000')
   updateInfo = shallowRef<UpdateInfo>({ state: 'initial' })
+  configNotice = shallowRef<ConfigNotice | null>(null)
 
   async init () {
     this.onEvent('MAIN->CLIENT::log-entry', (entry) => {
@@ -59,6 +60,7 @@ class HostTransport {
     // TODO: refactor this
     this.version.value = config.version
     this.updateInfo.value = config.updater
+    this.configNotice.value = config.configNotice ?? null
     return config.contents
   }
 

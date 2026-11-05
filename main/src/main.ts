@@ -5,7 +5,7 @@ import './woke/user-data'
 import { app } from 'electron'
 import { uIOhook } from 'uiohook-napi'
 import os from 'node:os'
-import { startServer, eventPipe, server } from './server'
+import { startServer, eventPipe, server, configFlushed } from './server'
 import { Logger } from './RemoteLogger'
 import { GameWindow } from './windowing/GameWindow'
 import { OverlayWindow } from './windowing/OverlayWindow'
@@ -22,6 +22,7 @@ import { perfMark } from './woke/perf'
 import { startCrashReporting, attachCrashLogger } from './woke/crash-reports'
 import { initSetup, maybeOpenSetup, openSetupWindow, refreshSetupIcon, savedAppIcon } from './woke/setup'
 import { setAppIcon } from './woke/app-icon'
+import { saveBeforeQuit } from './woke/quit-flush'
 
 if (!app.requestSingleInstanceLock()) {
   app.exit()
@@ -34,6 +35,8 @@ if (process.platform !== 'darwin') {
   app.disableHardwareAcceleration()
 }
 app.enableSandbox()
+
+saveBeforeQuit(eventPipe, configFlushed)
 
 let tray: AppTray
 
