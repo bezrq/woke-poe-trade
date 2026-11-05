@@ -1,8 +1,8 @@
 // One-click presets: common changes players make by hand, kept across
 // NeverSink updates. Some add rules at the top (cheap currency, chaos recipe,
 // 6-sockets); the others adjust NeverSink's own rules after your edits
-// (quiet mode, bigger labels, colour-blind beams and icons). Your own rules
-// and the safety net are never touched.
+// (quiet mode, bigger labels, colour-blind beams and icons). Your own rules are
+// never touched; the safety net only takes the colour-blind colours.
 import type { FilterBlock, FilterDoc } from './parse'
 import { ECONOMY_GROUPS } from './economy'
 import type { PriceLookup } from './economy'
@@ -130,6 +130,22 @@ export function presetBlocks (doc: FilterDoc, p: Presets, lookup: PriceLookup | 
 
 // Red-green safe swaps for beam and minimap colours.
 const COLOUR_BLIND: Record<string, string> = { Green: 'Blue', Brown: 'Yellow', Red: 'Orange', Pink: 'Purple' }
+
+// Returns true when it changed a colour.
+export function colourBlindActions (b: FilterBlock): boolean {
+  let touched = false
+  b.actions = b.actions.map(a => {
+    if ((a.key === 'PlayEffect' && COLOUR_BLIND[a.args[0]]) || (a.key === 'MinimapIcon' && COLOUR_BLIND[a.args[1]])) {
+      touched = true
+      const args = [...a.args]
+      const i = a.key === 'PlayEffect' ? 0 : 1
+      args[i] = COLOUR_BLIND[args[i]]
+      return { key: a.key, args }
+    }
+    return a
+  })
+  return touched
+}
 const SOUND_KEYS = ['PlayAlertSound', 'PlayAlertSoundPositional', 'CustomAlertSound', 'CustomAlertSoundOptional']
 
 function tierNumber (tier: string | null): number | null {
@@ -159,18 +175,7 @@ export function applyPresetChanges (doc: FilterDoc, p: Presets): number {
         touched = true
       }
     }
-    if (p.colourBlind.on) {
-      b.actions = b.actions.map(a => {
-        if ((a.key === 'PlayEffect' && COLOUR_BLIND[a.args[0]]) || (a.key === 'MinimapIcon' && COLOUR_BLIND[a.args[1]])) {
-          touched = true
-          const args = [...a.args]
-          const i = a.key === 'PlayEffect' ? 0 : 1
-          args[i] = COLOUR_BLIND[args[i]]
-          return { key: a.key, args }
-        }
-        return a
-      })
-    }
+    if (p.colourBlind.on && colourBlindActions(b)) touched = true
     if (touched) { b.dirty = true; changed++ }
   }
   return changed

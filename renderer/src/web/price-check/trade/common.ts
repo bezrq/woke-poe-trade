@@ -46,7 +46,49 @@ export const RATE_LIMIT_RULES = {
   ]))
 }
 
+// When the server's penalty ends, per policy. A penalty runs longer than the
+// rate limit window, so the limiters alone would let a request through too soon.
+const restrictedUntil = new WeakMap<Set<RateLimiter>, number>()
+const UNKNOWN_PENALTY_SECONDS = 60
+
+export function restrictedMs (clientLimits: Set<RateLimiter>): number {
+  return Math.max((restrictedUntil.get(clientLimits) ?? 0) - Date.now(), 0)
+}
+
+function restrictFor (clientLimits: Set<RateLimiter>, seconds: number): void {
+  const until = Date.now() + seconds * 1000
+  restrictedUntil.set(clientLimits, Math.max(restrictedUntil.get(clientLimits) ?? 0, until))
+}
+
+// Each rule's state is `hits:window:seconds restricted`.
+function penaltySeconds (headers: Headers): number {
+  const retryAfter = Number(headers.get('retry-after'))
+  const rules = (headers.get('x-rate-limit-rules') ?? '').split(',').filter(Boolean)
+  const fromRules = rules.flatMap(rule =>
+    (headers.get(`x-rate-limit-${rule}-state`) ?? '').split(',').map(state => Number(state.split(':')[2])))
+  return Math.max(0, ...[retryAfter, ...fromRules].filter(Number.isFinite))
+}
+
+function retryAfterError (ms: number): Error {
+  return new Error(`Retry after ${Math.ceil(ms / 1000)} seconds`)
+}
+
+export function throwIfRestricted (clientLimits: Set<RateLimiter>): void {
+  const ms = restrictedMs(clientLimits)
+  if (ms > 0) throw retryAfterError(ms)
+}
+
+/** Call after `adjustRateLimits`: a 429 becomes the wait the server asked for. */
+export function throwIfRateLimited (clientLimits: Set<RateLimiter>, response: Response): void {
+  if (response.status !== 429) return
+  if (restrictedMs(clientLimits) === 0) restrictFor(clientLimits, UNKNOWN_PENALTY_SECONDS)
+  throwIfRestricted(clientLimits)
+}
+
 export function adjustRateLimits (clientLimits: Set<RateLimiter>, headers: Headers): void {
+  const penalty = penaltySeconds(headers)
+  if (penalty > 0) restrictFor(clientLimits, penalty)
+
   if (!headers.has('x-rate-limit-rules')) return
 
   const rules = headers.get('x-rate-limit-rules')!.split(',')
@@ -125,7 +167,9 @@ function _adjustRateLimits (clientLimits: Set<RateLimiter>, limitStr: string, st
   /* eslint-enable */
 }
 
-export function preventQueueCreation (targets: Array<{ count: number, limiters: Iterable<RateLimiter> }>) {
+export function preventQueueCreation (targets: Array<{ count: number, limiters: Set<RateLimiter> }>) {
+  for (const target of targets) throwIfRestricted(target.limiters)
+
   const estimatedMillis = Math.max(...targets.map(target => {
     const estimated = RateLimiter.estimateTime(target.count, target.limiters)
     const estimatedCleanState = RateLimiter.estimateTime(target.count, target.limiters, true)

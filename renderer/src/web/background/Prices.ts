@@ -116,6 +116,19 @@ export const usePoeninja = createGlobalState(() => {
     return null
   }
 
+  // Any variant of an item (the first listed), for when only its name is known.
+  function findPriceByName (ns: string, name: string) {
+    const searchString = JSON.stringify({ name, variant: '' }).replace('""}', '"')
+    for (const { ns: rowNs, lines } of PRICES_DB) {
+      if (rowNs !== ns) continue
+      const startPos = lines.indexOf(searchString)
+      if (startPos === -1) continue
+      const info: NinjaDenseInfo = JSON.parse(lines.slice(startPos, lines.indexOf('}', startPos) + 1))
+      return info
+    }
+    return null
+  }
+
   function autoCurrency (value: number | [number, number]): CurrencyValue {
     if (Array.isArray(value)) {
       if (value[1] > (xchgRate.value || 9999)) {
@@ -150,6 +163,7 @@ export const usePoeninja = createGlobalState(() => {
   return {
     xchgRate: readonly(xchgRate),
     findPriceByQuery,
+    findPriceByName,
     autoCurrency,
     queuePricesFetch,
     initialLoading: () => isLoading.value && !PRICES_DB.length

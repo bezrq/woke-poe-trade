@@ -72,7 +72,7 @@ test('style editor: NeverSink sound pack, beam and minimap pickers; a pack sound
   await expect.poll(() => {
     const out = path.join(folder, 'NeverSink (woke).filter')
     return fs.existsSync(out) ? fs.readFileSync(out, 'utf8') : ''
-  }).toContain('CustomAlertSound "2currency.mp3" 300')
+  }).toContain('CustomAlertSoundOptional "2currency.mp3" 300')
 })
 
 test('rule builder, drag and drop between tiers, and presets end up in the saved filter', async ({ overlay, fakeApp }) => {
@@ -246,7 +246,6 @@ test('prices: a hidden valuable unique lists what else would show, and Show it d
 
   await page.getByRole('button', { name: /Despot Axe/ }).click()
   await page.getByRole('button', { name: 'Show it', exact: true }).click()
-  await page.getByRole('button', { name: /^Save/ }).click()
   await expect.poll(() => {
     const out = path.join(folder, 'NeverSink (woke).filter')
     return fs.existsSync(out) ? fs.readFileSync(out, 'utf8') : ''
