@@ -5,7 +5,7 @@
     <span :class="$style.grip" :style="{ visibility: wm.active.value ? 'visible' : 'hidden' }" title="Drag to move the icon row. Double-click to stand it on its side."
       @pointerdown="startDrag" @dblclick="flip"><i class="fas fa-grip-vertical" /></span>
     <DockIcon v-for="g in groups" :key="g.host.key" :host="g.host" :extras="g.extras" :vertical="cfg.vertical" />
-    <span v-if="wm.active.value && !groups.length" :class="$style.empty">Icon row · nothing to show here</span>
+    <span v-if="wm.active.value && !groups.length && !blocked" :class="$style.empty">Icon row · nothing to show here</span>
   </div>
 </template>
 
