@@ -1,0 +1,719 @@
+diff --git a/docs/public/favicon.png b/docs/public/favicon.png
+index 8bbb2d2b..64ef3142 100644
+Binary files a/docs/public/favicon.png and b/docs/public/favicon.png differ
+diff --git a/ipc/types.ts b/ipc/types.ts
+index 8136ae97..34d6d3d7 100644
+--- a/ipc/types.ts
++++ b/ipc/types.ts
+@@ -10,6 +10,8 @@ export interface HostConfig {
+   language: string
+   // woke: false when no enabled module needs Client.txt, so main stops tailing it
+   wokeGameLog?: boolean
++  // woke: the icon picked in Settings > Look
++  appIcon?: string
+ }
+ 
+ export interface ShortcutAction {
+diff --git a/main/build/icons/1024x1024.png b/main/build/icons/1024x1024.png
+index 71df2aa7..c0be51a7 100644
+Binary files a/main/build/icons/1024x1024.png and b/main/build/icons/1024x1024.png differ
+diff --git a/main/build/icons/128x128.png b/main/build/icons/128x128.png
+index 306a0a07..c3e8abcb 100644
+Binary files a/main/build/icons/128x128.png and b/main/build/icons/128x128.png differ
+diff --git a/main/build/icons/16x16.png b/main/build/icons/16x16.png
+index d257ba26..642b2acd 100644
+Binary files a/main/build/icons/16x16.png and b/main/build/icons/16x16.png differ
+diff --git a/main/build/icons/24x24.png b/main/build/icons/24x24.png
+index 459bcdcd..07185b0c 100644
+Binary files a/main/build/icons/24x24.png and b/main/build/icons/24x24.png differ
+diff --git a/main/build/icons/256x256.png b/main/build/icons/256x256.png
+index 9b12a0a1..64ef3142 100644
+Binary files a/main/build/icons/256x256.png and b/main/build/icons/256x256.png differ
+diff --git a/main/build/icons/32x32.png b/main/build/icons/32x32.png
+index 87fc8c1b..8229d811 100644
+Binary files a/main/build/icons/32x32.png and b/main/build/icons/32x32.png differ
+diff --git a/main/build/icons/48x48.png b/main/build/icons/48x48.png
+index 0c3001f2..d0d2d8d4 100644
+Binary files a/main/build/icons/48x48.png and b/main/build/icons/48x48.png differ
+diff --git a/main/build/icons/512x512.png b/main/build/icons/512x512.png
+index 11cf8a5d..e9e556e5 100644
+Binary files a/main/build/icons/512x512.png and b/main/build/icons/512x512.png differ
+diff --git a/main/build/icons/64x64.png b/main/build/icons/64x64.png
+index 052efa00..5ac09a97 100644
+Binary files a/main/build/icons/64x64.png and b/main/build/icons/64x64.png differ
+diff --git a/main/build/icons/icon.icns b/main/build/icons/icon.icns
+index 1a795ee1..e5bdc98d 100644
+Binary files a/main/build/icons/icon.icns and b/main/build/icons/icon.icns differ
+diff --git a/main/build/icons/icon.ico b/main/build/icons/icon.ico
+index d60fcf9c..0075c40c 100644
+Binary files a/main/build/icons/icon.ico and b/main/build/icons/icon.ico differ
+diff --git a/main/build/script.mjs b/main/build/script.mjs
+index 1ec66253..c8def307 100644
+--- a/main/build/script.mjs
++++ b/main/build/script.mjs
+@@ -40,7 +40,6 @@ const mainContext = await esbuild.context({
+   external: ['electron', 'uiohook-napi', 'electron-overlay-window'],
+   outfile: 'dist/main.js',
+   define: {
+-    'process.env.STATIC': (isDev) ? '"../build/icons"' : '"."',
+     'process.env.VITE_DEV_SERVER_URL': (isDev) ? '"http://localhost:5173"' : 'null'
+   },
+   plugins: (isDev) ? [{
+diff --git a/main/src/AppTray.ts b/main/src/AppTray.ts
+index 0f54d3d2..b68fc4e2 100644
+--- a/main/src/AppTray.ts
++++ b/main/src/AppTray.ts
+@@ -1,6 +1,7 @@
+ import path from 'path'
+ import { app, Tray, Menu, shell, nativeImage, dialog } from 'electron'
+ import type { ServerEvents } from './server'
++import { appIconFile } from './woke/app-icon'
+ 
+ export class AppTray {
+   public overlayKey = 'Shift + Space'
+@@ -9,22 +10,21 @@ export class AppTray {
+   // woke: opens the first-run setup window.
+   onRunSetup?: () => void
+ 
+-  constructor (server: ServerEvents) {
+-    let trayImage = nativeImage.createFromPath(
+-      path.join(
+-        __dirname,
+-        process.env.STATIC!,
+-        process.platform === "win32" ? "icon.ico" : "icon.png"
+-      )
+-    )
++  private loadImage () {
++    const image = nativeImage.createFromPath(appIconFile(process.platform === 'win32' ? 'ico' : 'png'))
++    // Mac image size needs to be smaller, or else it looks huge. Size
++    // guideline is from https://iconhandbook.co.uk/reference/chart/osx/
++    return process.platform === 'darwin' ? image.resize({ width: 22, height: 22 }) : image
++  }
+ 
+-    if (process.platform === 'darwin') {
+-      // Mac image size needs to be smaller, or else it looks huge. Size
+-      // guideline is from https://iconhandbook.co.uk/reference/chart/osx/
+-      trayImage = trayImage.resize({ width: 22, height: 22 })
+-    }
++  // woke: the player picked another icon.
++  refreshIcon () {
++    const image = this.loadImage()
++    if (!image.isEmpty()) this.tray.setImage(image)
++  }
+ 
+-    this.tray = new Tray(trayImage)
++  constructor (server: ServerEvents) {
++    this.tray = new Tray(this.loadImage())
+     // woke: makes a dev copy easy to tell apart from the packaged build.
+     this.tray.setToolTip(process.env.VITE_DEV_SERVER_URL
+       ? `Woke PoE Trade DEV (${process.env.WOKE_DEV_BRANCH ?? 'no launcher'})`.slice(0, 127)
+diff --git a/main/src/main.ts b/main/src/main.ts
+index 82e1cdd3..0765cdda 100644
+--- a/main/src/main.ts
++++ b/main/src/main.ts
+@@ -20,7 +20,8 @@ import { initWoke, initWokeOverlay, registerWokeHandler } from './woke'
+ import { gameFilterSetting } from './woke/neversink'
+ import { perfMark } from './woke/perf'
+ import { startCrashReporting, attachCrashLogger } from './woke/crash-reports'
+-import { initSetup, maybeOpenSetup, openSetupWindow } from './woke/setup'
++import { initSetup, maybeOpenSetup, openSetupWindow, refreshSetupIcon, savedAppIcon } from './woke/setup'
++import { setAppIcon } from './woke/app-icon'
+ 
+ if (!app.requestSingleInstanceLock()) {
+   app.exit()
+@@ -38,6 +39,7 @@ let tray: AppTray
+ 
+ app.on('ready', async () => {
+   perfMark('app ready')
++  setAppIcon(savedAppIcon())
+   tray = new AppTray(eventPipe)
+   const logger = new Logger(eventPipe)
+   attachCrashLogger(logger)
+@@ -67,6 +69,11 @@ app.on('ready', async () => {
+         gameConfig.readConfig(cfg.gameConfig ?? '')
+         appUpdater.checkAtStartup()
+         tray.overlayKey = cfg.overlayKey
++        if (setAppIcon(cfg.appIcon)) {
++          tray.refreshIcon()
++          overlay.refreshIcon()
++          refreshSetupIcon()
++        }
+       })
+       uIOhook.start()
+       const port = await startServer(appUpdater, logger)
+diff --git a/main/src/windowing/OverlayWindow.ts b/main/src/windowing/OverlayWindow.ts
+index cd86323e..c533996b 100644
+--- a/main/src/windowing/OverlayWindow.ts
++++ b/main/src/windowing/OverlayWindow.ts
+@@ -1,9 +1,9 @@
+-import path from 'path'
+ import { BrowserWindow, dialog, shell, Menu, WebContents } from 'electron'
+ import { OverlayController, OVERLAY_WINDOW_OPTS } from 'electron-overlay-window'
+ import type { ServerEvents } from '../server'
+ import type { Logger } from '../RemoteLogger'
+ import type { GameWindow } from './GameWindow'
++import { appIconFile } from '../woke/app-icon'
+ 
+ export class OverlayWindow {
+   public isInteractable = false
+@@ -41,7 +41,7 @@ export class OverlayWindow {
+     if (process.argv.includes('--no-overlay')) return
+ 
+     this.window = new BrowserWindow({
+-      icon: path.join(__dirname, process.env.STATIC!, 'icon.png'),
++      icon: appIconFile('png'),
+       ...OVERLAY_WINDOW_OPTS,
+       width: 800,
+       height: 600,
+@@ -163,6 +163,11 @@ export class OverlayWindow {
+     }
+   }
+ 
++  // woke: the player picked another icon.
++  refreshIcon () {
++    if (process.platform !== 'darwin') this.window?.setIcon(appIconFile('png'))
++  }
++
+   updateOpts (overlayKey: string, windowTitle: string) {
+     this.overlayKey = overlayKey
+     this.poeWindow.attach(this.window, windowTitle)
+diff --git a/main/src/woke/app-icon.ts b/main/src/woke/app-icon.ts
+new file mode 100644
+index 00000000..b0bd29b2
+--- /dev/null
++++ b/main/src/woke/app-icon.ts
+@@ -0,0 +1,33 @@
++// The app icon the player picked in Settings > Look. The list of choices lives
++// in the renderer (web/woke/ui/app-icon.ts); here an id only has to name a file.
++import fs from 'fs'
++import path from 'path'
++
++const DEFAULT_APP_ICON = 'eternal-orb'
++
++let current = DEFAULT_APP_ICON
++
++function iconDir (): string {
++  return process.env.VITE_DEV_SERVER_URL
++    ? path.join(__dirname, '../../renderer/public/images/app-icons')
++    : path.join(__dirname, 'images/app-icons')
++}
++
++// The id comes from the config file, so it can't be trusted to be a file name.
++export function resolveAppIcon (id: unknown, dir = iconDir()): string {
++  if (typeof id !== 'string' || !/^[a-z0-9-]+$/.test(id)) return DEFAULT_APP_ICON
++  const known = fs.existsSync(path.join(dir, `${id}.png`)) && fs.existsSync(path.join(dir, `${id}.ico`))
++  return known ? id : DEFAULT_APP_ICON
++}
++
++export function appIconFile (ext: 'png' | 'ico'): string {
++  return path.join(iconDir(), `${current}.${ext}`)
++}
++
++// True when the icon changed, so the tray and windows need redrawing.
++export function setAppIcon (id: unknown): boolean {
++  const next = resolveAppIcon(id)
++  if (next === current) return false
++  current = next
++  return true
++}
+diff --git a/main/src/woke/setup.ts b/main/src/woke/setup.ts
+index f16d1fa0..a1d8963b 100644
+--- a/main/src/woke/setup.ts
++++ b/main/src/woke/setup.ts
+@@ -5,6 +5,7 @@ import { app, BrowserWindow, dialog, shell } from 'electron'
+ import fs from 'fs'
+ import path from 'path'
+ import type { AppUpdater } from '../AppUpdater'
++import { appIconFile } from './app-icon'
+ import { appPrefs, setAppPrefs } from './app-prefs'
+ import type { AppPrefs } from './app-prefs'
+ import { findGameLogs } from './game-log-finder'
+@@ -20,6 +21,10 @@ function pageUrl () {
+   return `${base}#setup`
+ }
+ 
++export function refreshSetupIcon () {
++  if (process.platform !== 'darwin' && win && !win.isDestroyed()) win.setIcon(appIconFile('png'))
++}
++
+ export function openSetupWindow () {
+   if (win && !win.isDestroyed()) {
+     if (win.isMinimized()) win.restore()
+@@ -28,7 +33,7 @@ export function openSetupWindow () {
+   }
+   win = new BrowserWindow({
+     title: 'Woke PoE Trade · Setup',
+-    icon: path.join(__dirname, process.env.STATIC!, 'icon.png'),
++    icon: appIconFile('png'),
+     width: 820,
+     height: 600,
+     minWidth: 640,
+@@ -61,6 +66,16 @@ function configSaysSetupDone (): boolean {
+   }
+ }
+ 
++// Read before the overlay loads, so the tray opens on the saved pick.
++export function savedAppIcon (): unknown {
++  try {
++    const raw = fs.readFileSync(path.join(app.getPath('userData'), 'apt-data', 'config.json'), 'utf8')
++    return (JSON.parse(raw) as { appIcon?: unknown }).appIcon
++  } catch {
++    return undefined
++  }
++}
++
+ function canStartWithWindows () {
+   return app.isPackaged && process.platform === 'win32' && !process.env.PORTABLE_EXECUTABLE_DIR
+ }
+diff --git a/renderer/public/icon.ico b/renderer/public/icon.ico
+index d60fcf9c..0075c40c 100644
+Binary files a/renderer/public/icon.ico and b/renderer/public/icon.ico differ
+diff --git a/renderer/public/icon.png b/renderer/public/icon.png
+index d906f627..64ef3142 100644
+Binary files a/renderer/public/icon.png and b/renderer/public/icon.png differ
+diff --git a/renderer/public/images/TransferOrb.png b/renderer/public/images/TransferOrb.png
+deleted file mode 100644
+index 3601d998..00000000
+Binary files a/renderer/public/images/TransferOrb.png and /dev/null differ
+diff --git a/renderer/public/images/app-icons/daybreak.ico b/renderer/public/images/app-icons/daybreak.ico
+new file mode 100644
+index 00000000..6485102f
+Binary files /dev/null and b/renderer/public/images/app-icons/daybreak.ico differ
+diff --git a/renderer/public/images/app-icons/daybreak.png b/renderer/public/images/app-icons/daybreak.png
+new file mode 100644
+index 00000000..6dc457da
+Binary files /dev/null and b/renderer/public/images/app-icons/daybreak.png differ
+diff --git a/renderer/public/images/app-icons/divine-orb.ico b/renderer/public/images/app-icons/divine-orb.ico
+new file mode 100644
+index 00000000..56cb0a8e
+Binary files /dev/null and b/renderer/public/images/app-icons/divine-orb.ico differ
+diff --git a/renderer/public/images/app-icons/divine-orb.png b/renderer/public/images/app-icons/divine-orb.png
+new file mode 100644
+index 00000000..4609e098
+Binary files /dev/null and b/renderer/public/images/app-icons/divine-orb.png differ
+diff --git a/renderer/public/images/app-icons/eternal-orb.ico b/renderer/public/images/app-icons/eternal-orb.ico
+new file mode 100644
+index 00000000..0075c40c
+Binary files /dev/null and b/renderer/public/images/app-icons/eternal-orb.ico differ
+diff --git a/renderer/public/images/app-icons/eternal-orb.png b/renderer/public/images/app-icons/eternal-orb.png
+new file mode 100644
+index 00000000..c3e8abcb
+Binary files /dev/null and b/renderer/public/images/app-icons/eternal-orb.png differ
+diff --git a/renderer/public/images/app-icons/forged-w.ico b/renderer/public/images/app-icons/forged-w.ico
+new file mode 100644
+index 00000000..68a10901
+Binary files /dev/null and b/renderer/public/images/app-icons/forged-w.ico differ
+diff --git a/renderer/public/images/app-icons/forged-w.png b/renderer/public/images/app-icons/forged-w.png
+new file mode 100644
+index 00000000..95f7a23f
+Binary files /dev/null and b/renderer/public/images/app-icons/forged-w.png differ
+diff --git a/renderer/public/images/app-icons/fracturing-orb.ico b/renderer/public/images/app-icons/fracturing-orb.ico
+new file mode 100644
+index 00000000..cf77cc46
+Binary files /dev/null and b/renderer/public/images/app-icons/fracturing-orb.ico differ
+diff --git a/renderer/public/images/app-icons/fracturing-orb.png b/renderer/public/images/app-icons/fracturing-orb.png
+new file mode 100644
+index 00000000..5e3624e6
+Binary files /dev/null and b/renderer/public/images/app-icons/fracturing-orb.png differ
+diff --git a/renderer/public/images/app-icons/goldrim.ico b/renderer/public/images/app-icons/goldrim.ico
+new file mode 100644
+index 00000000..523f8422
+Binary files /dev/null and b/renderer/public/images/app-icons/goldrim.ico differ
+diff --git a/renderer/public/images/app-icons/goldrim.png b/renderer/public/images/app-icons/goldrim.png
+new file mode 100644
+index 00000000..4df94122
+Binary files /dev/null and b/renderer/public/images/app-icons/goldrim.png differ
+diff --git a/renderer/public/images/app-icons/lantern.ico b/renderer/public/images/app-icons/lantern.ico
+new file mode 100644
+index 00000000..d7f3900d
+Binary files /dev/null and b/renderer/public/images/app-icons/lantern.ico differ
+diff --git a/renderer/public/images/app-icons/lantern.png b/renderer/public/images/app-icons/lantern.png
+new file mode 100644
+index 00000000..fcbea673
+Binary files /dev/null and b/renderer/public/images/app-icons/lantern.png differ
+diff --git a/renderer/public/images/app-icons/maven-witness.ico b/renderer/public/images/app-icons/maven-witness.ico
+new file mode 100644
+index 00000000..103b052b
+Binary files /dev/null and b/renderer/public/images/app-icons/maven-witness.ico differ
+diff --git a/renderer/public/images/app-icons/maven-witness.png b/renderer/public/images/app-icons/maven-witness.png
+new file mode 100644
+index 00000000..4d1fa628
+Binary files /dev/null and b/renderer/public/images/app-icons/maven-witness.png differ
+diff --git a/renderer/public/images/app-icons/offering-to-the-goddess.ico b/renderer/public/images/app-icons/offering-to-the-goddess.ico
+new file mode 100644
+index 00000000..9244d137
+Binary files /dev/null and b/renderer/public/images/app-icons/offering-to-the-goddess.ico differ
+diff --git a/renderer/public/images/app-icons/offering-to-the-goddess.png b/renderer/public/images/app-icons/offering-to-the-goddess.png
+new file mode 100644
+index 00000000..21c94711
+Binary files /dev/null and b/renderer/public/images/app-icons/offering-to-the-goddess.png differ
+diff --git a/renderer/public/images/app-icons/orb-of-conflict.ico b/renderer/public/images/app-icons/orb-of-conflict.ico
+new file mode 100644
+index 00000000..679bd555
+Binary files /dev/null and b/renderer/public/images/app-icons/orb-of-conflict.ico differ
+diff --git a/renderer/public/images/app-icons/orb-of-conflict.png b/renderer/public/images/app-icons/orb-of-conflict.png
+new file mode 100644
+index 00000000..cfaf6fdf
+Binary files /dev/null and b/renderer/public/images/app-icons/orb-of-conflict.png differ
+diff --git a/renderer/public/images/app-icons/risen.ico b/renderer/public/images/app-icons/risen.ico
+new file mode 100644
+index 00000000..c0e39753
+Binary files /dev/null and b/renderer/public/images/app-icons/risen.ico differ
+diff --git a/renderer/public/images/app-icons/risen.png b/renderer/public/images/app-icons/risen.png
+new file mode 100644
+index 00000000..580e32ab
+Binary files /dev/null and b/renderer/public/images/app-icons/risen.png differ
+diff --git a/renderer/public/images/app-icons/runic-astrolabe.ico b/renderer/public/images/app-icons/runic-astrolabe.ico
+new file mode 100644
+index 00000000..a101f22e
+Binary files /dev/null and b/renderer/public/images/app-icons/runic-astrolabe.ico differ
+diff --git a/renderer/public/images/app-icons/runic-astrolabe.png b/renderer/public/images/app-icons/runic-astrolabe.png
+new file mode 100644
+index 00000000..78733142
+Binary files /dev/null and b/renderer/public/images/app-icons/runic-astrolabe.png differ
+diff --git a/renderer/public/images/app-icons/shapers-exalted.ico b/renderer/public/images/app-icons/shapers-exalted.ico
+new file mode 100644
+index 00000000..20156597
+Binary files /dev/null and b/renderer/public/images/app-icons/shapers-exalted.ico differ
+diff --git a/renderer/public/images/app-icons/shapers-exalted.png b/renderer/public/images/app-icons/shapers-exalted.png
+new file mode 100644
+index 00000000..8678514d
+Binary files /dev/null and b/renderer/public/images/app-icons/shapers-exalted.png differ
+diff --git a/renderer/public/images/app-icons/waking-eye.ico b/renderer/public/images/app-icons/waking-eye.ico
+new file mode 100644
+index 00000000..7f4861d3
+Binary files /dev/null and b/renderer/public/images/app-icons/waking-eye.ico differ
+diff --git a/renderer/public/images/app-icons/waking-eye.png b/renderer/public/images/app-icons/waking-eye.png
+new file mode 100644
+index 00000000..edb355ff
+Binary files /dev/null and b/renderer/public/images/app-icons/waking-eye.png differ
+diff --git a/renderer/src/web/Config.ts b/renderer/src/web/Config.ts
+index aac9e53f..435f68e8 100644
+--- a/renderer/src/web/Config.ts
++++ b/renderer/src/web/Config.ts
+@@ -128,6 +128,8 @@ export interface Config {
+   fontSize: number
+   showAttachNotification: boolean
+   woke?: WokeModulesConfig
++  // woke: id from woke/ui/app-icon.ts; unset means the default.
++  appIcon?: string
+ }
+ 
+ export const defaultConfig = (): Config => ({
+@@ -598,6 +600,7 @@ export function getConfigForHost (): HostConfig {
+     logKeys: config.logKeys,
+     windowTitle: config.windowTitle,
+     language: config.language,
+-    wokeGameLog: needsGameLog(config)
++    wokeGameLog: needsGameLog(config),
++    appIcon: config.appIcon
+   }
+ }
+diff --git a/renderer/src/web/overlay/LoadingAnimation.vue b/renderer/src/web/overlay/LoadingAnimation.vue
+index 21acad86..0706f3fe 100644
+--- a/renderer/src/web/overlay/LoadingAnimation.vue
++++ b/renderer/src/web/overlay/LoadingAnimation.vue
+@@ -3,7 +3,7 @@
+     enter-active-class="animate__animated animate__fadeIn"
+     leave-active-class="animate__animated animate__backOutDown">
+     <div :class="$style.widget" v-if="show">
+-      <div :class="$style.box">
++      <div :class="$style.box" :style="{ '--mark': `url(${markUrl})` }">
+         <div class="py-2 px-4">
+           <div class="text-base">Woke PoE Trade</div>
+           <p>{{ t('app_is_ready') }}</p>
+@@ -14,14 +14,16 @@
+ </template>
+ 
+ <script setup lang="ts">
+-import { shallowRef } from 'vue'
++import { computed, shallowRef } from 'vue'
+ import { useI18n } from 'vue-i18n'
+ import { Host } from '@/web/background/IPC'
+ import { AppConfig } from '@/web/Config'
++import { appIconUrl } from '@/web/woke/ui/app-icon'
+ 
+ const { t } = useI18n()
+ 
+ const show = shallowRef(false)
++const markUrl = computed(() => appIconUrl(AppConfig().appIcon))
+ 
+ Host.onEvent('MAIN->OVERLAY::overlay-attached', () => {
+   if (!show.value && AppConfig().showAttachNotification) {
+@@ -52,7 +54,7 @@ Host.onEvent('MAIN->OVERLAY::overlay-attached', () => {
+ .box::before {
+   position: absolute;
+   content: '';
+-  background: url('/images/TransferOrb.png') no-repeat top right/contain;
++  background: var(--mark) no-repeat top right/contain;
+   right: 100%;
+   width: 100%;
+   height: 100%;
+diff --git a/renderer/src/web/settings/about.vue b/renderer/src/web/settings/about.vue
+index 8ad8cd91..cc7e8a6d 100644
+--- a/renderer/src/web/settings/about.vue
++++ b/renderer/src/web/settings/about.vue
+@@ -1,7 +1,7 @@
+ <template>
+   <div class="p-2 flex flex-col h-full items-center">
+     <div class="flex flex-col items-center p-2 mb-4">
+-      <img class="w-12 h-12" src="/images/TransferOrb.png">
++      <img class="w-12 h-12" :src="markUrl" alt="">
+       <p class="text-base">Woke PoE Trade</p>
+       <p class="">{{ t('app.version', [version]) }}</p>
+       <p class="text-gray-500">Built on <a class="border-b" href="https://github.com/SnosMe/awakened-poe-trade" target="_blank">Awakened PoE Trade</a> by SnosMe</p>
+@@ -33,6 +33,8 @@ import { useI18n } from 'vue-i18n'
+ import { Host } from '@/web/background/IPC'
+ import { DateTime } from 'luxon'
+ import { reportProblem, openCrashFolder } from '@/web/woke/app/report'
++import { AppConfig } from '@/web/Config'
++import { appIconUrl } from '@/web/woke/ui/app-icon'
+ 
+ function checkForUpdates () {
+   Host.sendEvent({
+@@ -86,6 +88,7 @@ export default defineComponent({
+       t,
+       info,
+       version: Host.version,
++      markUrl: computed(() => appIconUrl(AppConfig().appIcon)),
+       reportProblem,
+       openCrashFolder
+     }
+diff --git a/renderer/src/web/woke/settings/LookPage.vue b/renderer/src/web/woke/settings/LookPage.vue
+index 8fe7fa45..27667861 100644
+--- a/renderer/src/web/woke/settings/LookPage.vue
++++ b/renderer/src/web/woke/settings/LookPage.vue
+@@ -2,6 +2,16 @@
+   <div :class="$style.page">
+     <appearance-settings />
+ 
++    <w-setting-section title="App icon" hint="Shown in the tray and on the overlay. The exe keeps the Eternal Orb.">
++      <div :class="$style.icons">
++        <label v-for="i in APP_ICONS" :key="i.id" :class="[$style.icon, { [$style.iconPicked]: appIconId(config.appIcon) === i.id }]">
++          <input type="radio" name="woke-app-icon" :value="i.id" :checked="appIconId(config.appIcon) === i.id" class="sr-only" @change="config.appIcon = i.id">
++          <img :src="appIconUrl(i.id)" alt="" width="32" height="32">
++          <span>{{ i.label }}</span>
++        </label>
++      </div>
++    </w-setting-section>
++
+     <w-setting-section title="Text and overlay">
+       <w-setting-row label="Text size" hint="Sizes APT's windows and this one. The toolkit's panels follow Panel size above.">
+         <w-field :model-value="config.fontSize" type="number" suffix="px" :class="$style.num"
+@@ -34,6 +44,7 @@ import type { Config } from '@/web/Config'
+ import { WField, WSettingRow, WSettingSection, WToggle } from '../ui'
+ import AppearanceSettings from '../ui/AppearanceSettings.vue'
+ import DockSettings from '../dock/DockSettings.vue'
++import { APP_ICONS, appIconId, appIconUrl } from '../ui/app-icon'
+ 
+ const props = defineProps<{ config: Config }>()
+ 
+@@ -49,4 +60,14 @@ function setFontSize (v: number) {
+ <style module>
+ .page { display: flex; flex-direction: column; gap: var(--w-s5); }
+ .num { width: 5.5rem; }
++.icons { display: grid; grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr)); gap: var(--w-s2); padding: var(--w-s2) 0; }
++.icon {
++  display: flex; align-items: center; gap: var(--w-s2); padding: var(--w-s2); cursor: pointer; min-width: 0;
++  border: 1px solid var(--w-line); border-radius: var(--w-r-md); background: var(--w-panel-2);
++  font-size: var(--w-fs-md); line-height: 1.25;
++}
++.icon img { flex: none; }
++.icon:hover { border-color: var(--w-line-strong); }
++.icon:focus-within { outline: 1px solid var(--w-accent); }
++.iconPicked { border-color: var(--w-accent); box-shadow: inset 0 0 0 1px var(--w-accent); }
+ </style>
+diff --git a/renderer/src/web/woke/settings/pages.ts b/renderer/src/web/woke/settings/pages.ts
+index 15609d77..5a5281e0 100644
+--- a/renderer/src/web/woke/settings/pages.ts
++++ b/renderer/src/web/woke/settings/pages.ts
+@@ -95,7 +95,7 @@ export const PAGES: SettingsPage[] = [
+     icon: { fa: 'fas fa-paint-brush' },
+     description: 'Theme, text size, the overlay backdrop and the row of icons you see while playing.',
+     parts: [LookPage],
+-    find: ['Theme', 'Panel size', 'Font size', 'Text size', 'Overlay background', 'Restore clipboard', 'Window title', 'Overlay ready notice', 'Icon row', 'Peek', 'Dock'],
++    find: ['Theme', 'App icon', 'Tray icon', 'Panel size', 'Font size', 'Text size', 'Overlay background', 'Restore clipboard', 'Window title', 'Overlay ready notice', 'Icon row', 'Peek', 'Dock'],
+     aliases: ['Appearance', 'Icon row']
+   },
+   {
+diff --git a/renderer/src/web/woke/setup/SetupWizard.vue b/renderer/src/web/woke/setup/SetupWizard.vue
+index b68467d8..8e0f33c9 100644
+--- a/renderer/src/web/woke/setup/SetupWizard.vue
++++ b/renderer/src/web/woke/setup/SetupWizard.vue
+@@ -2,7 +2,7 @@
+   <div :class="$style.wizard">
+     <nav :class="$style.rail" aria-label="Setup steps">
+       <div :class="$style.brand">
+-        <img src="/images/TransferOrb.png" alt="" :class="$style.logo">
++        <img :src="appIconUrl(config.appIcon)" alt="" :class="$style.logo">
+         <div>
+           <div :class="$style.name">Woke PoE Trade</div>
+           <div class="w-faint">v{{ version }}</div>
+@@ -171,6 +171,7 @@ import { Host } from '@/web/background/IPC'
+ import { useLeagues } from '@/web/background/Leagues'
+ import { WButton, WKbd, WToggle } from '../ui'
+ import { hostRequest } from '../shared/host'
++import { appIconUrl } from '../ui/app-icon'
+ import { ensureWokeConfig } from '../modules'
+ import PresetBar from '../switchboard/PresetBar.vue'
+ import ModuleList from '../switchboard/ModuleList.vue'
+diff --git a/renderer/src/web/woke/tab-bar/TabBar.vue b/renderer/src/web/woke/tab-bar/TabBar.vue
+index 4f6218f6..5f91da2d 100644
+--- a/renderer/src/web/woke/tab-bar/TabBar.vue
++++ b/renderer/src/web/woke/tab-bar/TabBar.vue
+@@ -1,5 +1,7 @@
+ <template>
+   <div :class="$style.bar" class="w-surface" :style="barStyle" data-widget-drag>
++    <img :src="markUrl" alt="" draggable="false" :class="$style.mark">
++    <span :class="$style.sep" />
+     <template v-for="(tab, i) in pinnedTabs" :key="tab.wmId">
+       <span v-if="i > 0 && !tab.iconOnly && pinnedTabs[i - 1].iconOnly" :class="$style.sep" />
+       <button
+@@ -119,6 +121,7 @@ import type { WidgetManager } from '@/web/overlay/interfaces'
+ import type { Widget, Anchor } from '@/web/overlay/widgets'
+ import { registry } from '@/web/overlay/widget-registry'
+ import { AppConfig } from '@/web/Config'
++import { appIconUrl } from '../ui/app-icon'
+ import { isWidgetTypeOn } from '@/web/woke/modules'
+ import { useI18n } from 'vue-i18n'
+ import { useHotkeyHealth } from '../switchboard/hotkey-health'
+@@ -130,6 +133,7 @@ defineEmits<{ (e: 'paste', ev: Event): void }>()
+ 
+ const wm = inject<WidgetManager>('wm')!
+ const { t } = useI18n()
++const markUrl = computed(() => appIconUrl(AppConfig().appIcon))
+ 
+ interface Tab {
+   wmId: number
+@@ -408,6 +412,7 @@ function addFirstMatch () {
+   background: color-mix(in srgb, var(--w-warn) 14%, transparent);
+ }
+ .warnBtn:hover { background: color-mix(in srgb, var(--w-warn) 24%, transparent); }
++.mark { width: 20px; height: 20px; margin: 0 4px; flex: none; pointer-events: none; }
+ .sep { width: 1px; height: 20px; background: var(--w-line); margin: 0 3px; flex: none; }
+ .tab {
+   position: relative;
+diff --git a/renderer/src/web/woke/ui/app-icon.ts b/renderer/src/web/woke/ui/app-icon.ts
+new file mode 100644
+index 00000000..e102f87c
+--- /dev/null
++++ b/renderer/src/web/woke/ui/app-icon.ts
+@@ -0,0 +1,29 @@
++// The app icon the player picked in Settings > Look. The images live in
++// public/images/app-icons as <id>.png, plus <id>.ico for the Windows tray; main
++// finds them by id (main/src/woke/app-icon.ts).
++export const DEFAULT_APP_ICON = 'eternal-orb'
++
++export const APP_ICONS: Array<{ id: string, label: string }> = [
++  { id: 'eternal-orb', label: 'Eternal Orb' },
++  { id: 'orb-of-conflict', label: 'Orb of Conflict' },
++  { id: 'divine-orb', label: 'Divine Orb' },
++  { id: 'maven-witness', label: 'Maven Witness' },
++  { id: 'runic-astrolabe', label: 'Runic Astrolabe' },
++  { id: 'fracturing-orb', label: 'Fracturing Orb' },
++  { id: 'shapers-exalted', label: "Shaper's Exalted Orb" },
++  { id: 'offering-to-the-goddess', label: 'Offering to the Goddess' },
++  { id: 'goldrim', label: 'Goldrim' },
++  { id: 'forged-w', label: 'Forged W' },
++  { id: 'waking-eye', label: 'Waking Eye' },
++  { id: 'daybreak', label: 'Daybreak' },
++  { id: 'lantern', label: 'Lantern' },
++  { id: 'risen', label: 'Risen' }
++]
++
++export function appIconId (id: string | undefined): string {
++  return APP_ICONS.some(i => i.id === id) ? id! : DEFAULT_APP_ICON
++}
++
++export function appIconUrl (id: string | undefined): string {
++  return `/images/app-icons/${appIconId(id)}.png`
++}
+diff --git a/renderer/test/woke/app-icon.test.ts b/renderer/test/woke/app-icon.test.ts
+new file mode 100644
+index 00000000..b774d678
+--- /dev/null
++++ b/renderer/test/woke/app-icon.test.ts
+@@ -0,0 +1,27 @@
++import { describe, it, expect } from 'vitest'
++import fs from 'node:fs'
++import path from 'node:path'
++import { APP_ICONS, DEFAULT_APP_ICON, appIconId, appIconUrl } from '@/web/woke/ui/app-icon'
++
++const DIR = path.join(__dirname, '../../public/images/app-icons')
++
++describe('app icons', () => {
++  it('defaults to the Eternal Orb', () => {
++    expect(DEFAULT_APP_ICON).toBe('eternal-orb')
++    expect(APP_ICONS.map(i => i.id)).toContain(DEFAULT_APP_ICON)
++    expect(appIconId(undefined)).toBe('eternal-orb')
++  })
++
++  it('falls back to the default for an id it does not know', () => {
++    expect(appIconUrl('../../secrets')).toBe('/images/app-icons/eternal-orb.png')
++  })
++
++  it('keeps a chosen icon', () => {
++    expect(appIconUrl('goldrim')).toBe('/images/app-icons/goldrim.png')
++  })
++
++  it('has both image files for every choice, and no strays', () => {
++    const expected = APP_ICONS.flatMap(i => [`${i.id}.ico`, `${i.id}.png`]).sort()
++    expect(fs.readdirSync(DIR).sort()).toEqual(expected)
++  })
++})
+diff --git a/testing/e2e/app-icon.spec.ts b/testing/e2e/app-icon.spec.ts
+new file mode 100644
+index 00000000..89569149
+--- /dev/null
++++ b/testing/e2e/app-icon.spec.ts
+@@ -0,0 +1,25 @@
++// Picking an app icon in Settings > Look reaches the host (tray, windows) and
++// the overlay's own mark.
++import { test, expect } from './harness'
++
++test('Eternal Orb by default; a picked icon reaches the tab bar and the host', async ({ overlay, fakeApp, page }) => {
++  await overlay.boot({ overlayActive: true })
++  const mark = overlay.widget('menu').locator('img[src*="app-icons"]').first()
++  await expect(mark).toHaveAttribute('src', '/images/app-icons/eternal-orb.png')
++
++  await overlay.widget('menu').locator('.fa-cog').click()
++  await overlay.widget('settings').getByText('Look & icon row').first().click()
++  const picker = overlay.widget('settings').getByRole('radio', { name: 'Goldrim' })
++  await expect(overlay.widget('settings').getByRole('radio', { name: 'Eternal Orb' })).toBeChecked()
++  await overlay.snap('app icon picker')
++
++  await picker.check({ force: true })
++  await expect(mark).toHaveAttribute('src', '/images/app-icons/goldrim.png')
++  await fakeApp.waitForReceived('CLIENT->MAIN::update-host-config',
++    (cfg: { appIcon?: string }) => cfg.appIcon === 'goldrim', 10_000)
++  await overlay.snap('goldrim on the tab bar')
++
++  const broken = await page.evaluate(() => [...document.images]
++    .filter(i => i.src.includes('app-icons') && i.complete && i.naturalWidth === 0).map(i => i.src))
++  expect(broken).toEqual([])
++})
+diff --git a/testing/main/app-icon.test.ts b/testing/main/app-icon.test.ts
+new file mode 100644
+index 00000000..91a3c036
+--- /dev/null
++++ b/testing/main/app-icon.test.ts
+@@ -0,0 +1,19 @@
++// main/src/woke/app-icon.ts: an id from the config file must only ever name a
++// bundled icon.
++import { describe, it, expect } from 'vitest'
++import path from 'node:path'
++import { resolveAppIcon } from '../../main/src/woke/app-icon'
++
++const DIR = path.join(__dirname, '../../renderer/public/images/app-icons')
++
++describe('resolveAppIcon', () => {
++  it('keeps a bundled icon', () => {
++    expect(resolveAppIcon('goldrim', DIR)).toBe('goldrim')
++  })
++
++  it.each([
++    [undefined], [null], [7], [''], ['nope'], ['../../../package'], ['..\\evil'], ['Goldrim'], ['goldrim.png']
++  ])('falls back to the default for %j', (id) => {
++    expect(resolveAppIcon(id, DIR)).toBe('eternal-orb')
++  })
++})
