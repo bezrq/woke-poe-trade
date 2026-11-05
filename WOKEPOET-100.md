@@ -1,7 +1,7 @@
 ---
 id: WOKEPOET-100
 title: 'Price check: show a column per ticked stat in the results list'
-status: Grooming
+status: In Progress
 priority: None
 effort: None
 assignee: unassigned
@@ -49,6 +49,19 @@ history:
     comment: >-
       Guy picked B, with higher-than-yours in red and lower in green (flipped
       where lower is better).
+  - type: comment
+    user: Agent
+    comment: >-
+      Guy picked option B: higher than yours in red, lower in green, flipped
+      where lower is better. Working in E:\Git\woke-stat-columns on
+      claude/stat-columns.
+    date: '2026-11-05T12:38:28.361Z'
+    id: c-2026-11-05t12-38-28-361z
+  - type: status_change
+    from: Grooming
+    to: In Progress
+    user: Agent
+    date: '2026-11-05T12:38:28.361Z'
 swimlane: null
 needsAction: null
 ---
