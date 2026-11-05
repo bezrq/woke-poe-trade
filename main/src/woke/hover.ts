@@ -1,9 +1,10 @@
 // Hover zones for woke widgets. While the game has focus the overlay window is
 // click-through, so the renderer never sees mouse hover. Widgets register
 // screen rects here; we watch the global mouse and tell them when it enters
-// or leaves. A zone marked `activate` also makes the overlay interactive after
-// the mouse rests on it briefly, and hands focus back to the game when the
-// mouse leaves, so its buttons can be clicked without pressing the overlay key.
+// or leaves. A zone marked `activate` also takes the mouse while it's over the
+// zone, so clicks land there instead of in the game. The game keeps the keyboard
+// until such a click, and gets it back when the mouse leaves. None of this opens
+// the overlay: see OverlayWindow.assertCardActive.
 import { screen } from 'electron'
 import type { Rectangle } from 'electron'
 import { uIOhook } from 'uiohook-napi'
@@ -11,7 +12,6 @@ import type { UiohookMouseEvent } from 'uiohook-napi'
 import type { ServerEvents } from '../server'
 import type { OverlayWindow } from '../windowing/OverlayWindow'
 
-const ACTIVATE_DWELL_MS = 120
 const LEFT_BUTTON = 1
 
 interface Zone {
@@ -27,13 +27,18 @@ export class WokeHoverTracker {
   // handler (hundreds of calls a second with a gaming mouse) allocates nothing.
   private flat: Zone[] = []
   private listening = false
-  private dwellTimer: ReturnType<typeof setTimeout> | null = null
-  private activatedByUs = false
+  // Holding a button means moving or casting: don't catch the mouse then.
+  private heldButtons = new Set<unknown>()
+  private mouseX: number | null = null
+  private mouseY = 0
 
   constructor (
     private server: ServerEvents,
     private overlay: OverlayWindow
   ) {
+    this.overlay.onGameActive = () => {
+      if (this.listening && this.mouseX != null) this.update(this.mouseX, this.mouseY)
+    }
     this.server.onEventAnyClient('OVERLAY->MAIN::woke-hover-zones', ({ owner, zones }) => {
       const prev = this.zones.get(owner) ?? []
       const converted: Zone[] = zones.map(z => ({
@@ -49,6 +54,8 @@ export class WokeHoverTracker {
       else this.zones.delete(owner)
       this.flat = [...this.zones.values()].flat()
       this.updateListening()
+      // A zone can appear or vanish under a mouse that isn't moving.
+      if (this.listening && this.mouseX != null) this.update(this.mouseX, this.mouseY)
     })
   }
 
@@ -57,22 +64,26 @@ export class WokeHoverTracker {
     if (want && !this.listening) {
       uIOhook.addListener('mousemove', this.handleMouseMove)
       uIOhook.addListener('mousedown', this.handleMouseDown)
+      uIOhook.addListener('mouseup', this.handleMouseUp)
       this.listening = true
     } else if (!want && this.listening) {
       uIOhook.removeListener('mousemove', this.handleMouseMove)
       uIOhook.removeListener('mousedown', this.handleMouseDown)
+      uIOhook.removeListener('mouseup', this.handleMouseUp)
       this.listening = false
-      this.leaveActivateZone()
+      this.heldButtons.clear()
+      this.mouseX = null
+      this.overlay.giveMouse()
+      this.overlay.releaseCard()
     }
   }
 
-  private readonly handleMouseMove = (e: UiohookMouseEvent) => {
-    // Something handed focus back to the game (a trade reply typed into
-    // chat): resting on the zone again makes it clickable again.
-    if (this.activatedByUs && !this.overlay.isInteractable) this.activatedByUs = false
+  private update (x: number, y: number) {
+    this.mouseX = x
+    this.mouseY = y
     let inActivateZone = false
     for (const zone of this.flat) {
-      const inside = contains(zone.rect, e.x, e.y)
+      const inside = contains(zone.rect, x, y)
       if (inside !== zone.inside) {
         zone.inside = inside
         this.emit(zone.id, inside)
@@ -80,40 +91,36 @@ export class WokeHoverTracker {
       if (inside && zone.activate) inActivateZone = true
     }
 
-    if (inActivateZone) this.enterActivateZone()
-    else this.leaveActivateZone()
+    if (!inActivateZone) {
+      this.overlay.giveMouse()
+      this.overlay.releaseCard()
+    } else if (this.heldButtons.size === 0) {
+      this.overlay.takeMouse()
+    }
+    return inActivateZone
+  }
+
+  private readonly handleMouseMove = (e: UiohookMouseEvent) => {
+    this.update(e.x, e.y)
+  }
+
+  private readonly handleMouseUp = (e: UiohookMouseEvent) => {
+    this.heldButtons.delete(e.button)
+    this.update(e.x, e.y)
   }
 
   private readonly handleMouseDown = (e: UiohookMouseEvent) => {
-    if (e.button !== LEFT_BUTTON) return
+    // Only if the mouse was already taken did this click reach the overlay.
+    const reachedOverlay = this.overlay.isMouseTaken
     // Bring `inside` up to date first, so a click also counts as entering.
-    this.handleMouseMove(e)
+    const inActivateZone = this.update(e.x, e.y)
+    this.heldButtons.add(e.button)
+    if (inActivateZone && reachedOverlay) this.overlay.assertCardActive()
+    if (e.button !== LEFT_BUTTON) return
     for (const zone of this.flat) {
       if (zone.inside) {
         this.server.sendEventTo('broadcast', { name: 'MAIN->OVERLAY::woke-hover-click', payload: { id: zone.id } })
       }
-    }
-  }
-
-  private enterActivateZone () {
-    if (this.dwellTimer || this.activatedByUs || this.overlay.isInteractable) return
-    this.dwellTimer = setTimeout(() => {
-      this.dwellTimer = null
-      if (!this.overlay.isInteractable && this.flat.some(z => z.inside && z.activate)) {
-        this.overlay.assertOverlayActive()
-        this.activatedByUs = true
-      }
-    }, ACTIVATE_DWELL_MS)
-  }
-
-  private leaveActivateZone () {
-    if (this.dwellTimer) {
-      clearTimeout(this.dwellTimer)
-      this.dwellTimer = null
-    }
-    if (this.activatedByUs) {
-      this.activatedByUs = false
-      if (this.overlay.isInteractable) this.overlay.assertGameActive()
     }
   }
 

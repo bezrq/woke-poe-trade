@@ -32,7 +32,6 @@ export interface DockItemProps {
   cardWidth?: string
   // The card has buttons: resting on it makes the overlay clickable (and
   // hands focus back to the game when the mouse leaves).
-  interactive?: boolean
 }
 
 export interface DockEntry {
