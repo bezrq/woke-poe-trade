@@ -38,6 +38,16 @@ export const server = createServer((req, res) => {
 })
 const websocketServer = new WebSocketServer({ noServer: true })
 let lastActiveClient: WebSocket | undefined
+let configStore: ConfigStore | undefined
+
+// woke: resolves once every save asked for so far is on disk.
+export async function configFlushed () {
+  await configStore?.flushed()
+}
+
+export function startConfigOver () {
+  configStore?.startOver()
+}
 
 addFileUploadRoutes(httpRoutes)
 
@@ -104,7 +114,8 @@ export async function startServer (
   appUpdater: AppUpdater,
   logger: Logger
 ): Promise<number> {
-  const configStore = new ConfigStore(eventPipe)
+  const store = new ConfigStore(eventPipe, logger)
+  configStore = store
 
   websocketServer.on('connection', (socket, req) => {
     // woke: the setup window is never where item checks should go.
@@ -146,7 +157,8 @@ export async function startServer (
       const resBody: HostState = {
         version: app.getVersion(),
         updater: appUpdater.info,
-        contents: await configStore.load()
+        contents: await store.load(),
+        configNotice: store.notice
       }
       res.end(JSON.stringify(resBody))
     }
