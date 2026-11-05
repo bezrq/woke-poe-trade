@@ -4,7 +4,7 @@
       <div :class="$style.main">
         <template v-if="!insight.range">
           <div :class="$style.eyebrow">
-            <span :class="$style.badge">{{ loading ? '…' : (headline ? 'NO LISTINGS' : 'NO DATA') }}</span>
+            <span :class="$style.badge">{{ loading ? '…' : blankSearch ? 'NO MODS' : (headline ? 'NO LISTINGS' : 'NO DATA') }}</span>
             <span>{{ loading ? 'Reading listings…' : (headline ? 'Other sources say' : '') }}</span>
           </div>
           <div v-if="!loading && headline" :class="$style.value" :title="blendTitle">
@@ -111,6 +111,10 @@ const props = defineProps<{
   /** Identifies this search in the price log, or null before it runs. */
   logKey: string | null
   league: string
+  /** A rare searched with no mods: any rare would match, so there's no price to give. */
+  blankSearch?: boolean
+  /** A rare searched without one of its top mods: the price may still be right, "worthless" isn't. */
+  skipsTopMods?: boolean
 }>()
 
 const LOW_VALUE = 3
@@ -130,7 +134,7 @@ const smart = useSmartPrice(toRef(props, 'item'), toRef(props, 'insight'), toRef
 onUnmounted(smart.stop)
 const { ninjaInfo, blend, headline, ranges, series, leagueLoading } = smart
 
-const lowValue = computed(() => (headline.value?.chaos ?? props.insight.range?.fair ?? 0) < LOW_VALUE)
+const lowValue = computed(() => !props.skipsTopMods && (headline.value?.chaos ?? props.insight.range?.fair ?? 0) < LOW_VALUE)
 
 const railInput = computed(() => ({
   low: props.insight.range?.low ?? 0,
@@ -191,6 +195,7 @@ const rangeUnit = computed(() => {
 })
 
 const emptyText = computed(() => {
+  if (props.blankSearch) return 'No mods are ticked, so these listings can\'t price this rare. Tick the mods that matter, then search.'
   if (props.total === 0) return 'Nobody is selling this with these filters'
   if (props.insight.dropped.size) return 'All listings looked unreliable'
   return 'No listings yet'

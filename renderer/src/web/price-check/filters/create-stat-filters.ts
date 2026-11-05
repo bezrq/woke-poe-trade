@@ -497,6 +497,8 @@ function finalFilterTweaks (ctx: FiltersCreationContext) {
     }
   }
 
+  tickTopTierMods(ctx.filters, item)
+
   const basePercentile = ctx.filters.find(fitler => fitler.tradeId[0] === 'item.base_percentile')
   if (basePercentile && item.rarity === ItemRarity.Unique) {
     const hasVisibleArmourProp = ctx.filters.some(filter =>
@@ -514,6 +516,47 @@ function finalFilterTweaks (ctx: FiltersCreationContext) {
       enableAllFilters(ctx.filters)
     }
   }
+}
+
+// woke: a rare's best mods are what sets its price, so they start ticked.
+const MAX_TICKED_ON_RARE = 4
+
+const CLUSTER_NOTABLE = '1 Added Passive Skill is '
+
+function isTopTierSource (filter: StatFilter, source: StatFilter['sources'][number]) {
+  const { type, tier } = source.modifier.info
+  if (!(type === ModifierType.Explicit || type === ModifierType.Fractured) || tier == null || tier > 2) return false
+  // A hybrid's tier is about its main stat, not the one along for the ride.
+  const { stats } = source.modifier
+  if (stats.length > 1 && stats[0].stat.ref !== source.stat.stat.ref) return false
+  // Strength in a life total says nothing about the life.
+  return !(/Life|Mana/.test(filter.statRef) && /Strength|Intelligence|Attributes/.test(source.stat.stat.ref))
+}
+
+export function isTopTierFilter (filter: StatFilter, item: ParsedItem): boolean {
+  if (filter.tag === FilterTag.Property) return false
+  // A cluster jewel's worth is in its notables; its other rolls are filler.
+  if (item.category === ItemCategory.ClusterJewel) return filter.statRef.startsWith(CLUSTER_NOTABLE)
+  return filter.sources.some(source => isTopTierSource(filter, source))
+}
+
+function bestTier (filter: StatFilter): number {
+  return Math.min(9, ...filter.sources.filter(source => isTopTierSource(filter, source)).map(s => s.modifier.info.tier!))
+}
+
+function tickTopTierMods (filters: StatFilter[], item: ParsedItem) {
+  if (item.rarity !== ItemRarity.Rare || item.isVeiled) return
+
+  filters
+    .filter(f => !f.hidden && isTopTierFilter(f, item))
+    .sort((a, b) => (bestTier(a) - bestTier(b)) || ((b.roll?.goodness ?? 1) - (a.roll?.goodness ?? 1)))
+    .slice(0, MAX_TICKED_ON_RARE)
+    .forEach(f => { f.disabled = false })
+
+  // Default totals give way to top mods. Properties like DPS don't count.
+  const ticked = filters.filter(f => !f.disabled && !f.hidden && f.tag !== FilterTag.Property)
+  const extra = ticked.filter(f => f.tag === FilterTag.Pseudo && !isTopTierFilter(f, item))
+  extra.slice(0, Math.max(ticked.length - MAX_TICKED_ON_RARE, 0)).forEach(f => { f.disabled = true })
 }
 
 function applyClusterJewelRules (filters: StatFilter[], exact: boolean) {
