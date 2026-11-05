@@ -46,6 +46,7 @@
 import { computed, shallowRef } from 'vue'
 import type { Config } from '@/web/Config'
 import { WChip, WEmpty, WField, WHotkeyCell, WSegmented, WSettingRow, WSettingSection, WToggle, normalizeKey, useHotkeyContext } from '../ui'
+import { poeBindNote } from '../ui/hotkey-context'
 import { fieldKey, hotkeyFields } from './hotkey-fields'
 import type { HotkeyField } from './hotkey-fields'
 
@@ -69,7 +70,9 @@ function problemOf (f: HotkeyField): string | null {
   }
   if (ctx.failed.value.has(norm)) return 'Another program holds this key'
   const others = uses.filter(l => l !== f.label)
-  return uses.length > 1 ? `Same key as ${others.join(', ') || 'another action'}` : null
+  if (uses.length > 1) return `Same key as ${others.join(', ') || 'another action'}`
+  const action = ctx.poeBinds.value.get(norm)
+  return action ? poeBindNote(action) : null
 }
 
 const problemCount = computed(() => new Set(fields.value.filter(f => !f.off && problemOf(f)).map(f => normalizeKey(fieldKey(f)!))).size)

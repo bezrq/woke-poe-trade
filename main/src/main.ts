@@ -12,7 +12,7 @@ import { OverlayWindow } from './windowing/OverlayWindow'
 import { GameConfig } from './host-files/GameConfig'
 import { Shortcuts } from './shortcuts/Shortcuts'
 import { AppUpdater } from './AppUpdater'
-import { AppTray } from './AppTray'
+import { AppTray, DEFAULT_OVERLAY_KEY } from './AppTray'
 import { OverlayVisibility } from './windowing/OverlayVisibility'
 import { GameLogWatcher } from './host-files/GameLogWatcher'
 import { HttpProxy } from './proxy'
@@ -55,6 +55,22 @@ app.on('ready', async () => {
   const appUpdater = new AppUpdater(eventPipe, logger)
   const _httpProxy = new HttpProxy(httpRoutes, logger)
   initWoke(eventPipe, logger, poeWindow, gameLogWatcher)
+  registerWokeHandler('game-binds', async () => gameConfig.binds)
+  // woke: what the tray says, and the one thing a player has to change themselves.
+  let warnedFullscreen = false
+  poeWindow.onAttach((hasAccess) => {
+    appTray.setStatus(hasAccess === false ? 'needs-admin' : 'attached')
+    gameConfig.refresh().then(() => {
+      if (!gameConfig.isExclusiveFullscreen || warnedFullscreen) return
+      warnedFullscreen = true
+      appTray.notify('The overlay can\'t show over this game', 'Path of Exile is in Fullscreen. Switch to Windowed Fullscreen in its Options, under Graphics.')
+    }).catch(() => {})
+  })
+  poeWindow.onDetach(() => { appTray.setStatus('waiting') })
+  appTray.onResetOverlayKey = () => {
+    eventPipe.sendEventTo('broadcast', { name: 'MAIN->CLIENT::woke-event', payload: { topic: 'reset-overlay-key', data: { key: DEFAULT_OVERLAY_KEY } } })
+    appTray.notify('Overlay key reset', `Press ${DEFAULT_OVERLAY_KEY} in game to open the overlay.`)
+  }
   registerWokeHandler('game-filter', async () => await gameFilterSetting(gameConfig.actualPath))
   initSetup(appUpdater)
   appTray.onRunSetup = openSetupWindow

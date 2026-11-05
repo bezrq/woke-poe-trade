@@ -3,9 +3,40 @@ import { app, Tray, Menu, shell, nativeImage, dialog } from 'electron'
 import type { ServerEvents } from './server'
 import { appIconFile } from './woke/app-icon'
 
+// woke: the overlay can't be seen until it's attached, so the tray says.
+export type TrayStatus = 'waiting' | 'attached' | 'needs-admin'
+export const DEFAULT_OVERLAY_KEY = 'Shift + Space'
+
 export class AppTray {
-  public overlayKey = 'Shift + Space'
+  private _overlayKey = DEFAULT_OVERLAY_KEY
+  private status: TrayStatus = 'waiting'
+  // woke: a way back when the overlay key doesn't work.
+  onResetOverlayKey?: () => void
   private tray: Tray
+
+  get overlayKey () { return this._overlayKey }
+  set overlayKey (key: string) {
+    if (key === this._overlayKey) return
+    this._overlayKey = key
+    this.rebuildMenu()
+  }
+
+  setStatus (status: TrayStatus) {
+    if (status === this.status) return
+    this.status = status
+    this.rebuildMenu()
+  }
+
+  private statusText () {
+    if (this.status === 'attached') return `Attached: press ${this._overlayKey} in game`
+    if (this.status === 'needs-admin') return 'PoE runs as admin: restart this app as admin'
+    return 'Waiting for Path of Exile'
+  }
+
+  notify (title: string, content: string) {
+    if (process.platform !== 'win32') return
+    this.tray.displayBalloon({ iconType: 'info', title, content })
+  }
   serverPort = 0
   // woke: opens the first-run setup window.
   onRunSetup?: () => void
@@ -25,10 +56,7 @@ export class AppTray {
 
   constructor (server: ServerEvents) {
     this.tray = new Tray(this.loadImage())
-    // woke: makes a dev copy easy to tell apart from the packaged build.
-    this.tray.setToolTip(process.env.VITE_DEV_SERVER_URL
-      ? `Woke PoE Trade DEV (${process.env.WOKE_DEV_BRANCH ?? 'no launcher'})`.slice(0, 127)
-      : `Woke PoE Trade v${app.getVersion()}`)
+    // woke: its tooltip also makes a dev copy easy to tell apart.
     this.rebuildMenu()
 
     server.onEventAnyClient('CLIENT->MAIN::user-action', ({ action }) => {
@@ -40,16 +68,16 @@ export class AppTray {
 
   // woke: a second launch quits at once; say why, or it just looks broken.
   notifyAlreadyRunning () {
-    if (process.platform !== 'win32') return
-    this.tray.displayBalloon({
-      iconType: 'info',
-      title: 'Woke PoE Trade is already running',
-      content: `It's in the tray. Press ${this.overlayKey} in game to open it.`
-    })
+    this.notify('Woke PoE Trade is already running', `It's in the tray. Press ${this.overlayKey} in game to open it.`)
   }
 
   rebuildMenu () {
+    this.tray.setToolTip(process.env.VITE_DEV_SERVER_URL
+      ? `Woke PoE Trade DEV (${process.env.WOKE_DEV_BRANCH ?? 'no launcher'})`.slice(0, 127)
+      : `Woke PoE Trade v${app.getVersion()}: ${this.statusText()}`.slice(0, 127))
     const contextMenu = Menu.buildFromTemplate([
+      { label: this.statusText(), enabled: false },
+      { type: 'separator' },
       {
         label: 'Settings/League',
         click: () => {
@@ -64,6 +92,10 @@ export class AppTray {
         click: () => {
           shell.openExternal(`http://localhost:${this.serverPort}`)
         }
+      },
+      {
+        label: `Reset overlay key to ${DEFAULT_OVERLAY_KEY}`,
+        click: () => { this.onResetOverlayKey?.() }
       },
       {
         label: 'Run setup again',

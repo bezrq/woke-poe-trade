@@ -303,10 +303,10 @@ function addWidget (wmType: string) {
 // ---------- hotkeys: clashes for every key cell on every page ----------
 const health = useHotkeyHealth()
 const uses = computed(() => clone.value ? hotkeyUses(hotkeyFields(clone.value)) : new Map<string, string[]>())
-provideHotkeyContext({ uses, failed: health.failedNorm })
+provideHotkeyContext({ uses, failed: health.failedNorm, poeBinds: health.poeBinds })
 const hotkeyProblems = computed(() => {
   let n = 0
-  for (const [norm, labels] of uses.value) if (labels.length > 1 || health.failedNorm.value.has(norm)) n++
+  for (const [norm, labels] of uses.value) if (labels.length > 1 || health.failedNorm.value.has(norm) || health.poeBinds.value.has(norm)) n++
   return n
 })
 
