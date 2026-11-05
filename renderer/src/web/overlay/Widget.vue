@@ -22,7 +22,7 @@
 import { defineComponent, PropType, computed, inject, provide, ref, shallowRef } from 'vue'
 import { Widget, Anchor, WidgetManager } from './interfaces'
 import { useI18n } from 'vue-i18n'
-import { snapMove, clearGuides, clampDrag, releaseWebviewsForDrag } from '@/web/woke/ui/snap'
+import { snapMove, clearGuides, clampDrag, releaseWebviewsForDrag, swallowNextClick } from '@/web/woke/ui/snap'
 import { openMenu, toast } from '@/web/woke/ui/layer'
 import type { MenuEntry } from '@/web/woke/ui/layer'
 import { minimizeAnchor, restoreAnchor } from '@/web/woke/ui/window-anchor'
@@ -31,13 +31,6 @@ import type { MinimizedState } from '@/web/woke/ui/window-anchor'
 const DRAG_START_PX = 4
 
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
-
-// The click that ends a drag shouldn't also press whatever is under the cursor.
-function swallowNextClick () {
-  const swallow = (e: Event) => { e.stopPropagation(); e.preventDefault() }
-  document.addEventListener('click', swallow, { capture: true, once: true })
-  setTimeout(() => document.removeEventListener('click', swallow, { capture: true }))
-}
 
 export default defineComponent({
   props: {
@@ -123,10 +116,9 @@ export default defineComponent({
     }
 
     // In title-bar order. Panels draw these as buttons; the right-click menu
-    // lists the same ones.
+    // lists the same ones, plus the options too rare to earn a button.
     const windowActions = computed(() => [
       ...(!props.readonly ? [{ id: 'edit', label: capitalize(t('widget.edit')), icon: 'fas fa-cog', active: isEditing.value, action: toggleEdit }] : []),
-      ...(props.moveHandles !== 'none' ? [{ id: 'move', label: capitalize(t('widget.move')), icon: 'fas fa-arrows-alt', active: isMoving.value, action: toggleMove }] : []),
       ...(props.removable ? [{ id: 'delete', label: capitalize(t('widget.delete')), icon: 'fas fa-trash', danger: true, action: removeWidget }] : []),
       ...(canMinimize.value
         ? [{ id: 'minimize', label: minimized.value ? 'Restore' : 'Minimize', icon: minimized.value ? 'fas fa-window-maximize' : 'fas fa-minus', action: toggleMinimize }]
@@ -149,7 +141,11 @@ export default defineComponent({
         ...entry('minimize'),
         ...entry('hide'),
         ...entry('edit'),
-        ...entry('move'),
+        // Dragging moves a widget; these handles only change the corner it
+        // stays anchored to, which sets the way it grows.
+        ...(props.moveHandles !== 'none'
+          ? [{ label: isMoving.value ? 'Done choosing anchor' : 'Choose anchor corner', icon: 'fas fa-anchor', action: toggleMove }]
+          : []),
         ...(sizes && Object.keys(sizes).length
           ? [{ label: 'Reset size', icon: 'fas fa-undo', action: () => { woke().wokeSizes = {} } }]
           : []),
