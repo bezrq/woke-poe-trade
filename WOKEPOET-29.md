@@ -40,6 +40,14 @@ history:
     comment: >-
       Which layout (A, B or C) and which colour scheme? Mocks:
       https://claude.ai/artifact/GDKAgY25KK9rnDFjHhwV7v
+  - type: activity
+    user: Agent
+    date: '2026-11-05T05:45:02.916Z'
+    comment: >-
+      Guy picked layout A. Each case is mocked in A (Cases board plus 14
+      windows). Still waiting on Require Input: Guy's sign-off or changes before
+      building.
+    id: a-2026-11-05t05-45-02-916z
 swimlane: require-input
 needsAction: null
 ---
