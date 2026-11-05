@@ -96,6 +96,17 @@ jobs:
     - name: Performance checks
       run: npx playwright test -c playwright.perf.config.ts
       working-directory: ./testing
+    # The real Electron app (not the fake host): overlay page loads, <webview>
+    # works, process count and memory. See testing/electron/smoke.mjs.
+    - name: Get Electron
+      run: node node_modules/electron/install.js
+      working-directory: ./main
+    - name: Build main
+      run: node build/script.mjs --prod
+      working-directory: ./main
+    - name: Real Electron smoke test
+      run: xvfb-run -a -s "-screen 0 1920x1080x24" npm run test:electron
+      working-directory: ./testing
     - name: Upload report (screenshots of every scenario)
       if: ${{ !cancelled() }}
       uses: actions/upload-artifact@v7

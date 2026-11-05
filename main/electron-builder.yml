@@ -9,6 +9,32 @@ publish:
     # Releases are created as drafts; players only see them once published.
     releaseType: "draft"
 npmRebuild: false
+# Chromium's own UI strings (context menus, number and date formats) ship as
+# one .pak per language: 55 of them, ~45 MB unpacked. Keep the languages PoE
+# players mostly use; anything else falls back to English formats. The app's
+# own languages (en, ru, ko, cmn-Hant) don't depend on these.
+electronLanguages:
+  - en-US
+  - en-GB
+  - de
+  - fr
+  - es
+  - es-419
+  - pt-BR
+  - pt-PT
+  - it
+  - nl
+  - pl
+  - cs
+  - sv
+  - tr
+  - ru
+  - uk
+  - ko
+  - ja
+  - zh-CN
+  - zh-TW
+  - th
 toolsets:
   appimage: 1.0.3
 artifactBuildCompleted: "build/apprun-patch.test.mjs"
