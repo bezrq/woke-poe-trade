@@ -4,6 +4,15 @@
 
 import type { PobItem, PobRarity } from '../pob-builds/widget'
 
+// The trade API sends explicitMods as objects that name their own kind: a
+// fractured mod is in explicitMods with domain "fractured". Other lists can
+// still hold plain text.
+export type ListingMod = string | {
+  description?: string
+  domain?: string
+  flags?: { fractured?: boolean, crafted?: boolean }
+}
+
 export interface ListingItem {
   name?: string
   typeLine?: string
@@ -13,16 +22,31 @@ export interface ListingItem {
   corrupted?: boolean
   mirrored?: boolean
   influences?: Record<string, boolean>
-  implicitMods?: string[]
-  enchantMods?: string[]
-  fracturedMods?: string[]
-  explicitMods?: string[]
-  craftedMods?: string[]
+  implicitMods?: ListingMod[]
+  enchantMods?: ListingMod[]
+  utilityMods?: ListingMod[]
+  fracturedMods?: ListingMod[]
+  explicitMods?: ListingMod[]
+  craftedMods?: ListingMod[]
   sockets?: Array<{ group: number, sColour: string }>
   properties?: Array<{ name?: string, type?: number, values: Array<[string, number]> }>
 }
 
 const RARITY: Record<number, PobRarity> = { 0: 'NORMAL', 1: 'MAGIC', 2: 'RARE', 3: 'UNIQUE', 9: 'RELIC' }
+
+// Quality goes by type: its name varies, as in "Quality (Attack Modifiers)".
+const QUALITY_TYPE = 6
+
+function modText (mod: ListingMod): string {
+  return typeof mod === 'string' ? mod : mod.description ?? ''
+}
+
+function modDomain (mod: ListingMod): string {
+  if (typeof mod === 'string') return ''
+  if (mod.flags?.fractured) return 'fractured'
+  if (mod.flags?.crafted) return 'crafted'
+  return mod.domain ?? ''
+}
 
 function socketsText (sockets: ListingItem['sockets']): string {
   const groups = new Map<number, string[]>()
@@ -32,8 +56,8 @@ function socketsText (sockets: ListingItem['sockets']): string {
   return Array.from(groups.values(), g => g.join('-')).join(' ')
 }
 
-function propNumber (item: ListingItem, name: string): number | undefined {
-  const raw = item.properties?.find(p => p.name === name)?.values[0]?.[0]
+function propNumber (item: ListingItem, match: (p: { name?: string, type?: number }) => boolean): number | undefined {
+  const raw = item.properties?.find(match)?.values[0]?.[0]
   if (raw == null) return undefined
   const n = Number(raw.replace(/[^\d.]/g, ''))
   return Number.isFinite(n) && n > 0 ? n : undefined
@@ -48,30 +72,42 @@ export function listingTipItem (item: ListingItem): PobItem | null {
   const rarity = RARITY[item.frameType ?? -1]
   if (!rarity) return null
 
-  const fractured = item.fracturedMods ?? []
-  const explicit = item.explicitMods ?? []
-  const crafted = item.craftedMods ?? []
-  const implicits = [...(item.enchantMods ?? []), ...(item.implicitMods ?? [])]
-  const mods = [...fractured, ...explicit, ...crafted]
-  if (!mods.length && !implicits.length) return null
+  const listed = item.explicitMods ?? []
+  const ofDomain = (domain: string) => listed.filter(m => modDomain(m) === domain)
+  const implicits = [
+    ...(item.enchantMods ?? []), ...ofDomain('enchant'),
+    ...(item.implicitMods ?? []), ...ofDomain('implicit')
+  ]
+  const fractured = [...(item.fracturedMods ?? []), ...ofDomain('fractured')]
+  const crafted = [...(item.craftedMods ?? []), ...ofDomain('crafted')]
+  const others = listed.filter(m => !['enchant', 'implicit', 'fractured', 'crafted'].includes(modDomain(m)))
+  const plain = [...(item.utilityMods ?? []), ...others]
+
+  const texts = (mods: ListingMod[]) => mods.map(modText).filter(Boolean)
+  const fracturedText = texts(fractured)
+  const plainText = texts(plain)
+  const craftedText = texts(crafted)
+  const implicitText = texts(implicits)
+  const mods = [...fracturedText, ...plainText, ...craftedText]
+  if (!mods.length && !implicitText.length) return null
 
   return {
     rarity,
     name: item.name ?? '',
     base: item.typeLine ?? item.baseType ?? '',
     sockets: socketsText(item.sockets),
-    implicits,
+    implicits: implicitText,
     mods,
     modKinds: [
-      ...fractured.map(() => 'fractured' as const),
-      ...explicit.map(() => '' as const),
-      ...crafted.map(() => 'crafted' as const)
+      ...fracturedText.map(() => 'fractured' as const),
+      ...plainText.map(() => '' as const),
+      ...craftedText.map(() => 'crafted' as const)
     ],
-    quality: propNumber(item, 'Quality'),
-    armour: propNumber(item, 'Armour'),
-    evasion: propNumber(item, 'Evasion Rating'),
-    energyShield: propNumber(item, 'Energy Shield'),
-    ward: propNumber(item, 'Ward'),
+    quality: propNumber(item, p => p.type === QUALITY_TYPE),
+    armour: propNumber(item, p => p.name === 'Armour'),
+    evasion: propNumber(item, p => p.name === 'Evasion Rating'),
+    energyShield: propNumber(item, p => p.name === 'Energy Shield'),
+    ward: propNumber(item, p => p.name === 'Ward'),
     itemLevel: item.ilvl,
     corrupted: item.corrupted,
     mirrored: item.mirrored,

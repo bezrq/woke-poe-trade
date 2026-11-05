@@ -83,7 +83,7 @@
                 'w-pc-aging': improved && (row.band === 'aging' || (allStale && row.band === 'stale')),
                 'w-pc-stale': improved && row.band === 'stale' && !row.dropped && !allStale
               }"
-              :title="improved ? rowTitle(row) : undefined"
+              :title="improved && !row.lead.tipItem ? rowTitle(row) : undefined"
               @mouseenter="showRowTip($event, row)"
               @mouseleave="hideTip">
               <td class="px-2 whitespace-nowrap">
@@ -102,7 +102,7 @@
                     <i v-if="!row.lead.hasNote" class="fas fa-question" />
                   </span>
                   <span v-if="improved && row.dropped && FIX_TAG[row.dropped]" class="w-pc-tag">{{ FIX_TAG[row.dropped] }}</span>
-                  <span v-if="row.lead.corrupted && item.category !== 'Gem'" class="w-pc-tag">Corrupted</span>
+                  <span v-if="row.lead.corrupted" class="w-pc-tag">Corrupted</span>
                 </span>
               </td>
               <td v-if="item.stackSize" class="px-2 text-right">{{ row.lead.stackSize }}</td>
@@ -193,7 +193,8 @@ function useTradeApi () {
         out.push({ listedTimes: 1, ...result })
         continue
       }
-      const existingRes = out.find((added, idx) =>
+      // woke: a seller's corrupted and clean copies stay apart.
+      const existingRes = out.find((added, idx) => Boolean(added.corrupted) === Boolean(result.corrupted) && (
         (
           added.accountName === result.accountName &&
           added.priceCurrency === result.priceCurrency &&
@@ -203,7 +204,7 @@ function useTradeApi () {
           added.accountName === result.accountName &&
           (out.length - idx) <= 2 // last or prev
         )
-      )
+      ))
       if (existingRes) {
         if (existingRes.stackSize) {
           existingRes.stackSize += result.stackSize!
@@ -314,6 +315,7 @@ export default defineComponent({
     const refreshNote = shallowRef('')
     // A tooltip must not outlive the listings it came from.
     onUnmounted(hideTip)
+    watch(searchResult, () => { hideTip() })
 
     // woke: improved view reads the same listings, nothing extra is requested
     const { insight, divine, options: insightOptions } = useInsight(groupedResults, computed(() => props.filters.trade.league))

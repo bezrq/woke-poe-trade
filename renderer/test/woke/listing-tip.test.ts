@@ -1,9 +1,65 @@
 // A trade listing shown in the shared item tooltip, from what the trade site
 // sends with each listing.
 import { describe, expect, it } from 'vitest'
+import { readFileSync } from 'fs'
+import { resolve } from 'path'
 import { listingTipItem } from '@/web/woke/price-insight/listing-tip'
+import type { ListingItem } from '@/web/woke/price-insight/listing-tip'
+
+// Items captured from the real trade API on 2026-11-05.
+const CAPTURED: ListingItem[] = JSON.parse(readFileSync(resolve(__dirname, '../../../testing/fixtures/trade/listing-items.json'), 'utf-8'))
+
+describe('listingTipItem on real trade responses', () => {
+  it('turns every mod into text, with fractured mods marked', () => {
+    for (const captured of CAPTURED) {
+      const item = listingTipItem(captured)!
+      expect(item.mods.length).toBeGreaterThan(0)
+      for (const mod of item.mods) {
+        expect(typeof mod).toBe('string')
+        expect(mod).not.toContain('{')
+      }
+      expect(item.modKinds?.[0]).toBe('fractured')
+      expect(item.modKinds).toHaveLength(item.mods.length)
+    }
+  })
+
+  it('reads the name, sockets and defences', () => {
+    expect(listingTipItem(CAPTURED[0])).toMatchObject({
+      rarity: 'RARE',
+      name: 'Brimstone Veil',
+      base: 'Lich\'s Circlet',
+      sockets: 'B-R-B',
+      energyShield: 190,
+      itemLevel: 86
+    })
+  })
+})
 
 describe('listingTipItem', () => {
+  it('keeps mods it finds in explicitMods under their own kind', () => {
+    const item = listingTipItem({
+      frameType: 2,
+      explicitMods: [
+        { description: '+20% to Cold Resistance', domain: 'crafted' },
+        { description: '+40 to maximum Life', domain: 'explicit' },
+        { description: 'Allocates Pain Attunement', domain: 'enchant' }
+      ]
+    })!
+    expect(item.mods).toEqual(['+40 to maximum Life', '+20% to Cold Resistance'])
+    expect(item.modKinds).toEqual(['', 'crafted'])
+    expect(item.implicits).toEqual(['Allocates Pain Attunement'])
+  })
+
+  it('finds quality whatever it is called, and keeps flask utility mods', () => {
+    const item = listingTipItem({
+      frameType: 3,
+      utilityMods: ['Grants Immunity to Bleeding'],
+      properties: [{ name: 'Quality (Attack Modifiers)', type: 6, values: [['+24%', 1]] }]
+    })!
+    expect(item.quality).toBe(24)
+    expect(item.mods).toEqual(['Grants Immunity to Bleeding'])
+  })
+
   it('draws a corrupted unique with its mods, defences and sockets', () => {
     const item = listingTipItem({
       name: 'Kaom\'s Heart',
@@ -14,7 +70,7 @@ describe('listingTipItem', () => {
       implicitMods: ['+1 to Level of Socketed Gems'],
       explicitMods: ['37% increased Fire Damage', '+500 to maximum Life'],
       sockets: [{ group: 0, sColour: 'R' }],
-      properties: [{ name: 'Armour', values: [['1,013', 1]] }, { name: 'Quality', values: [['+20%', 1]] }]
+      properties: [{ name: 'Armour', values: [['1,013', 1]] }, { name: 'Quality', type: 6, values: [['+20%', 1]] }]
     })!
     expect(item).toMatchObject({
       rarity: 'UNIQUE',
