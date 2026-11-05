@@ -223,10 +223,13 @@ export function strategyRows (sessions: SessionRecord[], unit: AnalyticsUnit, fa
       units.push(...u)
       const ph = perHour(sessionUnits(s, unit, fallbackDivine, true))
       if (ph != null) trend.push(ph)
-      maps += s.maps
+      // Maps left out don't count, as in the averages: their share of the time
+      // isn't in `units`, so counting them would inflate maps per hour.
+      const counted = Math.max(0, s.maps - s.runs.filter(r => r.excluded).length)
+      maps += counted
       const rate = rateFor(s, unit, fallbackDivine)
       if (rate) {
-        costSum += (s.imported ? s.imported.costChaos : s.costPerMapChaos * s.maps) / rate
+        costSum += (s.imported ? s.imported.costChaos : s.costPerMapChaos * counted) / rate
       }
       for (const r of s.runs) { mapMs += r.mapMs; allMs += r.mapMs + r.otherMs }
     }
@@ -294,6 +297,10 @@ export function formatSessionDate (ts: number): string {
   return `${day} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
 }
 
+function dropsText (lines: SavedLoot[]): string {
+  return lines.map(l => `${l.qty}x ${l.name}${l.variant ? ` (${l.variant})` : ''}`).join('; ')
+}
+
 // CSV rows: one per map, or one per session without map detail. Chaos.
 export function exportRows (sessions: SessionRecord[]): Array<Record<string, string | number>> {
   const out: Array<Record<string, string | number>> = []
@@ -317,8 +324,13 @@ export function exportRows (sessions: SessionRecord[]): Array<Record<string, str
         cost_chaos: Math.round(s.costPerMapChaos),
         profit_chaos: Math.round(loot - s.costPerMapChaos),
         left_out: r.excluded ? 'yes' : '',
-        drops: r.loot.map(l => `${l.qty}x ${l.name}${l.variant ? ` (${l.variant})` : ''}`).join('; ')
+        drops: dropsText(r.loot)
       })
+    }
+    // Loot and typed-in chaos not tied to a map, so the rows add up to the session.
+    const loose = lootValue(s.loot) + (s.extraChaos || 0)
+    if (loose) {
+      out.push({ ...base, map: '(not tied to a map)', area_level: '', entered: '', minutes_in_map: '', minutes_other: '', loot_chaos: Math.round(loose), cost_chaos: 0, profit_chaos: Math.round(loose), left_out: '', drops: dropsText(s.loot) })
     }
   }
   return out

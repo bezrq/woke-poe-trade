@@ -194,12 +194,12 @@ import { useZone } from '../shared/zone'
 import DockItem from '../dock/DockItem.vue'
 import { tickWhile } from '../dock/dock'
 import { ATLAS_TYPE } from '../atlas/widget'
-import { parseScarabs, priceScarabs } from '../atlas/guide'
+import { strategyScarabCosts } from '../atlas/guide'
 import { useLeagues } from '@/web/background/Leagues'
 import { useSessionStore } from '../analytics/store'
 import { ANALYTICS_TYPE } from '../analytics/types'
 import type { AtlasWidget } from '../atlas/widget'
-import { FARMING_LOOT_TARGET, addLoot as addLootTo, costsForStrategy, countNewMap, currentRun, elapsed, historyToRecords, isMapArea, isMapSideArea, lineValue, maybeAutoPause, nameRun, pauseSession, newSession, onZoneChange, rememberCosts, removeLoot, sellPrice, sellRules, startRun, strategyStats, toSessionRecord, totals } from './farming'
+import { FARMING_LOOT_TARGET, addLoot as addLootTo, costsForStrategy, countNewMap, currentRun, elapsed, historyToRecords, isMapArea, isMapSideArea, lineValue, maybeAutoPause, nameRun, pauseSession, newSession, onZoneChange, rememberCosts, removeLoot, sellPrice, sellRules, startRun, strategyStats, toSessionRecord, totals, withScarabCosts } from './farming'
 import type { CostLine, LiveRun, LootLine, PricedRef } from './farming'
 
 const props = defineProps<{
@@ -321,19 +321,6 @@ function runResult (r: LiveRun): number {
 
 // --- Map costs per strategy, filled from Atlas strategies' scarabs ---
 const filledFromAtlas = shallowRef('')
-function atlasScarabCosts (name: string): CostLine[] | null {
-  const snap = prices.snapshot.value
-  if (!snap || !name) return null
-  for (const w of AppConfig().widgets) {
-    if (w.wmType !== ATLAS_TYPE) continue
-    const st = (w as AtlasWidget).strategies.find(x => x.name.trim() === name)
-    if (!st?.scarabs) continue
-    const lines = priceScarabs(parseScarabs(st.scarabs), snap.items).filter(p => p.item)
-    if (!lines.length) continue
-    return lines.map(p => ({ type: p.item!.type, name: p.item!.name, variant: p.item!.variant, qty: p.qty }))
-  }
-  return null
-}
 watch(() => props.config.strategy, (name) => {
   const trimmed = (name ?? '').trim()
   const saved = costsForStrategy(props.config, trimmed)
@@ -342,9 +329,10 @@ watch(() => props.config.strategy, (name) => {
     filledFromAtlas.value = ''
     return
   }
-  const scarabs = atlasScarabCosts(trimmed)
+  const atlasLists = AppConfig().widgets.filter(w => w.wmType === ATLAS_TYPE).map(w => (w as AtlasWidget).strategies)
+  const scarabs = strategyScarabCosts(atlasLists, trimmed, prices.snapshot.value?.items)
   if (scarabs) {
-    props.config.costs = [...props.config.costs.filter(c => c.type !== 'Scarab'), ...scarabs]
+    props.config.costs = withScarabCosts(props.config.costs, scarabs)
     filledFromAtlas.value = trimmed
   }
 })

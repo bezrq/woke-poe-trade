@@ -24,9 +24,10 @@ export function stageOf (title: string): Stage | null {
   const inRange = (n: number) => n >= 1 && n <= 100
   const named = /\b(?:level|lvl|lv)\.?\s*(\d{1,3})/i.exec(title)
   if (named && inRange(Number(named[1]))) return { kind: 'level', at: Number(named[1]) }
-  if (/end\s*game|maps?\b|mapping|final|late/i.test(title)) return { kind: 'level', at: 70 }
+  if (/\b(?:end\s*game|maps?|mapping|final|late)\b/i.test(title)) return { kind: 'level', at: 70 }
   // A bare number, but not "6L"/"5 link", "T16" or "20%": those aren't levels.
-  const bare = /(?<![\w.])(\d{1,3})(?!\s*(?:l\b|links?\b|-?link|%|\.\d))/i.exec(title)
+  // The \d stops "20%" from backing off to a "2" followed by "0%".
+  const bare = /(?<![\w.])(\d{1,3})(?!\d|\s*(?:l\b|links?\b|-?link|%|\.\d))/i.exec(title)
   if (bare && !/\bt(?:ier)?\s*$/i.test(title.slice(0, bare.index)) && inRange(Number(bare[1]))) return { kind: 'level', at: Number(bare[1]) }
   return null
 }
@@ -42,7 +43,8 @@ function reached (s: Stage, level: number | null, act: number | null): boolean {
     return level != null ? stageLevel(s) <= level : s.at === 1
   }
   if (level != null) return s.at <= level
-  return act != null ? s.at <= ACT_START_LEVEL[act] : s.at <= 1
+  // Past the last act (the Epilogue): as far as the table goes.
+  return act != null ? s.at <= ACT_START_LEVEL[Math.min(act, ACT_START_LEVEL.length - 1)] : s.at <= 1
 }
 
 export interface Picked<T> {
