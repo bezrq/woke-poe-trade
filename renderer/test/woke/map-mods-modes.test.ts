@@ -283,7 +283,7 @@ describe('final import from the old list', () => {
     maps: { profile: 1, showNewStats: false, selectedStats }
   })
 
-  const REFLECT = 'Monsters reflect #% of Physical Damage'
+  const REFLECT = 'Rare Monsters have Physical Thorns reflecting # Physical Damage'
   const REWARD = 'Reward Rooms have #% increased Monsters'
 
   it('a first import sorts every old mark by tab', () => {

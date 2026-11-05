@@ -143,7 +143,7 @@ import { isThin, itemKey, thinTitle } from '../market/types'
 import type { CorruptedFilter, PriceItem } from '../market/types'
 import { lookupRequest } from '../item-lookup/lookup'
 import type { LookupTab } from '../item-lookup/lookup'
-import { LOOT_FILTER_TYPE, strictnessHotkeyTarget } from '../loot-filter/widget'
+import { LOOT_FILTER_TYPE, reloadHotkeyTarget, strictnessHotkeyTarget } from '../loot-filter/widget'
 import { MAP_SCAN_TYPE, scanHotkeyTarget } from '../map-mods/scan'
 import { ESSENCE_SCAN_TYPE, essenceHotkeyTarget, essenceOnceTarget } from '../essence-scan/widget'
 import { RUN_TIMER_TYPE, hotkeyTarget as timerTarget } from '../campaign/run-timer'
@@ -257,6 +257,9 @@ function commandEntries (): ActionEntry[] {
   }
   for (const w of wm.widgets.value as Array<WidgetT & Record<string, any>>) { // eslint-disable-line @typescript-eslint/no-explicit-any
     if (!isWidgetTypeOn(AppConfig(), w.wmType)) continue
+    if (w.wmType === LOOT_FILTER_TYPE && w.reloadViaChat) {
+      add(w, 'Reload the saved loot filter in game', 'reloadHotkey', reloadHotkeyTarget(w.wmId))
+    }
     if (w.wmType === LOOT_FILTER_TYPE && w.neversink?.on) {
       add(w, 'Make the loot filter stricter', 'stricterHotkey', strictnessHotkeyTarget(w.wmId, 'stricter'))
       add(w, 'Make the loot filter looser', 'looserHotkey', strictnessHotkeyTarget(w.wmId, 'looser'))

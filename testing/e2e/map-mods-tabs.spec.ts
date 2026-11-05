@@ -10,7 +10,7 @@ test('tabs switch the list, picks sort to the top, the T17 switch hides T17 mods
   await expect(panel.getByRole('tab', { name: /^Maps/ })).toHaveAttribute('aria-selected', 'true')
   await expect(panel.getByPlaceholder(/Search \d+ map mods/)).toBeVisible()
   // The picks block is gone: the default profile's picks head the list.
-  await expect(panel.getByText(/^Avoid · \d+$/)).toBeVisible()
+  await expect(panel.getByText(/^Careful · \d+$/)).toBeVisible()
   await overlay.snap('map mods maps tab')
 
   const search = panel.getByPlaceholder(/Search \d+ map mods/)

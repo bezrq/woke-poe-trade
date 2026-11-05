@@ -3,7 +3,7 @@
     :move-handles="mode === 'card' ? 'none' : 'corners'" :inline-edit="false" :readonly="true">
     <!-- Strictness and anything that needs you, behind one dock icon. -->
     <DockItem :menu="dockMenu" ref="dockRef" id="loot-filter" :art="dockArt" title="Loot filter" :show="dockShow"
-      :badge="dockBadge" :tone="dockTone" :wm-id="config.wmId" card-width="22rem">
+      :badge="dockBadge" :tone="dockTone" :readouts="dockReadouts" :wm-id="config.wmId" card-width="22rem">
       <template #card>
         <div :class="$style.dock">
           <template v-if="config.neversink.on">
@@ -22,6 +22,13 @@
               <WKbd v-if="config.looserHotkey" :keys="config.looserHotkey" /><WKbd v-if="config.stricterHotkey" :keys="config.stricterHotkey" /> looser / stricter
             </div>
           </template>
+          <div v-if="reloadWaiting" :class="$style.reload">
+            <div class="text-xs">{{ store.pendingReload.value ? 'Loot filter saved.' : 'Safety net updated.' }} The game still uses your old filter.</div>
+            <div class="flex items-center gap-2">
+              <WButton size="sm" variant="primary" @click="store.reloadInGame(true)">Reload now</WButton>
+              <span v-if="config.reloadHotkey" class="flex items-center gap-1 text-xs w-dim">or press <WKbd :keys="config.reloadHotkey" /></span>
+            </div>
+          </div>
           <div v-for="n in dockNotes" :key="n.id" class="text-xs" :style="n.warn ? 'color: var(--w-warn)' : ''">{{ n.text }}</div>
           <div v-if="dismissable.length" class="flex flex-wrap items-center gap-1">
             <WButton size="sm" variant="ghost" @click="seeNotice">See {{ dismissable.length > 1 ? 'first' : 'it' }}</WButton>
@@ -84,7 +91,7 @@ import { pressedKeys, sortKeys } from './hotkey-match'
 import { itemFacts } from './item-facts'
 import type { ItemFacts } from './item-facts'
 import { matchItem } from './match'
-import { LOOT_FILTER_SAMPLE_TARGET, initLootFilterWidget, normalizeLootFilterWidget, parseEditorHotkeyTarget, parseStrictnessTarget } from './widget'
+import { LOOT_FILTER_SAMPLE_TARGET, initLootFilterWidget, normalizeLootFilterWidget, parseEditorHotkeyTarget, parseReloadHotkeyTarget, parseStrictnessTarget } from './widget'
 import type { LootFilterWidget } from './widget'
 
 const props = defineProps<{
@@ -192,6 +199,11 @@ const hotkeys = MainProcess.onEvent('MAIN->CLIENT::widget-action', (e) => {
     store.stepLevel(step.dir === 'stricter' ? 1 : -1).catch(() => {})
     return
   }
+  if (parseReloadHotkeyTarget(e.target) === props.config.wmId) {
+    if (store.outputSaved.value) store.reloadInGame(true)
+    else toast('No saved loot filter to reload yet. Save it in the editor first.')
+    return
+  }
   if (parseEditorHotkeyTarget(e.target) !== props.config.wmId) return
   // Always opens: the key only fires from the game, where the editor can't be seen.
   mode.value = 'editor'
@@ -254,8 +266,6 @@ const allNotes = computed<Notice[]>(() => {
   else if (store.wrongFilterInGame.value) out.push({ id: 'wrong', value: store.gameFilter.value.name ?? '', warn: true, text: `The game is using "${store.gameFilter.value.name}", not your saved copy.` })
   if (store.failed.value.length) out.push({ id: 'failed', value: store.failed.value.length, warn: true, tab: 'changes', text: `${store.failed.value.length} change(s) need a new home after a NeverSink update.` })
   if (store.sourceChanged.value) out.push({ id: 'source-changed', value: 1, passing: true, tab: 'changes', text: 'The filter you started from has changed. Save to bring your copy up to date.' })
-  if (store.netWaitsForReload.value && !store.pendingReload.value) out.push({ id: 'net-reload', value: 1, passing: true, tab: 'prices', text: 'Prices changed the safety net. It takes effect the next time you reload the filter.' })
-  if (store.pendingReload.value) out.push({ id: 'pending', value: 1, passing: true, text: 'Saved. Press Reload now in the filter window to use it in game.' })
   return out
 })
 // Warnings' Got it lasts until a restart, so it isn't saved.
@@ -286,7 +296,11 @@ function seeNotice () {
   ensureLoaded()
 }
 
-const dockShow = computed(() => Boolean(store.doc.value) && (props.config.neversink.on || dockNotes.value.length > 0))
+// A saved filter the game hasn't loaded. Reloading takes a key press or a click:
+// GGG's rules don't allow it on a log line or a timer.
+const reloadWaiting = computed(() => props.config.reloadViaChat && (store.pendingReload.value || store.netWaitsForReload.value))
+const dockReadouts = computed(() => reloadWaiting.value ? [{ id: 'reload', text: 'Reload', tone: 'up' as const }] : undefined)
+const dockShow = computed(() => reloadWaiting.value || (Boolean(store.doc.value) && (props.config.neversink.on || dockNotes.value.length > 0)))
 const dockBadge = computed(() => props.config.neversink.on ? LEVEL_SHORT[props.config.neversink.level] : (dockNotes.value.length || null))
 const dockTone = computed(() => dockNotes.value.some(n => n.warn) ? 'warn' : (dockNotes.value.some(n => n.id === 'update') ? 'accent' : undefined))
 
@@ -341,6 +355,15 @@ const dockMenu = computed<DockMenuAction[]>(() => [
   display: flex;
   flex-direction: column;
   gap: 5px;
+}
+.reload {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  border: 1px solid var(--w-line-strong);
+  border-radius: var(--w-radius-sm);
+  background: var(--w-accent-soft);
 }
 .ladder {
   display: grid;
