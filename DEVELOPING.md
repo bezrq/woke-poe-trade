@@ -50,6 +50,7 @@ woke-dev packaged     # stop the dev copy and start the packaged build
 - It reinstalls dependencies only when a lockfile or patch changed.
 - Vite and Electron run detached, so they outlive the shell that started them.
   Logs go to `<folder>\.woke-dev`.
+- The tray icon's tooltip reads `Woke PoE Trade DEV (<branch>)` in the dev copy.
 - Settings changes aren't saved in dev mode (`ConfigStore`), and a DevTools
   window opens alongside the overlay.
 - The overlay can be inspected on the debug port `127.0.0.1:9333`.

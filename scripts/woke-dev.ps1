@@ -181,7 +181,9 @@ function Start-Dev {
 
   # WOKE_ELECTRON_ARGS: lets a thread inspect the overlay over the debug port
   # without touching hotkeys. Branches older than this script ignore it.
-  $mainCmd = "cmd.exe /s /c `"set `"WOKE_ELECTRON_ARGS=--remote-debugging-port=$DebugPort`" && `"$node`" build\script.mjs > `"$State\main.log`" 2>&1`""
+  # WOKE_DEV_BRANCH: shown in the tray tooltip.
+  $branch = Git rev-parse --abbrev-ref HEAD
+  $mainCmd = "cmd.exe /s /c `"set `"WOKE_ELECTRON_ARGS=--remote-debugging-port=$DebugPort`" && set `"WOKE_DEV_BRANCH=$branch`" && `"$node`" build\script.mjs > `"$State\main.log`" 2>&1`""
   Set-Content (Join-Path $State 'main.pid') (Start-Detached $mainCmd (Join-Path $Repo 'main'))
 
   $deadline = (Get-Date).AddSeconds(60)
