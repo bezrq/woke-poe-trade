@@ -150,7 +150,7 @@ describe('rowTitle', () => {
     const [row] = groupListings([a, b], { now: NOW, merge: true, dropped: new Map<string, DropReason>([[a.id, 'stale'], [b.id, 'stale']]) })
     const title = rowTitle(row)!
     expect(title).toContain('Ignored by the verdict')
-    expect(title).toContain('2 for sale from 1 seller')
+    expect(title).toContain('2 listings from 1 seller')
     expect(title).toContain('over a week old')
   })
 })

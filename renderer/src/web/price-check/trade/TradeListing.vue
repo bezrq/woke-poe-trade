@@ -250,7 +250,8 @@ function useTradeApi () {
           return fetchMore()
         }
       }
-      await fetchMore()
+      // A later page failing leaves what already loaded on screen.
+      await fetchMore().catch((err) => { if (!_fetchResults.length) throw err })
     } catch (err) {
       if (_searchId === searchId) error.value = (err as Error).message
     } finally {
@@ -258,7 +259,7 @@ function useTradeApi () {
     }
   }
 
-  return { error, searchResult, groupedResults, fetching, search }
+  return { error, searchResult, groupedResults, fetchResults, fetching, search }
 }
 
 export default defineComponent({
@@ -285,7 +286,7 @@ export default defineComponent({
       slowdown.reset(item)
     }, { immediate: true })
 
-    const { error, searchResult, groupedResults, fetching, search } = useTradeApi()
+    const { error, searchResult, groupedResults, fetchResults, fetching, search } = useTradeApi()
 
     // woke: improved view reads the same listings, nothing extra is requested
     const { insight, divine, options: insightOptions } = useInsight(groupedResults)
@@ -315,7 +316,7 @@ export default defineComponent({
         if (props.filters.itemLevel) parts.push(r.itemLevel)
         if (props.item.category === 'Gem') parts.push(r.level)
         if (props.filters.quality || props.item.category === 'Gem') parts.push(r.quality)
-        if (widget.value.showSeller) parts.push(r.accountName)
+        if (widget.value.showSeller) parts.push(widget.value.showSeller === 'ign' ? r.ign : r.accountName)
         return parts.join('|')
       }
     }))
@@ -350,7 +351,7 @@ export default defineComponent({
       maxCount,
       allStale,
       showCountBar: computed(() => improved.value && maxCount.value > 1),
-      shownCount: computed(() => rows.value.reduce((sum, row) => sum + row.count, 0)),
+      shownCount: computed(() => fetchResults.value.filter(r => r != null).length),
       tableLoading,
       listSettled: computed(() => !tableLoading.value && !fetching.value),
       slowdownReady: slowdown.isReady,

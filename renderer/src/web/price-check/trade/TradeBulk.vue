@@ -301,7 +301,14 @@ export default defineComponent({
     })
 
     // woke: real rows only once loaded, with placeholder rows until then.
-    const tableLoading = computed(() => !slowdown.isReady.value || !result.value)
+    const tableLoading = computed(() => {
+      // Read first: this is what starts the other currency's search when it is picked.
+      const shown = selectedResults.value
+      if (!slowdown.isReady.value || !result.value) return true
+      return shown.length === 0 || 'marketRatio' in shown[0]
+        ? result.value[selectedCurr.value].listed.value == null
+        : false
+    })
 
     watch(result, () => {
       const stableTotal = result.value?.xchgStable.listed.value?.total

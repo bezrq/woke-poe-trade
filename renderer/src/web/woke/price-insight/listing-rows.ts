@@ -24,7 +24,7 @@ export interface ListingRow<T extends RowListing> {
   /** First listing in the row: everything shown besides age and status is the same on all members. */
   lead: T
   members: T[]
-  /** Copies for sale, counting a seller's repeated listings. */
+  /** Listings in the row, counting a seller's repeated ones. */
   count: number
   sellers: number
   /** The most available seller in the row. */
@@ -110,7 +110,7 @@ export function rowTitle<T extends RowListing> (row: ListingRow<T>): string | un
   const lines: string[] = []
   if (row.dropped) lines.push(`Ignored by the verdict: ${DROP_LABEL[row.dropped]}`)
   if (row.count > 1) {
-    lines.push(`${row.count} for sale from ${row.sellers} ${row.sellers === 1 ? 'seller' : 'sellers'}`)
+    lines.push(`${row.count} listings from ${row.sellers} ${row.sellers === 1 ? 'seller' : 'sellers'}`)
   }
   if (row.band === 'stale') lines.push('Every listing here is over a week old, so it may be gone')
   return lines.length ? lines.join('\n') : undefined

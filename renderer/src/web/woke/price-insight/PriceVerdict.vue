@@ -243,7 +243,7 @@ async function copy (n: { key: string, text: string }) {
 .side { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; flex: none; }
 .sideRow { display: flex; align-items: center; gap: 2px; }
 .eyebrow { display: flex; align-items: center; gap: 6px; min-width: 0; color: var(--w-dim); font-size: var(--w-fs-sm); line-height: 16px; }
-.value { display: flex; align-items: center; gap: 8px; min-width: 0; line-height: 24px; }
+.value { display: flex; align-items: center; gap: 8px; min-width: 0; overflow: hidden; line-height: 24px; }
 .range { display: inline-flex; align-items: center; gap: 3px; color: var(--w-dim); font-size: var(--w-fs-sm); }
 .count { color: var(--w-faint); font-size: var(--w-fs-xs); white-space: nowrap; padding-right: 4px; }
 .row { display: flex; align-items: center; gap: 6px; min-width: 0; }
