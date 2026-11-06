@@ -1,7 +1,7 @@
 ---
 id: WOKEPOET-119
 title: 'Redesign landing page: simpler, PoE font and look, five highlights with slides'
-status: In Progress
+status: Ready
 priority: Medium
 effort: None
 assignee: unassigned
@@ -61,6 +61,23 @@ history:
     to: In Progress
     user: Agent
     date: '2026-11-06T02:14:34.714Z'
+  - type: comment
+    user: Agent
+    comment: >-
+      **Landing page C is up as PR #209**
+      (https://github.com/guybnd/woke-poe-trade/pull/209), review findings
+      fixed. Checked: lint, types, unit tests, docs build, headless page check
+      at three widths. Waiting on CI, then merge. Guy may send an Act 1 town
+      screenshot to replace the on-screen slides' hideout frame; docs: README
+      updated.
+    date: '2026-11-06T02:25:06.075Z'
+    completionComment: true
+    id: c-2026-11-06t02-25-06-075z
+  - type: status_change
+    from: In Progress
+    to: Ready
+    user: Agent
+    date: '2026-11-06T02:25:06.075Z'
 swimlane: null
 needsAction: null
 ---
