@@ -3,7 +3,7 @@ id: WOKEPOET-142
 title: >-
   Landing page: redesign feature slides (sharp shots, pickers on top, real PoE
   art)
-status: Require Input
+status: In Progress
 priority: None
 effort: None
 assignee: unassigned
@@ -16,6 +16,18 @@ history:
     user: Agent
     date: '2026-11-06T09:07:24.740Z'
     comment: Created ticket.
+    id: a-2026-11-06t09-07-24-740z
+  - type: comment
+    user: Agent
+    comment: 'Guy picked B, the item tooltip look. PR #237 open, bug review running.'
+    date: '2026-11-06T09:32:14.982Z'
+    id: c-2026-11-06t09-32-14-982z
+  - type: status_change
+    from: Require Input
+    to: In Progress
+    user: Agent
+    date: '2026-11-06T09:32:14.982Z'
+needsAction: null
 ---
 Guy's points: images too big and blurry; pickers ugly, use real PoE art; pickers above each section and fit one screen with the slide; background not plain black or an item border on the pics.
 
