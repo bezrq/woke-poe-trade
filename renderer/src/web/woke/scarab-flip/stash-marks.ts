@@ -12,7 +12,7 @@ export interface StashSlot {
   count?: number | null
 }
 
-export type StashRead = { found: false } | { found: true, slots: StashSlot[] }
+export type StashRead = { found: false } | { found: true, family: string, slots: StashSlot[] }
 
 export interface StashMark {
   name: string
@@ -87,8 +87,9 @@ let clears = 0
 let lastClearAt = 0
 
 export function clearStashMarks () {
-  if (!stashMarks.value.length) return
+  // Counted even with none drawn, so a read in progress knows it's out of date.
   clears++
+  if (!stashMarks.value.length) return
   lastClearAt = performance.now()
   stashMarks.value = []
 }
