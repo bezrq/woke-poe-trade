@@ -17,6 +17,16 @@ history:
     user: Agent
     date: '2026-11-06T05:06:37.021Z'
     comment: Created ticket.
+    id: a-2026-11-06t05-06-37-021z
+  - type: activity
+    user: Agent
+    date: '2026-11-06T05:10:31.607Z'
+    comment: >-
+      PRs #223 and #224 up, waiting on CI and the merge route. White socket
+      finding retracted: upstream removed that filter, so the tile can't appear.
+      Open for Guy: average weights for unrated orbs, scarabs and runegrafts; "1
+      of 3" on merged listing tooltips.
+    id: a-2026-11-06t05-10-31-607z
 ---
 Sweep of recent merges found three small confirmed bugs, fixed in small PRs:
 
