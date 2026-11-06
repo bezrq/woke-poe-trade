@@ -1,7 +1,7 @@
 ---
 id: WOKEPOET-128
 title: 'Drop counter: tracked items with +1 and a maps-run count'
-status: In Progress
+status: Ready
 priority: None
 effort: None
 assignee: unassigned
@@ -52,6 +52,20 @@ history:
     to: In Progress
     user: Agent
     date: '2026-11-06T04:37:24.188Z'
+  - type: comment
+    user: Agent
+    comment: >-
+      PR #222 up: https://github.com/guybnd/woke-poe-trade/pull/222. Review
+      findings fixed, local checks pass, merge requested. Right-click and hotkey
+      untested in real PoE.
+    date: '2026-11-06T05:08:53.725Z'
+    completionComment: true
+    id: c-2026-11-06t05-08-53-725z
+  - type: status_change
+    from: In Progress
+    to: Ready
+    user: Agent
+    date: '2026-11-06T05:08:53.725Z'
 swimlane: null
 needsAction: null
 ---
