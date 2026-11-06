@@ -34,7 +34,22 @@ history:
       Which direction: A item tooltips, B stash tabs (one screen, recommended),
       or C full-bleed with socket pager? Mocks:
       https://claude.ai/artifact/HkQxGLGCSZoVVtCYWmvcWT
-swimlane: require-input
+  - type: comment
+    user: Agent
+    comment: >-
+      Guy picked C, without the demo button, plus slides for lab gem pricing,
+      the regex maker and the regex clipboard.
+    date: '2026-11-06T02:10:50.178Z'
+    id: c-2026-11-06t02-10-50-178z
+  - type: swimlane_change
+    swimlane: require-input
+    action: cleared
+    user: Agent
+    date: '2026-11-06T02:10:50.178Z'
+    comment: >-
+      Guy picked C, without the demo button, plus slides for lab gem pricing,
+      the regex maker and the regex clipboard.
+swimlane: null
 needsAction: null
 ---
 Guy's ask: make the landing page much simpler, with the PoE font and a PoE-ish design, built around highlights that each have a few slides.
