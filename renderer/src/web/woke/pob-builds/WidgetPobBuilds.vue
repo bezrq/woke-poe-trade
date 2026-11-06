@@ -62,7 +62,7 @@
         </WEmpty>
       </WPanel>
 
-      <BuildDetail v-if="selectedBuild" :config="config" :entry="selectedBuild" :details="details" @close="selected = null" @tree="treeAt = { title: $event }" />
+      <BuildDetail v-if="selectedBuild" :config="config" :entry="selectedBuild" :details="details" @close="selected = null" @tree="(title, changes) => { treeAt = { title, changes } }" />
       <BuildCompare v-if="compareA && compareB" :config="config" :a="compareA" :b="compareB" @close="comparing = null" />
       <BuildTree v-if="selectedBuild && details && treeAt != null" :specs="details.trees" :start="treeAt" @close="treeAt = null" />
       <WPanel v-if="selectedBuild && detailsError" size-key="detail" title="Couldn't read the build" width="20rem">
@@ -135,7 +135,7 @@ const errorText = computed(() => error.value.includes('ENOENT')
 const filter = shallowRef('')
 const selected = shallowRef<string | null>(null)
 // The tree panel, on this tree's title.
-const treeAt = shallowRef<{ title: string } | null>(null)
+const treeAt = shallowRef<{ title: string, changes?: boolean } | null>(null)
 // Two builds side by side, by file.
 const comparing = shallowRef<{ a: string, b: string } | null>(null)
 const compareA = computed(() => builds.value.find(b => b.relPath === comparing.value?.a))

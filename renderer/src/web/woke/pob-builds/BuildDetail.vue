@@ -44,7 +44,7 @@
         <div v-if="!isActive" class="pt-1 text-xs" style="color: var(--w-warn);">Other windows use your active build. Press Use build to use this loadout there.</div>
         <template v-if="nextTree || nextGems_ || gearStep">
           <div :class="$style.heading">Next</div>
-          <button v-if="nextTree" type="button" :class="$style.next" class="w-focusable" title="Show on the tree" @click="emit('tree', nextTree.title)">
+          <button v-if="nextTree" type="button" :class="$style.next" class="w-focusable" title="Show on the tree" @click="emit('tree', nextTree.title, true)">
             <span :class="$style.nextHead">
               <span>Tree: <span class="w-accent">{{ nextTree.title }}</span></span>
               <span class="ml-auto w-dim text-xs whitespace-nowrap">
@@ -211,7 +211,7 @@ const props = defineProps<{
   entry: PobBuildEntry
   details: PobDetails | null
 }>()
-const emit = defineEmits<{ (e: 'close'): void, (e: 'tree', title: string): void }>()
+const emit = defineEmits<{ (e: 'close'): void, (e: 'tree', title: string, changes?: boolean): void }>()
 
 const build = useActiveBuild()
 const level = build.level

@@ -9,6 +9,9 @@
       <div class="flex flex-wrap gap-1">
         <WChip v-for="(t, i) in trees" :key="i" clickable :active="i === at" @click="pick(i)">{{ t.title }}</WChip>
       </div>
+      <button v-if="earlier" type="button" :class="$style.changes" class="w-focusable" role="switch" :aria-checked="changes" @click="changes = !changes">
+        <i :class="changes ? 'fas fa-check-square' : 'far fa-square'" /> Changes from {{ earlier.title }}
+      </button>
     </template>
 
     <WEmpty v-if="error" icon="fas fa-exclamation-triangle">{{ error }}</WEmpty>
@@ -20,15 +23,19 @@
           @wheel.prevent="zoom" @mousedown="startPan" @mousemove="moved" @mouseleave="left" @dblclick="fit" />
       </div>
       <div :class="$style.side" class="w-scroll">
-        <div v-if="previous" class="w-dim">{{ previous.title }} to <span class="w-accent">{{ shown?.title }}</span></div>
-        <div v-else class="w-accent">{{ shown?.title }}</div>
-        <div class="pt-1">
-          <span class="w-up">{{ diff.added }} new {{ diff.added === 1 ? 'point' : 'points' }}</span><template v-if="diff.addedAscendancy">, {{ diff.addedAscendancy }} ascendancy</template><template v-if="diff.removed">, <span class="w-down">{{ diff.removed }} to respec</span></template>
+        <div class="w-accent">{{ shown?.title }}</div>
+        <template v-if="previous">
+          <div class="pt-1">
+            <span class="w-up">{{ diff.added }} new {{ diff.added === 1 ? 'point' : 'points' }}</span><template v-if="diff.addedAscendancy">, {{ diff.addedAscendancy }} ascendancy</template><template v-if="diff.removed">, <span class="w-down">{{ diff.removed }} to respec</span></template>
+          </div>
+          <div v-if="!diff.added && !diff.removed" class="w-dim">Same as {{ previous.title }}.</div>
+        </template>
+        <div v-else class="pt-1 w-dim">
+          {{ diff.added }} {{ diff.added === 1 ? 'point' : 'points' }}<template v-if="diff.addedAscendancy">, {{ diff.addedAscendancy }} ascendancy</template>
         </div>
-        <div v-if="!diff.added && !diff.removed" class="w-dim">Same as the tree before it.</div>
 
         <template v-if="diff.addedNames.length">
-          <div :class="$style.heading">New</div>
+          <div :class="$style.heading">{{ previous ? 'New' : 'Notables and keystones' }}</div>
           <div v-for="n in diff.addedNames" :key="n.id" :class="$style.row">
             <span>{{ n.name }}</span>
             <div v-for="(line, i) in n.stats" :key="i" class="w-dim text-xs">{{ line }}</div>
@@ -60,22 +67,27 @@ import type { Sheets } from './tree-draw'
 import type { PobTreeSpec } from './widget'
 
 // A new `start` object means go to that tree, even if it's the same title again.
-const props = defineProps<{ specs: PobTreeSpec[], start: { title: string } }>()
+// `changes` opens it showing what that tree adds, as the Next card does.
+const props = defineProps<{ specs: PobTreeSpec[], start: { title: string, changes?: boolean } }>()
 const emit = defineEmits<{ (e: 'close'): void }>()
 
 const trees = computed(() => realSets(props.specs))
 const at = shallowRef(0)
 const shown = computed(() => trees.value[at.value] ?? trees.value[trees.value.length - 1] ?? null)
-const previous = computed(() => (at.value > 0 ? trees.value[at.value - 1] : null))
+const earlier = computed(() => (at.value > 0 ? trees.value[at.value - 1] : null))
+// Off, the picked tree on its own. On, what it changes from the one before.
+const changes = shallowRef(false)
+const previous = computed(() => changes.value ? earlier.value : null)
 
 function pick (i: number) {
   at.value = i
 }
 
 // Only on being asked: PoB saving the build shouldn't move you off a tree.
-watch(() => props.start, ({ title }) => {
+watch(() => props.start, ({ title, changes: wanted }) => {
   const i = trees.value.findIndex(t => t.title === title)
   at.value = i < 0 ? 0 : i
+  changes.value = Boolean(wanted)
 }, { immediate: true })
 
 const tree = shallowRef<Map<number, TreeNode> | null>(null)
@@ -205,7 +217,7 @@ watch(box, (el) => {
   nextTick(resize)
 })
 
-watch([() => shown.value?.title, tree], () => { nextTick(fit) })
+watch([() => shown.value?.title, tree, changes], () => { nextTick(fit) })
 watch([fromSet, toSet, sheets], schedule)
 
 // The overlay can close with no mouse event: leaving the game's focus ends a
@@ -339,6 +351,17 @@ function openWeb () {
   width: 100%;
   height: 100%;
 }
+.changes {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+  margin-left: auto;
+  white-space: nowrap;
+  font-size: var(--w-fs-sm);
+  color: var(--w-dim);
+}
+.changes:hover { color: var(--w-fg); }
 .side {
   flex: 0 0 15rem;
   min-width: 0;
