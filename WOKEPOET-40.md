@@ -3,7 +3,7 @@ id: WOKEPOET-40
 title: >-
   Never send chat commands without a key press (filter reload, strictness
   ladder)
-status: Done
+status: Released
 priority: Critical
 effort: S
 assignee: unassigned
@@ -11,7 +11,7 @@ tags:
   - bug
   - overlay-core
 createdBy: Agent
-updatedBy: Agent
+updatedBy: Guy
 parentId: WOKEPOET-36
 history:
   - type: activity
@@ -40,8 +40,16 @@ history:
     to: Done
     user: Agent
     date: '2026-11-05T10:00:52.298Z'
+  - type: status_change
+    from: Done
+    to: Released
+    user: Guy
+    date: '2026-11-06T12:10:48.371Z'
 implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/126'
 needsAction: null
+version: 0.3.0
+releasedAt: '2026-11-06T12:10:45.221Z'
+releaseDocPath: release-notes/0.3.0
 ---
 > **TL;DR** F1. /itemfilter is sent from a Client.txt area line plus a 4 s timer, with no key pressed. GGG's macro rules forbid timers and file changes as triggers; the penalty is account termination.
 

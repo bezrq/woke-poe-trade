@@ -1,14 +1,14 @@
 ---
 id: WOKEPOET-114
 title: 'Flips: show profit per item, not per recipe'
-status: Done
+status: Released
 priority: None
 effort: XS
 assignee: Agent
 tags:
   - feature
 createdBy: Agent
-updatedBy: Agent
+updatedBy: Guy
 history:
   - type: activity
     user: Agent
@@ -47,6 +47,11 @@ history:
     to: Done
     user: Agent
     date: '2026-11-05T14:54:10.491Z'
+  - type: status_change
+    from: Done
+    to: Released
+    user: Guy
+    date: '2026-11-06T12:10:46.938Z'
 implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/196'
 needsAction: null
 baselineCommit: ae9d149f9c555d42e467c95e82514624d060baa7
@@ -112,6 +117,9 @@ diffSummary:
   - file: testing/e2e/landing-shots.spec.ts
     additions: 211
     deletions: 4
+version: 0.3.0
+releasedAt: '2026-11-06T12:10:45.221Z'
+releaseDocPath: release-notes/0.3.0
 ---
 > **TL;DR:** Guy asked why profit is shown per recipe when the price beside it is per scarab. Show profit per item you put in, so it matches the price and all tabs compare the same way.
 

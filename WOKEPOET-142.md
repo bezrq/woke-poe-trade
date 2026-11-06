@@ -3,14 +3,14 @@ id: WOKEPOET-142
 title: >-
   Landing page: redesign feature slides (sharp shots, pickers on top, real PoE
   art)
-status: Done
+status: Released
 priority: None
 effort: None
 assignee: unassigned
 tags:
   - landing
 createdBy: Agent
-updatedBy: Agent
+updatedBy: Guy
 history:
   - type: activity
     user: Agent
@@ -54,6 +54,11 @@ history:
     to: Done
     user: Agent
     date: '2026-11-06T09:48:31.506Z'
+  - type: status_change
+    from: Done
+    to: Released
+    user: Guy
+    date: '2026-11-06T12:10:45.846Z'
 needsAction: null
 baselineCommit: ae9d149f9c555d42e467c95e82514624d060baa7
 implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/237'
@@ -119,6 +124,9 @@ diffSummary:
   - file: testing/e2e/landing-shots.spec.ts
     additions: 211
     deletions: 4
+version: 0.3.0
+releasedAt: '2026-11-06T12:10:45.221Z'
+releaseDocPath: release-notes/0.3.0
 ---
 Guy's points: images too big and blurry; pickers ugly, use real PoE art; pickers above each section and fit one screen with the slide; background not plain black or an item border on the pics.
 

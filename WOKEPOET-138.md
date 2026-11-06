@@ -1,14 +1,14 @@
 ---
 id: WOKEPOET-138
 title: Move explanatory text behind ? hovers
-status: Done
+status: Released
 priority: None
 effort: None
 assignee: unassigned
 tags:
   - ui
 createdBy: Agent
-updatedBy: Agent
+updatedBy: Guy
 history:
   - type: activity
     user: Agent
@@ -79,6 +79,11 @@ history:
     to: Done
     user: Agent
     date: '2026-11-06T08:45:12.636Z'
+  - type: status_change
+    from: Done
+    to: Released
+    user: Guy
+    date: '2026-11-06T12:10:45.978Z'
 swimlane: null
 needsAction: null
 baselineCommit: ae9d149f9c555d42e467c95e82514624d060baa7
@@ -144,5 +149,8 @@ diffSummary:
   - file: testing/e2e/landing-shots.spec.ts
     additions: 211
     deletions: 4
+version: 0.3.0
+releasedAt: '2026-11-06T12:10:45.221Z'
+releaseDocPath: release-notes/0.3.0
 ---
 Audit the overlay and landing page for explanatory or filler text that could sit behind a small ? hover. Report by screen with move/shorten/keep, mock the pattern, build after Guy's pick. Clone: E:\Git\woke-help-hints.

@@ -1,7 +1,7 @@
 ---
 id: WOKEPOET-112
 title: Get master CI green and make it a required check
-status: Done
+status: Released
 priority: High
 effort: None
 assignee: Agent
@@ -9,7 +9,7 @@ tags:
   - bug
   - tooling
 createdBy: Agent
-updatedBy: Agent
+updatedBy: Guy
 history:
   - type: activity
     user: Agent
@@ -87,8 +87,16 @@ history:
     to: Done
     user: Agent
     date: '2026-11-06T02:41:06.705Z'
+  - type: status_change
+    from: Done
+    to: Released
+    user: Guy
+    date: '2026-11-06T12:10:46.675Z'
 swimlane: null
 needsAction: null
+version: 0.3.0
+releasedAt: '2026-11-06T12:10:45.221Z'
+releaseDocPath: release-notes/0.3.0
 ---
 Master CI (Tests workflow) has been red and merges went past it. Goal: fix root causes, no skips, make real flakes deterministic, then propose CI as a required check.
 

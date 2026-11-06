@@ -1,7 +1,7 @@
 ---
 id: WOKEPOET-47
 title: Second launch should tell the player it's already running
-status: Done
+status: Released
 priority: Medium
 effort: XS
 assignee: unassigned
@@ -9,7 +9,7 @@ tags:
   - bug
   - overlay-core
 createdBy: Agent
-updatedBy: Agent
+updatedBy: Guy
 parentId: WOKEPOET-36
 history:
   - type: activity
@@ -38,8 +38,16 @@ history:
     to: Done
     user: Agent
     date: '2026-11-05T10:00:58.296Z'
+  - type: status_change
+    from: Done
+    to: Released
+    user: Guy
+    date: '2026-11-06T12:10:48.242Z'
 implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/133'
 needsAction: null
+version: 0.3.0
+releasedAt: '2026-11-06T12:10:45.221Z'
+releaseDocPath: release-notes/0.3.0
 ---
 > **TL;DR** C2. main.ts exits a second copy with no feedback and has no second-instance handler.
 

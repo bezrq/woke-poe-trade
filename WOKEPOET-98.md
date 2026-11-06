@@ -1,7 +1,7 @@
 ---
 id: WOKEPOET-98
 title: 'woke-dev: wait for Vite, and catch an overlay page that failed to load'
-status: Done
+status: Released
 priority: Medium
 effort: S
 assignee: unassigned
@@ -9,7 +9,7 @@ tags:
   - bug
   - overlay-core
 createdBy: Agent
-updatedBy: Agent
+updatedBy: Guy
 parentId: WOKEPOET-36
 history:
   - type: activity
@@ -33,7 +33,15 @@ history:
     to: Done
     user: Agent
     date: '2026-11-05T12:40:15.332Z'
+  - type: status_change
+    from: Done
+    to: Released
+    user: Guy
+    date: '2026-11-06T12:10:47.318Z'
 needsAction: null
+version: 0.3.0
+releasedAt: '2026-11-06T12:10:45.221Z'
+releaseDocPath: release-notes/0.3.0
 ---
 > **TL;DR** `woke-dev master` let Electron load before Vite was serving: ERR_CONNECTION_REFUSED, a chrome-error page, and status still said RUNNING. Another thread recovered it over CDP.
 

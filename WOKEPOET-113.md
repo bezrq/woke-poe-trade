@@ -1,13 +1,13 @@
 ---
 id: WOKEPOET-113
 title: Client.txt warning never clears when the app starts before the game
-status: Done
+status: Released
 priority: Medium
 effort: S
 assignee: unassigned
 tags: []
 createdBy: Agent
-updatedBy: Agent
+updatedBy: Guy
 history:
   - type: activity
     user: Agent
@@ -48,9 +48,17 @@ history:
     to: Done
     user: Agent
     date: '2026-11-05T14:54:39.156Z'
+  - type: status_change
+    from: Done
+    to: Released
+    user: Guy
+    date: '2026-11-06T12:10:46.922Z'
 implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/195'
 needsAction: null
 reviewState: null
+version: 0.3.0
+releasedAt: '2026-11-06T12:10:45.221Z'
+releaseDocPath: release-notes/0.3.0
 ---
 > **TL;DR** Start the app before PoE and the health card says "Client.txt not found" for the rest of the session, even once the log is being read.
 

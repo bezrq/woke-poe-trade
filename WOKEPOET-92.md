@@ -1,14 +1,14 @@
 ---
 id: WOKEPOET-92
 title: 'Generalize the flip screen: catalysts, delirium orbs, Harvest rerolls and more'
-status: Done
+status: Released
 priority: None
 effort: L
 assignee: Agent
 tags:
   - feature
 createdBy: Agent
-updatedBy: Agent
+updatedBy: Guy
 history:
   - type: activity
     user: Agent
@@ -95,6 +95,11 @@ history:
     to: Done
     user: Agent
     date: '2026-11-05T12:16:37.876Z'
+  - type: status_change
+    from: Done
+    to: Released
+    user: Guy
+    date: '2026-11-06T12:10:47.553Z'
 swimlane: null
 needsAction: null
 implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/163'
@@ -160,6 +165,9 @@ diffSummary:
   - file: testing/e2e/landing-shots.spec.ts
     additions: 211
     deletions: 4
+version: 0.3.0
+releasedAt: '2026-11-06T12:10:45.221Z'
+releaseDocPath: release-notes/0.3.0
 ---
 > **TL;DR:** Turn the scarab flip panel into one Flips screen covering every recipe and Harvest reroll that can be priced, once Guy picks a layout.
 

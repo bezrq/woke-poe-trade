@@ -1,13 +1,13 @@
 ---
 id: WOKEPOET-23
 title: 'Show boss drops on the dock icon in boss arenas, including Atziri'
-status: Done
+status: Released
 priority: Medium
 effort: S
 assignee: unassigned
 tags: []
 createdBy: Agent
-updatedBy: Agent
+updatedBy: Guy
 history:
   - type: activity
     user: Agent
@@ -67,6 +67,11 @@ history:
     to: Done
     user: Agent
     date: '2026-11-05T04:16:08.565Z'
+  - type: status_change
+    from: Done
+    to: Released
+    user: Guy
+    date: '2026-11-06T12:10:49.206Z'
 branch: flux/WOKEPOET-23-show-boss-drops-on-the-dock-icon-in-boss-arenas-including-at
 baselineCommit: a4c85a758a73046c8f54268117154f06f5082670
 needsAction: null
@@ -100,6 +105,9 @@ diffSummary:
   - file: testing/e2e/in-game.spec.ts
     additions: 69
     deletions: 0
+version: 0.3.0
+releasedAt: '2026-11-06T12:10:45.221Z'
+releaseDocPath: release-notes/0.3.0
 ---
 > **TL;DR:** Entering a boss arena (Guy's screenshot: "You have entered The Alluring Abyss.") should light the Boss runs dock icon and show that boss's drops. The Alluring Abyss (Uber Atziri) and The Apex of Sacrifice (Atziri) aren't known yet, and shared arena names pick the wrong boss.
 

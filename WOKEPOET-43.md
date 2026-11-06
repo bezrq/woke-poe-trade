@@ -1,7 +1,7 @@
 ---
 id: WOKEPOET-43
 title: 'Save settings on quit, restart and while Settings is open'
-status: Done
+status: Released
 priority: High
 effort: S
 assignee: unassigned
@@ -9,7 +9,7 @@ tags:
   - bug
   - overlay-core
 createdBy: Agent
-updatedBy: Agent
+updatedBy: Guy
 parentId: WOKEPOET-36
 history:
   - type: activity
@@ -38,8 +38,16 @@ history:
     to: Done
     user: Agent
     date: '2026-11-05T10:00:55.345Z'
+  - type: status_change
+    from: Done
+    to: Released
+    user: Guy
+    date: '2026-11-06T12:10:48.310Z'
 implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/129'
 needsAction: null
+version: 0.3.0
+releasedAt: '2026-11-06T12:10:45.221Z'
+releaseDocPath: release-notes/0.3.0
 ---
 > **TL;DR** F4, the known bug. "Change saved" only updates memory. The disk write happens when Settings hides, and saveConfig refuses while Settings is open, so Quit, tray Quit, Restart now, a crash or a power cut lose the changes.
 

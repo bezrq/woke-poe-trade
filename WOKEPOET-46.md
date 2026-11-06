@@ -1,7 +1,7 @@
 ---
 id: WOKEPOET-46
 title: Show attach state in the tray and warn about exclusive fullscreen
-status: Done
+status: Released
 priority: Medium
 effort: S
 assignee: unassigned
@@ -9,7 +9,7 @@ tags:
   - feature
   - overlay-core
 createdBy: Agent
-updatedBy: Agent
+updatedBy: Guy
 parentId: WOKEPOET-36
 history:
   - type: activity
@@ -35,7 +35,15 @@ history:
     to: Done
     user: Agent
     date: '2026-11-05T12:40:14.623Z'
+  - type: status_change
+    from: Done
+    to: Released
+    user: Guy
+    date: '2026-11-06T12:10:47.360Z'
 needsAction: null
+version: 0.3.0
+releasedAt: '2026-11-06T12:10:45.221Z'
+releaseDocPath: release-notes/0.3.0
 ---
 > **TL;DR** C1. Nothing says whether the overlay is attached or why not. The tray tooltip shows only the version, and exclusive fullscreen fails with no warning. Any new UI needs mocks first.
 

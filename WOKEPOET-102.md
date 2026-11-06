@@ -1,14 +1,14 @@
 ---
 id: WOKEPOET-102
 title: 'Flips: clearer volume labels, lifeforce cost moves to settings'
-status: Done
+status: Released
 priority: None
 effort: XS
 assignee: Agent
 tags:
   - feature
 createdBy: Agent
-updatedBy: Agent
+updatedBy: Guy
 history:
   - type: activity
     user: Agent
@@ -48,6 +48,11 @@ history:
     to: Done
     user: Agent
     date: '2026-11-05T13:12:47.263Z'
+  - type: status_change
+    from: Done
+    to: Released
+    user: Guy
+    date: '2026-11-06T12:10:47.193Z'
 implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/183'
 needsAction: null
 baselineCommit: ae9d149f9c555d42e467c95e82514624d060baa7
@@ -113,6 +118,9 @@ diffSummary:
   - file: testing/e2e/landing-shots.spec.ts
     additions: 211
     deletions: 4
+version: 0.3.0
+releasedAt: '2026-11-06T12:10:45.221Z'
+releaseDocPath: release-notes/0.3.0
 ---
 > **TL;DR:** Guy couldn't tell what "Traded / day" and "C / day" mean, and doesn't want the lifeforce cost field on the panel. Rename the columns with explaining tooltips, and move the field to the Flips settings.
 

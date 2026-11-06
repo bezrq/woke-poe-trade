@@ -1,7 +1,7 @@
 ---
 id: WOKEPOET-146
 title: 'Landing page: Aspirants'' Plaza header background'
-status: Done
+status: Released
 priority: None
 effort: XS
 assignee: unassigned
@@ -9,7 +9,7 @@ tags:
   - docs
   - ui
 createdBy: Agent
-updatedBy: Agent
+updatedBy: Guy
 history:
   - type: activity
     user: Agent
@@ -42,6 +42,11 @@ history:
     to: Done
     user: Agent
     date: '2026-11-06T11:37:20.316Z'
+  - type: status_change
+    from: Done
+    to: Released
+    user: Guy
+    date: '2026-11-06T12:10:45.462Z'
 needsAction: null
 baselineCommit: ae9d149f9c555d42e467c95e82514624d060baa7
 implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/247'
@@ -107,5 +112,8 @@ diffSummary:
   - file: testing/e2e/landing-shots.spec.ts
     additions: 211
     deletions: 4
+version: 0.3.0
+releasedAt: '2026-11-06T12:10:45.221Z'
+releaseDocPath: release-notes/0.3.0
 ---
 > Guy picked option D: a cleanly cropped Aspirants' Plaza frame behind the header, fading to the page, and the same on the README banner.

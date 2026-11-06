@@ -1,7 +1,7 @@
 ---
 id: WOKEPOET-60
 title: 'Trade API: honour Retry-After and 429, identifiable user agent'
-status: Done
+status: Released
 priority: Medium
 effort: S
 assignee: unassigned
@@ -9,7 +9,7 @@ tags:
   - bug
   - overlay-core
 createdBy: Agent
-updatedBy: Agent
+updatedBy: Guy
 parentId: WOKEPOET-36
 history:
   - type: activity
@@ -37,6 +37,14 @@ history:
     to: Done
     user: Agent
     date: '2026-11-05T10:53:21.059Z'
+  - type: status_change
+    from: Done
+    to: Released
+    user: Guy
+    date: '2026-11-06T12:10:48.035Z'
 needsAction: null
+version: 0.3.0
+releasedAt: '2026-11-06T12:10:45.221Z'
+releaseDocPath: release-notes/0.3.0
 ---
 > **TL;DR** C15. X-Rate-Limit headers are followed, but the trade code has no Retry-After or 429 lockout, and GGG counts repeated 4xx against you. The user agent is Electron's generic one. Check against WOKEPOET-37, which covers price check.

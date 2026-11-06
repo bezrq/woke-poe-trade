@@ -1,14 +1,14 @@
 ---
 id: WOKEPOET-11
 title: 'Window controls on panel top bars, minimize and right-click menu'
-status: Done
+status: Released
 priority: Medium
 effort: M
 assignee: unassigned
 tags:
   - ui
 createdBy: Agent
-updatedBy: Agent
+updatedBy: Guy
 history:
   - type: activity
     user: Agent
@@ -99,12 +99,20 @@ history:
     date: '2026-11-05T03:20:28.500Z'
     comment: Task worktree automatically reclaimed (ready-or-terminal-status)
     id: a-2026-11-05t03-20-28-500z
+  - type: status_change
+    from: Done
+    to: Released
+    user: Guy
+    date: '2026-11-06T12:10:49.489Z'
 needsAction: null
 branch: flux/WOKEPOET-11-window-controls-on-panel-top-bars-minimize-and-right-click-m
 baselineCommit: 95cbada0b56969b164437487851fe1db57556125
 implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/83'
 swimlane: null
 reviewState: null
+version: 0.3.0
+releasedAt: '2026-11-06T12:10:45.221Z'
+releaseDocPath: release-notes/0.3.0
 ---
 > **TL;DR:** Replace the hover corner menu (hide / edit / move / delete) with buttons on each panel's title bar, add a minimize button that collapses a panel to its title bar, and offer the same options in a right-click menu on every widget.
 

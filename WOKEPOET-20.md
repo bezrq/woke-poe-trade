@@ -1,13 +1,13 @@
 ---
 id: WOKEPOET-20
 title: Open dynamic popups in the empty left area by default
-status: Done
+status: Released
 priority: Medium
 effort: S
 assignee: unassigned
 tags: []
 createdBy: Agent
-updatedBy: Agent
+updatedBy: Guy
 history:
   - type: activity
     user: Agent
@@ -69,6 +69,11 @@ history:
     to: Done
     user: Agent
     date: '2026-11-05T04:05:18.921Z'
+  - type: status_change
+    from: Done
+    to: Released
+    user: Guy
+    date: '2026-11-06T12:10:49.293Z'
 branch: flux/WOKEPOET-20-open-dynamic-popups-in-the-empty-left-area-by-default
 baselineCommit: 7896e164a82865073f89df1ab235131664e8c4a4
 needsAction: null
@@ -165,6 +170,9 @@ diffSummary:
   - file: testing/fixtures/pob/Loadouts.xml
     additions: 43
     deletions: 0
+version: 0.3.0
+releasedAt: '2026-11-06T12:10:45.221Z'
+releaseDocPath: release-notes/0.3.0
 ---
 > **TL;DR:** Panels opened from the dock or tab bar (PoB builds and friends) open at one spot on the left, below the top bar. Panels the user already moved stay put.
 

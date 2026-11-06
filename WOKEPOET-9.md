@@ -1,14 +1,14 @@
 ---
 id: WOKEPOET-9
 title: 'Settings window: centre sidebar icons and make the panel more opaque'
-status: Done
+status: Released
 priority: Medium
 effort: XS
 assignee: Agent
 tags:
   - bug
 createdBy: Agent
-updatedBy: Agent
+updatedBy: Guy
 history:
   - type: activity
     user: Agent
@@ -67,11 +67,19 @@ history:
     date: '2026-11-05T02:32:22.483Z'
     completionComment: true
     id: c-2026-11-05t02-32-22-483z
+  - type: status_change
+    from: Done
+    to: Released
+    user: Guy
+    date: '2026-11-06T12:10:49.592Z'
 branch: flux/WOKEPOET-9-settings-window-centre-sidebar-icons-and-make-the-panel-more
 baselineCommit: 301ac1fcb1ecf86b5d04d66b9a83b4e036d062ea
 needsAction: null
 implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/81'
 swimlane: null
+version: 0.3.0
+releasedAt: '2026-11-06T12:10:45.221Z'
+releaseDocPath: release-notes/0.3.0
 ---
 > **TL;DR:** The sidebar icons in the new Settings window don't line up with their labels, and the window is too see-through over the game. Fix both.
 

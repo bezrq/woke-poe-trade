@@ -1,14 +1,14 @@
 ---
 id: WOKEPOET-85
 title: 'Run timer: stop other characters from faking splits and the PB'
-status: Done
+status: Released
 priority: High
 effort: None
 assignee: unassigned
 tags:
   - bug
 createdBy: Agent
-updatedBy: Agent
+updatedBy: Guy
 history:
   - type: activity
     user: Agent
@@ -39,8 +39,16 @@ history:
     to: Done
     user: Agent
     date: '2026-11-05T12:29:17.980Z'
+  - type: status_change
+    from: Done
+    to: Released
+    user: Guy
+    date: '2026-11-06T12:10:47.415Z'
 implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/170'
 needsAction: null
+version: 0.3.0
+releasedAt: '2026-11-06T12:10:45.221Z'
+releaseDocPath: release-notes/0.3.0
 ---
 Step 3 of the [gameplay helpers critique](https://claude.ai/artifact/NjdEZhrQZBmKwRB56yTsoj). No new UI.
 

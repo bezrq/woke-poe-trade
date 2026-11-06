@@ -1,7 +1,7 @@
 ---
 id: WOKEPOET-42
 title: Only type into the game when it has focus
-status: Done
+status: Released
 priority: High
 effort: S
 assignee: unassigned
@@ -9,7 +9,7 @@ tags:
   - bug
   - overlay-core
 createdBy: Agent
-updatedBy: Agent
+updatedBy: Guy
 parentId: WOKEPOET-36
 history:
   - type: activity
@@ -38,8 +38,16 @@ history:
     to: Done
     user: Agent
     date: '2026-11-05T10:00:53.046Z'
+  - type: status_change
+    from: Done
+    to: Released
+    user: Guy
+    date: '2026-11-06T12:10:48.356Z'
 implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/126'
 needsAction: null
+version: 0.3.0
+releasedAt: '2026-11-06T12:10:45.221Z'
+releaseDocPath: release-notes/0.3.0
 ---
 > **TL;DR** F3. paste-in-chat can wait up to 30 s in whenKeysIdle, then types with no check that PoE is in front, so Discord can get Enter, Ctrl+V, Enter.
 

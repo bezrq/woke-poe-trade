@@ -1,14 +1,14 @@
 ---
 id: WOKEPOET-10
 title: Trade search window can't be moved or resized
-status: Done
+status: Released
 priority: Medium
 effort: S
 assignee: Agent
 tags:
   - bug
 createdBy: Agent
-updatedBy: Agent
+updatedBy: Guy
 history:
   - type: activity
     user: Agent
@@ -70,11 +70,19 @@ history:
     date: '2026-11-05T02:46:59.539Z'
     comment: Task worktree automatically reclaimed (ready-or-terminal-status)
     id: a-2026-11-05t02-46-59-539z
+  - type: status_change
+    from: Done
+    to: Released
+    user: Guy
+    date: '2026-11-06T12:10:49.562Z'
 branch: flux/WOKEPOET-10-trade-search-window-can-t-be-moved-or-resized
 baselineCommit: 95cbada0b56969b164437487851fe1db57556125
 needsAction: null
 implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/82'
 swimlane: null
+version: 0.3.0
+releasedAt: '2026-11-06T12:10:45.221Z'
+releaseDocPath: release-notes/0.3.0
 ---
 > **TL;DR:** The Trade searches browser panel ignores resizing, loses the mouse mid-drag over the embedded page, and starts jammed against the bottom-right of the screen. Fix all three so it drags, resizes and remembers.
 

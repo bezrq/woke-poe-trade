@@ -3,13 +3,13 @@ id: WOKEPOET-71
 title: >-
   Boss runs icon in league boss arenas (Settlers, Infinite Hunger, Black Star,
   Saresh, King in the Mists)
-status: Done
+status: Released
 priority: Medium
 effort: S
 assignee: unassigned
 tags: []
 createdBy: Agent
-updatedBy: Agent
+updatedBy: Guy
 history:
   - type: activity
     user: Agent
@@ -72,6 +72,11 @@ history:
     date: '2026-11-05T08:28:41.029Z'
     comment: Updated implementation link.
     id: a-2026-11-05t08-28-41-029z
+  - type: status_change
+    from: Done
+    to: Released
+    user: Guy
+    date: '2026-11-06T12:10:48.650Z'
 branch: flux/WOKEPOET-71-boss-runs-icon-in-league-boss-arenas-settlers-infinite-hunge
 baselineCommit: eda80ec72b532f1879d64506c752d70b8d143fc8
 needsAction: null
@@ -406,5 +411,8 @@ diffSummary:
   - file: testing/main/neversink-release.test.ts
     additions: 36
     deletions: 0
+version: 0.3.0
+releasedAt: '2026-11-06T12:10:45.221Z'
+releaseDocPath: release-notes/0.3.0
 ---
 > **TL;DR:** Guy got no boss drops icon in a Settlers arena (Lazeth, Sailor's Folly, `SettlersBossPirateCove`). Add league boss arenas seen in his Client.txt to the Boss runs list, with drops from poedb.

@@ -1,14 +1,14 @@
 ---
 id: WOKEPOET-111
 title: 'Price check: ticking mods must not move the window''s contents'
-status: Done
+status: Released
 priority: None
 effort: None
 assignee: unassigned
 tags:
   - ui
 createdBy: Agent
-updatedBy: Agent
+updatedBy: Guy
 history:
   - type: activity
     user: Agent
@@ -60,9 +60,17 @@ history:
     to: Done
     user: Agent
     date: '2026-11-05T14:31:55.698Z'
+  - type: status_change
+    from: Done
+    to: Released
+    user: Guy
+    date: '2026-11-06T12:10:47.011Z'
 needsAction: null
 implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/193'
 reviewState: null
+version: 0.3.0
+releasedAt: '2026-11-06T12:10:45.221Z'
+releaseDocPath: release-notes/0.3.0
 ---
 > Ticking a mod removes the results and price block above the mods, so the mods jump under the cursor. Keep the last results, dimmed, until the next search.
 

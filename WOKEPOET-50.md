@@ -1,7 +1,7 @@
 ---
 id: WOKEPOET-50
 title: Recover the input hook after sleep and missed mouse-ups
-status: Done
+status: Released
 priority: Medium
 effort: S
 assignee: unassigned
@@ -9,7 +9,7 @@ tags:
   - bug
   - overlay-core
 createdBy: Agent
-updatedBy: Agent
+updatedBy: Guy
 parentId: WOKEPOET-36
 history:
   - type: activity
@@ -38,8 +38,16 @@ history:
     to: Done
     user: Agent
     date: '2026-11-05T11:08:29.630Z'
+  - type: status_change
+    from: Done
+    to: Released
+    user: Guy
+    date: '2026-11-06T12:10:47.962Z'
 implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/150'
 needsAction: null
+version: 0.3.0
+releasedAt: '2026-11-06T12:10:45.221Z'
+releaseDocPath: release-notes/0.3.0
 ---
 > **TL;DR** C5. uIOhook starts once with no powerMonitor handling. A missed mouse-up leaves heldButtons stuck in woke/hover.ts, and the dock stops catching the mouse.
 

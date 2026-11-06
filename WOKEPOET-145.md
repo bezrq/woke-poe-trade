@@ -3,14 +3,14 @@ id: WOKEPOET-145
 title: >-
   Landing page: more slides (Safety net moves, Maps, Betrayal, setup,
   investments)
-status: Done
+status: Released
 priority: None
 effort: M
 assignee: unassigned
 tags:
   - docs
 createdBy: Agent
-updatedBy: Agent
+updatedBy: Guy
 history:
   - type: activity
     user: Agent
@@ -47,6 +47,11 @@ history:
     to: Done
     user: Agent
     date: '2026-11-06T11:28:43.458Z'
+  - type: status_change
+    from: Done
+    to: Released
+    user: Guy
+    date: '2026-11-06T12:10:45.537Z'
 needsAction: null
 baselineCommit: ae9d149f9c555d42e467c95e82514624d060baa7
 implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/246'
@@ -112,5 +117,8 @@ diffSummary:
   - file: testing/e2e/landing-shots.spec.ts
     additions: 211
     deletions: 4
+version: 0.3.0
+releasedAt: '2026-11-06T12:10:45.221Z'
+releaseDocPath: release-notes/0.3.0
 ---
 > Guy's picks: Safety net showing price moves to adopt, a Maps highlight (map scan, essence scan, atlas strategies), Betrayal, setup and module picker, investments. Not farming or session analytics: he doubts profit tracking works.

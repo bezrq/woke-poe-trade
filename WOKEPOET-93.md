@@ -3,7 +3,7 @@ id: WOKEPOET-93
 title: >-
   Boss runs: price jewels unidentified from trade, refresh rates, fill missing
   prices
-status: Done
+status: Released
 priority: High
 effort: M
 assignee: unassigned
@@ -12,7 +12,7 @@ tags:
   - prices
   - mocks
 createdBy: Agent
-updatedBy: Agent
+updatedBy: Guy
 history:
   - type: activity
     user: Agent
@@ -57,6 +57,11 @@ history:
     to: Done
     user: Agent
     date: '2026-11-05T11:48:17.908Z'
+  - type: status_change
+    from: Done
+    to: Released
+    user: Guy
+    date: '2026-11-06T12:10:47.739Z'
 needsAction: null
 baselineCommit: ae9d149f9c555d42e467c95e82514624d060baa7
 implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/166'
@@ -122,6 +127,9 @@ diffSummary:
   - file: testing/e2e/landing-shots.spec.ts
     additions: 211
     deletions: 4
+version: 0.3.0
+releasedAt: '2026-11-06T12:10:45.221Z'
+releaseDocPath: release-notes/0.3.0
 ---
 > **TL;DR:** Boss jewels drop unidentified, but Boss runs prices them from poe.ninja's single row, which is far below what unidentified copies sell for. Price them from unidentified instant-buyout trade listings instead, refresh stale drop rates, and fill drops poe.ninja doesn't list.
 

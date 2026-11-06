@@ -1,7 +1,7 @@
 ---
 id: WOKEPOET-104
 title: Redesign the price check filter header (C3)
-status: Done
+status: Released
 priority: Medium
 effort: M
 assignee: unassigned
@@ -9,7 +9,7 @@ tags:
   - ui
   - price-check
 createdBy: Agent
-updatedBy: Agent
+updatedBy: Guy
 history:
   - type: activity
     user: Agent
@@ -52,6 +52,11 @@ history:
     to: Done
     user: Agent
     date: '2026-11-05T13:49:47.242Z'
+  - type: status_change
+    from: Done
+    to: Released
+    user: Guy
+    date: '2026-11-06T12:10:47.092Z'
 implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/188'
 needsAction: null
 baselineCommit: ae9d149f9c555d42e467c95e82514624d060baa7
@@ -117,6 +122,9 @@ diffSummary:
   - file: testing/e2e/landing-shots.spec.ts
     additions: 211
     deletions: 4
+version: 0.3.0
+releasedAt: '2026-11-06T12:10:45.221Z'
+releaseDocPath: release-notes/0.3.0
 ---
 > TL;DR: Guy picked C3 from the mocks. The title shows what's being searched, a Generic / Base switch changes it, Links and iLvl become tiles beside it, and Stats plus the roll presets become one header on the stat list.
 

@@ -1,14 +1,14 @@
 ---
 id: WOKEPOET-35
 title: 'Safety net walks the real rules, protects thin items, judges by best variant'
-status: Done
+status: Released
 priority: High
 effort: M
 assignee: unassigned
 tags:
   - bug
 createdBy: Agent
-updatedBy: Agent
+updatedBy: Guy
 parentId: WOKEPOET-34
 history:
   - type: activity
@@ -53,6 +53,11 @@ history:
     to: Done
     user: Agent
     date: '2026-11-05T08:16:17.378Z'
+  - type: status_change
+    from: Done
+    to: Released
+    user: Guy
+    date: '2026-11-06T12:10:48.734Z'
 needsAction: null
 reviewState: approved
 baselineCommit: 71d0860524434368f668d75cefa01e3c34a5f070
@@ -242,6 +247,9 @@ diffSummary:
   - file: testing/main/app-icon.test.ts
     additions: 19
     deletions: 0
+version: 0.3.0
+releasedAt: '2026-11-06T12:10:45.221Z'
+releaseDocPath: release-notes/0.3.0
 ---
 > **TL;DR** — The **safety net now walks the real rules** for a plain drop, counts thin markets, never prices a unique by its **cheapest variant**, keeps its **last list** when prices are missing, and respects your own Hide and "Not for me". "Show it" saves.
 

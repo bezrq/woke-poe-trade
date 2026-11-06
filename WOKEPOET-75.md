@@ -1,14 +1,14 @@
 ---
 id: WOKEPOET-75
 title: 'Expedition dock card: fix missing prices, show what helps mid-map'
-status: Done
+status: Released
 priority: None
 effort: None
 assignee: unassigned
 tags:
   - ui
 createdBy: Agent
-updatedBy: Agent
+updatedBy: Guy
 history:
   - type: activity
     user: Agent
@@ -84,6 +84,11 @@ history:
     to: Done
     user: Agent
     date: '2026-11-05T10:29:58.142Z'
+  - type: status_change
+    from: Done
+    to: Released
+    user: Guy
+    date: '2026-11-06T12:10:48.150Z'
 swimlane: null
 needsAction: null
 baselineCommit: d3529ea34cc3eb9250af781a7d862751daf8ef90
@@ -104,6 +109,9 @@ diffSummary:
   - file: renderer/test/woke/game-log.test.ts
     additions: 8
     deletions: 2
+version: 0.3.0
+releasedAt: '2026-11-06T12:10:45.221Z'
+releaseDocPath: release-notes/0.3.0
 ---
 Dock hover card for Expedition shows "poe.ninja has no prices for these" plus two scarab chips.
 

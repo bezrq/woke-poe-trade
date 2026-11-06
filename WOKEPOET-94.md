@@ -1,7 +1,7 @@
 ---
 id: WOKEPOET-94
 title: 'Lab: layout window collapses to a hover bubble when interact mode ends'
-status: Done
+status: Released
 priority: Medium
 effort: None
 assignee: unassigned
@@ -10,7 +10,7 @@ tags:
   - mocks
   - woke
 createdBy: Agent
-updatedBy: Agent
+updatedBy: Guy
 history:
   - type: activity
     user: Agent
@@ -89,6 +89,11 @@ history:
     to: Done
     user: Agent
     date: '2026-11-05T11:58:18.401Z'
+  - type: status_change
+    from: Done
+    to: Released
+    user: Guy
+    date: '2026-11-06T12:10:47.707Z'
 swimlane: null
 needsAction: null
 implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/165'
@@ -154,6 +159,9 @@ diffSummary:
   - file: testing/e2e/landing-shots.spec.ts
     additions: 211
     deletions: 4
+version: 0.3.0
+releasedAt: '2026-11-06T12:10:45.221Z'
+releaseDocPath: release-notes/0.3.0
 ---
 > **TL;DR** The poelab layout window stays on screen after you leave Shift+Space. It should go away with interact mode and leave a small bubble that shows a mid-size map on hover.
 

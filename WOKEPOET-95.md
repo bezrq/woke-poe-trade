@@ -1,14 +1,14 @@
 ---
 id: WOKEPOET-95
 title: Merge the Gear and Setups tabs in the build panel
-status: Done
+status: Released
 priority: None
 effort: None
 assignee: unassigned
 tags:
   - ui
 createdBy: Agent
-updatedBy: Agent
+updatedBy: Guy
 history:
   - type: activity
     user: Agent
@@ -118,6 +118,11 @@ history:
     to: Done
     user: Agent
     date: '2026-11-05T12:17:06.366Z'
+  - type: status_change
+    from: Done
+    to: Released
+    user: Guy
+    date: '2026-11-06T12:10:47.514Z'
 swimlane: null
 needsAction: null
 implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/167'
@@ -183,6 +188,9 @@ diffSummary:
   - file: testing/e2e/landing-shots.spec.ts
     additions: 211
     deletions: 4
+version: 0.3.0
+releasedAt: '2026-11-06T12:10:45.221Z'
+releaseDocPath: release-notes/0.3.0
 ---
 > **TL;DR:** Show each item's gems on its Gear row and drop the Setups tab. Mocks are up; waiting on Guy's pick. No code yet.
 

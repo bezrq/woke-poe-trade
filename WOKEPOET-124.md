@@ -1,14 +1,14 @@
 ---
 id: WOKEPOET-124
 title: 'Cap price check number tiles, slow drag, drag from number'
-status: Done
+status: Released
 priority: None
 effort: None
 assignee: unassigned
 tags:
   - bug
 createdBy: Agent
-updatedBy: Agent
+updatedBy: Guy
 history:
   - type: activity
     user: Agent
@@ -46,6 +46,11 @@ history:
     to: Done
     user: Agent
     date: '2026-11-06T03:29:18.484Z'
+  - type: status_change
+    from: Done
+    to: Released
+    user: Guy
+    date: '2026-11-06T12:10:46.562Z'
 needsAction: null
 implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/213'
 baselineCommit: ae9d149f9c555d42e467c95e82514624d060baa7
@@ -111,5 +116,8 @@ diffSummary:
   - file: testing/e2e/landing-shots.spec.ts
     additions: 211
     deletions: 4
+version: 0.3.0
+releasedAt: '2026-11-06T12:10:45.221Z'
+releaseDocPath: release-notes/0.3.0
 ---
 Guy's screenshot showed Links at 7. Cap tiles at game limits, slow the drag, let a drag start from the number while a plain click still types. Branch claude/number-field-limits, clone E:\Git\woke-number-fields.

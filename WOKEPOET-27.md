@@ -1,13 +1,13 @@
 ---
 id: WOKEPOET-27
 title: 'Boss runs card leads with drops and chances, run stats only with logged kills'
-status: Done
+status: Released
 priority: Medium
 effort: S
 assignee: unassigned
 tags: []
 createdBy: Agent
-updatedBy: Agent
+updatedBy: Guy
 history:
   - type: activity
     user: Agent
@@ -82,6 +82,11 @@ history:
     date: '2026-11-05T05:09:21.659Z'
     comment: Updated implementation link.
     id: a-2026-11-05t05-09-21-659z
+  - type: status_change
+    from: Done
+    to: Released
+    user: Guy
+    date: '2026-11-06T12:10:49.054Z'
 branch: flux/WOKEPOET-27-boss-runs-card-leads-with-drops-and-chances-run-stats-only-w
 baselineCommit: 902cbb4b8e52d836935a1829cc7263b093bbc787
 needsAction: null
@@ -112,5 +117,8 @@ diffSummary:
   - file: testing/e2e/in-game.spec.ts
     additions: 5
     deletions: 0
+version: 0.3.0
+releasedAt: '2026-11-06T12:10:45.221Z'
+releaseDocPath: release-notes/0.3.0
 ---
 > **TL;DR:** Guy's feedback on the arena icon card: show the boss's drops and drop chances first, and show entry and run stats only when kills are logged. Exarch and other bosses have empty drop lists, so fill them from poe.how.

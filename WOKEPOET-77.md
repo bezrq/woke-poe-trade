@@ -1,14 +1,14 @@
 ---
 id: WOKEPOET-77
 title: Merge the old map stat list into Map mods tabs
-status: Done
+status: Released
 priority: Low
 effort: None
 assignee: unassigned
 tags:
   - feature
 createdBy: Agent
-updatedBy: Agent
+updatedBy: Guy
 history:
   - type: activity
     user: Agent
@@ -158,9 +158,17 @@ history:
     date: '2026-11-05T11:25:45.665Z'
     comment: Updated title. Updated implementation link.
     id: a-2026-11-05t11-25-45-665z
+  - type: status_change
+    from: Done
+    to: Released
+    user: Guy
+    date: '2026-11-06T12:10:47.847Z'
 swimlane: null
 needsAction: null
 implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/151'
+version: 0.3.0
+releasedAt: '2026-11-06T12:10:45.221Z'
+releaseDocPath: release-notes/0.3.0
 ---
 Settings > Item info & map check still shows APT's map stat list (343 stats with warning, danger and ok marks).
 

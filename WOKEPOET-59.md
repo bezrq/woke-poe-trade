@@ -1,7 +1,7 @@
 ---
 id: WOKEPOET-59
 title: 'Clipboard: safer restore, keep images'
-status: Done
+status: Released
 priority: Medium
 effort: M
 assignee: unassigned
@@ -9,7 +9,7 @@ tags:
   - bug
   - overlay-core
 createdBy: Agent
-updatedBy: Agent
+updatedBy: Guy
 parentId: WOKEPOET-36
 history:
   - type: activity
@@ -38,8 +38,16 @@ history:
     to: Done
     user: Agent
     date: '2026-11-05T11:08:32.225Z'
+  - type: status_change
+    from: Done
+    to: Released
+    user: Guy
+    date: '2026-11-06T12:10:47.918Z'
 implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/150'
 needsAction: null
+version: 0.3.0
+releasedAt: '2026-11-06T12:10:45.221Z'
+releaseDocPath: release-notes/0.3.0
 ---
 > **TL;DR** C14. Restore is off by default, so item text replaces your clipboard. With it on, the fixed 120 ms window (HostClipboard.ts) can paste your own text and press Enter when the game lags. Only text is saved, so images are lost.
 

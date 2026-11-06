@@ -1,14 +1,14 @@
 ---
 id: WOKEPOET-144
 title: 'Landing page: retake shots against latest master'
-status: Done
+status: Released
 priority: None
 effort: S
 assignee: unassigned
 tags:
   - docs
 createdBy: Agent
-updatedBy: Agent
+updatedBy: Guy
 history:
   - type: activity
     user: Agent
@@ -45,6 +45,11 @@ history:
     to: Done
     user: Agent
     date: '2026-11-06T10:38:07.797Z'
+  - type: status_change
+    from: Done
+    to: Released
+    user: Guy
+    date: '2026-11-06T12:10:45.645Z'
 needsAction: null
 baselineCommit: ae9d149f9c555d42e467c95e82514624d060baa7
 implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/243'
@@ -110,5 +115,8 @@ diffSummary:
   - file: testing/e2e/landing-shots.spec.ts
     additions: 211
     deletions: 4
+version: 0.3.0
+releasedAt: '2026-11-06T12:10:45.221Z'
+releaseDocPath: release-notes/0.3.0
 ---
 > Guy: some landing graphics need updating to the most recent commits. Retake every shot from latest master, compare, ship the ones that changed.

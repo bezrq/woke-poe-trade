@@ -3,14 +3,14 @@ id: WOKEPOET-30
 title: >-
   Open wiki and Craft of Exile in the overlay, with a pop-out to the real
   browser
-status: Done
+status: Released
 priority: None
 effort: None
 assignee: unassigned
 tags:
   - ui
 createdBy: Agent
-updatedBy: Agent
+updatedBy: Guy
 history:
   - type: activity
     user: Agent
@@ -87,6 +87,11 @@ history:
     to: Done
     user: Agent
     date: '2026-11-05T07:52:16.032Z'
+  - type: status_change
+    from: Done
+    to: Released
+    user: Guy
+    date: '2026-11-06T12:10:48.764Z'
 swimlane: null
 needsAction: null
 implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/124'
@@ -275,6 +280,9 @@ diffSummary:
   - file: testing/main/app-icon.test.ts
     additions: 19
     deletions: 0
+version: 0.3.0
+releasedAt: '2026-11-06T12:10:45.221Z'
+releaseDocPath: release-notes/0.3.0
 ---
 > **TL;DR:** The wiki, poedb and Craft of Exile item hotkeys throw you out to your real browser. Guy wants them to open inside the overlay, with a shortcut to pop the page out afterwards. Mocks come first; no code until Guy picks.
 

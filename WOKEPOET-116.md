@@ -1,14 +1,14 @@
 ---
 id: WOKEPOET-116
 title: 'Flips: add Essence of Doubt to the essence flip'
-status: Done
+status: Released
 priority: Medium
 effort: XS
 assignee: unassigned
 tags:
   - bug
 createdBy: Agent
-updatedBy: Agent
+updatedBy: Guy
 history:
   - type: activity
     user: Agent
@@ -49,6 +49,11 @@ history:
     to: Done
     user: Agent
     date: '2026-11-05T15:33:27.020Z'
+  - type: status_change
+    from: Done
+    to: Released
+    user: Guy
+    date: '2026-11-06T12:10:46.822Z'
 implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/202'
 needsAction: null
 baselineCommit: ae9d149f9c555d42e467c95e82514624d060baa7
@@ -114,6 +119,9 @@ diffSummary:
   - file: testing/e2e/landing-shots.spec.ts
     additions: 211
     deletions: 4
+version: 0.3.0
+releasedAt: '2026-11-06T12:10:45.221Z'
+releaseDocPath: release-notes/0.3.0
 ---
 Guy asked whether the Essence flip counts special essences (Hysteria, Insanity, Horror, Delirium). It doesn't: the reroll pool only takes Deafening names, and the upgrade chains only tiered types. No change needed, a test now pins it.
 

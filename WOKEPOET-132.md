@@ -1,13 +1,13 @@
 ---
 id: WOKEPOET-132
 title: 'Death recap: read map mods by OCR on entering a map'
-status: Done
+status: Released
 priority: Medium
 effort: M
 assignee: unassigned
 tags: []
 createdBy: Agent
-updatedBy: Agent
+updatedBy: Guy
 parentId: WOKEPOET-127
 history:
   - type: activity
@@ -80,6 +80,11 @@ history:
     to: Done
     user: Agent
     date: '2026-11-06T10:30:08.553Z'
+  - type: status_change
+    from: Done
+    to: Released
+    user: Guy
+    date: '2026-11-06T12:10:45.676Z'
 swimlane: null
 needsAction: null
 baselineCommit: ae9d149f9c555d42e467c95e82514624d060baa7
@@ -145,6 +150,9 @@ diffSummary:
   - file: testing/e2e/landing-shots.spec.ts
     additions: 211
     deletions: 4
+version: 0.3.0
+releasedAt: '2026-11-06T12:10:45.221Z'
+releaseDocPath: release-notes/0.3.0
 ---
 > TL;DR: after "You have entered", OCR the game's own map mod list so a recap has mods without a check. Needs the list showing on screen.
 

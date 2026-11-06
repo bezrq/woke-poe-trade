@@ -1,7 +1,7 @@
 ---
 id: WOKEPOET-126
 title: 'Listing tooltip: readable numbers, inline and roll bar views with a switch'
-status: Done
+status: Released
 priority: Medium
 effort: S
 assignee: unassigned
@@ -10,7 +10,7 @@ tags:
   - price-check
   - ui
 createdBy: Agent
-updatedBy: Agent
+updatedBy: Guy
 history:
   - type: activity
     user: Agent
@@ -49,8 +49,16 @@ history:
     to: Done
     user: Agent
     date: '2026-11-06T03:53:37.170Z'
+  - type: status_change
+    from: Done
+    to: Released
+    user: Guy
+    date: '2026-11-06T12:10:46.485Z'
 implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/216'
 needsAction: null
 reviewState: null
+version: 0.3.0
+releasedAt: '2026-11-06T12:10:45.221Z'
+releaseDocPath: release-notes/0.3.0
 ---
 > **TL;DR** Guy picked both A (bright numbers, range in the line) and C (roll bars) from the numbers mock, with a setting or quick switch such as the scroll wheel. Plain wheel must keep scrolling results, so the switch is Shift + wheel; the choice is saved and also lives in the price check settings.

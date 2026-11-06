@@ -1,7 +1,7 @@
 ---
 id: WOKEPOET-54
 title: Warn when port 8585 is busy instead of silently losing saved data
-status: Done
+status: Released
 priority: Low
 effort: S
 assignee: unassigned
@@ -9,7 +9,7 @@ tags:
   - bug
   - overlay-core
 createdBy: Agent
-updatedBy: Agent
+updatedBy: Guy
 parentId: WOKEPOET-36
 history:
   - type: activity
@@ -38,7 +38,15 @@ history:
     to: Done
     user: Agent
     date: '2026-11-05T11:08:30.384Z'
+  - type: status_change
+    from: Done
+    to: Released
+    user: Guy
+    date: '2026-11-06T12:10:47.949Z'
 implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/150'
 needsAction: null
+version: 0.3.0
+releasedAt: '2026-11-06T12:10:45.221Z'
+releaseDocPath: release-notes/0.3.0
 ---
 > **TL;DR** C9. A busy 8585 falls back to a random port. That's a new browser storage origin, so market data and other saved data look empty, with no message. Warn at least. Longer term, move this data to host-side stores.

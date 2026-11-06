@@ -1,7 +1,7 @@
 ---
 id: WOKEPOET-16
 title: Fix map Current rolls max error and make the roll bar set min and max by click
-status: Done
+status: Released
 priority: High
 effort: S
 assignee: unassigned
@@ -9,7 +9,7 @@ tags:
   - bug
   - ui
 createdBy: Agent
-updatedBy: Agent
+updatedBy: Guy
 history:
   - type: activity
     user: Agent
@@ -77,11 +77,19 @@ history:
     date: '2026-11-05T03:47:22.926Z'
     comment: Task worktree automatically reclaimed (ready-or-terminal-status)
     id: a-2026-11-05t03-47-22-926z
+  - type: status_change
+    from: Done
+    to: Released
+    user: Guy
+    date: '2026-11-06T12:10:49.339Z'
 needsAction: null
 branch: flux/WOKEPOET-16-fix-map-current-rolls-max-error-and-make-the-roll-bar-set-mi
 baselineCommit: a58632b0379617cbbaaebd67ac298914035552dd
 implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/87'
 swimlane: null
+version: 0.3.0
+releasedAt: '2026-11-06T12:10:45.221Z'
+releaseDocPath: release-notes/0.3.0
 ---
 > **TL;DR:** The Current rolls preset on a map sends a max of ~9e15 and the trade site rejects the search. Fix the preset for stats with no upper limit, and make the roll bar set min on left-click and max on right-click.
 

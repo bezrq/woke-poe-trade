@@ -1,14 +1,14 @@
 ---
 id: WOKEPOET-19
 title: 'Keep panel resize grips reachable: all-edge resize, clamp to screen'
-status: Done
+status: Released
 priority: Medium
 effort: M
 assignee: unassigned
 tags:
   - bug
 createdBy: Agent
-updatedBy: Agent
+updatedBy: Guy
 history:
   - type: activity
     user: Agent
@@ -116,12 +116,20 @@ history:
     date: '2026-11-05T05:33:29.448Z'
     comment: Task worktree automatically reclaimed (ready-or-terminal-status)
     id: a-2026-11-05t05-33-29-448z
+  - type: status_change
+    from: Done
+    to: Released
+    user: Guy
+    date: '2026-11-06T12:10:48.982Z'
 needsAction: null
 branch: flux/WOKEPOET-19-keep-panel-resize-grips-reachable-all-edge-resize-clamp-to-s
 baselineCommit: 7896e164a82865073f89df1ab235131664e8c4a4
 implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/105'
 swimlane: null
 reviewState: null
+version: 0.3.0
+releasedAt: '2026-11-06T12:10:45.221Z'
+releaseDocPath: release-notes/0.3.0
 ---
 > **TL;DR:** Overlay panels can grow past the screen so the bottom-right resize grip can't be reached. Resize from every edge and corner, and keep panels on screen on open, on resize and on resolution change.
 

@@ -1,7 +1,7 @@
 ---
 id: WOKEPOET-31
 title: Give Woke its own icon and overlay mark
-status: Done
+status: Released
 priority: Medium
 effort: S
 assignee: unassigned
@@ -9,7 +9,7 @@ tags:
   - ui
   - feature
 createdBy: Agent
-updatedBy: Agent
+updatedBy: Guy
 history:
   - type: activity
     user: Agent
@@ -123,11 +123,19 @@ history:
     to: Done
     user: Agent
     date: '2026-11-05T06:39:28.538Z'
+  - type: status_change
+    from: Done
+    to: Released
+    user: Guy
+    date: '2026-11-06T12:10:48.886Z'
 swimlane: null
 needsAction: null
 branch: flux/WOKEPOET-31-give-woke-its-own-icon-and-overlay-mark
 baselineCommit: 37f4e851970b046d13916551eeab175b77a7486d
 implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/115'
+version: 0.3.0
+releasedAt: '2026-11-06T12:10:45.221Z'
+releaseDocPath: release-notes/0.3.0
 ---
 > **TL;DR:** The app still shows Awakened PoE Trade's mark (tray, exe, overlay). Replace it with original art. Guy picks from mocks before anything is built.
 

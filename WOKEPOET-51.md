@@ -1,7 +1,7 @@
 ---
 id: WOKEPOET-51
 title: 'Item and stat data the app updates by itself, without a release or restart'
-status: Done
+status: Released
 priority: High
 effort: M
 assignee: unassigned
@@ -9,7 +9,7 @@ tags:
   - feature
   - overlay-core
 createdBy: Agent
-updatedBy: Agent
+updatedBy: Guy
 parentId: WOKEPOET-36
 history:
   - type: activity
@@ -59,8 +59,16 @@ history:
     to: Done
     user: Agent
     date: '2026-11-05T13:19:47.053Z'
+  - type: status_change
+    from: Done
+    to: Released
+    user: Guy
+    date: '2026-11-06T12:10:47.139Z'
 needsAction: null
 implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/182'
+version: 0.3.0
+releasedAt: '2026-11-06T12:10:45.221Z'
+releaseDocPath: release-notes/0.3.0
 ---
 > **TL;DR** Guy wants this soon. Item and stat data stays in our repo. Once new data is merged, the app picks it up by itself, with no release, installer or restart.
 

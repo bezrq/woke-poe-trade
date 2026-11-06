@@ -1,14 +1,14 @@
 ---
 id: WOKEPOET-122
 title: 'Landing page: small credits section at the bottom'
-status: Done
+status: Released
 priority: None
 effort: XS
 assignee: unassigned
 tags:
   - docs
 createdBy: Agent
-updatedBy: Agent
+updatedBy: Guy
 history:
   - type: activity
     user: Agent
@@ -42,6 +42,11 @@ history:
     to: Done
     user: Agent
     date: '2026-11-06T03:03:36.557Z'
+  - type: status_change
+    from: Done
+    to: Released
+    user: Guy
+    date: '2026-11-06T12:10:46.641Z'
 needsAction: null
 baselineCommit: ae9d149f9c555d42e467c95e82514624d060baa7
 implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/211'
@@ -107,5 +112,8 @@ diffSummary:
   - file: testing/e2e/landing-shots.spec.ts
     additions: 211
     deletions: 4
+version: 0.3.0
+releasedAt: '2026-11-06T12:10:45.221Z'
+releaseDocPath: release-notes/0.3.0
 ---
 > Small credits section at the bottom of the landing page, from the app's own list (renderer/src/web/woke/settings/credits.ts) so it can't drift.

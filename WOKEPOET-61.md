@@ -1,7 +1,7 @@
 ---
 id: WOKEPOET-61
 title: 'Hover zones after display changes, and test mixed DPI'
-status: Done
+status: Released
 priority: Low
 effort: S
 assignee: unassigned
@@ -9,7 +9,7 @@ tags:
   - bug
   - overlay-core
 createdBy: Agent
-updatedBy: Agent
+updatedBy: Guy
 parentId: WOKEPOET-36
 history:
   - type: activity
@@ -38,7 +38,15 @@ history:
     to: Done
     user: Agent
     date: '2026-11-05T11:08:33.126Z'
+  - type: status_change
+    from: Done
+    to: Released
+    user: Guy
+    date: '2026-11-06T12:10:47.905Z'
 implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/150'
 needsAction: null
+version: 0.3.0
+releasedAt: '2026-11-06T12:10:45.221Z'
+releaseDocPath: release-notes/0.3.0
 ---
 > **TL;DR** C16. No display-metrics-changed handling, and hover zones can lag by up to 2 s after a move (woke/shared/hover.ts). Mixed DPI is untested. Resend zones on display changes, and test on two monitors.

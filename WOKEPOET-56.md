@@ -1,7 +1,7 @@
 ---
 id: WOKEPOET-56
 title: 'Measure a long session: memory and CPU log, bounded logs'
-status: Done
+status: Released
 priority: Medium
 effort: S
 assignee: unassigned
@@ -9,7 +9,7 @@ tags:
   - feature
   - overlay-core
 createdBy: Agent
-updatedBy: Agent
+updatedBy: Guy
 parentId: WOKEPOET-36
 history:
   - type: activity
@@ -40,8 +40,16 @@ history:
     to: Done
     user: Agent
     date: '2026-11-05T11:08:31.375Z'
+  - type: status_change
+    from: Done
+    to: Released
+    user: Guy
+    date: '2026-11-06T12:10:47.931Z'
 implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/150'
 needsAction: null
+version: 0.3.0
+releasedAt: '2026-11-06T12:10:45.221Z'
+releaseDocPath: release-notes/0.3.0
 ---
 > **TL;DR** C11. No long-run data exists: the sampler keeps 10 minutes. Logs grow without limit in both processes.
 

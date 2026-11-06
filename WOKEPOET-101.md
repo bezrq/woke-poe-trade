@@ -1,13 +1,13 @@
 ---
 id: WOKEPOET-101
 title: Update the About page contact section to Guy's Discord
-status: Done
+status: Released
 priority: Low
 effort: XS
 assignee: unassigned
 tags: []
 createdBy: Agent
-updatedBy: Agent
+updatedBy: Guy
 history:
   - type: activity
     user: Agent
@@ -51,6 +51,11 @@ history:
     to: Done
     user: Agent
     date: '2026-11-05T12:45:28.413Z'
+  - type: status_change
+    from: Done
+    to: Released
+    user: Guy
+    date: '2026-11-06T12:10:47.285Z'
 implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/181'
 needsAction: null
 baselineCommit: ae9d149f9c555d42e467c95e82514624d060baa7
@@ -116,6 +121,9 @@ diffSummary:
   - file: testing/e2e/landing-shots.spec.ts
     additions: 211
     deletions: 4
+version: 0.3.0
+releasedAt: '2026-11-06T12:10:45.221Z'
+releaseDocPath: release-notes/0.3.0
 ---
 The settings About page still shows the inherited Awakened PoE Trade contact block: the original author's Discord ID and links to The Forbidden Trove and r/pathofexile.
 

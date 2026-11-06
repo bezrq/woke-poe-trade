@@ -1,7 +1,7 @@
 ---
 id: WOKEPOET-58
 title: Guard against newer configs and a failed upgrade (no blank overlay)
-status: Done
+status: Released
 priority: Medium
 effort: S
 assignee: unassigned
@@ -9,7 +9,7 @@ tags:
   - bug
   - overlay-core
 createdBy: Agent
-updatedBy: Agent
+updatedBy: Guy
 parentId: WOKEPOET-36
 history:
   - type: activity
@@ -38,8 +38,16 @@ history:
     to: Done
     user: Agent
     date: '2026-11-05T10:00:56.794Z'
+  - type: status_change
+    from: Done
+    to: Released
+    user: Guy
+    date: '2026-11-06T12:10:48.272Z'
 implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/129'
 needsAction: null
+version: 0.3.0
+releasedAt: '2026-11-06T12:10:45.221Z'
+releaseDocPath: release-notes/0.3.0
 ---
 > **TL;DR** C13. No check for a config newer than the app (still a TODO), and if upgradeConfig throws, nothing catches it and the page stays blank.
 

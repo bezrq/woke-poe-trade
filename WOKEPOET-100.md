@@ -1,14 +1,14 @@
 ---
 id: WOKEPOET-100
 title: 'Price check: show a column per ticked stat in the results list'
-status: Done
+status: Released
 priority: None
 effort: None
 assignee: unassigned
 tags:
   - ui
 createdBy: Agent
-updatedBy: Agent
+updatedBy: Guy
 history:
   - type: activity
     user: Agent
@@ -96,10 +96,18 @@ history:
     to: Done
     user: Agent
     date: '2026-11-05T13:19:39.161Z'
+  - type: status_change
+    from: Done
+    to: Released
+    user: Guy
+    date: '2026-11-06T12:10:47.158Z'
 swimlane: null
 needsAction: null
 implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/186'
 reviewState: null
+version: 0.3.0
+releasedAt: '2026-11-06T12:10:45.221Z'
+releaseDocPath: release-notes/0.3.0
 ---
 Guy wants the price check results list to show a column for each stat he ticked as a filter (pdps, resistances, evasion...). Price stays visible, columns are capped at what's readable.
 

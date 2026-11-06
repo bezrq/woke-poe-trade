@@ -1,7 +1,7 @@
 ---
 id: WOKEPOET-119
 title: 'Redesign landing page: simpler, PoE font and look, five highlights with slides'
-status: Done
+status: Released
 priority: Medium
 effort: None
 assignee: unassigned
@@ -10,7 +10,7 @@ tags:
   - ui
   - mocks
 createdBy: Agent
-updatedBy: Agent
+updatedBy: Guy
 history:
   - type: activity
     user: Agent
@@ -92,6 +92,11 @@ history:
     to: Done
     user: Agent
     date: '2026-11-06T02:32:14.235Z'
+  - type: status_change
+    from: Done
+    to: Released
+    user: Guy
+    date: '2026-11-06T12:10:46.688Z'
 swimlane: null
 needsAction: null
 baselineCommit: ae9d149f9c555d42e467c95e82514624d060baa7
@@ -157,6 +162,9 @@ diffSummary:
   - file: testing/e2e/landing-shots.spec.ts
     additions: 211
     deletions: 4
+version: 0.3.0
+releasedAt: '2026-11-06T12:10:45.221Z'
+releaseDocPath: release-notes/0.3.0
 ---
 Guy's ask: make the landing page much simpler, with the PoE font and a PoE-ish design, built around highlights that each have a few slides.
 

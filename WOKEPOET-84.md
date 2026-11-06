@@ -1,14 +1,14 @@
 ---
 id: WOKEPOET-84
 title: Replace invented Client.txt test lines with real log excerpts
-status: Done
+status: Released
 priority: High
 effort: None
 assignee: unassigned
 tags:
   - bug
 createdBy: Agent
-updatedBy: Agent
+updatedBy: Guy
 history:
   - type: activity
     user: Agent
@@ -31,8 +31,16 @@ history:
     to: Done
     user: Agent
     date: '2026-11-05T12:29:17.176Z'
+  - type: status_change
+    from: Done
+    to: Released
+    user: Guy
+    date: '2026-11-06T12:10:47.432Z'
 implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/170'
 needsAction: null
+version: 0.3.0
+releasedAt: '2026-11-06T12:10:45.221Z'
+releaseDocPath: release-notes/0.3.0
 ---
 Step 2 of the [gameplay helpers critique](https://claude.ai/artifact/NjdEZhrQZBmKwRB56yTsoj). No new UI.
 

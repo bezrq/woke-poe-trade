@@ -1,7 +1,7 @@
 ---
 id: WOKEPOET-52
 title: Keep tailing Client.txt after it's cleared or replaced
-status: Done
+status: Released
 priority: Medium
 effort: S
 assignee: unassigned
@@ -9,7 +9,7 @@ tags:
   - bug
   - overlay-core
 createdBy: Agent
-updatedBy: Agent
+updatedBy: Guy
 parentId: WOKEPOET-36
 history:
   - type: activity
@@ -38,8 +38,16 @@ history:
     to: Done
     user: Agent
     date: '2026-11-05T10:00:59.848Z'
+  - type: status_change
+    from: Done
+    to: Released
+    user: Guy
+    date: '2026-11-06T12:10:48.213Z'
 implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/133'
 needsAction: null
+version: 0.3.0
+releasedAt: '2026-11-06T12:10:45.221Z'
+releaseDocPath: release-notes/0.3.0
 ---
 > **TL;DR** C7. GameLogWatcher never compares its offset to file size and keeps the old handle, so a cleared or replaced log stops silently and every log-based feature stops with it.
 

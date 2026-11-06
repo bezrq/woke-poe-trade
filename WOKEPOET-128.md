@@ -1,14 +1,14 @@
 ---
 id: WOKEPOET-128
 title: 'Drop counter: tracked items with +1 and a maps-run count'
-status: Done
+status: Released
 priority: None
 effort: None
 assignee: unassigned
 tags:
   - ui
 createdBy: Agent
-updatedBy: Agent
+updatedBy: Guy
 history:
   - type: activity
     user: Agent
@@ -80,6 +80,11 @@ history:
     to: Done
     user: Agent
     date: '2026-11-06T05:18:33.616Z'
+  - type: status_change
+    from: Done
+    to: Released
+    user: Guy
+    date: '2026-11-06T12:10:46.284Z'
 swimlane: null
 needsAction: null
 baselineCommit: ae9d149f9c555d42e467c95e82514624d060baa7
@@ -145,6 +150,9 @@ diffSummary:
   - file: testing/e2e/landing-shots.spec.ts
     additions: 211
     deletions: 4
+version: 0.3.0
+releasedAt: '2026-11-06T12:10:45.221Z'
+releaseDocPath: release-notes/0.3.0
 ---
 Streamer-style counter: freeform list of items added from a search bar, quick +1 on each, and a maps-run count. Nothing permanently on screen, so it lives on a dock hover icon.
 

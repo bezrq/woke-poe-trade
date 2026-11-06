@@ -1,14 +1,14 @@
 ---
 id: WOKEPOET-13
 title: Make the PoB builds panel look like Path of Exile
-status: Done
+status: Released
 priority: Medium
 effort: M
 assignee: unassigned
 tags:
   - ui
 createdBy: Agent
-updatedBy: Agent
+updatedBy: Guy
 history:
   - type: activity
     user: Agent
@@ -83,11 +83,19 @@ history:
     date: '2026-11-05T03:38:26.101Z'
     comment: Task worktree automatically reclaimed (ready-or-terminal-status)
     id: a-2026-11-05t03-38-26-101z
+  - type: status_change
+    from: Done
+    to: Released
+    user: Guy
+    date: '2026-11-06T12:10:49.427Z'
 branch: flux/WOKEPOET-13-make-the-pob-builds-panel-look-like-path-of-exile
 baselineCommit: a58632b0379617cbbaaebd67ac298914035552dd
 needsAction: null
 implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/86'
 swimlane: null
+version: 0.3.0
+releasedAt: '2026-11-06T12:10:45.221Z'
+releaseDocPath: release-notes/0.3.0
 ---
 > **TL;DR:** The build detail view gets game-style visuals: gem names coloured by attribute, real item icons on Gear, and an in-game-style item tooltip on hover, across Leveling, Gear, Setups and the rest.
 

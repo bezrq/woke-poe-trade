@@ -1,14 +1,14 @@
 ---
 id: WOKEPOET-22
 title: Let the price check window be moved and resized
-status: Done
+status: Released
 priority: Medium
 effort: M
 assignee: Agent
 tags:
   - feature
 createdBy: Agent
-updatedBy: Agent
+updatedBy: Guy
 history:
   - type: activity
     user: Agent
@@ -67,11 +67,19 @@ history:
     to: Done
     user: Agent
     date: '2026-11-05T04:24:52.594Z'
+  - type: status_change
+    from: Done
+    to: Released
+    user: Guy
+    date: '2026-11-06T12:10:49.190Z'
 branch: flux/WOKEPOET-22-let-the-price-check-window-be-moved-and-resized
 baselineCommit: a4c85a758a73046c8f54268117154f06f5082670
 needsAction: null
 implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/95'
 swimlane: null
+version: 0.3.0
+releasedAt: '2026-11-06T12:10:45.221Z'
+releaseDocPath: release-notes/0.3.0
 ---
 > **TL;DR:** The price check window is docked to the side of the screen with no way to move it. Let Guy drag it by its title bar and resize it, remember that across uses, and offer a way back to the docked spot.
 

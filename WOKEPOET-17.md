@@ -1,14 +1,14 @@
 ---
 id: WOKEPOET-17
 title: Build panel tooltip can stay stuck on screen when the overlay closes
-status: Done
+status: Released
 priority: High
 effort: XS
 assignee: unassigned
 tags:
   - bug
 createdBy: Agent
-updatedBy: Agent
+updatedBy: Guy
 history:
   - type: activity
     user: Agent
@@ -73,11 +73,19 @@ history:
     date: '2026-11-05T03:45:54.488Z'
     comment: Task worktree automatically reclaimed (ready-or-terminal-status)
     id: a-2026-11-05t03-45-54-488z
+  - type: status_change
+    from: Done
+    to: Released
+    user: Guy
+    date: '2026-11-06T12:10:49.354Z'
 branch: flux/WOKEPOET-17-build-panel-tooltip-can-stay-stuck-on-screen-when-the-overla
 baselineCommit: a58632b0379617cbbaaebd67ac298914035552dd
 needsAction: null
 implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/90'
 swimlane: null
+version: 0.3.0
+releasedAt: '2026-11-06T12:10:45.221Z'
+releaseDocPath: release-notes/0.3.0
 ---
 > **TL;DR:** Found reviewing PR #86 after it merged. The tooltip sits outside the panel, so closing the overlay while hovering leaves it on screen over the game. Fix that and two small regressions.
 

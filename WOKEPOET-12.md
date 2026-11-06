@@ -1,14 +1,14 @@
 ---
 id: WOKEPOET-12
 title: Make dock icons snappy and their cards clickable
-status: Done
+status: Released
 priority: Medium
 effort: S
 assignee: unassigned
 tags:
   - bug
 createdBy: Agent
-updatedBy: Agent
+updatedBy: Guy
 history:
   - type: activity
     user: Agent
@@ -77,11 +77,19 @@ history:
     date: '2026-11-05T03:20:28.511Z'
     comment: Task worktree automatically reclaimed (ready-or-terminal-status)
     id: a-2026-11-05t03-20-28-511z
+  - type: status_change
+    from: Done
+    to: Released
+    user: Guy
+    date: '2026-11-06T12:10:49.469Z'
 branch: flux/WOKEPOET-12-make-dock-icons-snappy-and-their-cards-clickable
 baselineCommit: 95cbada0b56969b164437487851fe1db57556125
 needsAction: null
 implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/84'
 swimlane: null
+version: 0.3.0
+releasedAt: '2026-11-06T12:10:45.221Z'
+releaseDocPath: release-notes/0.3.0
 ---
 > **TL;DR:** Dock icon cards open slowly on hover, clicking an icon in game does nothing, and buttons on the Regex library, Atlas and Mechanics cards can't be clicked. Cut the delays, open on click, and mark those cards clickable.
 

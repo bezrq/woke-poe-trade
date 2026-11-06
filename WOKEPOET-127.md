@@ -1,13 +1,13 @@
 ---
 id: WOKEPOET-127
 title: Death recap with the map mods you died to
-status: Done
+status: Released
 priority: Medium
 effort: M
 assignee: unassigned
 tags: []
 createdBy: Agent
-updatedBy: Agent
+updatedBy: Guy
 history:
   - type: activity
     user: Agent
@@ -69,6 +69,11 @@ history:
     to: Done
     user: Agent
     date: '2026-11-06T05:28:25.000Z'
+  - type: status_change
+    from: Done
+    to: Released
+    user: Guy
+    date: '2026-11-06T12:10:46.260Z'
 swimlane: null
 needsAction: null
 subtasks:
@@ -136,6 +141,9 @@ diffSummary:
   - file: testing/e2e/landing-shots.spec.ts
     additions: 211
     deletions: 4
+version: 0.3.0
+releasedAt: '2026-11-06T12:10:45.221Z'
+releaseDocPath: release-notes/0.3.0
 ---
 Guy: "Death recap is cool to maybe have a reference of what map mods you died to if that's possible to easily save."
 
