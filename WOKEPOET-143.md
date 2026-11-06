@@ -48,7 +48,18 @@ history:
       set (keep gameClick, and hover-off: click opens the card first); guard the
       mouse-up page click against double handling; loot filter sets openTab from
       its first notice.
-swimlane: require-input
+  - type: comment
+    user: Agent
+    comment: Guy picked C.
+    date: '2026-11-06T09:54:49.683Z'
+    id: c-2026-11-06t09-54-49-683z
+  - type: swimlane_change
+    swimlane: require-input
+    action: cleared
+    user: Agent
+    date: '2026-11-06T09:54:49.683Z'
+    comment: Guy picked C.
+swimlane: null
 needsAction: null
 ---
 Guy: clicking the Loot filter hover card ("42 items would move to match today's prices") should open the Prices tab so the moves can be applied. Clicking any card or its icon should open the full window directly, without Shift+Space first. The footer tip is shared, so this is app-wide. Mocks first.
