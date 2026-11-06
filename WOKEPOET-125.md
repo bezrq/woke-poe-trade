@@ -1,7 +1,7 @@
 ---
 id: WOKEPOET-125
 title: Three-way Corrupted chip in price check
-status: In Progress
+status: Ready
 priority: Medium
 effort: S
 assignee: unassigned
@@ -27,7 +27,22 @@ history:
       (poe.ninja fit follows the chip). Local checks pass; CI running; merge
       requested from the coordinator once green.
     id: a-2026-11-06t03-34-00-138z
+  - type: comment
+    user: Agent
+    comment: >-
+      Merged as c9a5f89 (#214) and running on the dev build. Chip cycles Any,
+      Corrupted, Uncorrupted at one width; poe.ninja's fit follows it. Not yet
+      clicked in the real game.
+    date: '2026-11-06T03:41:05.336Z'
+    completionComment: true
+    id: c-2026-11-06t03-41-05-336z
+  - type: status_change
+    from: In Progress
+    to: Ready
+    user: Agent
+    date: '2026-11-06T03:41:05.336Z'
 implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/214'
+needsAction: null
 ---
 Guy asked which chip setting searches both corrupted and not corrupted, then approved a three-way chip, with "make sure the chip stays not too big".
 
