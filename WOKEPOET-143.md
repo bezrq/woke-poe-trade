@@ -3,7 +3,7 @@ id: WOKEPOET-143
 title: >-
   Hover cards open the full window on click; Loot filter card goes straight to
   price changes
-status: Grooming
+status: In Progress
 priority: Medium
 effort: None
 assignee: unassigned
@@ -59,6 +59,19 @@ history:
     user: Agent
     date: '2026-11-06T09:54:49.683Z'
     comment: Guy picked C.
+  - type: comment
+    user: Agent
+    comment: >-
+      Built option C, PR #240 (branch card-open-direct, clone
+      E:\Git\woke-card-open). Bug review found four issues, all fixed. Waiting
+      on CI, then merge and update dev.
+    date: '2026-11-06T10:21:33.906Z'
+    id: c-2026-11-06t10-21-33-906z
+  - type: status_change
+    from: Grooming
+    to: In Progress
+    user: Agent
+    date: '2026-11-06T10:21:33.906Z'
 swimlane: null
 needsAction: null
 ---
