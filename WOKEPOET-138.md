@@ -1,7 +1,7 @@
 ---
 id: WOKEPOET-138
 title: Move explanatory text behind ? hovers
-status: In Progress
+status: Ready
 priority: None
 effort: None
 assignee: unassigned
@@ -51,6 +51,21 @@ history:
     to: In Progress
     user: Agent
     date: '2026-11-06T08:12:46.364Z'
+  - type: comment
+    user: Agent
+    comment: >-
+      PR #234 is up with review findings fixed and local checks run. Queued to
+      merge once GitHub CI is green. After that, merge master into
+      dev-230-with-master for the dev build, not a restart from master. Two e2e
+      failures also fail on clean master. Not tried in the real game yet.
+    date: '2026-11-06T08:36:46.587Z'
+    completionComment: true
+    id: c-2026-11-06t08-36-46-587z
+  - type: status_change
+    from: In Progress
+    to: Ready
+    user: Agent
+    date: '2026-11-06T08:36:46.587Z'
 swimlane: null
 needsAction: null
 ---
