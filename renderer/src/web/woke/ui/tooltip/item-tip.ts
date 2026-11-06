@@ -11,6 +11,9 @@ import { usePoeninja } from '@/web/background/Prices'
 import { buildTip, kindOfNinjaType, packFiles } from './tip-content'
 import type { TipKind, TipModel, TipPack } from './tip-content'
 import { hideTip, onTipHide, showTipAt } from './tooltip'
+import { offerItem, openItemMenu } from './item-menu'
+import { kindOfName } from './item-menu-logic'
+import type { ItemMenuRef } from './item-menu-logic'
 import { dataFileUrl, onSharedDataChange } from '../../app/live-data'
 import type { TipBaseUnique, TipMarket } from './tooltip'
 
@@ -56,16 +59,9 @@ function loadFile (file: keyof TipPack): Promise<void> {
   return job
 }
 
-export function kindOfName (name: string): TipKind {
-  if (name.startsWith('Foulborn ') || ITEM_BY_REF('UNIQUE', name)?.length) return 'unique'
-  if (ITEM_BY_REF('GEM', name)?.length) return 'gem'
-  if (ITEM_BY_REF('DIVINATION_CARD', name)?.length) return 'card'
-  return 'item'
-}
-
 const NINJA_NS: Record<TipKind, string> = { unique: 'UNIQUE', gem: 'GEM', card: 'DIVINATION_CARD', item: 'ITEM' }
 
-function marketFor (ref: ItemTipRef, kind: TipKind): TipMarket | null {
+export function marketFor (ref: ItemTipRef, kind: TipKind): TipMarket | null {
   if (ref.noPrice) return null
   if (ref.prices) return { chaos: ref.prices.low, change: null, graph: [], range: ref.prices }
   const ninja = usePoeninja()
@@ -150,14 +146,45 @@ function watchHoverZones () {
   })
 }
 
+// ---- right-click ----
+
+function menuRef (ref: ItemTipRef | null | undefined): ItemMenuRef | null {
+  if (!ref?.name) return null
+  // A base's unique list or a price range isn't one item's price.
+  return { name: ref.name, type: ref.type, variant: ref.variant, noPrice: ref.noPrice || !!ref.prices || !!ref.uniques }
+}
+
+// Before the row's own handlers: whatever menu this click opens shows the item.
+// One listener for the whole page, capturing, so it runs first; the innermost
+// item under the mouse wins.
+let offering = false
+function watchRightClicks () {
+  if (offering) return
+  offering = true
+  document.addEventListener('contextmenu', (e) => {
+    for (let el = e.target as Element | null; el; el = el.parentElement) {
+      const ref = refs.get(el as HTMLElement)
+      if (ref?.name) { offerItem(e, menuRef(ref)); return }
+    }
+  }, true)
+}
+
+// After them: nothing opened a menu, so the item's alone. An ancestor row that
+// opens its own later replaces it, still with the item on top.
+function menu (e: Event) {
+  // The menu opens where the tooltip would be in the way.
+  leave()
+  openItemMenu(e as MouseEvent, menuRef(refs.get(e.currentTarget as HTMLElement)))
+}
+
 export const vItemTip: ObjectDirective<HTMLElement, ItemTipRef | null | undefined> = {
   mounted (el, binding) {
     watchHoverZones()
+    watchRightClicks()
     refs.set(el, binding.value)
     el.addEventListener('mouseenter', enter)
     el.addEventListener('mouseleave', leave)
-    // The right-click menu opens where the tooltip would be in the way.
-    el.addEventListener('contextmenu', leave)
+    el.addEventListener('contextmenu', menu)
   },
   updated (el, binding) {
     const before = refs.get(el)
@@ -169,7 +196,7 @@ export const vItemTip: ObjectDirective<HTMLElement, ItemTipRef | null | undefine
   beforeUnmount (el) {
     el.removeEventListener('mouseenter', enter)
     el.removeEventListener('mouseleave', leave)
-    el.removeEventListener('contextmenu', leave)
+    el.removeEventListener('contextmenu', menu)
     if (hovered === el) leave()
   }
 }
