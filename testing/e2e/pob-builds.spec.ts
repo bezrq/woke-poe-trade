@@ -171,8 +171,8 @@ test('a picked loadout reaches the other windows, is saved, and Auto undoes it',
 
   // The panel opens on the build in use.
   const detail = overlay.page.locator('[data-w-panel]').filter({ hasText: 'Open in PoB' })
-  // The set chips, not the Next section's button for the same set.
-  const chip = (name: string) => detail.locator('button:not([class*="next"])').filter({ hasText: name })
+  // The set chips, not the buttons for the same set in Next and the stage costs.
+  const chip = (name: string) => detail.locator('button:not([class*="next"]):not([class*="stage"])').filter({ hasText: name })
   await expect(chip(day1)).toContainText('now')
 
   await chip(later).click()
@@ -310,4 +310,23 @@ test('the build in use has a dock icon, with its links on hover', async ({ overl
   const card = overlay.page.getByText('Your links')
   await expect(card).toBeVisible()
   await overlay.snap('build hover card')
+})
+
+test('two builds compare side by side from the list menu', async ({ overlay }) => {
+  await overlay.boot({ widgets: [{ ...showcaseSeed()[0], wmWants: 'show' as const }], overlayActive: true })
+  const list = overlay.widget('woke-pob-builds')
+  await expect(overlay.page.locator('[data-w-panel]').filter({ hasText: 'Open in PoB' })).toContainText('Showcase')
+  await list.getByRole('button', { name: /Loadouts/ }).first().click({ button: 'right' })
+  await overlay.page.getByText('Compare with Showcase').click()
+  const panel = overlay.page.locator('[data-w-panel]').filter({ hasText: 'Compare builds' })
+  await expect(panel).toContainText('Gear ·')
+  await overlay.snap('compare builds')
+})
+
+test('the Gear tab says what each stage costs', async ({ overlay }) => {
+  await overlay.boot({ widgets: loadoutSeed({}), overlayActive: true })
+  const detail = overlay.page.locator('[data-w-panel]').filter({ hasText: 'Open in PoB' })
+  await detail.getByRole('tab', { name: 'Gear' }).click()
+  await expect(detail.getByText('Cost of each stage')).toBeVisible()
+  await overlay.snap('stage costs')
 })
