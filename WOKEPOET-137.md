@@ -13,6 +13,17 @@ history:
     user: Agent
     date: '2026-11-06T05:57:15.259Z'
     comment: Created ticket.
+    id: a-2026-11-06t05-57-15-259z
+  - type: activity
+    user: Agent
+    date: '2026-11-06T06:06:15.448Z'
+    comment: >-
+      PR #227 up on branch landing-next-release with the landing and README
+      updates, including #226. Held for the shopping list and compare view PR.
+      Then: its slide, bump main/package.json to 0.2.0, adversarial review,
+      merge via the cloud route once CI passes, tag by commit sha, check both
+      drafts, publish.
+    id: a-2026-11-06t06-06-15-448z
 ---
 Guy asked for a new public Windows installer release after v0.1.0, made the same way (DEVELOPING.md), and the landing and features pages updated for what's new: stash tab reading #215, tooltip views #216/#217, number fields #213, corrupted chip #214, PoB #218 #219 #221 #225 (and #226 plus the shopping list PR if they land first), drop counter #222, death recap #220.
 
