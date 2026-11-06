@@ -424,7 +424,8 @@ test('pob: the passive tree in the overlay', async ({ overlay }) => {
     const detail = await openLevellingBuild(overlay, dir)
     await detail.getByRole('button', { name: /Tree: Day 1\.5 Clusters/ }).click()
     const tree = overlay.page.locator('[data-w-panel]').filter({ hasText: 'Passive tree' }).filter({ has: overlay.page.locator('canvas') }).last()
-    await expect(tree).toContainText(/\d+ new points?/)
+    await tree.getByRole('switch').click()
+    await expect(tree).toContainText(/\+\d+/)
     // Only the tree in the picture, not the panels it opened over.
     await detail.evaluate(el => { el.style.visibility = 'hidden' })
     await overlay.page.mouse.move(1800, 1000)
