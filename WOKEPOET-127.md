@@ -1,7 +1,7 @@
 ---
 id: WOKEPOET-127
 title: Death recap with the map mods you died to
-status: Ready
+status: Done
 priority: Medium
 effort: M
 assignee: unassigned
@@ -54,10 +54,88 @@ history:
     to: Ready
     user: Agent
     date: '2026-11-06T05:25:54.217Z'
+  - type: comment
+    user: Agent
+    comment: >-
+      Merged as 81896ce: skull dock icon after a death, hover card, death log
+      panel with Mods you die to. Mods come from item checks before opening; OCR
+      on entering is WOKEPOET-132. README module table updated; no other docs
+      needed. Not yet seen on a real death in game.
+    completionComment: true
+    date: '2026-11-06T05:28:24.713Z'
+    id: c-2026-11-06t05-28-24-713z
+  - type: status_change
+    from: Ready
+    to: Done
+    user: Agent
+    date: '2026-11-06T05:28:25.000Z'
 swimlane: null
 needsAction: null
 subtasks:
   - WOKEPOET-132
+baselineCommit: ae9d149f9c555d42e467c95e82514624d060baa7
+implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/220'
+diffSummary:
+  - file: docs/.vitepress/theme/landing/Landing.vue
+    additions: 363
+    deletions: 131
+  - file: docs/.vitepress/theme/landing/content.js
+    additions: 65
+    deletions: 23
+  - file: docs/public/shots/hero.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/readme-banner.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/story-essence.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/story-loot.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/story-maps.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/story-price.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/tour-boss-runs.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/tour-boss.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/tour-campaign-chip.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/tour-campaign.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/tour-filter-prices.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/tour-filter-rules.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/tour-map-mods.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/tour-market.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/tour-pob.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/tour-regex.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/tour-trade.webp
+    additions: 0
+    deletions: 0
+  - file: testing/e2e/landing-shots.spec.ts
+    additions: 211
+    deletions: 4
 ---
 Guy: "Death recap is cool to maybe have a reference of what map mods you died to if that's possible to easily save."
 
