@@ -1,7 +1,7 @@
 ---
 id: WOKEPOET-138
 title: Move explanatory text behind ? hovers
-status: Grooming
+status: In Progress
 priority: None
 effort: None
 assignee: unassigned
@@ -34,7 +34,24 @@ history:
       move, 20 shorten, 16 keep). Which ?: A, always there inside an open window
       (recommended), or B, only with the mouse on the row? And go on the list,
       or what to change?
-swimlane: require-input
+  - type: comment
+    user: Agent
+    comment: >-
+      Guy picked A: the ? is always there inside an open window. Building the
+      list as written unless he changes it.
+    date: '2026-11-06T08:12:46.364Z'
+    id: c-2026-11-06t08-12-46-364z
+  - type: swimlane_change
+    swimlane: require-input
+    action: cleared
+    user: Agent
+    date: '2026-11-06T08:12:46.364Z'
+  - type: status_change
+    from: Grooming
+    to: In Progress
+    user: Agent
+    date: '2026-11-06T08:12:46.364Z'
+swimlane: null
 needsAction: null
 ---
 Audit the overlay and landing page for explanatory or filler text that could sit behind a small ? hover. Report by screen with move/shorten/keep, mock the pattern, build after Guy's pick. Clone: E:\Git\woke-help-hints.
