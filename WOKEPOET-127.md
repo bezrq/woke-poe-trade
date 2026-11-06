@@ -43,6 +43,8 @@ history:
     date: '2026-11-06T04:42:21.406Z'
 swimlane: null
 needsAction: null
+subtasks:
+  - WOKEPOET-132
 ---
 Guy: "Death recap is cool to maybe have a reference of what map mods you died to if that's possible to easily save."
 
