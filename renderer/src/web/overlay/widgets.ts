@@ -56,6 +56,8 @@ export interface PriceCheckWidget extends Widget {
   showCursor: boolean
   requestPricePrediction: boolean
   builtinBrowser: boolean
+  // woke: how a listing's tooltip draws roll ranges. Unset is 'inline'.
+  listingRolls?: 'inline' | 'bars'
 }
 
 export interface StopwatchWidget extends Widget {
