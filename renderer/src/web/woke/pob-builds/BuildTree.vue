@@ -9,9 +9,19 @@
       <div class="flex flex-wrap gap-1">
         <WChip v-for="(t, i) in trees" :key="i" clickable :active="i === at" @click="pick(i)">{{ t.title }}</WChip>
       </div>
-      <button v-if="earlier" type="button" :class="$style.changes" class="w-focusable" role="switch" :aria-checked="changes" @click="changes = !changes">
-        <i :class="changes ? 'fas fa-check-square' : 'far fa-square'" /> Changes from {{ earlier.title }}
-      </button>
+      <div :class="$style.tools">
+        <span class="w-num text-xs w-dim whitespace-nowrap">
+          <template v-if="previous">
+            <span class="w-up">+{{ diff.added }}</span><template v-if="diff.removed"> · <span class="w-down">-{{ diff.removed }} respec</span></template>
+          </template>
+          <template v-else>{{ diff.added }} {{ diff.added === 1 ? 'point' : 'points' }}</template>
+          <template v-if="diff.addedAscendancy"> · {{ diff.addedAscendancy }} ascendancy</template>
+        </span>
+        <button v-if="earlier" type="button" :class="$style.changes" class="w-focusable" role="switch" :aria-checked="changes" @click="changes = !changes">
+          <i :class="changes ? 'fas fa-check-square' : 'far fa-square'" /> Changes from {{ earlier.title }}
+        </button>
+        <WButton size="sm" :variant="sideOpen ? 'primary' : 'default'" icon="fas fa-list" :aria-pressed="sideOpen" @click="sideOpen = !sideOpen">Totals</WButton>
+      </div>
     </template>
 
     <WEmpty v-if="error" icon="fas fa-exclamation-triangle">{{ error }}</WEmpty>
@@ -22,31 +32,20 @@
         <canvas ref="ring" :class="$style.layer" :style="{ cursor: panning ? 'grabbing' : hovered ? 'pointer' : 'grab' }"
           @wheel.prevent="zoom" @mousedown="startPan" @mousemove="moved" @mouseleave="left" @dblclick="fit" />
       </div>
-      <div :class="$style.side" class="w-scroll">
-        <div class="w-accent">{{ shown?.title }}</div>
-        <template v-if="previous">
-          <div class="pt-1">
-            <span class="w-up">{{ diff.added }} new {{ diff.added === 1 ? 'point' : 'points' }}</span><template v-if="diff.addedAscendancy">, {{ diff.addedAscendancy }} ascendancy</template><template v-if="diff.removed">, <span class="w-down">{{ diff.removed }} to respec</span></template>
-          </div>
-          <div v-if="!diff.added && !diff.removed" class="w-dim">Same as {{ previous.title }}.</div>
-        </template>
-        <div v-else class="pt-1 w-dim">
-          {{ diff.added }} {{ diff.added === 1 ? 'point' : 'points' }}<template v-if="diff.addedAscendancy">, {{ diff.addedAscendancy }} ascendancy</template>
+      <div v-if="sideOpen" :class="$style.side">
+        <WField v-model="query" icon="fas fa-search" placeholder="Find a stat or passive" />
+        <div v-if="searching" class="w-dim text-xs pt-1">{{ litCount }} {{ litCount === 1 ? 'node' : 'nodes' }} lit on the tree</div>
+        <div :class="$style.totals" class="w-scroll">
+          <template v-for="g in groups" :key="g.name">
+            <div :class="$style.heading">{{ g.name }}</div>
+            <div v-for="(r, i) in g.rows" :key="i" :class="$style.total" @mouseenter="rowIds = r.ids" @mouseleave="rowIds = null">
+              <span :class="$style.amount" class="w-num">{{ r.amount }}</span>
+              <span class="w-dim">{{ r.text }}</span>
+            </div>
+          </template>
+          <div v-if="!groups.length" class="w-dim pt-2">Nothing in this tree says that.</div>
+          <div class="w-faint text-xs pt-2">From this tree only: no gear, jewels, ascendancy or masteries.</div>
         </div>
-
-        <template v-if="diff.addedNames.length">
-          <div :class="$style.heading">{{ previous ? 'New' : 'Key passives' }}</div>
-          <div v-for="n in diff.addedNames" :key="n.id" :class="$style.row">
-            <span>{{ n.name }}</span>
-            <div v-for="(line, i) in n.stats" :key="i" class="w-dim text-xs">{{ line }}</div>
-          </div>
-        </template>
-        <template v-if="diff.removedNames.length">
-          <div :class="$style.heading">Goes away</div>
-          <div v-for="n in diff.removedNames" :key="n.id" :class="$style.row">
-            <span class="w-down">{{ n.name }}</span>
-          </div>
-        </template>
       </div>
     </div>
   </WPanel>
@@ -57,11 +56,12 @@
 // what a tree adds over the one before it. Saves opening a browser over the game.
 import { computed, inject, nextTick, onBeforeUnmount, onMounted, shallowRef, watch } from 'vue'
 import type { WidgetManager } from '@/web/overlay/interfaces'
-import { WChip, WEmpty, WPanel } from '../ui'
+import { WButton, WChip, WEmpty, WField, WPanel } from '../ui'
 import { hideTip, showTipAt, tip } from '../ui/tooltip/tooltip'
 import { realSets } from './build-model'
 import { fitBox, loadPassiveTree, nodeAt, nodeNote, nodeState, NODE_RADIUS, passiveTreeArt, treeDiff } from './passive-tree'
 import type { TreeNode, View } from './passive-tree'
+import { filterTotals, groupTotals, matchingNodes, treeTotals } from './tree-totals'
 import { drawTree, loadSheets } from './tree-draw'
 import type { Sheets } from './tree-draw'
 import type { PobTreeSpec } from './widget'
@@ -106,6 +106,21 @@ const fromIds = computed(() => previous.value?.nodes ?? shown.value?.nodes ?? []
 const toSet = computed(() => new Set(toIds.value))
 const fromSet = computed(() => new Set(fromIds.value))
 const diff = computed(() => treeDiff(tree.value, previous.value?.nodes ?? [], toIds.value))
+
+// ---- totals and search ----
+
+// Closed until asked for: the tooltips do the reading.
+const sideOpen = shallowRef(false)
+const query = shallowRef('')
+// The nodes behind the total under the mouse.
+const rowIds = shallowRef<number[] | null>(null)
+
+const totals = computed(() => tree.value ? treeTotals(tree.value, toIds.value) : [])
+const groups = computed(() => groupTotals(filterTotals(totals.value, query.value)))
+const searching = computed(() => sideOpen.value && query.value.trim().length >= 2)
+const searchHits = computed(() => (searching.value && tree.value) ? matchingNodes(tree.value.values(), query.value) : [])
+const litCount = computed(() => searchHits.value.length)
+const lit = computed(() => rowIds.value ?? searchHits.value)
 
 // ---- drawing ----
 
@@ -164,15 +179,23 @@ function drawRing () {
   const ctx = canvas?.getContext('2d')
   if (!canvas || !ctx) return
   ctx.clearRect(0, 0, canvas.width, canvas.height)
-  const n = hovered.value
-  const r = n && NODE_RADIUS[n.kind]
-  if (!n || !r) return
   const px = pxRatio()
-  ctx.beginPath()
-  ctx.arc(n.x * view.value.zoom + view.value.ox, n.y * view.value.zoom + view.value.oy, r * view.value.zoom + 4 * px, 0, 2 * Math.PI)
-  ctx.strokeStyle = getComputedStyle(canvas).getPropertyValue('--w-fg').trim()
-  ctx.lineWidth = 2 * px
-  ctx.stroke()
+  const circle = (n: TreeNode, colour: string, grow: number, width: number) => {
+    const r = NODE_RADIUS[n.kind]
+    if (!r) return
+    ctx.beginPath()
+    ctx.arc(n.x * view.value.zoom + view.value.ox, n.y * view.value.zoom + view.value.oy, r * view.value.zoom + grow * px, 0, 2 * Math.PI)
+    ctx.strokeStyle = colour
+    ctx.lineWidth = width * px
+    ctx.stroke()
+  }
+  const css = getComputedStyle(canvas)
+  const found = css.getPropertyValue('--w-info').trim()
+  for (const id of lit.value) {
+    const n = tree.value?.get(id)
+    if (n) circle(n, found, 3, 2.5)
+  }
+  if (hovered.value) circle(hovered.value, css.getPropertyValue('--w-fg').trim(), 4, 2)
 }
 
 function resize () {
@@ -220,6 +243,7 @@ watch(box, (el) => {
 // Not when the switch flips: you may be looking at a part of the tree.
 watch([() => shown.value?.title, tree], () => { nextTick(fit) })
 watch([fromSet, toSet, sheets], schedule)
+watch(lit, drawRing)
 
 // The overlay can close with no mouse event: leaving the game's focus ends a
 // drag, and the tooltip going away with it ends the hover, so both start fresh.
@@ -357,19 +381,45 @@ function openWeb () {
   align-items: center;
   gap: 6px;
   flex: none;
-  margin-left: auto;
   white-space: nowrap;
   font-size: var(--w-fs-sm);
   color: var(--w-dim);
 }
 .changes:hover { color: var(--w-fg); }
+.tools {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: auto;
+  flex: none;
+}
 .side {
-  flex: 0 0 15rem;
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 19rem;
   min-width: 0;
   padding: 8px var(--w-pad);
+}
+.totals {
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
   overflow-wrap: anywhere;
+  margin-top: 4px;
+}
+.total {
+  display: flex;
+  gap: 8px;
+  padding: 2px 0;
+  line-height: 1.35;
+}
+.total:hover { background: var(--w-line-soft); }
+.amount {
+  flex: 0 0 3.2rem;
+  text-align: right;
+  font-weight: 600;
+  color: var(--w-fg);
 }
 .heading {
   padding: 10px 0 2px;
@@ -377,9 +427,5 @@ function openWeb () {
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--w-faint);
-}
-.row {
-  padding: 3px 0;
-  border-bottom: 1px solid var(--w-line-soft);
 }
 </style>
