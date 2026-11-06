@@ -1,7 +1,7 @@
 ---
 id: WOKEPOET-141
 title: 'History rows: Reopen on hover and a dismiss that removes the row'
-status: Grooming
+status: Ready
 priority: None
 effort: None
 assignee: unassigned
@@ -40,7 +40,25 @@ history:
     date: '2026-11-06T09:51:59.839Z'
     comment: Updated implementation link.
     id: a-2026-11-06t09-51-59-839z
-swimlane: require-input
+  - type: comment
+    user: Agent
+    comment: >-
+      Merged as 45b91e4 (#239), live on the dev copy (dev-230-with-master @
+      a5a19c16). Not tried in game.
+    date: '2026-11-06T10:00:42.018Z'
+    completionComment: true
+    id: c-2026-11-06t10-00-42-018z
+  - type: swimlane_change
+    swimlane: require-input
+    action: cleared
+    user: Agent
+    date: '2026-11-06T10:00:42.018Z'
+  - type: status_change
+    from: Grooming
+    to: Ready
+    user: Agent
+    date: '2026-11-06T10:00:42.018Z'
+swimlane: null
 needsAction: null
 implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/239'
 ---
