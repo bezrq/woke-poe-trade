@@ -13,6 +13,26 @@ history:
     user: Agent
     date: '2026-11-06T03:51:11.514Z'
     comment: Created ticket.
+    id: a-2026-11-06t03-51-11-514z
+  - type: comment
+    user: Agent
+    comment: >-
+      Which mock: A skull icon with hover card, B inside Session analytics, or C
+      death log panel? Recommended A with C's log behind it. Mocks:
+      https://claude.ai/artifact/JXbbkg2garWvFVaXgAH9hv
+    date: '2026-11-06T03:53:43.850Z'
+    id: c-2026-11-06t03-53-43-850z
+  - type: swimlane_change
+    swimlane: require-input
+    action: set
+    user: Agent
+    date: '2026-11-06T03:53:43.850Z'
+    comment: >-
+      Which mock: A skull icon with hover card, B inside Session analytics, or C
+      death log panel? Recommended A with C's log behind it. Mocks:
+      https://claude.ai/artifact/JXbbkg2garWvFVaXgAH9hv
+swimlane: require-input
+needsAction: null
 ---
 Guy: "Death recap is cool to maybe have a reference of what map mods you died to if that's possible to easily save."
 

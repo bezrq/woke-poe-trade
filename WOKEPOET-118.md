@@ -1,7 +1,7 @@
 ---
 id: WOKEPOET-118
 title: 'Listing tooltip: look like the in-game item, with mod tiers and weapon DPS'
-status: Ready
+status: Done
 priority: Medium
 effort: M
 assignee: unassigned
@@ -73,9 +73,21 @@ history:
     to: Ready
     user: Agent
     date: '2026-11-05T16:03:30.397Z'
+  - type: comment
+    user: Agent
+    comment: 'Merged as #206.'
+    date: '2026-11-06T03:53:36.460Z'
+    completionComment: true
+    id: c-2026-11-06t03-53-36-460z
+  - type: status_change
+    from: Ready
+    to: Done
+    user: Agent
+    date: '2026-11-06T03:53:36.460Z'
 swimlane: null
 needsAction: null
 implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/206'
+reviewState: null
 ---
 > **TL;DR** Guy: "can we improve this, show mod tiers, stuff like total pdps etc? have it more similar to actual item showing?" The tooltip on a price check trade listing (woke/price-insight/listing-tip.ts → GameTooltip.vue) drops most of what the trade site sends.
 
