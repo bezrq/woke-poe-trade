@@ -1,7 +1,7 @@
 ---
 id: WOKEPOET-127
 title: Death recap with the map mods you died to
-status: Grooming
+status: In Progress
 priority: Medium
 effort: M
 assignee: unassigned
@@ -31,7 +31,17 @@ history:
       Which mock: A skull icon with hover card, B inside Session analytics, or C
       death log panel? Recommended A with C's log behind it. Mocks:
       https://claude.ai/artifact/JXbbkg2garWvFVaXgAH9hv
-swimlane: require-input
+  - type: swimlane_change
+    swimlane: require-input
+    action: cleared
+    user: Agent
+    date: '2026-11-06T04:42:21.406Z'
+  - type: status_change
+    from: Grooming
+    to: In Progress
+    user: Agent
+    date: '2026-11-06T04:42:21.406Z'
+swimlane: null
 needsAction: null
 ---
 Guy: "Death recap is cool to maybe have a reference of what map mods you died to if that's possible to easily save."
