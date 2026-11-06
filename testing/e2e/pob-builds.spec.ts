@@ -169,7 +169,7 @@ test('a picked loadout reaches the other windows, is saved, and Auto undoes it',
   await expect(strip).toContainText(`Your links · ${day1}`)
   await expect(strip).toContainText('Arc')
 
-  await overlay.widget('woke-pob-builds').getByText('Loadouts', { exact: false }).first().click()
+  // The panel opens on the build in use.
   const detail = overlay.page.locator('[data-w-panel]').filter({ hasText: 'Open in PoB' })
   const chip = (name: string) => detail.getByRole('button', { name, exact: false })
   await expect(chip(day1)).toContainText('now')
@@ -224,6 +224,37 @@ test('a build that is not active says its loadout only applies once it is', asyn
   const detail = overlay.page.locator('[data-w-panel]').filter({ hasText: 'Open in PoB' })
   const hint = detail.getByText('Other windows use your active build')
   await expect(hint).toBeVisible()
-  await detail.getByRole('button', { name: 'Make active' }).click()
+  await detail.getByRole('button', { name: 'Use build' }).click()
   await expect(hint).toHaveCount(0)
+})
+
+test('a build named after your character switches once, and Undo stops it coming back', async ({ overlay }) => {
+  await overlay.boot({
+    widgets: [
+      {
+        wmType: 'woke-pob-builds',
+        wmWants: 'show' as const,
+        wmFlags: ['invisible-on-blur'],
+        anchor: { pos: 'tl', x: 5, y: 12 },
+        buildsDir: path.join(FIXTURES, 'pob'),
+        pobExe: '',
+        pinned: [],
+        activeBuild: LOADOUTS_FILE,
+        followChars: {},
+        loadouts: {}
+      },
+      { wmType: 'woke-campaign', wmWants: 'show' as const }
+    ],
+    overlayActive: true
+  })
+  await overlay.log(['2026/11/04 18:01:12 211002121 cff94598 [INFO Client 21088] : Showcase (Witch) is now level 2'])
+  const note = overlay.page.getByText('Now using Showcase for Showcase')
+  await expect(note).toBeVisible()
+  await overlay.page.getByRole('button', { name: 'Undo' }).click()
+  await expect(note).toHaveCount(0)
+  const panel = overlay.widget('woke-pob-builds')
+  await panel.getByTitle('Reload builds folder').click()
+  await overlay.page.waitForTimeout(300)
+  await expect(note).toHaveCount(0)
+  await expect(panel.getByRole('button', { name: 'Loadouts' })).toBeVisible()
 })

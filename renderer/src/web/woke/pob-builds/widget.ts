@@ -15,6 +15,8 @@ export interface PobBuildsWidget extends Widget {
   // Character name -> build file. When Client.txt shows that character
   // levelling, its build becomes the active one.
   followChars: Record<string, string>
+  // Characters you stopped following: no linking them by name again.
+  followOff: string[]
   // Build file -> the loadout picked by hand. No entry = follow your level.
   loadouts: Record<string, LoadoutPick>
 }
@@ -28,12 +30,18 @@ export interface LoadoutPick {
 
 export function migratePobWidget (w: PobBuildsWidget) {
   if (!w.followChars || typeof w.followChars !== 'object') w.followChars = {}
+  if (!Array.isArray(w.followOff)) w.followOff = []
   if (!Array.isArray(w.pinned)) w.pinned = []
   if (w.activeBuild === undefined) w.activeBuild = null
   if (!w.loadouts || typeof w.loadouts !== 'object') w.loadouts = {}
 }
 
 // Shapes returned by main/src/woke/pob-builds.ts
+export type PobStats = Partial<Record<
+  'FullDPS' | 'CombinedDPS' | 'TotalDPS' | 'TotalDotDPS' | 'MinionTotalDPS' | 'Life' | 'EnergyShield' | 'Mana' | 'TotalEHP' |
+  'FireResist' | 'ColdResist' | 'LightningResist' | 'ChaosResist' |
+  'FireResistOverCap' | 'ColdResistOverCap' | 'LightningResistOverCap' | 'ChaosResistOverCap', number>>
+
 export interface PobBuildEntry {
   relPath: string
   name: string
@@ -43,6 +51,8 @@ export interface PobBuildEntry {
   ascendClassName: string
   level: number | null
   mainSkill: string
+  // Older app versions don't send it.
+  stats?: PobStats
 }
 
 export interface PobGem {
@@ -115,6 +125,8 @@ export interface PobDetails {
   ascendClassName: string
   level: number | null
   mainSkill: string
+  stats?: PobStats
+  statsSet?: string
   notes: string
   notesRaw?: string
   skills: PobSkillGroup[]
@@ -160,6 +172,32 @@ export function sortBuilds (builds: PobBuildEntry[], pinned: string[]): PobBuild
     return b.mtime - a.mtime
   })
 }
+
+export interface BuildGroup {
+  // The folder under the builds folder; '' for builds directly in it.
+  folder: string
+  label: string
+  builds: PobBuildEntry[]
+}
+
+// Pinned builds first, then a group per folder with the latest saved on top.
+export function groupBuilds (builds: PobBuildEntry[], pinned: string[]): BuildGroup[] {
+  const sorted = sortBuilds(builds, pinned)
+  const pins = sorted.filter(b => pinned.includes(b.relPath))
+  const byFolder = new Map<string, PobBuildEntry[]>()
+  for (const b of sorted) {
+    if (pinned.includes(b.relPath)) continue
+    // The top folder: subfolders of a league stay with that league.
+    const top = b.folder.split('/')[0]
+    byFolder.set(top, [...(byFolder.get(top) ?? []), b])
+  }
+  const groups = [...byFolder.entries()].map(([folder, list]) => ({ folder, label: folder || 'Other', builds: list }))
+  // Sorted by latest save, so each group's first build is its latest.
+  groups.sort((a, b) => b.builds[0].mtime - a.builds[0].mtime)
+  return pins.length ? [{ folder: PINNED_GROUP, label: 'Pinned', builds: pins }, ...groups] : groups
+}
+
+export const PINNED_GROUP = '\0pinned'
 
 export function describe (b: { className: string, ascendClassName: string, level: number | null, mainSkill: string }): string {
   return [
