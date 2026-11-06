@@ -1,7 +1,7 @@
 ---
 id: WOKEPOET-119
 title: 'Redesign landing page: simpler, PoE font and look, five highlights with slides'
-status: Grooming
+status: In Progress
 priority: Medium
 effort: None
 assignee: unassigned
@@ -49,6 +49,18 @@ history:
     comment: >-
       Guy picked C, without the demo button, plus slides for lab gem pricing,
       the regex maker and the regex clipboard.
+  - type: comment
+    user: Agent
+    comment: >-
+      Guy picked C. Building on claude/landing-poe-look in
+      E:\Git\woke-landing-poe.
+    date: '2026-11-06T02:14:34.714Z'
+    id: c-2026-11-06t02-14-34-714z
+  - type: status_change
+    from: Grooming
+    to: In Progress
+    user: Agent
+    date: '2026-11-06T02:14:34.714Z'
 swimlane: null
 needsAction: null
 ---
