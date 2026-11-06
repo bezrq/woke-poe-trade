@@ -35,7 +35,7 @@
         </div>
 
         <template v-if="diff.addedNames.length">
-          <div :class="$style.heading">{{ previous ? 'New' : 'Notables and keystones' }}</div>
+          <div :class="$style.heading">{{ previous ? 'New' : 'Key passives' }}</div>
           <div v-for="n in diff.addedNames" :key="n.id" :class="$style.row">
             <span>{{ n.name }}</span>
             <div v-for="(line, i) in n.stats" :key="i" class="w-dim text-xs">{{ line }}</div>
@@ -217,7 +217,8 @@ watch(box, (el) => {
   nextTick(resize)
 })
 
-watch([() => shown.value?.title, tree, changes], () => { nextTick(fit) })
+// Not when the switch flips: you may be looking at a part of the tree.
+watch([() => shown.value?.title, tree], () => { nextTick(fit) })
 watch([fromSet, toSet, sheets], schedule)
 
 // The overlay can close with no mouse event: leaving the game's focus ends a

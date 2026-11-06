@@ -271,7 +271,7 @@ test('the passive tree opens in the overlay, on the next tree, with what it adds
   const tree = overlay.page.locator('[data-w-panel]').filter({ hasText: 'Passive tree' }).filter({ has: overlay.page.locator('canvas') }).last()
   // On its own, even from the Next card: comparing is only ever asked for.
   await expect(tree).toContainText('4 points')
-  await expect(tree).toContainText('Notables and keystones')
+  await expect(tree).toContainText('Key passives')
   await expect(tree).not.toContainText('1 new point')
   await overlay.snap('passive tree on its own')
 
