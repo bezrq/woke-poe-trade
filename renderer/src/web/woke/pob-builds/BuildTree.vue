@@ -67,8 +67,7 @@ import type { Sheets } from './tree-draw'
 import type { PobTreeSpec } from './widget'
 
 // A new `start` object means go to that tree, even if it's the same title again.
-// `changes` opens it showing what that tree adds, as the Next card does.
-const props = defineProps<{ specs: PobTreeSpec[], start: { title: string, changes?: boolean } }>()
+const props = defineProps<{ specs: PobTreeSpec[], start: { title: string } }>()
 const emit = defineEmits<{ (e: 'close'): void }>()
 
 const trees = computed(() => realSets(props.specs))
@@ -76,6 +75,7 @@ const at = shallowRef(0)
 const shown = computed(() => trees.value[at.value] ?? trees.value[trees.value.length - 1] ?? null)
 const earlier = computed(() => (at.value > 0 ? trees.value[at.value - 1] : null))
 // Off, the picked tree on its own. On, what it changes from the one before.
+// Only the switch turns it on: comparing is always something you asked for.
 const changes = shallowRef(false)
 const previous = computed(() => changes.value ? earlier.value : null)
 
@@ -84,10 +84,10 @@ function pick (i: number) {
 }
 
 // Only on being asked: PoB saving the build shouldn't move you off a tree.
-watch(() => props.start, ({ title, changes: wanted }) => {
+watch(() => props.start, ({ title }) => {
   const i = trees.value.findIndex(t => t.title === title)
   at.value = i < 0 ? 0 : i
-  changes.value = Boolean(wanted)
+  changes.value = false
 }, { immediate: true })
 
 const tree = shallowRef<Map<number, TreeNode> | null>(null)

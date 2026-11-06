@@ -269,19 +269,19 @@ test('the passive tree opens in the overlay, on the next tree, with what it adds
   await expect(next).toContainText('Holy Dominion')
   await next.click()
   const tree = overlay.page.locator('[data-w-panel]').filter({ hasText: 'Passive tree' }).filter({ has: overlay.page.locator('canvas') }).last()
+  // On its own, even from the Next card: comparing is only ever asked for.
+  await expect(tree).toContainText('4 points')
+  await expect(tree).toContainText('Notables and keystones')
+  await expect(tree).not.toContainText('1 new point')
+  await overlay.snap('passive tree on its own')
+
+  await tree.getByRole('switch').click()
   await expect(tree).toContainText('Changes from Day 1 No Cluster')
   await expect(tree).toContainText('1 new point')
   await expect(tree).toContainText('+12% to all Elemental Resistances')
   await expect(tree.locator('canvas').first()).toBeVisible()
   await overlay.page.waitForTimeout(800)
   await overlay.snap('passive tree')
-
-  // On its own, the tree says what it has, not what it changes.
-  await tree.getByRole('switch').click()
-  await expect(tree).not.toContainText('1 new point')
-  await expect(tree).toContainText('4 points')
-  await expect(tree).toContainText('Notables and keystones')
-  await overlay.snap('passive tree on its own')
 
   // Sweeps until the mouse lands on a node: its stats come up at the cursor.
   const box = (await tree.locator('canvas').first().boundingBox())!
