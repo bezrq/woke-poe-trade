@@ -18,5 +18,6 @@ history:
 subtasks:
   - WOKEPOET-133
   - WOKEPOET-135
+  - WOKEPOET-136
 ---
 > Guy said yes to all of https://claude.ai/artifact/7KJ127gAMXnMYWjrCrWZ3h on 2026-11-06. Order: G with saved stats, C, D, A, B, E, F, then test A2 (real DPS via PoB's engine, no window may appear while he plays).
