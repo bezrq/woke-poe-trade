@@ -3,7 +3,7 @@ id: WOKEPOET-142
 title: >-
   Landing page: redesign feature slides (sharp shots, pickers on top, real PoE
   art)
-status: In Progress
+status: Done
 priority: None
 effort: None
 assignee: unassigned
@@ -27,7 +27,98 @@ history:
     to: In Progress
     user: Agent
     date: '2026-11-06T09:32:14.982Z'
+  - type: comment
+    user: Agent
+    comment: >-
+      Merged as #237 (6f6adfe) and live on the landing page. Checked at
+      1024x768: all shots load and each section fits the window.
+    date: '2026-11-06T09:48:30.220Z'
+    completionComment: true
+    id: c-2026-11-06t09-48-30-220z
+  - type: status_change
+    from: In Progress
+    to: Ready
+    user: Agent
+    date: '2026-11-06T09:48:30.220Z'
+  - type: comment
+    user: Agent
+    comment: >-
+      Option B live: item tooltip sections, name plates above the shot, stone
+      background, shots retaken at double resolution and shown at 1280x720 at
+      most.
+    completionComment: true
+    date: '2026-11-06T09:48:31.259Z'
+    id: c-2026-11-06t09-48-31-259z
+  - type: status_change
+    from: Ready
+    to: Done
+    user: Agent
+    date: '2026-11-06T09:48:31.506Z'
 needsAction: null
+baselineCommit: ae9d149f9c555d42e467c95e82514624d060baa7
+implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/237'
+swimlane: null
+diffSummary:
+  - file: docs/.vitepress/theme/landing/Landing.vue
+    additions: 363
+    deletions: 131
+  - file: docs/.vitepress/theme/landing/content.js
+    additions: 65
+    deletions: 23
+  - file: docs/public/shots/hero.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/readme-banner.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/story-essence.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/story-loot.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/story-maps.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/story-price.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/tour-boss-runs.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/tour-boss.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/tour-campaign-chip.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/tour-campaign.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/tour-filter-prices.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/tour-filter-rules.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/tour-map-mods.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/tour-market.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/tour-pob.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/tour-regex.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/tour-trade.webp
+    additions: 0
+    deletions: 0
+  - file: testing/e2e/landing-shots.spec.ts
+    additions: 211
+    deletions: 4
 ---
 Guy's points: images too big and blurry; pickers ugly, use real PoE art; pickers above each section and fit one screen with the slide; background not plain black or an item border on the pics.
 
