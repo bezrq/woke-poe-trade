@@ -207,6 +207,14 @@ history:
     selfAttested: true
     pin: true
     id: c-2026-11-05t15-19-21-892z
+  - type: activity
+    user: Agent
+    date: '2026-11-06T01:03:22.505Z'
+    comment: >-
+      Icon click merged in #205. Stack counts and per-stack total (Guy's layout
+      B) in PR #207, head a75f937a, reviewed and fixed, waiting on merge. Other
+      stash tabs still to do: Essence next.
+    id: a-2026-11-06t01-03-22-505z
 swimlane: require-input
 needsAction: null
 implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/198'
