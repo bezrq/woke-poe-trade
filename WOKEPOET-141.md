@@ -35,8 +35,14 @@ history:
     comment: >-
       Which History row layout: A, B or C? Mocks:
       https://claude.ai/artifact/J2d63jbZGnic74kadKWzrB (A recommended)
+  - type: activity
+    user: Agent
+    date: '2026-11-06T09:51:59.839Z'
+    comment: Updated implementation link.
+    id: a-2026-11-06t09-51-59-839z
 swimlane: require-input
 needsAction: null
+implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/239'
 ---
 Guy: show Reopen only on row hover, and add a dismiss that removes the row completely. Mocks first; waiting on his pick of A, B or C.
 
