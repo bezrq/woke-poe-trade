@@ -14,5 +14,8 @@ history:
     user: Agent
     date: '2026-11-06T04:37:06.207Z'
     comment: Created ticket.
+    id: a-2026-11-06t04-37-06-207z
+subtasks:
+  - WOKEPOET-133
 ---
 > Guy said yes to all of https://claude.ai/artifact/7KJ127gAMXnMYWjrCrWZ3h on 2026-11-06. Order: G with saved stats, C, D, A, B, E, F, then test A2 (real DPS via PoB's engine, no window may appear while he plays).
