@@ -14,8 +14,19 @@ export interface PropPart {
 
 export interface ModPart {
   text: string
-  // The mod's possible range for the number in `text`.
+  // A number on the line, drawn brighter than its words.
+  number?: boolean
+  // The mod's possible range for the number before it.
   range?: boolean
+}
+
+export interface RollBar {
+  low: number
+  high: number
+  // Where the marker sits on the bar, 0 to 100, low on the left.
+  at: number
+  // How good this roll is, 0 to 100. Differs from `at` for a downside.
+  quality: number
 }
 
 export interface ModLine {
@@ -24,6 +35,7 @@ export interface ModLine {
   kind: '' | 'crafted' | 'fractured'
   // Where the roll sits in its range, 0 to 100. Null when the line can't roll.
   quality: number | null
+  bars: RollBar[]
 }
 
 export interface ModGroup {
@@ -148,6 +160,23 @@ function alignSpans (numbers: number[], spans: Span[]): number[] | null {
 
 const NUMBER = /\d+(?:\.\d+)?/g
 
+/** Rounded down: 100 means a perfect roll and nothing less. */
+function percent (place: number): number {
+  return Math.floor(place * 100 + 1e-9)
+}
+
+/** The text with each number as its own part. */
+function textParts (text: string): ModPart[] {
+  const parts: ModPart[] = []
+  let last = 0
+  for (const match of text.matchAll(NUMBER)) {
+    parts.push({ text: text.slice(last, match.index) }, { text: match[0], number: true })
+    last = match.index + match[0].length
+  }
+  parts.push({ text: text.slice(last) })
+  return parts.filter(p => p.text)
+}
+
 /** Whether a bigger number on this line is the worse roll, as with "-20% to all Resistances". */
 function biggerIsWorse (mod: Exclude<ListingMod, string>, text: string): boolean {
   const negative = (mod.mods ?? []).some(m => Number(m.magnitudes?.[0]?.min) < 0 || Number(m.magnitudes?.[0]?.max) < 0)
@@ -161,7 +190,7 @@ function biggerIsWorse (mod: Exclude<ListingMod, string>, text: string): boolean
 
 function buildLine (mod: ListingMod, kind: ModLine['kind']): ModLine {
   const text = modText(mod)
-  const plain: ModLine = { parts: [{ text }], tags: [], kind, quality: null }
+  const plain: ModLine = { parts: textParts(text), tags: [], kind, quality: null, bars: [] }
   if (typeof mod === 'string') return plain
   plain.tags = (mod.mods ?? []).map(m => m.tier ?? '').filter(Boolean)
 
@@ -173,6 +202,7 @@ function buildLine (mod: ListingMod, kind: ModLine['kind']): ModLine {
 
   const worse = biggerIsWorse(mod, text)
   const parts: ModPart[] = []
+  const bars: RollBar[] = []
   const rolls: number[] = []
   let last = 0
   aligned.forEach((at, i) => {
@@ -180,16 +210,16 @@ function buildLine (mod: ListingMod, kind: ModLine['kind']): ModLine {
     if (span.low === span.high) return
     const match = found[at]
     const end = match.index + match[0].length
-    parts.push({ text: text.slice(last, end) }, { text: `(${span.low}-${span.high})`, range: true })
+    parts.push(...textParts(text.slice(last, end)), { text: `(${span.low}-${span.high})`, range: true })
     last = end
     const place = Math.min(1, Math.max(0, (Number(match[0]) - span.low) / (span.high - span.low)))
-    rolls.push(worse ? 1 - place : place)
+    const roll = worse ? 1 - place : place
+    rolls.push(roll)
+    bars.push({ low: span.low, high: span.high, at: place * 100, quality: percent(roll) })
   })
   if (!rolls.length) return plain
-  parts.push({ text: text.slice(last) })
-  // Rounded down: 100% means a perfect roll and nothing less.
-  const quality = Math.floor(rolls.reduce((a, b) => a + b, 0) / rolls.length * 100 + 1e-9)
-  return { ...plain, parts: parts.filter(p => p.text), quality }
+  parts.push(...textParts(text.slice(last)))
+  return { ...plain, parts, bars, quality: percent(rolls.reduce((a, b) => a + b, 0) / rolls.length) }
 }
 
 function modKind (mod: ListingMod, fallback: ModLine['kind']): ModLine['kind'] {

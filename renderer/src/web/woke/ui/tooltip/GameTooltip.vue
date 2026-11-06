@@ -23,13 +23,13 @@
           <div><span :class="$style.label">Item Level: </span><span :class="$style.value">{{ item.itemLevel }}</span></div>
         </section>
         <section v-if="listing.implicits.length" :class="$style.block">
-          <ListingModRow v-for="(line, i) in listing.implicits" :key="i" :line="line" />
+          <ListingModRow v-for="(line, i) in listing.implicits" :key="i" :line="line" :bars="rollBars" />
         </section>
         <section v-if="listing.groups.length" :class="$style.block">
           <template v-for="(group, g) in listing.groups" :key="g">
             <div v-if="group.heading" :class="$style.modHeading">{{ group.heading }}</div>
             <div v-else-if="g" :class="$style.modGap" />
-            <ListingModRow v-for="(line, i) in group.lines" :key="i" :line="line" />
+            <ListingModRow v-for="(line, i) in group.lines" :key="i" :line="line" :bars="rollBars" />
           </template>
         </section>
         <section v-if="listing.tail.length || item.corrupted || item.mirrored" :class="$style.block">
@@ -124,6 +124,8 @@
 // Mounted once in the overlay.
 import { computed, inject, nextTick, onMounted, onUnmounted, ref, shallowRef, useCssModule, watch } from 'vue'
 import { usePoeninja } from '@/web/background/Prices'
+import { AppConfig } from '@/web/Config'
+import type { PriceCheckWidget } from '@/web/overlay/interfaces'
 import type { WidgetManager } from '@/web/overlay/interfaces'
 import SocketDots from '../../pob-builds/SocketDots.vue'
 import { socketGroups } from '../../pob-builds/build-model'
@@ -143,6 +145,7 @@ const placed = shallowRef<{ left: number, top: number } | null>(null)
 
 const item = computed<PobItem | null>(() => tip.value?.content.kind === 'item' ? tip.value.content.item : null)
 const listing = computed(() => tip.value?.content.kind === 'item' ? tip.value.content.listing ?? null : null)
+const rollBars = computed(() => AppConfig<PriceCheckWidget>('price-check')?.listingRolls === 'bars')
 const gem = computed<GemTip | null>(() => tip.value?.content.kind === 'gem' ? tip.value.content : null)
 const lookup = computed<LookupTip | null>(() => tip.value?.content.kind === 'lookup' ? tip.value.content : null)
 // Live: the divine rate can arrive after the tooltip opens.
@@ -277,6 +280,12 @@ watch(tip, async (t) => {
   reposition()
 })
 
+// Switching how rolls are drawn changes the tip's size under a still cursor.
+watch(rollBars, async () => {
+  await nextTick()
+  reposition()
+})
+
 // Hidden until measured, so it never flashes in the wrong spot.
 const pos = computed(() => placed.value
   ? { left: `${placed.value.left}px`, top: `${placed.value.top}px` }
@@ -377,7 +386,7 @@ onUnmounted(() => {
 .sockets { display: flex; align-items: center; justify-content: center; gap: 8px; }
 
 /* A listing's headings and tags need the room. */
-.wide { max-width: 36rem; }
+.wide { max-width: 46rem; --tip-range: #d9c48f; }
 .modHeading { margin-top: 6px; color: var(--w-dim); font-size: var(--w-fs-md); }
 .modHeading:first-child { margin-top: 0; }
 .modGap { height: 8px; }

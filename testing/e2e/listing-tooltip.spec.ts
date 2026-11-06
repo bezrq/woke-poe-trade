@@ -53,6 +53,18 @@ test('a listing shows tiers, rolls and its numbers on hover', async ({ overlay }
   await expect(tip).toContainText('at 20% quality')
   await overlay.snap('listing tooltip weapon')
 
+  // Shift + scroll switches to roll bars and back. The tip stays up.
+  await overlay.page.keyboard.down('Shift')
+  await overlay.page.mouse.wheel(0, 100)
+  await expect(tip).not.toContainText('(120-139)')
+  await expect(tip).toContainText('136% increased Physical Damage')
+  await expect(tip).toContainText('84%')
+  await overlay.snap('listing tooltip weapon bars')
+  await overlay.page.waitForTimeout(250)
+  await overlay.page.mouse.wheel(0, 100)
+  await expect(tip).toContainText('136(120-139)% increased Physical Damage')
+  await overlay.page.keyboard.up('Shift')
+
   await rows.nth(2).hover()
   await expect(tip).toContainText('Rage Guardian')
   await expect(tip).toContainText('Crafted "of Craft"')
