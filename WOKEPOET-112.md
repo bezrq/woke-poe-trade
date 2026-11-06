@@ -1,7 +1,7 @@
 ---
 id: WOKEPOET-112
 title: Get master CI green and make it a required check
-status: Grooming
+status: Done
 priority: High
 effort: None
 assignee: Agent
@@ -71,6 +71,22 @@ history:
     comment: >-
       Guy said go: CI required on master (ruleset 26662541), no local runner,
       package cache in #208.
+  - type: comment
+    user: Agent
+    comment: >-
+      Master CI green, required on master by ruleset "CI must pass on master".
+      Merged: #192, #201, #208, #210. No local runner (Guy agreed). Remote
+      branch deletion is left to Guy, because the safety check refused it here.
+      Open follow-ups: main keeps hover zones from owners a reloaded overlay
+      doesn't reuse; testing/ has no typecheck; CI retries=1 can hide flakes.
+    date: '2026-11-06T02:41:06.705Z'
+    completionComment: true
+    id: c-2026-11-06t02-41-06-705z
+  - type: status_change
+    from: Grooming
+    to: Done
+    user: Agent
+    date: '2026-11-06T02:41:06.705Z'
 swimlane: null
 needsAction: null
 ---
