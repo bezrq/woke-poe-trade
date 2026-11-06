@@ -1,7 +1,7 @@
 ---
 id: WOKEPOET-128
 title: 'Drop counter: tracked items with +1 and a maps-run count'
-status: Grooming
+status: In Progress
 priority: None
 effort: None
 assignee: unassigned
@@ -32,7 +32,27 @@ history:
       Which option: A tally card (recommended), B icon strip or C scoreboard?
       Mocks: https://claude.ai/artifact/SWjWD1MN7wBPLxiVVh3Pcy. Default unless
       told otherwise: counts run until reset.
-swimlane: require-input
+  - type: comment
+    user: Agent
+    comment: >-
+      Guy likes A and B: A default, B by setting, plus hover key for +1. No
+      automatic pickup: Client.txt doesn't log them.
+    date: '2026-11-06T04:37:23.686Z'
+    id: c-2026-11-06t04-37-23-686z
+  - type: swimlane_change
+    swimlane: require-input
+    action: cleared
+    user: Agent
+    date: '2026-11-06T04:37:23.686Z'
+    comment: >-
+      Guy likes A and B: A default, B by setting, plus hover key for +1. No
+      automatic pickup: Client.txt doesn't log them.
+  - type: status_change
+    from: Grooming
+    to: In Progress
+    user: Agent
+    date: '2026-11-06T04:37:24.188Z'
+swimlane: null
 needsAction: null
 ---
 Streamer-style counter: freeform list of items added from a search bar, quick +1 on each, and a maps-run count. Nothing permanently on screen, so it lives on a dock hover icon.
