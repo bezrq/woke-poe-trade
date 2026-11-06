@@ -61,8 +61,8 @@
 
       <template v-else-if="view === 'odds' && odds">
         <div :class="$style.note" class="w-num">
-          <template v-if="odds.medianResult != null">Half of all {{ flipWord }}s return {{ fmt(odds.medianResult) }} or less. </template>
-          Before any rerolls, a {{ flipWord }} sells for {{ fmt(odds.saleValue) }} on average.
+          <template v-if="odds.medianResult != null">Half return {{ fmt(odds.medianResult) }} or less. </template>
+          Average sale before rerolls: {{ fmt(odds.saleValue) }}.
         </div>
         <div :class="$style.legend">
           <span><i :class="[$style.key, $style.chance]" />Chance of this result</span>
@@ -90,7 +90,8 @@
 
       <template v-else-if="pool">
         <div :class="$style.note" class="w-num">
-          These drop under {{ pct(family.rareShare ?? 0) }} of the time but cost less than a third of a typical rare {{ family.noun }}<template v-if="pool.typicalRare != null"> ({{ fmt(pool.typicalRare) }})</template>, so they may rise later. Hold them rather than flipping them.
+          Rare but cheap, so they may rise later. Hold them rather than flipping them.
+          <WInfo :text="`These drop under ${pct(family.rareShare ?? 0)} of the time but cost less than a third of a typical rare ${family.noun}${pool.typicalRare != null ? ` (${fmt(pool.typicalRare)})` : ''}.`" />
         </div>
         <WEmpty v-if="!rareCheap.length" icon="fas fa-star">No exceptionally rare {{ family.noun }} is cheap right now.</WEmpty>
         <template v-else>
@@ -383,7 +384,7 @@ const footerTitle = computed(() => {
     estimated ? `${estimated} with no measured weight use the average. EV leans on those guesses: check them in Settings.` : '',
     left ? `No weight, left out: ${left}.` : '',
     feedNote.value
-  ].filter(Boolean).join('\n')
+  ].filter(Boolean).join('\n\n')
 })
 
 const WEIGHT_CHIP = 'flex: none; padding: 0 3px; border: 1px solid currentColor; border-radius: 2px; font-size: calc(10px * var(--w-text-scale, 1)); font-weight: 600; line-height: 1.3;'
