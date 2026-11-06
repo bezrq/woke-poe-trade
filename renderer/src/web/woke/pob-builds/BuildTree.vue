@@ -121,6 +121,8 @@ const searching = computed(() => sideOpen.value && query.value.trim().length >= 
 const searchHits = computed(() => (searching.value && tree.value) ? matchingNodes(tree.value.values(), query.value) : [])
 const litCount = computed(() => searchHits.value.length)
 const lit = computed(() => rowIds.value ?? searchHits.value)
+// The row under the mouse can go with no mouseleave.
+watch([query, sideOpen, () => shown.value?.title], () => { rowIds.value = null })
 
 // ---- drawing ----
 
