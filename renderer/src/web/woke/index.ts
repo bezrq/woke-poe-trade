@@ -36,6 +36,7 @@ import WidgetBossRuns from './boss-runs/WidgetBossRuns.vue'
 import WidgetScarabFlip from './scarab-flip/WidgetScarabFlip.vue'
 import WidgetLootFilter from './loot-filter/WidgetLootFilter.vue'
 import WidgetSessionAnalytics from './analytics/WidgetSessionAnalytics.vue'
+import WidgetDeathRecap from './death-recap/WidgetDeathRecap.vue'
 import WidgetTrade from './trade/WidgetTrade.vue'
 import WidgetSearch from './search/WidgetSearch.vue'
 
@@ -65,6 +66,7 @@ export const wokeWidgets: WidgetComponent[] = [
   WidgetScarabFlip as unknown as WidgetComponent,
   WidgetLootFilter as unknown as WidgetComponent,
   WidgetSessionAnalytics as unknown as WidgetComponent,
+  WidgetDeathRecap as unknown as WidgetComponent,
   WidgetTrade as unknown as WidgetComponent
 ]
 

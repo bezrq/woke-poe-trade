@@ -73,7 +73,7 @@ export interface DockEntry {
 
 // Fixed order, so icons don't jump around as they come and go.
 export const DOCK_ORDER = [
-  'toolkit', 'trade', 'campaign', 'run-timer', 'lab', 'lab-gems', 'challenges', 'mechanics', 'farming', 'drop-counter', 'boss-runs',
+  'toolkit', 'trade', 'campaign', 'run-timer', 'lab', 'lab-gems', 'challenges', 'mechanics', 'farming', 'drop-counter', 'boss-runs', 'death-recap',
   'map-scan', 'essence-scan', 'trade-live', 'atlas', 'regex-library', 'market', 'league-invest', 'scarab-flip', 'loot-filter'
 ]
 
@@ -90,6 +90,7 @@ export const DOCK_NAMES: Record<string, string> = {
   'lab-gems': 'Lab gems',
   'challenges': 'Challenge guide',
   'mechanics': 'League mechanics',
+  'death-recap': 'Death recap',
   'farming': 'Farming',
   'drop-counter': 'Drop counter',
   'boss-runs': 'Boss runs',
