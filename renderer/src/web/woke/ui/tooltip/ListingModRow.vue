@@ -10,8 +10,8 @@
       <span v-for="(b, i) in line.bars" :key="i" class="w-num" :class="$style.bar">
         <span :class="$style.low">{{ b.low }}</span>
         <span :class="$style.track">
-          <i :class="[$style.fill, heat(b.quality)]" :style="{ width: `${b.at}%` }" />
-          <i :class="[$style.marker, heat(b.quality)]" :style="{ left: `${b.at}%` }" />
+          <i :class="$style.fill" :style="{ width: `${b.at}%`, background: rollColour(b.quality) }" />
+          <i :class="$style.marker" :style="{ left: `${b.at}%`, background: rollColour(b.quality) }" />
           <span :class="$style.barPct">{{ b.quality }}%</span>
         </span>
         <span :class="$style.high">{{ b.high }}</span>
@@ -38,6 +38,11 @@ function gradeClass (tag: string) {
   return n === 1 ? $style.t1 : n <= 3 ? $style.t2 : n <= 6 ? $style.t3 : $style.t4
 }
 
+// Red at 0, through yellow, to green at 100.
+function rollColour (quality: number) {
+  return `hsl(${quality * 1.2}, 70%, 48%)`
+}
+
 function heat (quality: number) {
   return quality === 100 ? $style.perfect : quality >= 67 ? $style.high2 : quality >= 34 ? $style.mid : $style.low2
 }
@@ -51,9 +56,8 @@ function heat (quality: number) {
   align-items: center;
   margin: 0 -8px;
 }
-.withBars { grid-template-columns: 3.5rem 1fr 8rem; gap: 0 8px; }
-/* The side columns differ, so centred text would sit off the tooltip's middle. */
-.withBars .text { text-align: left; }
+/* GameTooltip's .barsHeading centres over the middle column: change them together. */
+.withBars { grid-template-columns: 3.25rem 1fr 8rem; gap: 0 8px; }
 .tags { display: inline-flex; gap: 2px; }
 .tag {
   min-width: 1.5rem;
@@ -102,8 +106,7 @@ function heat (quality: number) {
   background: rgba(255, 255, 255, 0.1);
   border-radius: 2px;
 }
-/* These take the roll's colour only, never the perfect tag's block. */
-.track .fill { position: absolute; inset: 0 auto 0 0; padding: 0; border-radius: 0; background: var(--heat); opacity: 0.4; }
-.track .marker { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; padding: 0; border-radius: 0; background: var(--heat); }
-.barPct { position: relative; color: #fff; font-weight: 600; }
+.fill { position: absolute; inset: 0 auto 0 0; opacity: 0.5; }
+.marker { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; }
+.barPct { position: relative; color: #fff; font-weight: 600; text-shadow: 0 1px 2px #000; }
 </style>

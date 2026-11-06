@@ -394,9 +394,8 @@ onUnmounted(() => {
 .modHeading { margin-top: 6px; color: var(--w-dim); font-size: var(--w-fs-md); }
 .modHeading:first-child { margin-top: 0; }
 .modGap { height: 8px; }
-/* Lines up with the mod text in the bars view: the tag column's width, less the
-   row's pull to the left, plus the gap after the tags. */
-.barsHeading { padding-left: 3.5rem; text-align: left; }
+/* Centred over the mod text in the bars view: the width of ListingModRow's side columns. */
+.barsHeading { padding: 0 8rem 0 3.25rem; }
 .p-label { color: var(--w-faint); }
 .p-value { color: #fff; }
 .p-aug { color: var(--w-r-magic); }
