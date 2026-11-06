@@ -1,7 +1,7 @@
 ---
 id: WOKEPOET-128
 title: 'Drop counter: tracked items with +1 and a maps-run count'
-status: Ready
+status: Done
 priority: None
 effort: None
 assignee: unassigned
@@ -66,8 +66,85 @@ history:
     to: Ready
     user: Agent
     date: '2026-11-06T05:08:53.725Z'
+  - type: comment
+    user: Agent
+    comment: >-
+      Merged as 485dd1b: Drop counter with list and strip cards, maps counted
+      from Client.txt, +1 key on the hovered item. Right-click and the key are
+      untested in real PoE.
+    completionComment: true
+    date: '2026-11-06T05:18:33.335Z'
+    id: c-2026-11-06t05-18-33-335z
+  - type: status_change
+    from: Ready
+    to: Done
+    user: Agent
+    date: '2026-11-06T05:18:33.616Z'
 swimlane: null
 needsAction: null
+baselineCommit: ae9d149f9c555d42e467c95e82514624d060baa7
+implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/222'
+diffSummary:
+  - file: docs/.vitepress/theme/landing/Landing.vue
+    additions: 363
+    deletions: 131
+  - file: docs/.vitepress/theme/landing/content.js
+    additions: 65
+    deletions: 23
+  - file: docs/public/shots/hero.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/readme-banner.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/story-essence.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/story-loot.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/story-maps.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/story-price.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/tour-boss-runs.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/tour-boss.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/tour-campaign-chip.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/tour-campaign.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/tour-filter-prices.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/tour-filter-rules.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/tour-map-mods.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/tour-market.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/tour-pob.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/tour-regex.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/tour-trade.webp
+    additions: 0
+    deletions: 0
+  - file: testing/e2e/landing-shots.spec.ts
+    additions: 211
+    deletions: 4
 ---
 Streamer-style counter: freeform list of items added from a search bar, quick +1 on each, and a maps-run count. Nothing permanently on screen, so it lives on a dock hover icon.
 

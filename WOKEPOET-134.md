@@ -27,6 +27,27 @@ history:
       Open for Guy: average weights for unrated orbs, scarabs and runegrafts; "1
       of 3" on merged listing tooltips.
     id: a-2026-11-06t05-10-31-607z
+  - type: comment
+    user: Agent
+    comment: >-
+      #223 and #224 merged. Should the unrated Delirium orbs, scarabs and
+      runegrafts use the average weight? Recommended: yes. It changes their
+      reroll EV a little. Also open: a mock for "1 of 3" on merged listing
+      tooltips.
+    date: '2026-11-06T05:19:09.744Z'
+    id: c-2026-11-06t05-19-09-744z
+  - type: swimlane_change
+    swimlane: require-input
+    action: set
+    user: Agent
+    date: '2026-11-06T05:19:09.744Z'
+    comment: >-
+      #223 and #224 merged. Should the unrated Delirium orbs, scarabs and
+      runegrafts use the average weight? Recommended: yes. It changes their
+      reroll EV a little. Also open: a mock for "1 of 3" on merged listing
+      tooltips.
+swimlane: require-input
+needsAction: null
 ---
 Sweep of recent merges found three small confirmed bugs, fixed in small PRs:
 
