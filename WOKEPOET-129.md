@@ -14,5 +14,14 @@ history:
     user: Agent
     date: '2026-11-06T04:37:01.447Z'
     comment: Created ticket.
+    id: a-2026-11-06t04-37-01-447z
+  - type: activity
+    user: Agent
+    date: '2026-11-06T04:51:45.059Z'
+    comment: >-
+      PR #218 reviewed against all 45 real builds, review findings fixed, local
+      checks pass. Merge requested through the coordinator. Branch
+      pob-picker-fixes, clone E:\Git\woke-pob.
+    id: a-2026-11-06t04-51-45-059z
 ---
 > Colour codes show on set names and break level matching, `{3}` and `2 Stone` read as levels, Endgame loses to Level 80, divider sets count as stages, and a PoB save isn't picked up until reselecting. Clone E:\Git\woke-pob.
