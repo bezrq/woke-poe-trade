@@ -1,7 +1,7 @@
 ---
 id: WOKEPOET-127
 title: Death recap with the map mods you died to
-status: In Progress
+status: Ready
 priority: Medium
 effort: M
 assignee: unassigned
@@ -41,6 +41,19 @@ history:
     to: In Progress
     user: Agent
     date: '2026-11-06T04:42:21.406Z'
+  - type: comment
+    user: Agent
+    comment: >-
+      PR #220 merged as 81896ce. Skull icon, hover card, death log panel. Not
+      yet seen on a real death in game.
+    date: '2026-11-06T05:25:54.217Z'
+    completionComment: true
+    id: c-2026-11-06t05-25-54-217z
+  - type: status_change
+    from: In Progress
+    to: Ready
+    user: Agent
+    date: '2026-11-06T05:25:54.217Z'
 swimlane: null
 needsAction: null
 subtasks:
