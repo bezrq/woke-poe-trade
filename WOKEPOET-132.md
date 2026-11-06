@@ -35,7 +35,18 @@ history:
     comment: >-
       Need one in-map screenshot with the map mods turned on in the overlay map.
       Does the list stay up, or only while a key is held?
-swimlane: require-input
+  - type: comment
+    user: Agent
+    comment: 'Screenshot received: the list reads. PR #238.'
+    date: '2026-11-06T09:47:01.001Z'
+    id: c-2026-11-06t09-47-01-001z
+  - type: swimlane_change
+    swimlane: require-input
+    action: cleared
+    user: Agent
+    date: '2026-11-06T09:47:01.001Z'
+    comment: 'Screenshot received: the list reads. PR #238.'
+swimlane: null
 needsAction: null
 ---
 > TL;DR: after "You have entered", OCR the game's own map mod list so a recap has mods without a check. Needs the list showing on screen.
