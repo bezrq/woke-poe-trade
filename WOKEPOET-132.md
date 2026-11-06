@@ -1,7 +1,7 @@
 ---
 id: WOKEPOET-132
 title: 'Death recap: read map mods by OCR on entering a map'
-status: Grooming
+status: Done
 priority: Medium
 effort: M
 assignee: unassigned
@@ -46,8 +46,105 @@ history:
     user: Agent
     date: '2026-11-06T09:47:01.001Z'
     comment: 'Screenshot received: the list reads. PR #238.'
+  - type: status_change
+    from: Grooming
+    to: In Progress
+    user: Agent
+    date: '2026-11-06T10:30:05.616Z'
+  - type: comment
+    user: Agent
+    comment: >-
+      PR #238 merged as 86081b3 and running in the dev copy. Not yet seen on a
+      real map.
+    date: '2026-11-06T10:30:06.402Z'
+    completionComment: true
+    id: c-2026-11-06t10-30-06-402z
+  - type: status_change
+    from: In Progress
+    to: Ready
+    user: Agent
+    date: '2026-11-06T10:30:06.402Z'
+  - type: comment
+    user: Agent
+    comment: >-
+      Merged as 86081b3 and running in the dev copy. Death recap reads the
+      game's mod list by OCR 3 s and 8 s after entering a map, shown as From
+      screen; checks are the fallback when the list is collapsed. Not yet seen
+      on a real map, or with the minimap open. No docs needed beyond code
+      comments.
+    completionComment: true
+    date: '2026-11-06T10:30:08.183Z'
+    id: c-2026-11-06t10-30-08-183z
+  - type: status_change
+    from: Ready
+    to: Done
+    user: Agent
+    date: '2026-11-06T10:30:08.553Z'
 swimlane: null
 needsAction: null
+baselineCommit: ae9d149f9c555d42e467c95e82514624d060baa7
+implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/238'
+diffSummary:
+  - file: docs/.vitepress/theme/landing/Landing.vue
+    additions: 363
+    deletions: 131
+  - file: docs/.vitepress/theme/landing/content.js
+    additions: 65
+    deletions: 23
+  - file: docs/public/shots/hero.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/readme-banner.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/story-essence.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/story-loot.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/story-maps.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/story-price.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/tour-boss-runs.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/tour-boss.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/tour-campaign-chip.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/tour-campaign.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/tour-filter-prices.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/tour-filter-rules.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/tour-map-mods.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/tour-market.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/tour-pob.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/tour-regex.webp
+    additions: 0
+    deletions: 0
+  - file: docs/public/shots/tour-trade.webp
+    additions: 0
+    deletions: 0
+  - file: testing/e2e/landing-shots.spec.ts
+    additions: 211
+    deletions: 4
 ---
 > TL;DR: after "You have entered", OCR the game's own map mod list so a recap has mods without a check. Needs the list showing on screen.
 

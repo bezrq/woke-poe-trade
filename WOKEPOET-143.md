@@ -3,7 +3,7 @@ id: WOKEPOET-143
 title: >-
   Hover cards open the full window on click; Loot filter card goes straight to
   price changes
-status: In Progress
+status: Ready
 priority: Medium
 effort: None
 assignee: unassigned
@@ -72,6 +72,21 @@ history:
     to: In Progress
     user: Agent
     date: '2026-11-06T10:21:33.906Z'
+  - type: comment
+    user: Agent
+    comment: >-
+      Merged as 0e4a188 (#240). Icon click and a new Open row on every card open
+      the full window without the overlay key. The Loot filter button names the
+      first notice and goes to its tab. Clicks the game also got do nothing.
+      Untried on the real overlay; dev pickup pending.
+    date: '2026-11-06T10:29:44.270Z'
+    completionComment: true
+    id: c-2026-11-06t10-29-44-270z
+  - type: status_change
+    from: In Progress
+    to: Ready
+    user: Agent
+    date: '2026-11-06T10:29:44.270Z'
 swimlane: null
 needsAction: null
 ---
