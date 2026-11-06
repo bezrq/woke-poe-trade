@@ -56,7 +56,22 @@ history:
       become required checks? Recommended: yes, on master, without "branches up
       to date". Cost: merges wait about 7 minutes for CI, instead of going in on
       local checks alone.
-swimlane: require-input
+  - type: comment
+    user: Agent
+    comment: >-
+      Guy said go: CI required on master (ruleset 26662541), no local runner,
+      package cache in #208.
+    date: '2026-11-06T00:57:34.968Z'
+    id: c-2026-11-06t00-57-34-968z
+  - type: swimlane_change
+    swimlane: require-input
+    action: cleared
+    user: Agent
+    date: '2026-11-06T00:57:34.968Z'
+    comment: >-
+      Guy said go: CI required on master (ruleset 26662541), no local runner,
+      package cache in #208.
+swimlane: null
 needsAction: null
 ---
 Master CI (Tests workflow) has been red and merges went past it. Goal: fix root causes, no skips, make real flakes deterministic, then propose CI as a required check.
