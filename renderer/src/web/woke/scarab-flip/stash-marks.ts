@@ -9,6 +9,7 @@ export interface StashSlot {
   width: number
   height: number
   filled: boolean
+  count?: number | null
 }
 
 export type StashRead = { found: false } | { found: true, slots: StashSlot[] }
@@ -21,6 +22,8 @@ export interface StashMark {
   height: number
   color: string
   text: string
+  // The whole stack's profit, when asked for and known.
+  total?: string
 }
 
 // Per item put in. Inside this either way counts as about break-even.
@@ -31,7 +34,9 @@ const BRIGHT = [40, 255, 70]
 // A little past linear, so only the best flips look fully bright.
 const GRADE_CURVE = 1.3
 
-export function buildMarks (slots: StashSlot[], profitEach: Map<string, number>): StashMark[] {
+// `setSize`: how many the recipe takes, as a stack's leftovers earn nothing. Leave
+// it out for no stack totals.
+export function buildMarks (slots: StashSlot[], profitEach: Map<string, number>, setSize = 0): StashMark[] {
   const filled = slots.filter(s => s.filled && profitEach.has(s.name))
   const worth = filled.map(s => profitEach.get(s.name)!).filter(p => p >= CLOSE_EACH)
   const lo = Math.min(...worth)
@@ -47,7 +52,8 @@ export function buildMarks (slots: StashSlot[], profitEach: Map<string, number>)
       width: s.width,
       height: s.height,
       color: p >= CLOSE_EACH ? grade(hi > lo ? (p - lo) / (hi - lo) : 1) : CLOSE_COLOR,
-      text: profitText(p)
+      text: profitText(p),
+      total: setSize ? totalText(p, s.count, setSize) : undefined
     })
   }
   return marks
@@ -58,6 +64,15 @@ function profitText (p: number): string {
   const shown = Math.abs(p).toFixed(1)
   if (Number(shown) === 0) return '0c'
   return `${p < 0 ? '-' : '+'}${shown}c`
+}
+
+function totalText (each: number, count: number | null | undefined, setSize: number): string | undefined {
+  if (!count) return undefined
+  const total = Math.round(each * Math.floor(count / setSize) * setSize)
+  if (!total) return undefined
+  const size = Math.abs(total)
+  const shown = size < 1000 ? `${size}c` : `${(size / 1000).toFixed(size < 9950 ? 1 : 0)}k`
+  return `${total < 0 ? '-' : '+'}${shown}`
 }
 
 function grade (t: number): string {
