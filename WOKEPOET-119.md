@@ -16,6 +16,26 @@ history:
     user: Agent
     date: '2026-11-06T01:53:50.246Z'
     comment: Created ticket.
+    id: a-2026-11-06t01-53-50-246z
+  - type: comment
+    user: Agent
+    comment: >-
+      Which direction: A item tooltips, B stash tabs (one screen, recommended),
+      or C full-bleed with socket pager? Mocks:
+      https://claude.ai/artifact/HkQxGLGCSZoVVtCYWmvcWT
+    date: '2026-11-06T02:03:45.168Z'
+    id: c-2026-11-06t02-03-45-168z
+  - type: swimlane_change
+    swimlane: require-input
+    action: set
+    user: Agent
+    date: '2026-11-06T02:03:45.168Z'
+    comment: >-
+      Which direction: A item tooltips, B stash tabs (one screen, recommended),
+      or C full-bleed with socket pager? Mocks:
+      https://claude.ai/artifact/HkQxGLGCSZoVVtCYWmvcWT
+swimlane: require-input
+needsAction: null
 ---
 Guy's ask: make the landing page much simpler, with the PoE font and a PoE-ish design, built around highlights that each have a few slides.
 
