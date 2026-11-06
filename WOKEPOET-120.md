@@ -14,6 +14,15 @@ history:
     user: Agent
     date: '2026-11-06T01:55:11.935Z'
     comment: Created ticket.
+    id: a-2026-11-06t01-55-11-935z
+  - type: activity
+    user: Agent
+    date: '2026-11-06T01:56:39.495Z'
+    comment: >-
+      Master 601fc25f: required CI and Windows package green. Pushed tag v0.1.0
+      at that commit; release build run 42147088430 running. The local clone has
+      an unrelated upstream v0.1.0 tag from 2020, left alone.
+    id: a-2026-11-06t01-56-39-495z
 ---
 > **TL;DR:** Build the Windows installer from current master through release.yml as a draft release, check it without launching over PoE, then publish it.
 
