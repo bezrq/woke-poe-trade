@@ -215,6 +215,15 @@ history:
       B) in PR #207, head a75f937a, reviewed and fixed, waiting on merge. Other
       stash tabs still to do: Essence next.
     id: a-2026-11-06t01-03-22-505z
+  - type: activity
+    user: Agent
+    date: '2026-11-06T03:48:00.956Z'
+    comment: >-
+      Stack totals merged (#207). PR #215, head c6de450e: Delirium, Delve,
+      Essence and Blight tabs read, each priced with its own family and method.
+      Reviewed and fixed, waiting on merge. Catalysts and Runegrafts still
+      unmapped.
+    id: a-2026-11-06t03-48-00-956z
 swimlane: require-input
 needsAction: null
 implementationLink: 'https://github.com/guybnd/woke-poe-trade/pull/198'
