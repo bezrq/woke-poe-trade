@@ -46,6 +46,15 @@ history:
       runegrafts use the average weight? Recommended: yes. It changes their
       reroll EV a little. Also open: a mock for "1 of 3" on merged listing
       tooltips.
+  - type: activity
+    user: Agent
+    date: '2026-11-06T05:27:27.503Z'
+    comment: >-
+      Guy: yes to average weights, marked, with settings overrides, and check
+      community data. PoeData.dev has 3.28 scarab rolls (22,591) and Runegraft
+      of the Angler; nothing newer for Delirium. Mocks up, awaiting pick:
+      https://claude.ai/artifact/5DWE47hNrTyG3iW4z4CocH
+    id: a-2026-11-06t05-27-27-503z
 swimlane: require-input
 needsAction: null
 ---
