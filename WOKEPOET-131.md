@@ -15,6 +15,13 @@ history:
     date: '2026-11-06T04:37:06.207Z'
     comment: Created ticket.
     id: a-2026-11-06t04-37-06-207z
+  - type: activity
+    user: Agent
+    date: '2026-11-06T06:16:04.568Z'
+    comment: >-
+      A to G and the price check shortcut merged: #218, #219, #221, #225, #226,
+      #228. Real DPS (A2) test worked; waiting on Guy's yes before building it.
+    id: a-2026-11-06t06-16-04-568z
 subtasks:
   - WOKEPOET-133
   - WOKEPOET-135
