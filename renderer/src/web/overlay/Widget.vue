@@ -20,14 +20,14 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, PropType, computed, inject, onBeforeUnmount, onMounted, provide, ref, shallowRef, watch } from 'vue'
+import { defineComponent, PropType, computed, inject, nextTick, onBeforeUnmount, onMounted, provide, ref, shallowRef, watch } from 'vue'
 import { Widget, Anchor, WidgetManager } from './interfaces'
 import { useI18n } from 'vue-i18n'
 import { snapMove, clearGuides, clampDrag, releaseWebviewsForDrag, swallowNextClick } from '@/web/woke/ui/snap'
 import { openMenu, toast } from '@/web/woke/ui/layer'
 import type { MenuEntry } from '@/web/woke/ui/layer'
 import { fitOffset } from '@/web/woke/ui/panel-fit'
-import { minimizeAnchor, restoreAnchor } from '@/web/woke/ui/window-anchor'
+import { minimizeAnchor, onRestoreRequest, restoreAnchor } from '@/web/woke/ui/window-anchor'
 import type { MinimizedState } from '@/web/woke/ui/window-anchor'
 
 const DRAG_START_PX = 4
@@ -141,7 +141,7 @@ export default defineComponent({
     // Fires on opening too: a hidden widget has no size. Made on first use, as
     // the panels inside mount before this component does.
     let sizeObserver: ResizeObserver | null = null
-    const observer = () => (sizeObserver ??= new ResizeObserver(fitToScreen))
+    const observer = () => (sizeObserver ??= new ResizeObserver(() => { tryPendingRestore(); fitToScreen() }))
     onMounted(() => {
       if (widgetEl.value) observer().observe(widgetEl.value)
       window.addEventListener('resize', fitToScreen)
@@ -154,6 +154,7 @@ export default defineComponent({
 
     function toggleMinimize () {
       if (!widgetEl.value || !canMinimize.value) return
+      restorePending = false
       const rect = widgetEl.value.getBoundingClientRect()
       const state = woke().wokeMinimized
       fitShift.value = { x: 0, y: 0 }
@@ -166,6 +167,25 @@ export default defineComponent({
         woke().wokeMinimized = next
       }
     }
+
+    // Asked to open while minimized: restore. restoreAnchor may need the bar's
+    // spot on screen, and a widget that isn't drawn yet (hidden, or the overlay
+    // still coming up) has no box, so it waits until the widget has a size.
+    let restorePending = false
+    function tryPendingRestore () {
+      if (!restorePending) return
+      if (!minimized.value) { restorePending = false; return }
+      if (!widgetBounds()) return
+      toggleMinimize()
+    }
+    function restoreIfMinimized () {
+      if (!minimized.value) return
+      restorePending = true
+      nextTick(tryPendingRestore)
+    }
+    let stopRestore = onRestoreRequest(props.config.wmId, restoreIfMinimized)
+    watch(() => props.config.wmId, (id) => { stopRestore(); stopRestore = onRestoreRequest(id, restoreIfMinimized) })
+    onBeforeUnmount(() => stopRestore())
 
     function hide () {
       wm.hide(props.config.wmId)
