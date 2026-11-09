@@ -207,3 +207,88 @@ describe('listingDetail', () => {
     expect(listingDetail({ frameType: 2, extended: { dps: 0 } }).foot).toEqual([])
   })
 })
+
+describe('listingDetail, catalyst quality', () => {
+  const belt = (quality: string, mods: ListingItem['explicitMods'], implicitMods: ListingItem['implicitMods'] = []): ListingItem => ({
+    frameType: 2,
+    properties: [{ name: quality, type: 6, displayMode: 0, values: [['+20%', 1]] }],
+    implicitMods,
+    explicitMods: mods
+  })
+  const dex = { description: '+51 to Dexterity', domain: 'explicit', mods: [{ name: 'of the Lynx', tier: 'S2', magnitudes: [{ min: '43', max: '50' }] }] }
+  const life = { description: '+80 to maximum Life', domain: 'explicit', mods: [{ name: 'Fecund', tier: 'P2', magnitudes: [{ min: '70', max: '79' }] }] }
+  const lines = (item: ListingItem) => listingDetail(item).groups.flatMap(g => g.lines)
+  const byStat = (item: ListingItem) => {
+    const all = lines(item)
+    return [all.find(l => text(l).includes('Dexterity'))!, all.find(l => text(l).includes('Life'))!]
+  }
+
+  it('reads a raised roll against the raised range and keeps the shown range', () => {
+    const [line] = lines(belt('Quality (Attribute Modifiers)', [dex]))
+    expect(text(line)).toBe('+51(43-50) to Dexterity')
+    // 43-50 at 20% is 51-60: 51 is the lowest roll.
+    expect(line.quality).toBe(0)
+  })
+
+  it('counts the top raised roll as perfect', () => {
+    const top = { ...dex, description: '+60 to Dexterity' }
+    expect(lines(belt('Quality (Attribute Modifiers)', [top]))[0].quality).toBe(100)
+  })
+
+  it('leaves lines of other kinds alone', () => {
+    const [dexLine, lifeLine] = byStat(belt('Quality (Attribute Modifiers)', [dex, life]))
+    expect(dexLine.quality).toBe(0)
+    // (80 - 70) / 9, capped
+    expect(lifeLine.quality).toBe(100)
+  })
+
+  it('raises implicits too', () => {
+    const imp = { description: '+30 to Strength', mods: [{ magnitudes: [{ min: '25', max: '35' }] }] }
+    // 25-35 at 20% is 30-42.
+    expect(listingDetail(belt('Quality (Attribute Modifiers)', [], [imp])).implicits[0].quality).toBe(0)
+  })
+
+  it('raises prefixes only by tier for prefix quality', () => {
+    const [dexLine, lifeLine] = byStat(belt('Quality (Prefix Modifiers)', [dex, { ...life, description: '+84 to maximum Life' }]))
+    // A suffix, not raised: 51 is past 43-50.
+    expect(dexLine.quality).toBe(100)
+    // 70-79 at 20% is 84-94.
+    expect(lifeLine.quality).toBe(0)
+  })
+
+  it('ignores plain quality', () => {
+    expect(lines(belt('Quality', [dex]))[0].quality).toBe(100)
+  })
+
+  it('raises each mod on a shared line before adding them, as the game does', () => {
+    const shared = { description: '+72 to Dexterity', domain: 'explicit', mods: [
+      { name: 'of the Lynx', tier: 'S2', magnitudes: [{ min: '43', max: '53' }] },
+      { name: 'Hybrid', tier: 'P5', magnitudes: [{ min: '1', max: '8' }] }
+    ] }
+    // 53 and 8 at 20% are 63 and 9: 72 is the top.
+    expect(lines(belt('Quality (Attribute Modifiers)', [shared]))[0].quality).toBe(100)
+  })
+
+  it('raises only the prefix of a line shared by a prefix and a suffix', () => {
+    const shared = { description: '+60 to maximum Life', domain: 'explicit', mods: [
+      { name: 'Fecund', tier: 'P2', magnitudes: [{ min: '40', max: '49' }] },
+      { name: 'of Life', tier: 'S1', magnitudes: [{ min: '5', max: '10' }] }
+    ] }
+    // 48-58 raised plus 5-10: 53-68.
+    expect(lines(belt('Quality (Prefix Modifiers)', [shared]))[0].quality).toBe(46)
+  })
+
+  it('falls back to the shown range when the raised one does not fit', () => {
+    const str = { description: '+44 to Strength', domain: 'explicit', mods: [{ magnitudes: [{ min: '40', max: '55' }] }] }
+    const [line] = lines(belt('Quality (Attribute Modifiers)', [str]))
+    expect(text(line)).toBe('+44(40-55) to Strength')
+    expect(line.quality).toBe(26)
+  })
+
+  it('leaves lines that only name the catalyst kind in passing', () => {
+    const minion = { description: 'Minions have +15% to all Elemental Resistances', mods: [{ magnitudes: [{ min: '10', max: '20' }] }] }
+    expect(listingDetail(belt('Quality (Resistance Modifiers)', [], [minion])).implicits[0].quality).toBe(50)
+    const suppress = { description: '+10% chance to Suppress Spell Damage', domain: 'explicit', mods: [{ name: 'A', tier: 'S1', magnitudes: [{ min: '8', max: '12' }] }] }
+    expect(lines(belt('Quality (Caster Modifiers)', [suppress]))[0].quality).toBe(50)
+  })
+})
