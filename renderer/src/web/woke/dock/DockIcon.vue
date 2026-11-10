@@ -334,7 +334,7 @@ const styles = useCssModule()
   border-radius: var(--w-radius);
   box-shadow: var(--w-shadow);
   color: var(--w-fg);
-  font-size: calc(12.5px * var(--w-text-scale, 1));
+  font-size: var(--w-fs-md);
 }
 .below { top: calc(100% + 6px); left: 0; }
 .above { bottom: calc(100% + 6px); left: 0; }
@@ -349,12 +349,35 @@ const styles = useCssModule()
   padding: 4px var(--w-pad);
   background: var(--w-header-bg);
   border-bottom: 1px solid var(--w-line);
-  font-size: calc(13px * var(--w-text-scale, 1));
+  font-size: var(--w-fs-md);
+}
+/* The game look (P5): bronze frame, centred small caps title over a gold fade line. */
+/* Corner marks as background layers: a card scrolls, and an ::after overlay would scroll away with it. */
+:global([data-woke-look="game"]) .card {
+  font-family: var(--w-body); border-color: var(--w-frame); box-shadow: var(--w-frame-shadow);
+  --c: linear-gradient(var(--w-frame-hi), var(--w-frame-hi));
+  background-image: var(--c), var(--c), var(--c), var(--c), var(--c), var(--c), var(--c), var(--c);
+  background-repeat: no-repeat;
+  background-size: 10px 2px, 2px 10px, 10px 2px, 2px 10px, 10px 2px, 2px 10px, 10px 2px, 2px 10px;
+  background-position: 0 0, 0 0, 100% 0, 100% 0, 0 100%, 0 100%, 100% 100%, 100% 100%;
+}
+:global([data-woke-look="game"]) .cardHead :global(:is(.w-accent, .w-head-font):not(i)) { font-family: var(--w-label); letter-spacing: 0.04em; }
+:global([data-woke-look="game"]) .cardHead :global(:is(.w-accent, .w-head-font)) { color: var(--w-gold); }
+:global([data-woke-look="game"]) .cardHead {
+  position: relative; justify-content: center; border-bottom-color: transparent;
+  /* The top corner marks, since the header covers the card's own. */
+  --c: linear-gradient(var(--w-frame-hi), var(--w-frame-hi));
+  background: var(--c) 0 0 / 10px 2px no-repeat, var(--c) 0 0 / 2px 10px no-repeat,
+    var(--c) 100% 0 / 10px 2px no-repeat, var(--c) 100% 0 / 2px 10px no-repeat, var(--w-head-ground);
+  font-family: var(--w-label); font-size: var(--w-fs-lg); letter-spacing: 0.04em; color: var(--w-gold);
+}
+:global([data-woke-look="game"]) .cardHead::after {
+  content: ""; position: absolute; left: 12px; right: 12px; bottom: -1px; height: 1px; pointer-events: none; background: var(--w-gold-fade);
 }
 .extraHead {
   padding: 4px var(--w-pad) 2px;
   border-top: 1px solid var(--w-line);
-  font-size: calc(10.5px * var(--w-text-scale, 1));
+  font-size: var(--w-fs-xs);
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--w-faint);
