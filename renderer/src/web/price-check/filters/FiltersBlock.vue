@@ -5,6 +5,14 @@
       <w-segmented v-if="presets.length > 1"
         :model-value="activePreset" :options="presetOptions"
         @update:model-value="selectPreset" />
+      <!-- woke: one box for every row. Unticks all; again brings back the picks it cleared. Never searches. -->
+      <button v-if="stats.length" type="button" role="checkbox" :aria-checked="allState === 'mixed' ? 'mixed' : allState === 'all'"
+        :class="[$style.allBox, { [$style.allOn]: allState !== 'none' }]" data-all-box
+        :title="(allState !== 'none') ? 'Untick every mod. Searches only when you press Search.' : 'Tick the mods back. Searches only when you press Search.'"
+        aria-label="All mods"
+        @click="toggleAll">
+        <i :class="(allState === 'none') ? 'far fa-square' : (allState === 'all') ? 'fas fa-check-square' : 'fas fa-minus-square'" />
+      </button>
       <button type="button" :class="$style.statBtn" :aria-expanded="!statsVisibility.disabled"
         @click="statsVisibility.disabled = !statsVisibility.disabled">
         <span>{{ (totalSelectedMods > 0)
@@ -63,7 +71,7 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, watch, shallowRef, shallowReactive, computed, PropType } from 'vue'
+import { defineComponent, watch, shallowRef, shallowReactive, computed, PropType, toRaw } from 'vue'
 import { useI18n } from 'vue-i18n'
 import UiToggle from '@/web/ui/UiToggle.vue'
 import FilterModifier from './FilterModifier.vue'
@@ -111,7 +119,41 @@ export default defineComponent({
     const showHidden = shallowRef(false)
     const showFilterSources = shallowRef(false)
 
+    // The picks the box last cleared, per preset's list, so a second click brings them back.
+    let clearedPicks = new WeakMap<FilterOrGroup[], FilterOrGroup[]>()
+    const isTicked = (s: FilterOrGroup) => s.group ? !s.meta.disabled : !s.disabled
+    const setTicked = (s: FilterOrGroup, on: boolean) => {
+      if (s.group) s.meta.disabled = !on
+      else s.disabled = !on
+    }
+    // An open split's total stays off while its parts are listed.
+    const isSplitTotal = (s: FilterOrGroup) => !s.group && Boolean(actions?.isSplit(s))
+    function toggleAll () {
+      const list = toRaw(props.stats)
+      const ticked = props.stats.filter(isTicked)
+      if (ticked.length) {
+        clearedPicks.set(list, ticked)
+        ticked.forEach(s => { setTicked(s, false) })
+      } else {
+        // Nothing cleared by the box: tick the rows on show, never a mod already in a total.
+        const saved = clearedPicks.get(list)
+        const back = saved
+          ? saved.filter(s => props.stats.includes(s))
+          : props.stats.filter(s => !isHiddenRow(s) && !(!s.group && s.inTotal))
+        back.filter(s => !isSplitTotal(s)).forEach(s => { setTicked(s, true) })
+        clearedPicks.delete(list)
+      }
+    }
+    // Judged on the rows on show: a hidden constant roll doesn't make it "some".
+    const allState = computed(() => {
+      const shown = props.stats.filter(s => !isHiddenRow(s) && !isSplitTotal(s))
+      const on = props.stats.filter(isTicked).length
+      if (!on) return 'none'
+      return shown.every(isTicked) ? 'all' : 'mixed'
+    })
+
     watch(() => props.item, () => {
+      clearedPicks = new WeakMap()
       showHidden.value = false
       statsVisibility.disabled = false
     })
@@ -195,6 +237,8 @@ export default defineComponent({
         actions.menu(e, filter)
       },
       statsVisibility,
+      toggleAll,
+      allState,
       showHidden,
       showFilterSources,
       isHiddenRow,
@@ -250,6 +294,9 @@ export default defineComponent({
   color: var(--w-fg);
 }
 .statBtn i { color: var(--w-dim); }
+.allBox { display: flex; color: var(--w-dim); }
+.allBox.allOn { color: var(--w-fg); }
+.allBox:hover { color: var(--w-fg); }
 .statBtn:hover i { color: var(--w-fg); }
 /* The toggles a step smaller than the window's text, so both fit beside Collapse. */
 .foot > button + button { font-size: .85em; }
