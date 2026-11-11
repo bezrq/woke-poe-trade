@@ -507,3 +507,12 @@ describe('undoing a delete keeps what changed since', () => {
     expect(w.followChars).toEqual({ Alice: 'a.xml', Carol: 'b2.xml' })
   })
 })
+
+describe('picked masteries', () => {
+  it('reads which effect each mastery has', () => {
+    const d = parseBuild(`<PathOfBuilding><Build level="95"></Build>
+      <Tree activeSpec="1"><Spec title="A" nodes="1,2,3" masteryEffects="{48660,17942},{10204,50922}"></Spec></Tree>
+    </PathOfBuilding>`)
+    expect(d.trees[0].masteries).toEqual({ 48660: 17942, 10204: 50922 })
+  })
+})
