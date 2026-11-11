@@ -19,6 +19,12 @@ export interface PobBuildsWidget extends Widget {
   followOff: string[]
   // Build file -> the loadout picked by hand. No entry = follow your level.
   loadouts: Record<string, LoadoutPick>
+  // The build panel's Next section folded to one line.
+  nextFolded?: boolean
+  // Builds whose gem and gear sets are picked apart (linked by default).
+  unlinkedSets?: string[]
+  // Build file -> its Trade searches folder, for the build panel's Trades tab.
+  tradeFolders?: Record<string, string>
 }
 
 // Set titles, not positions: PoB can reorder sets. Sets sharing a title form
@@ -193,7 +199,21 @@ export function moveBuildRefs (w: PobBuildsWidget, from: string, to: string | nu
   const pick = w.loadouts[from]
   const loadouts = Object.fromEntries(Object.entries(w.loadouts).filter(([rel]) => rel !== from))
   w.loadouts = pick && to ? { ...loadouts, [to]: pick } : loadouts
-  return undo
+  // The set link and the Trades folder: keyed by the file, so they follow it too.
+  const wasUnlinked = (w.unlinkedSets ?? []).includes(from)
+  const folder = w.tradeFolders?.[from]
+  const moveExtras = (a: string, b: string | null) => {
+    if (wasUnlinked) w.unlinkedSets = [...(w.unlinkedSets ?? []).filter(r => r !== a), ...(b ? [b] : [])]
+    if (folder != null) {
+      const rest = Object.fromEntries(Object.entries(w.tradeFolders ?? {}).filter(([rel]) => rel !== a))
+      w.tradeFolders = b ? { ...rest, [b]: folder } : rest
+    }
+  }
+  moveExtras(from, to)
+  return () => {
+    undo()
+    moveExtras(at, from)
+  }
 }
 
 export function buildMatches (b: PobBuildEntry, query: string): boolean {
