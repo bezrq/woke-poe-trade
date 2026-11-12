@@ -4,7 +4,7 @@
 
 import type { Widget, Anchor } from '@/web/overlay/widgets'
 import type { LogEvent } from './log-parse'
-import { actFromAreaId, speakerOf } from './log-parse'
+import { actFromAreaId, isTownLike, speakerOf } from './log-parse'
 import { formatClock } from '../ui/format'
 
 export const RUN_TIMER_TYPE = 'woke-run-timer'
@@ -84,7 +84,19 @@ export interface CampaignRun {
   marks?: RunMark[]
   finished: boolean
   endedAt: number | null
+  // Run time spent in towns and hideouts, closed segments only, and the
+  // run time the current one started (null when not in one).
+  townMs?: number
+  townSinceMs?: number | null
+  // Wall clock of the last game activity seen in the log.
+  lastActiveAt?: number
+  // Paused by idleCheck (not by hand): the next log line resumes it.
+  idlePaused?: boolean
 }
+
+// No log activity this long pauses the run, from the last activity on: the
+// game was closed or left alone.
+export const IDLE_MS = 20 * 60 * 1000
 
 export interface RunTimerWidget extends Widget {
   anchor: Anchor
@@ -121,7 +133,11 @@ export function newRun (now: number): CampaignRun {
     splits: [],
     marks: [],
     finished: false,
-    endedAt: null
+    endedAt: null,
+    townMs: 0,
+    townSinceMs: null,
+    lastActiveAt: now,
+    idlePaused: false
   }
 }
 
@@ -145,19 +161,48 @@ export function runElapsed (run: CampaignRun, now: number): number {
   return run.elapsedMs + (run.runningSince != null ? Math.max(0, now - run.runningSince) : 0)
 }
 
+// Run time spent in towns and hideouts so far.
+export function townElapsed (run: CampaignRun, now: number): number {
+  return (run.townMs ?? 0) + (run.townSinceMs != null ? Math.max(0, runElapsed(run, now) - run.townSinceMs) : 0)
+}
+
+// Pauses a running run that has seen no game activity for IDLE_MS, as of its
+// last activity, so the idle time never counts. Returns true when it paused.
+export function idleCheck (run: CampaignRun, now: number): boolean {
+  if (run.finished || run.runningSince == null || run.lastActiveAt == null) return false
+  if (now - run.lastActiveAt < IDLE_MS) return false
+  pauseRun(run, Math.max(run.runningSince, run.lastActiveAt))
+  run.idlePaused = true
+  return true
+}
+
+// Game activity (any Client.txt line): wakes an idle-paused run, never one
+// paused by hand, and drops a gap the app slept through (closed overnight,
+// say) the same way idleCheck would have.
+export function noteActivity (run: CampaignRun, now: number) {
+  if (run.finished) return
+  if (idleCheck(run, now) || run.idlePaused) resumeRun(run, now)
+  if (run.runningSince != null) run.lastActiveAt = now
+}
+
 export function isRunning (run: CampaignRun | null): boolean {
   return run != null && !run.finished && run.runningSince != null
 }
 
+// A pause by hand (idleCheck marks its own pauses after this).
 export function pauseRun (run: CampaignRun, now: number) {
   if (run.runningSince == null) return
   run.elapsedMs = runElapsed(run, now)
   run.runningSince = null
+  run.idlePaused = false
 }
 
 export function resumeRun (run: CampaignRun, now: number) {
   if (run.runningSince != null || run.finished) return
   run.runningSince = now
+  // Resuming counts as activity, so the idle check doesn't pause it again.
+  run.lastActiveAt = now
+  run.idlePaused = false
 }
 
 export function finishRun (run: CampaignRun, now: number) {
@@ -231,6 +276,13 @@ export function applyRunEvent (
     }
     const run = w.run
     if (!run || run.finished) return false
+    noteActivity(run, now)
+    // Town and hideout time: close the segment you're leaving, open the next.
+    if (run.townSinceMs != null) {
+      run.townMs = (run.townMs ?? 0) + Math.max(0, runElapsed(run, now) - run.townSinceMs)
+      run.townSinceMs = null
+    }
+    if (isTownLike(ev.areaId)) run.townSinceMs = runElapsed(run, now)
     const act = actFromAreaId(ev.areaId)
     // A run started by hand on a character already past act 1 begins where it is.
     if (run.areaId === undefined && run.splits.length === 0 && act != null && act > 1 && act <= LAST_ACT) run.act = act
@@ -257,6 +309,7 @@ export function applyRunEvent (
   if (!run || run.finished) return false
 
   if (ev.kind === 'zone') {
+    noteActivity(run, now)
     run.zone = ev.name
     run.zoneSinceMs = runElapsed(run, now)
     return true
