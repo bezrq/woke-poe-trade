@@ -14,6 +14,7 @@ history:
     user: Agent
     date: '2026-11-06T02:01:17.856Z'
     comment: Created ticket.
+    id: a-2026-11-06t02-01-17-856z
 ---
 > **TL;DR:** The release build for v0.1.0 made two drafts for one tag, so one file landed in the wrong draft. Fix this before the next release, because a misplaced `latest.yml` or installer would break updates.
 

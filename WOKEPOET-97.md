@@ -14,6 +14,7 @@ history:
     user: Agent
     date: '2026-11-05T11:58:53.017Z'
     comment: Created ticket.
+    id: a-2026-11-05t11-58-53-017z
 ---
 Seen 2026-11-05: the dev copy's Electron exited, but its launcher `cmd.exe` and `node build\script.mjs` stayed alive. main.pid pointed at another process, so Stop-Dev missed them. The orphan kept E:\Git\.woke-dev\main.log open, and `woke-dev.cmd master` then failed with "the app did not start ... Another copy may hold the single-instance lock", which was misleading.
 

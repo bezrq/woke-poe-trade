@@ -15,6 +15,7 @@ history:
     user: Agent
     date: '2026-11-05T10:54:34.535Z'
     comment: Created ticket.
+    id: a-2026-11-05t10-54-34-535z
 ---
 Step 8 of the [gameplay helpers critique](https://claude.ai/artifact/NjdEZhrQZBmKwRB56yTsoj). Mock first.
 

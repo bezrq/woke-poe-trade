@@ -15,6 +15,7 @@ history:
     user: Agent
     date: '2026-11-05T10:54:38.085Z'
     comment: Created ticket.
+    id: a-2026-11-05t10-54-38-085z
 ---
 Step 9 of the [gameplay helpers critique](https://claude.ai/artifact/NjdEZhrQZBmKwRB56yTsoj). Split into subtasks when groomed; mocks for each new piece.
 
