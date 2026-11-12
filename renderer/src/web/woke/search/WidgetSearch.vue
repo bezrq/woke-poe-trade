@@ -13,6 +13,7 @@
           <i class="fas fa-search" />
           <input ref="input" v-model="query" :class="$style.input" spellcheck="false" aria-label="Search"
             placeholder="Item, tool or setting. Or paste an item (Ctrl V)" @keydown="onKey" @paste="onPaste">
+          <button class="w-icon-btn" :class="{ 'w-icon-btn--on': helpOpen }" title="What can I search for?" aria-label="What can I search for?" @click="toggleHelp"><i class="fas fa-question" /></button>
           <WCorruptedFilter v-model="corrupted" />
           <WKbd keys="Esc" />
         </label>
@@ -34,7 +35,7 @@
                 <WKbd v-else-if="e.kind === 'command' && e.keys" :keys="e.keys" />
               </button>
             </template>
-            <div v-if="!entries.length" :class="$style.none">Type an item, a tool or a setting. Items you look up show here next time.</div>
+            <div v-if="!entries.length" :class="$style.none">Type an item, a tool or a setting, or ? for ideas. Items you look up show here next time.</div>
           </div>
           <div :class="$style.detail" class="w-scroll">
             <template v-if="selected?.kind === 'price'">
@@ -147,6 +148,15 @@ import { countdownLookup, currencyLookup, webLookup } from './lookups/answers'
 import { bossLookup, dropLookup } from './lookups/bosses'
 import { cardLookup } from './lookups/cards'
 import { recipeLookup } from './lookups/recipes'
+import { gemLookup, transfiguredBase } from './lookups/gems'
+import { passiveList, treeLookup } from './lookups/tree'
+import type { Passive } from './lookups/tree'
+import { betrayalLookup } from './lookups/betrayal'
+import { HELP_QUERY, exampleCards } from './lookups/examples'
+import { MECHANICS_TYPE } from '../mechanics/widget'
+import type { MechanicsWidget } from '../mechanics/widget'
+import { loadPassiveTree, passiveTreeClusters } from '../pob-builds/passive-tree'
+import type { GemTable } from './lookups/gems'
 import type { CardInfo } from './lookups/cards'
 import { loadTipItems } from '../ui/tooltip/item-tip'
 import { onSharedDataChange } from '../app/live-data'
@@ -316,6 +326,7 @@ const lookupContext = computed<LookupContext>(() => {
       ? 1
       : variant != null ? variants.get(`${name}\u0000${variant}`) ?? null : prices.get(name)?.chaos ?? null,
     tools: new Set<string>(),
+    items: snapshot.value?.items ?? [],
     divine: divine.value,
     now: Date.now(),
     league: league ? { name: league, startedAt: leagues.startedAt.value } : null
@@ -337,11 +348,49 @@ const cards = computed(() => {
   }
   return out
 })
+// Campaign gem sources, from the PoB tool's data, loaded on first open.
+const gemTable = shallowRef<GemTable | null>(null)
+const gemNames = shallowRef<string[]>([])
+function loadGems () {
+  if (gemTable.value) return
+  import('../pob-builds/gem-sources.json').then(m => {
+    const table = m.default as unknown as GemTable
+    const gems = gameItems().filter(i => i.namespace === 'GEM')
+    // The item list isn't loaded yet: try again shortly while it's open.
+    if (!gems.length) {
+      if (open.value) setTimeout(loadGems, 2000)
+      return
+    }
+    // Only gems in the game: the table also holds removed and test gems.
+    gemNames.value = gems.filter(i => table[i.refName] || (i.gem?.transfigured && transfiguredBase(i.refName, table))).map(i => i.refName)
+    gemTable.value = table
+  }).catch(() => {})
+}
+// Keystones and notables with what they do, from the PoB tool's tree.
+const passives = shallowRef<Passive[] | null>(null)
+let treeLoads = 0
+function loadTree () {
+  if (passives.value) return
+  // A read started before a data update is dropped.
+  const mine = ++treeLoads
+  loadPassiveTree().then(nodes => {
+    if (mine === treeLoads) passives.value = passiveList(nodes.values(), passiveTreeClusters()?.named ?? null)
+  }).catch(() => {})
+}
+// Betrayal slots you edited in League mechanics.
+function betrayalOverrides (): Record<string, string> {
+  const w = wm.widgets.value.find(w => w.wmType === MECHANICS_TYPE) as MechanicsWidget | undefined
+  return w?.betrayalOverrides ?? {}
+}
 // New tooltip files after a data update: read them on the next open.
-const stopDataWatch = onSharedDataChange(() => { tipItems.value = null })
+const stopDataWatch = onSharedDataChange(() => {
+  tipItems.value = null
+  passives.value = null
+  treeLoads++
+})
 onBeforeUnmount(stopDataWatch)
 const knownItem = (ns: string, name: string) => !!ITEM_BY_REF(ns as BaseType['namespace'], name)?.length
-const lookups = computed(() => [currencyLookup(currencyNames.value), countdownLookup, bossLookup, dropLookup, cardLookup(cards.value, knownItem), recipeLookup, webLookup])
+const lookups = computed(() => [currencyLookup(currencyNames.value), countdownLookup, bossLookup, dropLookup, cardLookup(cards.value, knownItem), recipeLookup, gemLookup(gemTable.value, gemNames.value), treeLookup(passives.value), betrayalLookup(betrayalOverrides), webLookup])
 
 // Kept apart from the prices, so switching a tool doesn't rebuild them.
 const lookupTools = computed(() => new Set(wm.widgets.value.filter(w => isWidgetTypeOn(AppConfig(), w.wmType)).map(w => w.wmType)))
@@ -374,9 +423,17 @@ function act (action: LookupAction) {
   }
 }
 
+// ---- "?": things to try ----
+const helpOpen = computed(() => query.value.trim() === HELP_QUERY)
+function toggleHelp () {
+  query.value = helpOpen.value ? '' : HELP_QUERY
+  focusInput()
+}
+
 // ---- results ----
 const sections = computed<Array<{ label: string, entries: Entry[], capped?: boolean }>>(() => {
   if (!open.value) return []
+  if (helpOpen.value) return cardSections(exampleCards(), null)
   const items = snapshot.value?.items ?? []
   if (!queryOk.value) {
     const recent = recentGroups(items)
@@ -582,6 +639,8 @@ function start (text: string) {
   focusInput(true)
   whenIdle(gameItems)
   whenIdle(loadCards)
+  whenIdle(loadGems)
+  whenIdle(loadTree)
 }
 function close () {
   wm.hide(props.config.wmId)
