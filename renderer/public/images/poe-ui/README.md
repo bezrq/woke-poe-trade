@@ -18,7 +18,7 @@ Cut from the game's files (Steam install, `Bundles2`), version 3.29:
 | slider-thumb.png | SliderButton | Slider handle |
 | button.png | ButtonBackground | Button plate, 9-slice |
 | combo.png, combo-hover.png | ButtonComboBoxNormal/Hover | Dropdown arrow (not used yet) |
-| stone.png | PanelBottom (the stone between its carved bands) | Window floor, cross-faded into a seamless tile |
+| stone.png | PanelBottom (the stone between its carved bands) | Window floor: cross-faded into a seamless tile, greyed, warmed and calmed so text reads |
 | slot.png | InventorySquare | A bag slot: icon sockets; wells copy its bronze edge |
 | category.png | CategoryLine | Heading bar with scroll ends, 9-slice (`poe-content.css`) |
 | marker.png | ListSelectionMarker | Copper arrow at the open entry of a list |

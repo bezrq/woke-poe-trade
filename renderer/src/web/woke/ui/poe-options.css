@@ -108,3 +108,17 @@
 }
 :root[data-woke-look="game"] .w-btn:not(.w-btn--ghost, :disabled):hover { color: #fff; filter: brightness(1.2); }
 :root[data-woke-look="game"] .w-btn.w-btn--primary:not(.w-btn--ghost) { color: #f6dfbd; filter: sepia(0.4) saturate(1.6); }
+:root[data-woke-look="game"] .w-btn.w-btn--primary:not(.w-btn--ghost, :disabled):hover { color: #fff; filter: sepia(0.4) saturate(1.6) brightness(1.35); }
+/* A quiet button is copper text; on hover it lights and takes the plate. */
+:root[data-woke-look="game"] .w-btn.w-btn--ghost {
+  color: #ab774c;
+  border: 6px solid transparent;
+  border-radius: 0;
+  padding: 0 10px;
+}
+:root[data-woke-look="game"] .w-btn.w-btn--ghost:not(:disabled):hover {
+  color: #fff3d6;
+  background: none;
+  border-image: url("/images/poe-ui/button.png") 12 fill / 6px stretch;
+  filter: brightness(1.1);
+}

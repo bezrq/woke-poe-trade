@@ -1,24 +1,27 @@
 /*
  * The game look inside a window, in the game's own art (public/images/poe-ui):
- * the floor is the stone of the inventory's bag panel, boxes sit in it as bag
+ * the floor is the stone of the inventory's bag panel (greyed and calmed to read on), boxes sit in it as bag
  * slots, headings are the Options window's category bars, the open entry of a
  * list gets the game's copper arrow, and scrollbars are the game's.
  *
  * Toolkit windows only (WPanel, Settings): the price check and APT's windows keep theirs.
  */
 :root {
-  --w-stone: url("/images/poe-ui/stone.png");
+  --w-floor: url("/images/poe-ui/stone.png");
   --w-slot-edge: #3d3121;
 }
 
-/* ---------- Floor: the bag panel's stone, laid behind everything ---------- */
+/* ---------- Floor: the bag panel's stone, quietened, laid behind everything ---------- */
 :root[data-woke-look="game"] :is([data-w-panel], [data-w-settings], [data-w-window]) {
-  background-image: var(--w-stone);
+  background-image: var(--w-floor);
   background-position: -37px -23px;
 }
-/* Text is cut into it: a dark lip under every line. */
-:root[data-woke-look="game"] :is([data-w-panel], [data-w-settings], [data-w-window]) {
-  text-shadow: 0 1px 1px #000, 0 0 3px rgba(0, 0, 0, 0.8);
+/* Text is cut into it: a dark lip under every line. Quieter text stays
+   readable on the dark floor, as the game's grey hint text is. */
+:root[data-woke-look="game"] :is([data-w-panel], [data-w-settings], [data-w-window], [data-w-popup]) {
+  text-shadow: 0 1px 1px #000;
+  --w-dim: #bcae95;
+  --w-faint: #8d7e67;
 }
 
 /* ---------- A bag slot: the inventory square's bronze edge around a black well ---------- */
@@ -26,7 +29,7 @@
   background: rgba(0, 0, 0, 0.55);
   border: 1px solid var(--w-slot-edge);
   border-radius: 0;
-  /* Sunk into the stone: dark inside, a faint lit lip below. */
+  /* Sunk into the floor: dark inside, a faint lit lip below. */
   box-shadow: inset 0 0 0 1px #000, inset 0 2px 6px #000, inset 0 0 16px rgba(0, 0, 0, 0.9), 0 1px 0 rgba(255, 235, 200, 0.06);
 }
 /* A small square holding an icon: the whole slot, emblem and all. */
@@ -138,10 +141,10 @@
 }
 
 /* ---------- Pop-ups, cards, menus, tooltips, toasts and the icon rail ---------- */
-/* The stone floor inside the game's thin double bronze frame, shaded at the edges. */
+/* The floor inside the game's thin double bronze frame, shaded at the edges. */
 :root[data-woke-look="game"] [data-w-popup] {
   background-color: rgba(9, 8, 7, 0.97);
-  background-image: var(--w-stone);
+  background-image: var(--w-floor);
   background-position: -11px -7px;
   border: 6px solid transparent !important;
   border-image: url("/images/poe-ui/frame-thin.png") 11 / 6px stretch !important;
