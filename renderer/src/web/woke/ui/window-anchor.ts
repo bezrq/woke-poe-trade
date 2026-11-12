@@ -8,14 +8,24 @@ interface Box { left: number, top: number, right: number, bottom: number }
 const isLeft = (r: Box, w: number) => (r.left + r.right) / 2 <= w / 2
 const isTop = (r: Box, h: number) => (r.top + r.bottom) / 2 <= h / 2
 
-// The bar keeps the panel edge nearer its side of the screen. Going by the
-// panel's middle sent a panel stretched wide from the left to its far right
-// edge. The anchor corner can't decide it either: a bar restored on the right
-// half leaves the panel anchored right after it's dragged back to the left.
-const pinsLeft = (rect: Box, w: number) => rect.left <= w - rect.right
+// Which panel edge the bar keeps. A panel wholly on one half of the screen
+// keeps that side's edge, whatever its anchor says (a bar restored on the right
+// half leaves the panel anchored right after it's dragged back to the left).
+// A panel across the middle keeps its left edge, where the title is, if that
+// edge is the nearer one. If the right edge is nearer, a panel anchored left
+// still keeps its left edge: Atlas strategies opened on the left reaches the
+// screen's right edge with its tree open, and its bar jumped over there. A
+// drag never changes the anchor's side, so going by the anchor alone would
+// send a panel restored on the right and dragged back left to its right end.
+function pinsLeft (anchor: WidgetAnchor, rect: Box, w: number) {
+  if (rect.right <= w / 2) return true
+  if (rect.left >= w / 2) return false
+  if (rect.left <= w - rect.right) return true
+  return anchor.pos[1] === 'l'
+}
 
 export function minimizeAnchor (anchor: WidgetAnchor, rect: Box, w: number, h: number): MinimizedState {
-  const left = pinsLeft(rect, w)
+  const left = pinsLeft(anchor, rect, w)
   return {
     anchor: { ...anchor },
     pinned: { pos: left ? 'tl' : 'tr', x: (left ? rect.left : rect.right) / w * 100, y: rect.top / h * 100 }
