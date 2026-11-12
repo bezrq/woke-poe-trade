@@ -1,14 +1,14 @@
 <template>
-  <div :class="[$style.row, { [$style.stack]: stack, [$style.off]: disabled }]" :data-setting="label">
+  <div class="w-setting" :class="[$style.row, { [$style.stack]: stack, 'w-setting--stack': stack, [$style.off]: disabled }]" :data-setting="label">
     <div :class="$style.text">
-      <div :class="$style.label">
+      <div class="w-setting-label" :class="$style.label">
         <slot name="label">{{ label }}</slot>
         <WInfo v-if="hint && !showHint" :text="hint" />
         <span v-if="restart" :class="$style.restart">Restart to apply</span>
       </div>
       <div v-if="hint && showHint" :class="$style.hint">{{ hint }}</div>
     </div>
-    <div v-if="$slots.default" :class="$style.control"><slot /></div>
+    <div v-if="$slots.default" class="w-setting-control" :class="$style.control"><slot /></div>
   </div>
 </template>
 
@@ -35,8 +35,6 @@ withDefaults(defineProps<{
   border-bottom: 1px solid var(--w-line-soft);
 }
 .row:last-child { border-bottom: 0; }
-/* The game look parts rows with a thin bronze line. */
-:global([data-woke-look="game"]) .row { border-bottom-color: var(--w-row-fade); }
 .stack { flex-direction: column; align-items: stretch; gap: var(--w-s2); }
 .text { flex: 1; min-width: 0; }
 .label { color: var(--w-fg); font-size: var(--w-fs-md); display: flex; align-items: center; gap: var(--w-s2); flex-wrap: wrap; }

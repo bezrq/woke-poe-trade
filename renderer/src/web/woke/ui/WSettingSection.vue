@@ -1,7 +1,7 @@
 <template>
-  <section :class="$style.sec">
-    <header v-if="title" :class="$style.head">
-      <span :class="$style.title">{{ title }}</span>
+  <section class="w-section" :class="$style.sec">
+    <header v-if="title" class="w-section-head" :class="$style.head">
+      <span class="w-section-title" :class="$style.title">{{ title }}</span>
       <span v-if="$slots.actions" :class="$style.actions"><slot name="actions" /></span>
     </header>
     <div v-if="hint" :class="$style.hint">{{ hint }}</div>
