@@ -28,8 +28,9 @@ Latest version is <span class="bg-gray-100 border rounded px-1">{{ theme.appVers
   - ✔ Windowed Fullscreen, Windowed
   - ❌ Fullscreen
 - PoE language
-  - ✔ English, Russian
-  - ❌ Portuguese, Thai, French, German, Spanish, Korean
+  - ✔ English, Russian, Korean, Traditional Chinese
+  - ❌ Portuguese, Thai, French, German, Spanish
+- The price check and settings follow your game's language; the newer tools are in English only for now
 
 No Administrator rights required, but\
 ⚠ **If you run PoE client as Admin, OS security boundaries take effect.
