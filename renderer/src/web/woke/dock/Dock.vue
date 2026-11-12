@@ -1,5 +1,5 @@
 <template>
-  <div v-if="groups.length || wm.active.value" :class="[$style.dock, { [$style.vertical]: cfg.vertical }]"
+  <div v-if="groups.length || wm.active.value" data-woke-frame :class="[$style.dock, { [$style.vertical]: cfg.vertical }]"
     :style="{ left: `${cfg.x}%`, top: `${cfg.y}%` }" data-w-panel>
     <!-- Always takes its space, so the icons don't move when the overlay opens. -->
     <span :class="$style.grip" :style="{ visibility: wm.active.value ? 'visible' : 'hidden' }" title="Drag to move the icon row. Double-click to stand it on its side. Right-click to bring back dismissed icons."

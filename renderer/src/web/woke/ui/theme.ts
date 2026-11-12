@@ -10,6 +10,7 @@ import './game-look.css'
 import './scale'
 import './density'
 import './panel-opacity'
+import './app-colors'
 
 export type WokeTheme = 'hybrid' | 'native' | 'modern' | 'classic'
 

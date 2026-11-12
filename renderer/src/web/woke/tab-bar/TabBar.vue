@@ -1,5 +1,5 @@
 <template>
-  <div ref="railEl" :class="[$style.rail, { [$style.atEdge]: atEdge && !flat, [$style.onRight]: onRight && !flat, [$style.flat]: flat }]" class="w-surface" :style="railStyle" data-widget-drag
+  <div ref="railEl" :class="[$style.rail, { [$style.atEdge]: atEdge && !flat, [$style.onRight]: onRight && !flat, [$style.flat]: flat }]" class="w-surface" :style="railStyle" data-woke-frame data-widget-drag
     @mousedown="watchRailDrop" @wheel="onRailWheel">
     <!-- The mark gives way to the rail's settings while the mouse is on the rail. -->
     <span :class="$style.top">

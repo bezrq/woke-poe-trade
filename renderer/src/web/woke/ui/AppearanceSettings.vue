@@ -32,6 +32,21 @@
       <w-segmented :model-value="density" :options="DENSITIES" @update:model-value="density = $event as Density" />
     </w-setting-row>
   </w-setting-section>
+  <w-setting-section title="App colours">
+    <w-setting-row label="Own colours for the app" hint="Settings, the tab bar and the dock in colours you pick. Tool panels keep the theme.">
+      <w-toggle :model-value="appColors != null" @update:model-value="appColors = $event ? { ...DEFAULT_APP_COLORS } : null" />
+    </w-setting-row>
+    <template v-if="appColors">
+      <w-setting-row v-for="c in COLOUR_PICKS" :key="c.key" :label="c.label">
+        <span class="w-num w-dim">{{ appColors[c.key] }}</span>
+        <input type="color" :value="appColors[c.key]" :class="$style.colour" :aria-label="c.label"
+          @input="setColour(c.key, ($event.target as HTMLInputElement).value)">
+      </w-setting-row>
+      <w-setting-row label="Start over" hint="Back to the Hybrid theme's colours.">
+        <w-button size="sm" variant="ghost" @click="appColors = { ...DEFAULT_APP_COLORS }">Reset</w-button>
+      </w-setting-row>
+    </template>
+  </w-setting-section>
 </template>
 
 <script lang="ts">
@@ -52,8 +67,20 @@ import WToggle from './WToggle.vue'
 import WSegmented from './WSegmented.vue'
 import { density } from './density'
 import type { Density } from './density'
+import WButton from './WButton.vue'
+import { appColors, DEFAULT_APP_COLORS } from './app-colors'
+import type { AppColors } from './app-colors'
 
 const DENSITIES = [{ value: 'comfortable', label: 'Comfortable' }, { value: 'compact', label: 'Compact' }]
+
+const COLOUR_PICKS: Array<{ key: keyof AppColors, label: string }> = [
+  { key: 'accent', label: 'Accent' },
+  { key: 'panel', label: 'Background' },
+  { key: 'fg', label: 'Text' }
+]
+function setColour (key: keyof AppColors, value: string) {
+  if (appColors.value) appColors.value = { ...appColors.value, [key]: value }
+}
 
 const isAuto = computed(() => uiScale.value === 'auto')
 // The settings window isn't the game's size, so auto shows as 100% here.
@@ -75,6 +102,7 @@ function setScale (v: string) {
 .text { display: flex; flex-direction: column; line-height: 1.3; font-size: var(--w-fs-md); min-width: 0; }
 .hint { font-size: var(--w-fs-sm); }
 .range { width: 12rem; accent-color: var(--w-accent); }
+.colour { width: 34px; height: 22px; padding: 0; border: 1px solid var(--w-line-strong); border-radius: var(--w-r-sm); background: none; cursor: pointer; }
 .swatch { width: 34px; height: 22px; border-radius: var(--w-r-sm); flex: none; border: 1px solid var(--w-line-strong); }
 .swatch[data-theme="hybrid"] { background: linear-gradient(135deg, #13110f 55%, #d4a64a 55%); }
 .swatch[data-theme="native"] { background: linear-gradient(135deg, #0e0b08 55%, #8a6a3a 55%); }
