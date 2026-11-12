@@ -1,7 +1,7 @@
 <template>
   <w-setting-section title="Theme">
     <div :class="$style.themes">
-      <label v-for="t in WOKE_THEMES" :key="t.id" :class="[$style.option, { [$style.picked]: wokeTheme === t.id }]">
+      <label v-for="t in WOKE_THEMES" :key="t.id" class="w-slot" :class="[$style.option, { [$style.picked]: wokeTheme === t.id }]">
         <input type="radio" name="woke-theme" :value="t.id" :checked="wokeTheme === t.id" class="sr-only" @change="wokeTheme = t.id">
         <span :class="$style.swatch" :data-theme="t.id" />
         <span :class="$style.text">
@@ -103,6 +103,11 @@ function setScale (v: string) {
 .option:hover { border-color: var(--w-line-strong); }
 .picked { border-color: var(--w-accent); box-shadow: inset 0 0 0 1px var(--w-accent); }
 .option:focus-within { outline: 1px solid var(--w-accent); }
+/* The game look: each theme sits in a bag slot (poe-content.css); the picked one is lit like a highlighted item. */
+:global([data-woke-look="game"]) .option:hover { border-color: #6b5434; }
+:global([data-woke-look="game"]) .picked, :global([data-woke-look="game"]) .picked:hover {
+  border-color: #a8834c; box-shadow: inset 0 0 0 1px #000, inset 0 0 14px rgba(168, 131, 76, 0.35);
+}
 .text { display: flex; flex-direction: column; line-height: 1.3; font-size: var(--w-fs-md); min-width: 0; }
 .hint { font-size: var(--w-fs-sm); }
 .range { width: 12rem; accent-color: var(--w-accent); }

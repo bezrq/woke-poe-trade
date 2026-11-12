@@ -17,9 +17,9 @@
     </header>
 
     <div :class="$style.body">
-      <nav :class="$style.nav">
+      <nav class="w-rule-r" :class="$style.nav">
         <template v-for="g in nav" :key="g.id">
-          <div :class="$style.group">{{ g.label }}</div>
+          <div class="w-category" :class="$style.group">{{ g.label }}</div>
           <template v-for="item in g.items" :key="item.page.id">
             <div v-if="item.sub" :class="$style.sub">{{ item.sub }}</div>
             <div :class="[$style.item, { [$style.active]: item.page.id === pageId, [$style.dim]: item.off }]" :title="item.off ? `${item.page.name} is off. Its page turns it on.` : undefined"
@@ -45,8 +45,8 @@
           </div>
         </template>
         <template v-else-if="clone && current">
-          <div :class="$style.head">
-            <span :class="$style.headIcon"><w-icon :src="current.icon.art ?? undefined" :item="current.icon.item" :fallback="current.icon.fa" size="lg" /></span>
+          <div class="w-rule-b" :class="$style.head">
+            <span class="w-socket" :class="$style.headIcon"><w-icon :src="current.icon.art ?? undefined" :item="current.icon.item" :fallback="current.icon.fa" size="lg" /></span>
             <div>
               <div :class="$style.pageTitle">{{ current.name }}</div>
               <div class="w-dim" :class="$style.small">{{ current.description }}</div>
@@ -469,42 +469,29 @@ function startResize (e: PointerEvent, edge: 'e' | 's' | 'se') {
 :global([data-woke-look="game"]) .group {
   font-family: var(--w-label); font-size: var(--w-fs-md); font-weight: 400; text-transform: none; letter-spacing: 0.04em; color: var(--w-gold);
 }
-:global([data-woke-look="game"]) .nav {
-  gap: 0; padding: var(--w-s1) 0 var(--w-s3); border-right-color: var(--w-well-line);
-  background: color-mix(in srgb, var(--w-panel-solid) 60%, black) var(--w-pattern-temple) var(--w-pattern-temple-pos);
-  background-attachment: local;
-}
-/* Group heads as the game's tooltip separators: the name between two bronze lines. */
-:global([data-woke-look="game"]) .group { display: flex; align-items: center; gap: 10px; padding: var(--w-s4) var(--w-s3) var(--w-s2); }
-:global([data-woke-look="game"]) .group::before,
-:global([data-woke-look="game"]) .group::after { content: ""; flex: 1; height: 1px; }
-:global([data-woke-look="game"]) .group::before,
-:global([data-woke-look="game"]) .group::after { background: var(--w-frame); }
-:global([data-woke-look="game"]) .sub { padding: var(--w-s3) var(--w-s3) 2px; font-family: Fontin, FrizQuadrataC, Georgia, serif; font-style: italic; font-size: var(--w-fs-sm); color: var(--w-faint); }
-/* Pages as stash-tab plates: small caps, the icon in a dark socket, the open one framed in bronze. */
+:global([data-woke-look="game"]) .nav { gap: 0; padding: var(--w-s1) 0 var(--w-s3); background: none; }
+/* Group heads are the Options window's category bars (poe-content.css). */
+:global([data-woke-look="game"]) .group { margin: var(--w-s3) var(--w-s2) var(--w-s1); font-size: var(--w-fs-lg); }
+:global([data-woke-look="game"]) .sub { padding: var(--w-s3) var(--w-s4) 2px; font-family: var(--w-label); font-size: var(--w-fs-sm); color: #6f5a43; }
+/* Pages read like the Options window's labels: copper Fontin, the open one
+   lit cream with the game's copper arrow before it. */
 :global([data-woke-look="game"]) .item {
-  margin: 1px var(--w-s2); padding: 0 var(--w-s2); min-height: calc(34px * var(--w-text-scale, 1)); gap: 10px;
-  border: 1px solid transparent; border-radius: 0; font-family: var(--w-label); letter-spacing: 0.03em; color: var(--w-gold);
+  position: relative; margin: 0; padding: 0 var(--w-s3) 0 28px; min-height: calc(30px * var(--w-text-scale, 1)); gap: 8px;
+  border: 0; border-radius: 0; font-family: Fontin, FrizQuadrataC, Georgia, serif; font-size: var(--w-fs-lg); color: #ab774c;
 }
-:global([data-woke-look="game"]) .item:hover { background: var(--w-accent-soft); color: var(--w-gold-hi); }
-:global([data-woke-look="game"]) .item .icon {
-  width: 26px; height: 26px; background: var(--w-well);
-  border: 1px solid var(--w-well-line); box-shadow: inset 0 0 6px #000;
-}
-:global([data-woke-look="game"]) .active {
-  color: var(--w-gold-hi); background: var(--w-chip-on); border-color: var(--w-frame);
-  box-shadow: var(--w-bevel-shadow), 0 0 0 1px #000;
+:global([data-woke-look="game"]) .item:hover { background: none; color: #e7d3a8; }
+:global([data-woke-look="game"]) .item .icon { width: 22px; height: 22px; }
+:global([data-woke-look="game"]) .active, :global([data-woke-look="game"]) .active:hover { color: #fff3d6; background: none; box-shadow: none; }
+:global([data-woke-look="game"]) .active::before {
+  content: ""; position: absolute; left: 6px; top: 50%; width: 18px; height: 13px; margin-top: -6px;
+  background: url("/images/poe-ui/marker.png") center / contain no-repeat;
 }
 /* A module that's off: its icon goes dark, like a skill you can't use. */
 :global([data-woke-look="game"]) .dim .icon :is(img, i) { filter: grayscale(1) brightness(0.5); }
-:global([data-woke-look="game"]) .dim .name { color: var(--w-faint); }
-:global([data-woke-look="game"]) .pageTitle { font-family: var(--w-label); color: var(--w-gold-hi); }
-:global([data-woke-look="game"]) .head { position: relative; padding-bottom: var(--w-s3); }
-:global([data-woke-look="game"]) .head::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 1px; background: var(--w-gold-fade); }
-:global([data-woke-look="game"]) .headIcon {
-  width: 36px; height: 36px; background: var(--w-well);
-  border: 1px solid var(--w-frame); box-shadow: inset 0 0 8px #000, 0 0 0 1px #000;
-}
+:global([data-woke-look="game"]) .dim .name { color: #5e4c39; }
+:global([data-woke-look="game"]) .pageTitle { font-family: var(--w-label); font-size: calc(var(--w-fs-xl) * 1.15); color: #e3c48d; }
+:global([data-woke-look="game"]) .head { padding-bottom: var(--w-s3); }
+:global([data-woke-look="game"]) .headIcon { width: 40px; height: 40px; }
 .quit {
   margin-top: var(--w-s4); padding: var(--w-s1) var(--w-s2); text-align: left; color: var(--w-faint); font-size: var(--w-fs-sm);
   border-radius: var(--w-r-sm);

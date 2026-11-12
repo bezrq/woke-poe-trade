@@ -1,0 +1,132 @@
+/*
+ * The game look inside a window, in the game's own art (public/images/poe-ui):
+ * the floor is the stone of the inventory's bag panel, boxes sit in it as bag
+ * slots, headings are the Options window's category bars, the open entry of a
+ * list gets the game's copper arrow, and scrollbars are the game's.
+ *
+ * Toolkit windows only (WPanel, Settings): the price check and APT's windows keep theirs.
+ */
+:root {
+  --w-stone: url("/images/poe-ui/stone.png");
+  --w-slot-edge: #3d3121;
+}
+
+/* ---------- Floor: the bag panel's stone, laid behind everything ---------- */
+:root[data-woke-look="game"] :is([data-w-panel], [data-w-settings]) {
+  background-image: var(--w-stone);
+  background-position: -37px -23px;
+}
+/* Text is cut into it: a dark lip under every line. */
+:root[data-woke-look="game"] :is([data-w-panel], [data-w-settings]) {
+  text-shadow: 0 1px 1px #000, 0 0 3px rgba(0, 0, 0, 0.8);
+}
+
+/* ---------- A bag slot: the inventory square's bronze edge around a black well ---------- */
+:root[data-woke-look="game"] .w-slot {
+  background: rgba(0, 0, 0, 0.55);
+  border: 1px solid var(--w-slot-edge);
+  border-radius: 0;
+  box-shadow: inset 0 0 0 1px #000, inset 0 0 12px rgba(0, 0, 0, 0.9);
+}
+/* A small square holding an icon: the whole slot, emblem and all. */
+:root[data-woke-look="game"] .w-socket {
+  background: url("/images/poe-ui/slot.png") center / 100% 100% no-repeat;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+/* ---------- Headings: the Options window's category bar ---------- */
+:root[data-woke-look="game"] .w-category {
+  display: flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 12px;
+  border: 0 solid transparent;
+  border-width: 0 22px;
+  border-image: url("/images/poe-ui/category.png") 0 24 fill / 0 22px stretch;
+  background: none;
+  color: var(--w-opt-head, #e3c48d);
+}
+:root[data-woke-look="game"] .w-category::before,
+:root[data-woke-look="game"] .w-category::after { display: none; }
+
+/* ---------- The game's bronze bar between two parts of a window ---------- */
+:root[data-woke-look="game"] .w-rule-r {
+  border: 0 solid transparent !important;
+  border-right-width: 12px !important;
+  border-image: url("/images/poe-ui/rule-v.png") 0 12 0 0 / 0 12px 0 0 repeat !important;
+}
+:root[data-woke-look="game"] .w-rule-l {
+  border: 0 solid transparent !important;
+  border-left-width: 12px !important;
+  border-image: url("/images/poe-ui/rule-v.png") 0 0 0 12 / 0 0 0 12px repeat !important;
+}
+:root[data-woke-look="game"] .w-rule-b {
+  border: 0 solid transparent !important;
+  border-bottom-width: 8px !important;
+  border-image: url("/images/poe-ui/rule-h.png") 0 0 12 0 / 0 0 8px 0 repeat !important;
+}
+
+/* ---------- Segmented choices: a row of the game's button plates, the picked one lit ---------- */
+:root[data-woke-look="game"] .w-seg {
+  gap: 2px;
+  border: 0;
+  box-shadow: none;
+  overflow: visible;
+}
+:root[data-woke-look="game"] .w-seg > button {
+  background: none;
+  border: 5px solid transparent;
+  border-image: url("/images/poe-ui/button.png") 12 fill / 5px stretch;
+  box-shadow: none;
+  padding: 0 6px;
+  color: #a38d6d;
+  filter: brightness(0.75);
+}
+:root[data-woke-look="game"] .w-seg > button + button { border-left: 5px solid transparent; }
+:root[data-woke-look="game"] .w-seg > button:hover { color: #e7d3a8; filter: none; }
+:root[data-woke-look="game"] .w-seg > button[aria-pressed="true"] {
+  background: none;
+  box-shadow: none;
+  color: #fff3d6;
+  filter: sepia(0.4) saturate(1.6) brightness(1.1);
+}
+
+/* ---------- Scrollbars ---------- */
+:root[data-woke-look="game"] :is([data-w-panel], [data-w-settings]) ::-webkit-scrollbar { width: 14px; height: 14px; }
+:root[data-woke-look="game"] :is([data-w-panel], [data-w-settings]) ::-webkit-scrollbar-track {
+  background: url("/images/poe-ui/scroll-track.png") center top / 14px auto repeat-y;
+}
+:root[data-woke-look="game"] :is([data-w-panel], [data-w-settings]) ::-webkit-scrollbar-thumb {
+  background: none;
+  border: 0 solid transparent;
+  border-width: 8px 0;
+  border-image: url("/images/poe-ui/scroll-thumb.png") 8 0 fill / 8px 0 stretch;
+  border-radius: 0;
+  min-height: 24px;
+}
+:root[data-woke-look="game"] :is([data-w-panel], [data-w-settings]) ::-webkit-scrollbar-thumb:hover { filter: brightness(1.25); }
+:root[data-woke-look="game"] :is([data-w-panel], [data-w-settings]) ::-webkit-scrollbar-corner { background: transparent; }
+
+/* ---------- Panels' own parts ---------- */
+/* Group heads inside a tool panel become category bars. */
+:root[data-woke-look="game"] [data-w-panel] .w-group-label {
+  display: flex;
+  align-items: center;
+  min-height: 26px;
+  margin: 6px 0 4px;
+  padding: 0 12px;
+  border: 0 solid transparent;
+  border-width: 0 20px;
+  border-image: url("/images/poe-ui/category.png") 0 24 fill / 0 20px stretch;
+  background: none;
+  color: var(--w-opt-head, #e3c48d);
+}
+/* Notices sit in a slot, their colour in the icon only. */
+:root[data-woke-look="game"] :is([data-w-panel], [data-w-settings]) .w-banner {
+  background: rgba(0, 0, 0, 0.55);
+  border: 1px solid var(--w-slot-edge);
+  border-radius: 0;
+  box-shadow: inset 0 0 0 1px #000, inset 0 0 12px rgba(0, 0, 0, 0.9);
+}

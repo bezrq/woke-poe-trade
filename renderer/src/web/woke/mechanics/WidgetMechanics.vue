@@ -19,7 +19,7 @@
           <button class="w-icon-btn" title="Collapse to icon" @click="collapse"><i class="fas fa-compress-alt" /></button>
         </template>
         <div :class="$style.split">
-          <div :class="$style.rail" class="w-scroll" role="tablist">
+          <div :class="$style.rail" class="w-scroll w-rule-r" role="tablist">
             <button v-for="m in visible" :key="m.id" type="button" role="tab" :aria-selected="m.id === mech.id"
               :class="[$style.railBtn, { [$style.railOn]: m.id === mech.id }]" :title="m.label" @click="config.tab = m.id">
               <WIcon :mechanic="m.id" :fallback="m.icon" size="md" /><span>{{ m.short }}</span>
@@ -27,7 +27,7 @@
             </button>
           </div>
 
-          <div class="w-scroll" :class="$style.col">
+          <div class="w-scroll w-rule-r" :class="$style.col">
             <WBanner v-if="!hasPrices" tone="info">Waiting for poe.ninja prices.</WBanner>
             <!-- Remove when WOKEPOET-156 rewrites the guide for 3.30. -->
             <WBanner tone="warn">Written for 3.29. Many mechanics change in 3.30; this guide is being updated.</WBanner>
@@ -90,7 +90,7 @@
               </div>
             </template>
             <div class="w-group-label">Rules of thumb</div>
-            <ul :class="$style.tips">
+            <ul class="w-slot" :class="$style.tips">
               <li v-for="tip in mech.tips" :key="tip">{{ tip }}</li>
             </ul>
           </div>
@@ -351,6 +351,16 @@ const dockMenu = computed<DockMenuAction[]>(() => [
 .dot { position: absolute; top: 4px; right: 5px; width: 6px; height: 6px; border-radius: 50%; background: var(--w-up); }
 .col { min-height: 0; }
 .col + .col { border-left: 1px solid var(--w-line); }
+/* The game look: the open mechanic sits in a bag slot; the bronze bars between columns are poe-content.css's. */
+:global([data-woke-look="game"]) .col + .col { border-left: 0; }
+:global([data-woke-look="game"]) .railBtn { border-radius: 0; color: #ab774c; font-family: var(--w-label); }
+:global([data-woke-look="game"]) .railBtn:hover { background: none; color: #e7d3a8; }
+:global([data-woke-look="game"]) .railOn,
+:global([data-woke-look="game"]) .railOn:hover {
+  color: #e3c48d; background: rgba(0, 0, 0, 0.55);
+  box-shadow: inset 0 0 0 1px var(--w-slot-edge), inset 0 0 0 2px #000, inset 0 0 12px #000;
+}
+:global([data-woke-look="game"]) .tips li::marker { color: #ab774c; }
 .toolbar { display: flex; align-items: center; gap: 8px; padding: 8px var(--w-pad) 4px; }
 .btrGrid { grid-template-columns: 22px 70px minmax(0, 1fr) 60px; }
 .scarabGrid { grid-template-columns: minmax(0, 1fr) 64px; }
