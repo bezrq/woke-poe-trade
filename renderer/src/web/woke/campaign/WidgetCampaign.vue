@@ -76,7 +76,7 @@ import { pinnedReadouts, pinsTick } from './pins'
 import { actFromAreaId, actLabel } from './log-parse'
 import CampaignBuild from './CampaignBuild.vue'
 import type { LogEvent } from './log-parse'
-import { emptyState, markStepStart, migrateCampaign, parseHotkeyTarget, routeAsleepAfter, stepTook } from './widget'
+import { emptyState, markStepStart, migrateCampaign, parseHotkeyTarget, routeAsleepAfter, saveCharacter, shouldSwitch, stepTook, switchCharacter } from './widget'
 import type { CampaignWidget } from './widget'
 import { actProgress, advanceOnEnter, behind, resyncTo, upcoming, xpState } from './route-parse'
 import type { RouteStep } from './route-parse'
@@ -118,12 +118,18 @@ const s = computed(() => props.config.state)
 const route = computed(() => bundledRoute(props.config.route))
 // Options changed: the step list is different, so find our place again.
 watch(() => `${props.config.route.leagueStart}|${props.config.route.library}|${props.config.route.bandit}`, () => {
+  // Saved characters' step times are numbered for the old route too. Their
+  // step stays: their own area isn't known (the log names no character).
+  for (const c of Object.values(props.config.chars ?? {})) c.state.stepStarts = {}
+  // The last-level-up snapshot is in old step numbers: no rollback from it.
+  lastOwn.charName = ''
   // Asleep, or somewhere the route never goes (a map, a hideout): keep the place.
   if (props.config.state.asleep || !props.config.state.areaId) return
   // Step numbers mean other steps now, so their times are gone.
   props.config.state.stepStarts = {}
   const step = resyncTo(route.value, props.config.state.areaId)
   if (step > 0) props.config.step = step
+  remember()
 })
 
 const current = computed<RouteStep | undefined>(() => route.value.steps[props.config.step])
@@ -301,6 +307,11 @@ function apply (ev: LogEvent, at: number): boolean {
     // A new character: back to the start of the route, and follow whoever
     // levels next (unless a name is set in the settings).
     // Twilight Strand: whatever came before was another character's steps.
+    if (ev.areaId === '1_1_1' && props.config.step > 3) {
+      // The character before keeps its route, step times and gems for when it's back.
+      saveCharacter(props.config)
+      streak = 0
+    }
     if (ev.areaId === '1_1_1') state.stepStarts = {}
     if (ev.areaId === '1_1_1' && props.config.step > 3) {
       props.config.step = 0
@@ -320,18 +331,67 @@ function apply (ev: LogEvent, at: number): boolean {
   } else if (ev.kind === 'level') {
     // Party members' level-ups are logged too. Follow the character named
     // in the settings, or else the first one seen, the way the run timer does.
-    const wanted = props.config.charName.trim() || state.charName
+    const pinned = props.config.charName.trim()
+    const wanted = pinned || state.charName
     if (wanted && wanted !== ev.charName) {
       others.set(ev.charName, { charName: ev.charName, className: ev.className, level: ev.level })
       lastOther.value = ev.charName
+      streak = streakName === ev.charName ? streak + 1 : 1
+      streakName = ev.charName
+      // Each character keeps its own route: switch to the one you're playing.
+      if (!pinned && shouldSwitch(state.charName, ev.charName, streak, followedLevelAt, at)) {
+        // The zones walked since the followed character last levelled were the
+        // other one's: give the followed one back its place from then.
+        if (lastOwn.charName === state.charName) {
+          props.config.step = lastOwn.step
+          state.stepStarts = lastOwn.stepStarts
+        }
+        takeOver(ev, at)
+        return true
+      }
       return false
+    }
+    streak = 0
+    followedLevelAt = at
+    // The followed name changed (a pin moved in Settings, or the first level-up
+    // after a new character's Strand): take that character's own route out.
+    if (ev.charName !== state.charName && (state.charName || props.config.chars?.[ev.charName])) {
+      takeOver(ev, at)
+      return true
     }
     others.delete(ev.charName)
     state.charName = ev.charName
     state.className = ev.className
     state.level = ev.level
+    remember()
   }
   return true
+}
+
+// Level-ups in a row by one other character, and when the followed one last
+// levelled (log time; see shouldSwitch).
+let streak = 0
+let streakName = ''
+// From the last saved line: a restart mid-session isn't taken for a quiet spell.
+let followedLevelAt = props.config.state.updatedAt || 0
+
+// The followed character's place at its last level-up: surely its own.
+let lastOwn = { charName: '', step: 0, stepStarts: {} as Record<string, number> }
+function remember () {
+  const st = props.config.state
+  lastOwn = { charName: st.charName, step: props.config.step, stepStarts: { ...(st.stepStarts ?? {}) } }
+}
+remember()
+
+function takeOver (c: SeenChar, at: number) {
+  const before = props.config.state
+  if (before.charName) others.set(before.charName, { charName: before.charName, className: before.className, level: before.level ?? 0 })
+  others.delete(c.charName)
+  switchCharacter(props.config, c, resyncTo(route.value, before.areaId))
+  lastOther.value = others.size ? [...others.keys()].pop()! : ''
+  streak = 0
+  followedLevelAt = at
+  remember()
 }
 
 // Other characters seen levelling (party members), for the one-click switch.
@@ -345,12 +405,9 @@ function follow (c: SeenChar) {
   if (state.charName) {
     others.set(state.charName, { charName: state.charName, className: state.className, level: state.level ?? 0 })
   }
-  others.delete(c.charName)
   // A name set in the settings is a pin; move the pin to the new character.
   if (props.config.charName.trim()) props.config.charName = c.charName
-  state.charName = c.charName
-  state.className = c.className
-  state.level = c.level
+  takeOver(c, Date.now())
   lastOther.value = others.size ? [...others.keys()].pop()! : ''
   saveConfig()
 }
