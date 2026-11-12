@@ -5,7 +5,7 @@ export { groupByCategory } from '../shared/library'
 
 export const REGEX_LIBRARY_TYPE = 'woke-regex-library'
 
-export { MAX_SEARCH_LENGTH } from '../shared/library'
+export { MAX_SEARCH_LENGTH, GAME_PATCH } from '../shared/library'
 
 export interface RegexEntry {
   id: number
@@ -17,6 +17,8 @@ export interface RegexEntry {
   hotkey: string | null
   // Search for items WITHOUT this text (wraps it as "!…").
   negate?: boolean
+  // The game patch the text was last saved in (GAME_PATCH); unset before stamps.
+  patch?: string
 }
 
 export interface RegexLibraryWidget extends Widget {
@@ -60,6 +62,15 @@ export function canNegate (text: string): boolean {
   if (!t) return false
   if (/^"[^"]*"$/.test(t)) return true
   return !/[\s"]/.test(t)
+}
+
+// Typos the game reads differently from what was meant (WOKEPOET-91).
+export function regexLint (text: string): string[] {
+  const out: string[] = []
+  if ((text.match(/"/g) ?? []).length % 2) out.push('Unbalanced quote: the game reads everything after it as one term.')
+  if ([...text.matchAll(/"([^"]*)"/g)].some(m => m[1] !== m[1].trim())) out.push('A quoted term starts or ends with a space, which the game searches for too.')
+  if (/\S {2,}\S/.test(text)) out.push('Two spaces in a row: one is enough between terms.')
+  return out
 }
 
 // What actually goes into the stash search box.
@@ -108,13 +119,14 @@ function parseJsonImport (json: string, existing: RegexEntry[]): RegexEntry[] {
       tags: strList(r.tags),
       notes: str(r.notes),
       hotkey: null,
-      negate: r.negate === true
+      negate: r.negate === true,
+      ...(typeof r.patch === 'string' && r.patch ? { patch: r.patch } : {})
     }))
 }
 
 export function exportEntries (entries: RegexEntry[]): string {
   return JSON.stringify(
-    entries.map(({ name, text, category, tags, notes, negate }) => ({ name, text, category, tags, notes, ...(negate ? { negate } : {}) })),
+    entries.map(({ name, text, category, tags, notes, negate, patch }) => ({ name, text, category, tags, notes, ...(negate ? { negate } : {}), ...(patch ? { patch } : {}) })),
     null, 2)
 }
 
