@@ -5,7 +5,7 @@
 import { shallowRef, watch } from 'vue'
 import { frameColorCss, parseAppColors } from './frame-colors'
 import type { AppColors } from './frame-colors'
-export { DEFAULT_APP_COLORS } from './frame-colors'
+export { APP_COLOR_PRESETS, DEFAULT_APP_COLORS, sameColors } from './frame-colors'
 export type { AppColors } from './frame-colors'
 
 const STORAGE_KEY = 'woke.appColors'

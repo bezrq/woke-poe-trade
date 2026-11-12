@@ -1,6 +1,6 @@
 <template>
   <span ref="rootEl" :class="$style.root" :data-dock="host.props.id">
-    <span ref="iconEl" :class="[$style.icon, { [$style.peek]: peekText, [$style.hot]: cardOpen, [$style.withRead]: readouts.length, [$style.glow]: host.props.glow }]"
+    <span ref="iconEl" data-woke-frame :class="[$style.icon, { [$style.peek]: peekText, [$style.hot]: cardOpen, [$style.withRead]: readouts.length, [$style.glow]: host.props.glow }]"
       :title="wm.active.value ? `${host.props.title}${host.props.wmId != null ? ' · click to open' : ''}` : undefined"
       @click="click" @contextmenu.prevent="openIconMenu">
       <svg v-if="host.props.progress != null" :class="$style.ring" width="36" height="36" viewBox="0 0 36 36" aria-hidden="true">
@@ -19,7 +19,7 @@
       <span v-if="host.props.led" :class="[$style.led, $style['led-' + host.props.led]]" />
       <i v-if="offDock" class="fas fa-thumbtack" :class="$style.pinMark" title="Pinned: the card is on screen" />
     </span>
-    <div v-if="menuOpen" ref="menuEl" :class="[$style.card, placement]">
+    <div v-if="menuOpen" ref="menuEl" data-woke-frame :class="[$style.card, placement]">
       <DockMenu :host="host" :extras="extras" @close="menuOpen = false" />
     </div>
     <div v-if="cardOpen" ref="cardEl" :class="[$style.card, placement]"

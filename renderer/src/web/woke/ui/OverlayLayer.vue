@@ -1,6 +1,6 @@
 <template>
   <div v-if="menu" :class="$style.backdrop" @mousedown="closeMenu" @contextmenu.prevent="closeMenu" />
-  <div v-if="menu" ref="menuEl" :class="[$style.menu, 'w-enter', { [$style.withItem]: menu.item, [$style.wide]: menu.items.some(m => 'wrap' in m && m.wrap) }]" :style="menuPos" role="menu" tabindex="-1"
+  <div v-if="menu" ref="menuEl" :data-woke-frame="menu.frame ? '' : undefined" :class="[$style.menu, 'w-enter', { [$style.withItem]: menu.item, [$style.wide]: menu.items.some(m => 'wrap' in m && m.wrap) }]" :style="menuPos" role="menu" tabindex="-1"
     @keydown="onMenuKey" @contextmenu.prevent>
     <template v-if="menu.item">
       <div :class="$style.head">

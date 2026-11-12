@@ -37,13 +37,18 @@
       <w-toggle :model-value="appColors != null" @update:model-value="appColors = $event ? { ...DEFAULT_APP_COLORS } : null" />
     </w-setting-row>
     <template v-if="appColors">
+      <w-setting-row label="Presets" stack>
+        <div :class="$style.presets">
+          <button v-for="p in APP_COLOR_PRESETS" :key="p.id" type="button" class="w-chip" :class="{ on: sameColors(appColors, p.colors) }"
+            :aria-pressed="sameColors(appColors, p.colors)" @click="appColors = { ...p.colors }">
+            <span :class="$style.dot" :style="{ background: `linear-gradient(135deg, ${p.colors.panel} 50%, ${p.colors.accent} 50%)` }" />{{ p.label }}
+          </button>
+        </div>
+      </w-setting-row>
       <w-setting-row v-for="c in COLOUR_PICKS" :key="c.key" :label="c.label">
         <span class="w-num w-dim">{{ appColors[c.key] }}</span>
         <input type="color" :value="appColors[c.key]" :class="$style.colour" :aria-label="c.label"
           @input="setColour(c.key, ($event.target as HTMLInputElement).value)">
-      </w-setting-row>
-      <w-setting-row label="Start over" hint="Back to the Hybrid theme's colours.">
-        <w-button size="sm" variant="ghost" @click="appColors = { ...DEFAULT_APP_COLORS }">Reset</w-button>
       </w-setting-row>
     </template>
   </w-setting-section>
@@ -67,8 +72,7 @@ import WToggle from './WToggle.vue'
 import WSegmented from './WSegmented.vue'
 import { density } from './density'
 import type { Density } from './density'
-import WButton from './WButton.vue'
-import { appColors, DEFAULT_APP_COLORS } from './app-colors'
+import { appColors, APP_COLOR_PRESETS, DEFAULT_APP_COLORS, sameColors } from './app-colors'
 import type { AppColors } from './app-colors'
 
 const DENSITIES = [{ value: 'comfortable', label: 'Comfortable' }, { value: 'compact', label: 'Compact' }]
@@ -102,6 +106,8 @@ function setScale (v: string) {
 .text { display: flex; flex-direction: column; line-height: 1.3; font-size: var(--w-fs-md); min-width: 0; }
 .hint { font-size: var(--w-fs-sm); }
 .range { width: 12rem; accent-color: var(--w-accent); }
+.presets { display: flex; flex-wrap: wrap; gap: var(--w-s1); }
+.dot { width: 12px; height: 12px; border-radius: 50%; border: 1px solid var(--w-line-strong); margin-right: 6px; flex: none; }
 .colour { width: 34px; height: 22px; padding: 0; border: 1px solid var(--w-line-strong); border-radius: var(--w-r-sm); background: none; cursor: pointer; }
 .swatch { width: 34px; height: 22px; border-radius: var(--w-r-sm); flex: none; border: 1px solid var(--w-line-strong); }
 .swatch[data-theme="hybrid"] { background: linear-gradient(135deg, #13110f 55%, #d4a64a 55%); }

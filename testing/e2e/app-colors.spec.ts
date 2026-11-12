@@ -28,6 +28,23 @@ test('own app colours restyle the frame and leave the tool panels alone', async 
     .toEqual({ accent: '#3fa7ff', panel: '#101820', fg: '#e8e2d6' })
   await overlay.snap('app colours on')
 
+  // A preset fills all three, and the rail's pop-ups (outside the rail in the
+  // page) wear them too.
+  await settings.getByRole('button', { name: 'Amethyst' }).click()
+  await expect(settings.getByRole('button', { name: 'Amethyst' })).toHaveAttribute('aria-pressed', 'true')
+  expect(await accentOf(page, '[data-w-settings]')).toBe('#ac82e8')
+  await page.keyboard.press('Escape')
+  const rail = overlay.widget('menu').locator('.w-surface').first()
+  await rail.hover()
+  await overlay.widget('menu').getByRole('button', { name: 'Rail layout and size', exact: true }).click()
+  await expect(page.locator('[data-rail-theme]')).toBeVisible()
+  expect(await accentOf(page, '[data-rail-theme]')).toBe('#ac82e8')
+  await overlay.snap('app colours rail popup')
+  await page.mouse.click(1280, 1300)
+  await expect(page.locator('[data-rail-theme]')).toHaveCount(0)
+  await overlay.widget('menu').locator('.fa-cog').click()
+  await settings.getByText('Look & icon row', { exact: true }).first().click()
+
   // Switched off, the frame wears the theme again.
   await toggle.click()
   expect(await accentOf(page, '[data-w-settings]')).toBe('#d4a64a')

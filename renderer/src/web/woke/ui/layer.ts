@@ -33,7 +33,9 @@ export interface MenuItemHead {
   actions: MenuItemAction[]
 }
 
-export interface MenuState { items: MenuEntry[], x: number, y: number, item?: MenuItemHead }
+// `frame`: opened from the app's frame (Settings, the rail, the dock), so it
+// wears the app colours (app-colors.ts) instead of the theme.
+export interface MenuState { items: MenuEntry[], x: number, y: number, item?: MenuItemHead, frame?: boolean }
 
 // A right-click on an item (v-item-tip) offers that item to whichever menu the
 // same click opens, so screens with their own row menu get the item strip too.
@@ -55,7 +57,9 @@ export function openMenu (at: MouseEvent | { x: number, y: number }, items: Menu
   const x = 'clientX' in at ? at.clientX : at.x
   const y = 'clientY' in at ? at.clientY : at.y
   if ('preventDefault' in at) at.preventDefault()
-  menuState.value = { items, x, y, item: head }
+  const target = 'target' in at && at.target instanceof Element ? at.target : null
+  const frame = Boolean(target?.closest('[data-w-settings], [data-woke-frame]'))
+  menuState.value = { items, x, y, item: head, frame }
 }
 export function closeMenu () { menuState.value = null }
 

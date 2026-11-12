@@ -14,6 +14,23 @@ export interface AppColors {
 // The Hybrid theme's colours, so switching it on starts from what you see.
 export const DEFAULT_APP_COLORS: AppColors = { accent: '#d4a64a', panel: '#13110f', fg: '#e8e2d6' }
 
+// Starting points; the pickers fine-tune from any of them.
+export const APP_COLOR_PRESETS: Array<{ id: string, label: string, colors: AppColors }> = [
+  { id: 'gold', label: 'Gold', colors: DEFAULT_APP_COLORS },
+  { id: 'ember', label: 'Ember', colors: { accent: '#e2703a', panel: '#160f0c', fg: '#efe3d8' } },
+  { id: 'blood', label: 'Blood', colors: { accent: '#d04848', panel: '#140c0c', fg: '#eee0dd' } },
+  { id: 'azure', label: 'Azure', colors: { accent: '#4aa8f0', panel: '#0e131a', fg: '#e3eaf2' } },
+  { id: 'verdant', label: 'Verdant', colors: { accent: '#6cbf6f', panel: '#0e140f', fg: '#e2ebe1' } },
+  { id: 'amethyst', label: 'Amethyst', colors: { accent: '#ac82e8', panel: '#130f19', fg: '#ebe4f4' } },
+  { id: 'steel', label: 'Steel', colors: { accent: '#a3b0bd', panel: '#111315', fg: '#e5e8eb' } }
+]
+
+export function sameColors (a: AppColors, b: AppColors): boolean {
+  return a.accent.toLowerCase() === b.accent.toLowerCase() &&
+    a.panel.toLowerCase() === b.panel.toLowerCase() &&
+    a.fg.toLowerCase() === b.fg.toLowerCase()
+}
+
 // Settings marks itself with data-w-settings; the rail and dock with data-woke-frame.
 export const FRAME_SELECTOR = '[data-w-settings], [data-woke-frame]'
 
