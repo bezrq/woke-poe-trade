@@ -34,9 +34,10 @@
   padding-left: 80px;
   padding-right: 76px;
   border-bottom: 0;
-  /* The title bar casts its shadow on the floor below. */
+  /* The title bar is the window's top edge: drawn over the frame, its carved
+     ends are the top corners. It casts its shadow on the floor below. */
   position: relative;
-  z-index: 2;
+  z-index: 4;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.9), 0 1px 2px #000;
   background:
     url("/images/poe-ui/titlebar-left.png") left center / auto 100% no-repeat,
@@ -74,4 +75,9 @@
 }
 :root[data-woke-look="game"] :is([data-w-panel] > [data-widget-drag] button:has(> .fa-times), [data-w-settings] > header button[title="Close"]) > i {
   visibility: hidden;
+}
+
+/* Settings' title bar keeps to the title and search: the carved ends need the room. */
+:root[data-woke-look="game"] [data-w-settings] > header > :last-child > :not(button[title="Close"]) {
+  display: none;
 }
