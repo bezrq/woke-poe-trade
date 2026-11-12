@@ -1,18 +1,23 @@
 <template>
   <Widget :config="config" move-handles="corners" :inline-edit="false">
-    <DockItem :menu="dockMenu" :wake="unseenCorrupt" id="essence-scan" title="Essence scan" :show="running || paused || !!message"
+    <DockItem :menu="dockMenu" :wake="unseenCorrupt" id="essence-scan" title="Essence scan" :show="running || paused || !!message || (config.iconWhenOff && zone.kind === 'map')"
+      :game-click="running ? undefined : startFromIcon"
       :led="message ? 'error' : paused ? 'warn' : running ? 'on' : null" :badge="unseenCorrupt || null"
       :wm-id="config.wmId" card-width="18rem" @open-change="onCard">
       <template #card>
         <div v-if="message" class="w-warn text-xs px-3 pt-2">{{ message }}</div>
         <div v-else-if="paused" class="w-dim text-xs px-3 pt-2">Paused while the map scan runs. It resumes when that stops.</div>
+        <div v-else-if="!running" class="w-dim text-xs px-3 pt-2">
+          Off. <template v-if="config.autoInMaps">Starts by itself in your next map, or</template><template v-else>Start it with</template>
+          <template v-if="config.hotkey"> <WKbd :keys="config.hotkey" /> or</template> a click on the icon.
+        </div>
         <div v-for="e in recent.slice(0, 5)" :key="e.id" :class="[$style.entry, $style[e.rated.verdict]]">
           <span :class="$style.tag">{{ VERDICT_LABEL[e.rated.verdict] }}</span>
           <span class="flex-1 w-trunc">{{ entryLabel(e) }}</span>
           <WPrice :chaos="e.rated.totalChaos || null" :divine="divine" />
         </div>
-        <div v-if="!entries.length" class="w-dim text-xs px-3 py-2">Hover an essence monolith.</div>
-        <div v-if="config.hotkey" class="w-faint text-xs px-3 py-1"><WKbd :keys="config.hotkey" /> to stop</div>
+        <div v-if="running && !entries.length" class="w-dim text-xs px-3 py-2">Hover an essence monolith.</div>
+        <div v-if="running && config.hotkey" class="w-faint text-xs px-3 py-1"><WKbd :keys="config.hotkey" /> to stop</div>
       </template>
     </DockItem>
     <WPanel ref="panel" :title="config.wmTitle || 'Essence scan'" icon="essence" width="19rem">
@@ -31,6 +36,7 @@
       </div>
       <WEmpty v-if="!entries.length" :art="{ mechanic: 'essence' }">
         <template v-if="running">Hover a monolith to price it. CORRUPT marks one with {{ flagText }}.</template>
+        <template v-else-if="config.autoInMaps">Starts by itself when you enter a map<template v-if="config.hotkey">, or press <WKbd :keys="config.hotkey" /></template>.</template>
         <template v-else-if="config.hotkey">Press <WKbd :keys="config.hotkey" /> in game to start scanning.</template>
         <template v-else>Start scanning, then hover essence monoliths.</template>
       </WEmpty>
@@ -97,7 +103,7 @@ export default {
 </script>
 
 <script setup lang="ts">
-import { computed, inject, onUnmounted, shallowRef } from 'vue'
+import { computed, inject, onUnmounted, shallowRef, watch } from 'vue'
 import { MainProcess } from '@/web/background/IPC'
 import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
@@ -108,9 +114,10 @@ import DockItem from '../dock/DockItem.vue'
 import type { DockMenuAction } from '../dock/dock'
 import { dockIconEl, hideWhilePlaying } from '../dock/dock'
 import { usePriceIndex } from '../market/price-index'
+import { useZone } from '../shared/zone'
 import { parseMonolith, rateMonolith, shortEssenceName } from './essences'
 import type { EssenceVerdict, PricedMonolith } from './essences'
-import { initEssenceScanWidget, normalizeEssenceScanWidget, parseEssenceHotkeyTarget } from './widget'
+import { autoScan, initEssenceScanWidget, normalizeEssenceScanWidget, parseEssenceHotkeyTarget } from './widget'
 
 const props = defineProps<{ config: EssenceScanWidget }>()
 const wm = inject<WidgetManager>('wm')!
@@ -270,24 +277,56 @@ const events = MainProcess.onEvent('MAIN->CLIENT::woke-event', ({ topic, data })
   }
 })
 
+const zone = useZone()
+
 async function toggle () {
   message.value = null
+  const stopping = running.value && !paused.value
+  // Stopped by hand in a map: stays off in that map, even back through a portal.
+  autoScan.stoppedSeed = stopping && zone.kind === 'map' ? zone.seed : null
   try {
     // Paused for the other scan mode: the hotkey takes the screen back.
-    if (running.value && !paused.value) {
+    if (stopping) {
       await hostRequest('essence-scan-stop', null)
       running.value = false
       current.value = null
     } else {
-      await hostRequest('essence-scan-start', null)
-      running.value = true
-      wm.show(props.config.wmId)
+      // Stopped again while it was starting: main says it's off.
+      const res = await hostRequest<{ running: boolean }>('essence-scan-start', null)
+      running.value = res.running
+      if (res.running) wm.show(props.config.wmId)
     }
   } catch (err) {
     message.value = err instanceof Error ? err.message : String(err)
     wm.show(props.config.wmId)
   }
 }
+
+function startFromIcon () {
+  if (!running.value) toggle().catch(() => {})
+}
+
+// Start in maps. Main decides: it never takes the screen from map scan, and
+// does nothing with the game in the background or stops a scan you started.
+// Quiet on purpose: a failed start shows on the icon, never a panel over the
+// game, and is tried again in the next map.
+// Only a map entered while the app runs: the last map read back from the log
+// at start-up would load the OCR workers before any scan was asked for.
+watch(() => [zone.kind, zone.seed, props.config.autoInMaps] as const, async ([kind, seed, auto]) => {
+  if (kind === 'map') {
+    if (!auto || !zone.live || seed === autoScan.stoppedSeed || seed === autoScan.failedSeed) return
+    try {
+      const res = await hostRequest<{ running: boolean }>('essence-scan-auto-start', null)
+      if (res.running) running.value = true
+    } catch (err) {
+      autoScan.failedSeed = seed
+      message.value = err instanceof Error ? err.message : String(err)
+    }
+  } else if (kind === 'town' || kind === 'hideout') {
+    const res = await hostRequest<{ running: boolean }>('essence-scan-auto-stop', null).catch(() => null)
+    if (res && !res.running) { running.value = false; current.value = null }
+  }
+}, { immediate: true })
 
 const panel = shallowRef<InstanceType<typeof WPanel> | null>(null)
 function clear (from?: Event | 'icon') {
