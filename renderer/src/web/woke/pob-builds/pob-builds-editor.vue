@@ -11,24 +11,43 @@
       <input v-model="pobExe" class="w-input rounded px-1 leading-6"
         placeholder="e.g. C:\Users\you\AppData\Roaming\Path of Building Community\Path of Building.exe">
     </label>
+    <WSettingRow label="Hotkey: draw the build over the passive tree"
+      hint="Open the passive tree in game and press it. Shows the active build's nodes you haven't taken yet. It follows when you drag the tree and snaps again after a scroll. Press again to hide it. Nothing reads the screen until you press it.">
+      <w-hotkey-cell v-model="treeHotkey" />
+    </WSettingRow>
+    <WSettingRow label="Dock icon click draws on the passive tree"
+      hint="With the tree open in game, a click on the build's dock icon draws the build over it (a second click hides it). Anywhere else the click opens this window as before. Its right-click menu and hover card have the same option.">
+      <WToggle v-model="treeOnIconClick" />
+    </WSettingRow>
   </div>
 </template>
 
 <script lang="ts">
-import { defineComponent } from 'vue'
+import { computed, defineComponent } from 'vue'
 import { configProp, configModelValue } from '@/web/settings/utils'
 import type { PobBuildsWidget } from './widget'
+import { treeHotkeyOf } from './widget'
+import { WSettingRow, WToggle } from '../ui'
+import WHotkeyCell from '../ui/WHotkeyCell.vue'
 import WInfo from '../ui/WInfo.vue'
 
 export default defineComponent({
   name: 'PoB builds',
-  components: { WInfo },
+  components: { WInfo, WSettingRow, WHotkeyCell, WToggle },
   props: configProp<PobBuildsWidget>(),
   setup (props) {
     return {
       title: configModelValue(() => props.configWidget, 'wmTitle'),
       buildsDir: configModelValue(() => props.configWidget, 'buildsDir'),
-      pobExe: configModelValue(() => props.configWidget, 'pobExe')
+      pobExe: configModelValue(() => props.configWidget, 'pobExe'),
+      treeHotkey: computed({
+        get: () => treeHotkeyOf(props.configWidget),
+        set: (key: string | null) => { props.configWidget.treeHotkey = key }
+      }),
+      treeOnIconClick: computed({
+        get: () => props.configWidget.treeOnIconClick !== false,
+        set: (on: boolean) => { props.configWidget.treeOnIconClick = on }
+      })
     }
   }
 })
