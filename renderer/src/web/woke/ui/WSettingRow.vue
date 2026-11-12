@@ -35,6 +35,8 @@ withDefaults(defineProps<{
   border-bottom: 1px solid var(--w-line-soft);
 }
 .row:last-child { border-bottom: 0; }
+/* The game look parts rows with a thin bronze line. */
+:global([data-woke-look="game"]) .row { border-bottom-color: var(--w-row-fade); }
 .stack { flex-direction: column; align-items: stretch; gap: var(--w-s2); }
 .text { flex: 1; min-width: 0; }
 .label { color: var(--w-fg); font-size: var(--w-fs-md); display: flex; align-items: center; gap: var(--w-s2); flex-wrap: wrap; }

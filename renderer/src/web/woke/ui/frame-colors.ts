@@ -72,7 +72,7 @@ export function frameColorCss (c: AppColors): string {
   --w-panel: var(--w-panel-base);
   --w-panel-2: var(--w-panel-2-base);
   --w-panel-solid: var(--w-panel-solid-base);
-  --w-header-bg: linear-gradient(${mix(c.panel, 90, 'white')}, ${mix(c.panel, 95, 'white')});
+  --w-header-bg: ${mix(c.panel, 92, 'white')};
   --w-fg: ${c.fg};
   --w-dim: ${mix(c.fg, 65, c.panel)};
   --w-faint: ${mix(c.fg, 42, c.panel)};
@@ -84,19 +84,19 @@ export function frameColorCss (c: AppColors): string {
   --w-frame-lit: ${mix(c.accent, 90, c.panel)};
   --w-gold: ${mix(c.accent, 45, c.fg)};
   --w-gold-hi: ${mix(c.accent, 65, 'white')};
-  --w-bevel: linear-gradient(${mix(c.panel, 88, 'white')}, ${c.panel});
-  --w-bevel-primary: linear-gradient(${mix(c.accent, 50, c.panel)}, ${mix(c.accent, 25, c.panel)});
+  --w-bevel: ${mix(c.panel, 93, 'white')};
+  --w-bevel-primary: ${mix(c.accent, 38, c.panel)};
   --w-bevel-primary-shadow: inset 0 1px 0 ${mix(c.accent, 40, 'transparent')}, 0 0 6px ${mix(c.accent, 25, 'transparent')};
-  --w-pressed: linear-gradient(${mix(c.panel, 80, 'black')}, ${mix(c.panel, 92, 'white')});
+  --w-pressed: ${mix(c.panel, 85, 'black')};
   --w-pressed-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.9), inset 0 -1px 0 ${mix(c.accent, 35, 'transparent')};
   --w-well: ${mix(c.panel, 55, 'black')};
   --w-well-line: ${mix(c.accent, 22, c.panel)};
   --w-chip-line: ${mix(c.accent, 30, c.panel)};
   --w-chip-ground: ${mix(c.panel, 80, 'black')};
-  --w-chip-on: linear-gradient(${mix(c.accent, 16, c.panel)}, ${mix(c.accent, 6, c.panel)});
-  --w-head-ground: linear-gradient(${mix(c.accent, 14, c.panel)}, ${mix(c.panel, 85, 'black')});
-  --w-gold-fade: linear-gradient(90deg, transparent, ${mix(c.accent, 60, c.panel)} 20%, ${c.accent} 50%, ${mix(c.accent, 60, c.panel)} 80%, transparent);
-  --w-row-fade: linear-gradient(90deg, transparent, ${mix(c.accent, 35, 'transparent')} 15%, ${mix(c.accent, 35, 'transparent')} 85%, transparent);
+  --w-chip-on: ${mix(c.accent, 12, c.panel)};
+  --w-head-ground: ${mix(c.accent, 8, c.panel)};
+  --w-gold-fade: ${mix(c.accent, 55, c.panel)};
+  --w-row-fade: ${mix(c.accent, 30, 'transparent')};
 }
 /* The plain look points these at other tokens on :root; point them again here,
  * at the frame's own. */
@@ -114,7 +114,7 @@ export function frameColorCss (c: AppColors): string {
   --w-chip-line: var(--w-line-strong);
   --w-chip-on: var(--w-accent-soft);
   --w-head-ground: var(--w-header-bg);
-  --w-gold-fade: linear-gradient(var(--w-line), var(--w-line));
-  --w-row-fade: linear-gradient(var(--w-line-soft), var(--w-line-soft));
+  --w-gold-fade: var(--w-line);
+  --w-row-fade: var(--w-line-soft);
 }`
 }

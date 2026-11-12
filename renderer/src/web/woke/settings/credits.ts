@@ -75,6 +75,7 @@ export const CREDIT_GROUPS: CreditGroup[] = [
       { name: 'Tesseract', url: 'https://github.com/tesseract-ocr/tesseract', use: 'Reads text on screen for scans.', license: 'Apache-2.0' },
       { name: 'Font Awesome Free', url: 'https://fontawesome.com/', use: 'Interface icons.', license: 'CC BY 4.0, OFL-1.1, MIT' },
       { name: 'Inter', url: 'https://rsms.me/inter/', use: 'The interface font.', license: 'OFL-1.1' },
+      { name: 'Hero Patterns', url: 'https://heropatterns.com/', use: 'The background textures of the game look (Temple, Texture), by Steve Schoger.', license: 'CC BY 4.0' },
       { name: 'JetBrains Mono', url: 'https://www.jetbrains.com/lp/mono/', use: 'The font for regex and code.', license: 'OFL-1.1' }
     ]
   }

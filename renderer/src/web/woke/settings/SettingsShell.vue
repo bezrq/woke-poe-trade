@@ -22,13 +22,11 @@
           <div :class="$style.group">{{ g.label }}</div>
           <template v-for="item in g.items" :key="item.page.id">
             <div v-if="item.sub" :class="$style.sub">{{ item.sub }}</div>
-            <div :class="[$style.item, { [$style.active]: item.page.id === pageId, [$style.dim]: item.off }]"
+            <div :class="[$style.item, { [$style.active]: item.page.id === pageId, [$style.dim]: item.off }]" :title="item.off ? `${item.page.name} is off. Its page turns it on.` : undefined"
               role="button" tabindex="0" @click="open(item.page.id)" @keydown.enter="open(item.page.id)">
               <span :class="$style.icon"><w-icon :src="item.page.icon.art ?? undefined" :item="item.page.icon.item" :fallback="item.page.icon.fa" size="md" /></span>
               <span :class="$style.name">{{ item.page.name }}</span>
               <span v-if="item.page.id === 'hotkeys' && hotkeyProblems" :class="$style.badge" :title="`${hotkeyProblems} hotkey problem${hotkeyProblems > 1 ? 's' : ''}`">{{ hotkeyProblems }}</span>
-              <w-toggle v-if="item.switchIds.length && clone" :model-value="!item.off" :title="item.off ? 'Turn on' : 'Turn off'"
-                @click.stop @update:model-value="setPageOn(item.switchIds, $event)" />
             </div>
           </template>
         </template>
@@ -73,7 +71,7 @@ import { AppConfig, updateConfig, saveConfig, saveConfigQuietly, beforeQuitSave,
 import type { Config } from '@/web/Config'
 import type { Widget, WidgetManager } from '@/web/overlay/interfaces'
 import { Host } from '@/web/background/IPC'
-import { WIcon, WKbd, WToggle, provideHotkeyContext, toast } from '../ui'
+import { WIcon, WKbd, provideHotkeyContext, toast } from '../ui'
 import { ensureWokeConfig, isModuleOn, setModuleOn } from '../modules'
 import { useHotkeyHealth } from '../switchboard/hotkey-health'
 import { allowsCopies } from '../tab-bar/tools'
@@ -242,12 +240,6 @@ const nav = computed(() => GROUPS.map(g => {
   })
   return { ...g, items }
 }))
-
-function setPageOn (ids: string[], on: boolean) {
-  if (!clone.value) return
-  const c = ensureWokeConfig(clone.value)
-  for (const id of ids) setModuleOn(c, id, on)
-}
 
 function open (id: string) {
   query.value = ''
@@ -477,9 +469,42 @@ function startResize (e: PointerEvent, edge: 'e' | 's' | 'se') {
 :global([data-woke-look="game"]) .group {
   font-family: var(--w-label); font-size: var(--w-fs-md); font-weight: 400; text-transform: none; letter-spacing: 0.04em; color: var(--w-gold);
 }
-:global([data-woke-look="game"]) .nav { border-right-color: var(--w-well-line); }
-:global([data-woke-look="game"]) .active { color: var(--w-gold-hi); background: var(--w-pressed); box-shadow: inset 0 1px 3px #000, inset 2px 0 0 var(--w-frame-lit); }
+:global([data-woke-look="game"]) .nav {
+  gap: 0; padding: var(--w-s1) 0 var(--w-s3); border-right-color: var(--w-well-line);
+  background: color-mix(in srgb, var(--w-panel-solid) 60%, black) var(--w-pattern-temple) var(--w-pattern-temple-pos);
+  background-attachment: local;
+}
+/* Group heads as the game's tooltip separators: the name between two bronze lines. */
+:global([data-woke-look="game"]) .group { display: flex; align-items: center; gap: 10px; padding: var(--w-s4) var(--w-s3) var(--w-s2); }
+:global([data-woke-look="game"]) .group::before,
+:global([data-woke-look="game"]) .group::after { content: ""; flex: 1; height: 1px; }
+:global([data-woke-look="game"]) .group::before,
+:global([data-woke-look="game"]) .group::after { background: var(--w-frame); }
+:global([data-woke-look="game"]) .sub { padding: var(--w-s3) var(--w-s3) 2px; font-family: Fontin, FrizQuadrataC, Georgia, serif; font-style: italic; font-size: var(--w-fs-sm); color: var(--w-faint); }
+/* Pages as stash-tab plates: small caps, the icon in a dark socket, the open one framed in bronze. */
+:global([data-woke-look="game"]) .item {
+  margin: 1px var(--w-s2); padding: 0 var(--w-s2); min-height: calc(34px * var(--w-text-scale, 1)); gap: 10px;
+  border: 1px solid transparent; border-radius: 0; font-family: var(--w-label); letter-spacing: 0.03em; color: var(--w-gold);
+}
+:global([data-woke-look="game"]) .item:hover { background: var(--w-accent-soft); color: var(--w-gold-hi); }
+:global([data-woke-look="game"]) .item .icon {
+  width: 26px; height: 26px; background: var(--w-well);
+  border: 1px solid var(--w-well-line); box-shadow: inset 0 0 6px #000;
+}
+:global([data-woke-look="game"]) .active {
+  color: var(--w-gold-hi); background: var(--w-chip-on); border-color: var(--w-frame);
+  box-shadow: var(--w-bevel-shadow), 0 0 0 1px #000;
+}
+/* A module that's off: its icon goes dark, like a skill you can't use. */
+:global([data-woke-look="game"]) .dim .icon :is(img, i) { filter: grayscale(1) brightness(0.5); }
+:global([data-woke-look="game"]) .dim .name { color: var(--w-faint); }
 :global([data-woke-look="game"]) .pageTitle { font-family: var(--w-label); color: var(--w-gold-hi); }
+:global([data-woke-look="game"]) .head { position: relative; padding-bottom: var(--w-s3); }
+:global([data-woke-look="game"]) .head::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 1px; background: var(--w-gold-fade); }
+:global([data-woke-look="game"]) .headIcon {
+  width: 36px; height: 36px; background: var(--w-well);
+  border: 1px solid var(--w-frame); box-shadow: inset 0 0 8px #000, 0 0 0 1px #000;
+}
 .quit {
   margin-top: var(--w-s4); padding: var(--w-s1) var(--w-s2); text-align: left; color: var(--w-faint); font-size: var(--w-fs-sm);
   border-radius: var(--w-r-sm);
