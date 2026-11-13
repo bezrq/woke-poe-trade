@@ -1,0 +1,106 @@
+/*
+ * The price check window in the game art (PoE 1 and PoE 2 looks): the same
+ * frame, floor, carved title bar, banner and close coin as the toolkit's
+ * windows (poe-frame.css, poe-content.css). Its filters keep their own look
+ * (price-insight/poe-mode.css, controls.css). The id is doubled to outrank
+ * poe-mode.css, which loads later with the same weight.
+ */
+
+/* Frame over the window; content kept clear of its solid edge. */
+:root[data-woke-art] #price-window#price-window {
+  border-color: #000;
+  border-radius: 0;
+  box-shadow: var(--w-frame-shadow), inset 0 0 26px 4px rgba(0, 0, 0, 0.5);
+  padding: 0 var(--w-frame-inset) var(--w-frame-inset);
+  background-color: var(--w-panel-solid-base, #0a0806);
+  background-image: var(--w-floor);
+  overflow: clip;
+  overflow-clip-margin: 30px;
+}
+:root[data-woke-art] #price-window#price-window::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  border: var(--w-frame-width) solid transparent;
+  border-image: var(--art-frame) 44 / var(--w-frame-width) round;
+}
+/* The body shows the floor instead of its flat grey. */
+:root[data-woke-art] #price-window#price-window > .grow {
+  background: none;
+}
+
+/* Title bar: carved ends and the stone middle, across the whole top. */
+:root[data-woke-art] #price-window#price-window [data-price-title] {
+  position: relative;
+  z-index: 4;
+  height: 40px;
+  min-height: 40px;
+  margin: 0 calc(-1 * var(--w-frame-inset));
+  padding: 0 76px 0 80px;
+  justify-content: center;
+  gap: 6px;
+  background:
+    var(--art-titlebar-left) left center / auto 100% no-repeat,
+    var(--art-titlebar-right) right center / auto 100% no-repeat,
+    var(--art-titlebar-middle) center / auto 100% repeat-x;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.55), 0 1px 1px rgba(0, 0, 0, 0.8);
+}
+:root[data-woke-art] #price-window#price-window [data-price-title]::after { display: none; }
+:root[data-woke-art] #price-window#price-window [data-price-title] > button,
+:root[data-woke-art] #price-window#price-window [data-price-title] > * > button { color: #b39a73; }
+:root[data-woke-art] #price-window#price-window [data-price-title] > button:hover,
+:root[data-woke-art] #price-window#price-window [data-price-title] > * > button:hover { color: #f0dcb2; }
+
+/* The league on the banner. */
+:root[data-woke-art] #price-window#price-window [data-price-title-text] {
+  position: relative;
+  flex: 0 1 auto;
+  margin: 0 auto;
+  min-width: var(--w-crest-min);
+  padding: 0 6px;
+  overflow: visible;
+  color: #2a1a0b !important;
+  text-shadow: 0 1px 0 rgba(255, 236, 190, 0.35);
+}
+:root[data-woke-art] #price-window#price-window [data-price-title-text]::before,
+:root[data-woke-art] #price-window#price-window [data-price-title-text]::after { display: none; }
+:root[data-woke-art] #price-window#price-window [data-price-title-text]::before {
+  content: "";
+  display: block;
+  position: absolute;
+  z-index: -1;
+  top: 50%;
+  left: calc(-1 * var(--w-crest-cap));
+  right: calc(-1 * var(--w-crest-cap));
+  width: auto;
+  height: 60px;
+  margin: 0;
+  transform: translateY(var(--w-crest-y));
+  padding: 0 var(--w-crest-cap);
+  box-sizing: border-box;
+  background:
+    var(--art-crest-left) left top / auto 100% no-repeat,
+    var(--art-crest-right) right top / auto 100% no-repeat,
+    var(--art-crest-centre) center top / auto 100% no-repeat,
+    var(--art-crest-fill) left top / auto 100% repeat-x;
+  background-origin: border-box, border-box, border-box, content-box;
+  background-clip: border-box, border-box, border-box, content-box;
+  pointer-events: none;
+}
+
+/* The close coin in the socket of the bar's right end. */
+:root[data-woke-art] #price-window#price-window [data-price-close] {
+  position: absolute;
+  right: calc(var(--w-socket-right) - 11px);
+  top: var(--w-socket-top);
+  transform: translateY(-50%);
+  z-index: 2;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  background: var(--art-close) center / contain no-repeat !important;
+}
+:root[data-woke-art] #price-window#price-window [data-price-close]:hover { background-image: var(--art-close-hover) !important; }
+:root[data-woke-art] #price-window#price-window [data-price-close] > i { visibility: hidden; }
