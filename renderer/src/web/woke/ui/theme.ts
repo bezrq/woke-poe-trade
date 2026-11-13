@@ -8,6 +8,7 @@ import './theme.css'
 import './controls.css'
 import './game-look.css'
 import './patterns.css'
+import './art-sets.css'
 import './poe-frame.css'
 import './poe-options.css'
 import './poe-content.css'
@@ -46,16 +47,44 @@ export function lookOf (theme: WokeTheme): 'game' | 'plain' {
   return theme === 'hybrid' || theme === 'native' ? 'game' : 'plain'
 }
 
-function apply (theme: WokeTheme) {
-  document.documentElement.dataset.wokeTheme = theme
-  document.documentElement.dataset.wokeLook = lookOf(theme)
+// The game look's art: Path of Exile 1's interface, Path of Exile 2's, or none
+// (the original frames and controls). Only the game look uses it.
+export type UiArt = 'poe1' | 'poe2' | 'simple'
+export const UI_ARTS: Array<{ value: UiArt, label: string }> = [
+  { value: 'poe1', label: 'PoE 1' },
+  { value: 'poe2', label: 'PoE 2' },
+  { value: 'simple', label: 'Simple' }
+]
+const ART_KEY = 'woke.uiArt'
+
+function readArt (): UiArt {
+  try {
+    const v = localStorage.getItem(ART_KEY)
+    if (v && UI_ARTS.some(a => a.value === v)) return v as UiArt
+  } catch {}
+  return 'poe1'
 }
 
-apply(wokeTheme.value)
+export const uiArt = shallowRef<UiArt>(readArt())
+
+function apply () {
+  const root = document.documentElement
+  root.dataset.wokeTheme = wokeTheme.value
+  root.dataset.wokeLook = lookOf(wokeTheme.value)
+  if (lookOf(wokeTheme.value) === 'game' && uiArt.value !== 'simple') root.dataset.wokeArt = uiArt.value
+  else delete root.dataset.wokeArt
+}
+
+apply()
 watch(wokeTheme, (theme) => {
-  apply(theme)
+  apply()
   try { localStorage.setItem(STORAGE_KEY, theme) } catch {}
+})
+watch(uiArt, (art) => {
+  apply()
+  try { localStorage.setItem(ART_KEY, art) } catch {}
 })
 window.addEventListener('storage', (e) => {
   if (e.key === STORAGE_KEY) wokeTheme.value = readStored()
+  if (e.key === ART_KEY) uiArt.value = readArt()
 })

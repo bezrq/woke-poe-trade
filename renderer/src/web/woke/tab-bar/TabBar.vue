@@ -828,16 +828,16 @@ onBeforeUnmount(() => document.removeEventListener('paste', onOverlayPaste))
 .rail:hover .mark { visibility: hidden; }
 .sep { flex: none; width: 22px; height: 1px; margin: 4px 0; background: var(--w-line); }
 /* The game look: each tool sits in a bag slot; an open one glows copper. */
-:global([data-woke-look="game"]) .rail { padding: 1px; gap: 2px; }
-:global([data-woke-look="game"]) .ic { border-radius: 0; background: url("/images/poe-ui/slot.png") center / 100% 100% no-repeat; color: #a38d6d; }
-:global([data-woke-look="game"]) .ic:hover { background: url("/images/poe-ui/slot.png") center / 100% 100% no-repeat; color: #e7d3a8; filter: brightness(1.3); }
-:global([data-woke-look="game"]) .ic.open,
-:global([data-woke-look="game"]) .toolsOn { background: url("/images/poe-ui/slot.png") center / 100% 100% no-repeat; box-shadow: inset 0 0 0 1px #a8834c, inset 0 0 12px rgba(214, 160, 80, 0.45); color: #fff3d6; }
-:global([data-woke-look="game"]) .ic.open::after { display: none; }
-:global([data-woke-look="game"]) .tools { color: #e3c48d; }
-:global([data-woke-look="game"]) .top .ic, :global([data-woke-look="game"]) .cfg { background: none; }
-:global([data-woke-look="game"]) .sep { width: 26px; height: 2px; background: #3d3121; box-shadow: 0 1px 0 #000; }
-:global([data-woke-look="game"]) .flat .sep { width: 2px; height: 26px; }
+:global([data-woke-art]) .rail { padding: 1px; gap: 2px; }
+:global([data-woke-art]) .ic { border-radius: 0; background: var(--art-slot) center / 100% 100% no-repeat; color: #a38d6d; }
+:global([data-woke-art]) .ic:hover { background: var(--art-slot) center / 100% 100% no-repeat; color: #e7d3a8; filter: brightness(1.3); }
+:global([data-woke-art]) .ic.open,
+:global([data-woke-art]) .toolsOn { background: var(--art-slot) center / 100% 100% no-repeat; box-shadow: inset 0 0 0 1px #a8834c, inset 0 0 12px rgba(214, 160, 80, 0.45); color: #fff3d6; }
+:global([data-woke-art]) .ic.open::after { display: none; }
+:global([data-woke-art]) .tools { color: #e3c48d; }
+:global([data-woke-art]) .top .ic, :global([data-woke-art]) .cfg { background: none; }
+:global([data-woke-art]) .sep { width: 26px; height: 2px; background: #3d3121; box-shadow: 0 1px 0 #000; }
+:global([data-woke-art]) .flat .sep { width: 2px; height: 26px; }
 .flat .sep { width: 1px; height: 22px; margin: 0 4px; }
 
 .tip {

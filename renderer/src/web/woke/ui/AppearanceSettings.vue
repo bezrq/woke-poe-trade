@@ -10,6 +10,9 @@
         </span>
       </label>
     </div>
+    <w-setting-row v-if="lookOf(wokeTheme) === 'game'" label="UI style" hint="The window art: Path of Exile 1's interface, Path of Exile 2's, or none (Simple). App colours below still apply.">
+      <w-segmented :model-value="uiArt" :options="UI_ARTS" @update:model-value="uiArt = $event as UiArt" />
+    </w-setting-row>
     <w-setting-row label="Text size" hint="Makes text bigger or smaller everywhere. Windows keep their width.">
       <span class="w-num w-dim">{{ textScale }}%</span>
       <input id="woke-text-scale" type="range" :min="MIN_TEXT_SCALE" :max="MAX_TEXT_SCALE" step="5" :class="$style.range"
@@ -62,7 +65,8 @@ export default {
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { wokeTheme, WOKE_THEMES } from './theme'
+import { lookOf, uiArt, UI_ARTS, wokeTheme, WOKE_THEMES } from './theme'
+import type { UiArt } from './theme'
 import { MAX_SCALE, MIN_SCALE, uiScale } from './scale'
 import { MAX_TEXT_SCALE, MIN_TEXT_SCALE, textScale } from './text-scale'
 import { MAX_PIN_SCALE, MIN_PIN_SCALE, pinScale } from '../pins/pins'
@@ -104,8 +108,8 @@ function setScale (v: string) {
 .picked { border-color: var(--w-accent); box-shadow: inset 0 0 0 1px var(--w-accent); }
 .option:focus-within { outline: 1px solid var(--w-accent); }
 /* The game look: each theme sits in a bag slot (poe-content.css); the picked one is lit like a highlighted item. */
-:global([data-woke-look="game"]) .option:hover { border-color: #6b5434; }
-:global([data-woke-look="game"]) .picked, :global([data-woke-look="game"]) .picked:hover {
+:global([data-woke-art]) .option:hover { border-color: #6b5434; }
+:global([data-woke-art]) .picked, :global([data-woke-art]) .picked:hover {
   border-color: #a8834c; box-shadow: inset 0 0 0 1px #000, inset 0 0 14px rgba(168, 131, 76, 0.35);
 }
 .text { display: flex; flex-direction: column; line-height: 1.3; font-size: var(--w-fs-md); min-width: 0; }

@@ -1,0 +1,54 @@
+/*
+ * The game art the game look draws with, per UI style (theme.ts sets
+ * data-woke-art): PoE1's or PoE2's own interface art, cut from the game files
+ * (public/images/poe-ui, public/images/poe2-ui; see their READMEs). "Simple"
+ * sets no art, and the look falls back to the original frames and controls.
+ */
+:root[data-woke-art="poe1"] {
+  --art-button: url("/images/poe-ui/button.png");
+  --art-category: url("/images/poe-ui/category.png");
+  --art-checkbox-off: url("/images/poe-ui/checkbox-off.png");
+  --art-checkbox-on: url("/images/poe-ui/checkbox-on.png");
+  --art-close: url("/images/poe-ui/close.png");
+  --art-close-hover: url("/images/poe-ui/close-hover.png");
+  --art-frame: url("/images/poe-ui/frame.png");
+  --art-frame-thin: url("/images/poe-ui/frame-thin.png");
+  --art-info: url("/images/poe-ui/info.png");
+  --art-marker: url("/images/poe-ui/marker.png");
+  --art-rule-h: url("/images/poe-ui/rule-h.png");
+  --art-rule-v: url("/images/poe-ui/rule-v.png");
+  --art-scroll-thumb: url("/images/poe-ui/scroll-thumb.png");
+  --art-scroll-track: url("/images/poe-ui/scroll-track.png");
+  --art-slider-thumb: url("/images/poe-ui/slider-thumb.png");
+  --art-slot: url("/images/poe-ui/slot.png");
+  --art-stone: url("/images/poe-ui/stone.png");
+  --art-tab: url("/images/poe-ui/tab.png");
+  --art-tab-on: url("/images/poe-ui/tab-on.png");
+  --art-titlebar-left: url("/images/poe-ui/titlebar-left.png");
+  --art-titlebar-middle: url("/images/poe-ui/titlebar-middle.png");
+  --art-titlebar-right: url("/images/poe-ui/titlebar-right.png");
+}
+:root[data-woke-art="poe2"] {
+  --art-button: url("/images/poe2-ui/button.png");
+  --art-category: url("/images/poe2-ui/category.png");
+  --art-checkbox-off: url("/images/poe2-ui/checkbox-off.png");
+  --art-checkbox-on: url("/images/poe2-ui/checkbox-on.png");
+  --art-close: url("/images/poe2-ui/close.png");
+  --art-close-hover: url("/images/poe2-ui/close-hover.png");
+  --art-frame: url("/images/poe2-ui/frame.png");
+  --art-frame-thin: url("/images/poe2-ui/frame-thin.png");
+  --art-info: url("/images/poe2-ui/info.png");
+  --art-marker: url("/images/poe2-ui/marker.png");
+  --art-rule-h: url("/images/poe2-ui/rule-h.png");
+  --art-rule-v: url("/images/poe2-ui/rule-v.png");
+  --art-scroll-thumb: url("/images/poe2-ui/scroll-thumb.png");
+  --art-scroll-track: url("/images/poe2-ui/scroll-track.png");
+  --art-slider-thumb: url("/images/poe2-ui/slider-thumb.png");
+  --art-slot: url("/images/poe2-ui/slot.png");
+  --art-stone: url("/images/poe2-ui/stone.png");
+  --art-tab: url("/images/poe2-ui/tab.png");
+  --art-tab-on: url("/images/poe2-ui/tab-on.png");
+  --art-titlebar-left: url("/images/poe2-ui/titlebar-left.png");
+  --art-titlebar-middle: url("/images/poe2-ui/titlebar-middle.png");
+  --art-titlebar-right: url("/images/poe2-ui/titlebar-right.png");
+}

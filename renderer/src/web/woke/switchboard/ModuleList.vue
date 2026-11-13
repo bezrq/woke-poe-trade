@@ -124,16 +124,16 @@ function statusLine (m: ModuleDef) {
 .switch.on::after { left: 16px; background: var(--w-accent-fg); }
 .switch:focus-visible { outline: 2px solid var(--w-accent); outline-offset: 2px; }
 /* The game look: the switch is the game's checkbox coin, ticked when on; tags are square. */
-:global([data-woke-look="game"]) .switch {
+:global([data-woke-art]) .switch {
   width: 28px; height: 28px; border: 0; border-radius: 0;
-  background: url("/images/poe-ui/checkbox-off.png") center / contain no-repeat;
+  background: var(--art-checkbox-off) center / contain no-repeat;
 }
-:global([data-woke-look="game"]) .switch.on { background-image: url("/images/poe-ui/checkbox-on.png"); }
-:global([data-woke-look="game"]) .switch:hover { filter: brightness(1.15); }
-:global([data-woke-look="game"]) .switch::after { display: none; }
-:global([data-woke-look="game"]) .row { border-bottom-color: rgba(61, 49, 33, 0.6); }
-:global([data-woke-look="game"]) .name { font-family: Fontin, FrizQuadrataC, Georgia, serif; color: #e7d3a8; }
-:global([data-woke-look="game"]) .need { border-radius: 0; background: rgba(0, 0, 0, 0.5); }
+:global([data-woke-art]) .switch.on { background-image: var(--art-checkbox-on); }
+:global([data-woke-art]) .switch:hover { filter: brightness(1.15); }
+:global([data-woke-art]) .switch::after { display: none; }
+:global([data-woke-art]) .row { border-bottom-color: rgba(61, 49, 33, 0.6); }
+:global([data-woke-art]) .name { font-family: Fontin, FrizQuadrataC, Georgia, serif; color: #e7d3a8; }
+:global([data-woke-art]) .need { border-radius: 0; background: rgba(0, 0, 0, 0.5); }
 .need {
   font-size: var(--w-fs-xs);
   line-height: calc(15px * var(--w-text-scale, 1));

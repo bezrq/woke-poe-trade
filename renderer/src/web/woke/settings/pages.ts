@@ -97,7 +97,7 @@ export const PAGES: SettingsPage[] = shallowReactive<SettingsPage[]>([
     icon: { fa: 'fas fa-paint-brush' },
     description: 'Theme, app colours, text size, panel opacity, the overlay backdrop and the row of icons you see while playing.',
     parts: [LookPage],
-    find: ['Theme', 'App colours', 'Colours', 'Colors', 'Accent', 'App icon', 'Tray icon', 'Panel size', 'Font size', 'Text size', 'Price check window size', 'Window size', 'Overlay background', 'Panel opacity', 'Transparency', 'See-through', 'Darken the game', 'Restore clipboard', 'Window title', 'Overlay ready notice', 'Icon row', 'Peek', 'Dock'],
+    find: ['Theme', 'UI style', 'PoE 2', 'Window art', 'App colours', 'Colours', 'Colors', 'Accent', 'App icon', 'Tray icon', 'Panel size', 'Font size', 'Text size', 'Price check window size', 'Window size', 'Overlay background', 'Panel opacity', 'Transparency', 'See-through', 'Darken the game', 'Restore clipboard', 'Window title', 'Overlay ready notice', 'Icon row', 'Peek', 'Dock'],
     aliases: ['Appearance', 'Icon row']
   },
   {

@@ -12,11 +12,11 @@
 }
 
 /* ---------- Sections and rows (Settings) ---------- */
-:root[data-woke-look="game"] [data-w-settings] .w-section-head {
+:root[data-woke-art] [data-w-settings] .w-section-head {
   border-bottom: 0;
   padding: var(--w-s4) 0 var(--w-s2);
 }
-:root[data-woke-look="game"] [data-w-settings] .w-section-title {
+:root[data-woke-art] [data-w-settings] .w-section-title {
   font-family: FontinSmallCaps, FrizQuadrataC, Georgia, serif;
   font-size: var(--w-fs-xl);
   font-weight: 400;
@@ -24,101 +24,101 @@
   text-transform: none;
   color: var(--w-opt-head);
 }
-:root[data-woke-look="game"] [data-w-settings] .w-setting {
+:root[data-woke-art] [data-w-settings] .w-setting {
   border-bottom: 0;
   background: none;
 }
-:root[data-woke-look="game"] [data-w-settings] .w-setting:not(.w-setting--stack) {
+:root[data-woke-art] [data-w-settings] .w-setting:not(.w-setting--stack) {
   display: grid;
   grid-template-columns: minmax(0, 40%) minmax(0, 1fr);
   gap: var(--w-s3);
   min-height: calc(36px * var(--w-text-scale, 1));
 }
-:root[data-woke-look="game"] [data-w-settings] .w-setting-label {
+:root[data-woke-art] [data-w-settings] .w-setting-label {
   font-family: Fontin, FrizQuadrataC, Georgia, serif;
   font-size: var(--w-fs-lg);
   color: var(--w-opt-label);
 }
-:root[data-woke-look="game"] [data-w-settings] .w-setting-control {
+:root[data-woke-art] [data-w-settings] .w-setting-control {
   justify-content: flex-start;
   max-width: none;
 }
 
 /* ---------- Info: the game's copper "i" coin, which opens its tooltip ---------- */
-:root[data-woke-look="game"] .w-info {
+:root[data-woke-art] .w-info {
   width: calc(24px * var(--w-text-scale, 1));
   height: calc(24px * var(--w-text-scale, 1));
   border: 0;
-  background: url("/images/poe-ui/info.png") center / contain no-repeat;
+  background: var(--art-info) center / contain no-repeat;
   font-size: 0;
 }
-:root[data-woke-look="game"] .w-info:is(:hover, :focus-visible) { filter: brightness(1.2); background-color: transparent; }
+:root[data-woke-art] .w-info:is(:hover, :focus-visible) { filter: brightness(1.2); background-color: transparent; }
 
 /* ---------- Checkbox (the toolkit's switch): the game's coin, ticked when on ---------- */
-:root[data-woke-look="game"] .w-toggle-track {
+:root[data-woke-art] .w-toggle-track {
   width: calc(28px * var(--w-text-scale, 1));
   height: calc(28px * var(--w-text-scale, 1));
   border: 0;
   border-radius: 0;
   box-shadow: none;
-  background: url("/images/poe-ui/checkbox-off.png") center / contain no-repeat;
+  background: var(--art-checkbox-off) center / contain no-repeat;
 }
-:root[data-woke-look="game"] .w-toggle.on .w-toggle-track {
+:root[data-woke-art] .w-toggle.on .w-toggle-track {
   border: 0;
   box-shadow: none;
-  background: url("/images/poe-ui/checkbox-on.png") center / contain no-repeat;
+  background: var(--art-checkbox-on) center / contain no-repeat;
 }
-:root[data-woke-look="game"] .w-toggle:hover .w-toggle-track { filter: brightness(1.15); }
-:root[data-woke-look="game"] .w-toggle-knob { display: none; }
+:root[data-woke-art] .w-toggle:hover .w-toggle-track { filter: brightness(1.15); }
+:root[data-woke-art] .w-toggle-knob { display: none; }
 
 /* ---------- Sliders (Settings): a black track and a copper handle ---------- */
-:root[data-woke-look="game"] [data-w-settings] input[type="range"] {
+:root[data-woke-art] [data-w-settings] input[type="range"] {
   -webkit-appearance: none;
   appearance: none;
   height: 16px;
   background: transparent;
 }
-:root[data-woke-look="game"] [data-w-settings] input[type="range"]::-webkit-slider-runnable-track {
+:root[data-woke-art] [data-w-settings] input[type="range"]::-webkit-slider-runnable-track {
   height: 14px;
   background: #000;
   border: 1px solid #4a3522;
   border-left-width: 3px;
   border-right-width: 3px;
 }
-:root[data-woke-look="game"] [data-w-settings] input[type="range"]::-webkit-slider-thumb {
+:root[data-woke-art] [data-w-settings] input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none;
   width: 30px;
   height: 18px;
   margin-top: -3px;
   border: 0;
-  background: url("/images/poe-ui/slider-thumb.png") center / contain no-repeat;
+  background: var(--art-slider-thumb) center / contain no-repeat;
 }
-:root[data-woke-look="game"] [data-w-settings] input[type="range"]:disabled::-webkit-slider-thumb { filter: grayscale(1) brightness(0.6); }
+:root[data-woke-art] [data-w-settings] input[type="range"]:disabled::-webkit-slider-thumb { filter: grayscale(1) brightness(0.6); }
 
 /* ---------- Buttons: the game's stone plate with a bronze rim ---------- */
-:root[data-woke-look="game"] .w-btn:not(.w-btn--ghost) {
+:root[data-woke-art] .w-btn:not(.w-btn--ghost) {
   color: #e7d3a8;
   background: none;
   border: 6px solid transparent;
-  border-image: url("/images/poe-ui/button.png") 12 fill / 6px stretch;
+  border-image: var(--art-button) 12 fill / 6px stretch;
   border-radius: 0;
   box-shadow: none;
   padding: 0 10px;
   text-shadow: 0 1px 2px #000;
 }
-:root[data-woke-look="game"] .w-btn:not(.w-btn--ghost, :disabled):hover { color: #fff; filter: brightness(1.2); }
-:root[data-woke-look="game"] .w-btn.w-btn--primary:not(.w-btn--ghost) { color: #f6dfbd; filter: sepia(0.4) saturate(1.6); }
-:root[data-woke-look="game"] .w-btn.w-btn--primary:not(.w-btn--ghost, :disabled):hover { color: #fff; filter: sepia(0.4) saturate(1.6) brightness(1.35); }
+:root[data-woke-art] .w-btn:not(.w-btn--ghost, :disabled):hover { color: #fff; filter: brightness(1.2); }
+:root[data-woke-art] .w-btn.w-btn--primary:not(.w-btn--ghost) { color: #f6dfbd; filter: sepia(0.4) saturate(1.6); }
+:root[data-woke-art] .w-btn.w-btn--primary:not(.w-btn--ghost, :disabled):hover { color: #fff; filter: sepia(0.4) saturate(1.6) brightness(1.35); }
 /* A quiet button is copper text; on hover it lights and takes the plate. */
-:root[data-woke-look="game"] .w-btn.w-btn--ghost {
+:root[data-woke-art] .w-btn.w-btn--ghost {
   color: #ab774c;
   border: 6px solid transparent;
   border-radius: 0;
   padding: 0 10px;
 }
-:root[data-woke-look="game"] .w-btn.w-btn--ghost:not(:disabled):hover {
+:root[data-woke-art] .w-btn.w-btn--ghost:not(:disabled):hover {
   color: #fff3d6;
   background: none;
-  border-image: url("/images/poe-ui/button.png") 12 fill / 6px stretch;
+  border-image: var(--art-button) 12 fill / 6px stretch;
   filter: brightness(1.1);
 }

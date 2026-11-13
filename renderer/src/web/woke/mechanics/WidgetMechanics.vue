@@ -352,15 +352,15 @@ const dockMenu = computed<DockMenuAction[]>(() => [
 .col { min-height: 0; }
 .col + .col { border-left: 1px solid var(--w-line); }
 /* The game look: the open mechanic sits in a bag slot; the bronze bars between columns are poe-content.css's. */
-:global([data-woke-look="game"]) .col + .col { border-left: 0; }
-:global([data-woke-look="game"]) .railBtn { border-radius: 0; color: #ab774c; font-family: var(--w-label); }
-:global([data-woke-look="game"]) .railBtn:hover { background: none; color: #e7d3a8; }
-:global([data-woke-look="game"]) .railOn,
-:global([data-woke-look="game"]) .railOn:hover {
+:global([data-woke-art]) .col + .col { border-left: 0; }
+:global([data-woke-art]) .railBtn { border-radius: 0; color: #ab774c; font-family: var(--w-label); }
+:global([data-woke-art]) .railBtn:hover { background: none; color: #e7d3a8; }
+:global([data-woke-art]) .railOn,
+:global([data-woke-art]) .railOn:hover {
   color: #e3c48d; background: rgba(0, 0, 0, 0.55);
   box-shadow: inset 0 0 0 1px var(--w-slot-edge), inset 0 0 0 2px #000, inset 0 0 12px #000;
 }
-:global([data-woke-look="game"]) .tips li::marker { color: #ab774c; }
+:global([data-woke-art]) .tips li::marker { color: #ab774c; }
 .toolbar { display: flex; align-items: center; gap: 8px; padding: 8px var(--w-pad) 4px; }
 .btrGrid { grid-template-columns: 22px 70px minmax(0, 1fr) 60px; }
 .scarabGrid { grid-template-columns: minmax(0, 1fr) 64px; }

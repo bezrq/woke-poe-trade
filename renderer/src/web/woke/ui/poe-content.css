@@ -7,94 +7,94 @@
  * Toolkit windows only (WPanel, Settings): the price check and APT's windows keep theirs.
  */
 :root {
-  --w-floor: url("/images/poe-ui/stone.png");
+  --w-floor: var(--art-stone);
   --w-slot-edge: #3d3121;
 }
 
 /* ---------- Floor: the bag panel's stone, quietened, laid behind everything ---------- */
-:root[data-woke-look="game"] :is([data-w-panel], [data-w-settings], [data-w-window]) {
+:root[data-woke-art] :is([data-w-panel], [data-w-settings], [data-w-window]) {
   background-image: var(--w-floor);
   background-position: -37px -23px;
 }
 /* Text is cut into it: a dark lip under every line. Quieter text stays
    readable on the dark floor, as the game's grey hint text is. */
-:root[data-woke-look="game"] :is([data-w-panel], [data-w-settings], [data-w-window], [data-w-popup]) {
+:root[data-woke-art] :is([data-w-panel], [data-w-settings], [data-w-window], [data-w-popup]) {
   text-shadow: 0 1px 1px #000;
   --w-dim: #bcae95;
   --w-faint: #8d7e67;
 }
 
 /* ---------- A bag slot: the inventory square's bronze edge around a black well ---------- */
-:root[data-woke-look="game"] .w-slot {
+:root[data-woke-art] .w-slot {
   background: rgba(0, 0, 0, 0.55);
   border: 1px solid var(--w-slot-edge);
   border-radius: 0;
   /* Sunk into the floor: dark inside, a faint lit lip below. */
-  box-shadow: inset 0 0 0 1px #000, inset 0 2px 6px #000, inset 0 0 16px rgba(0, 0, 0, 0.9), 0 1px 0 rgba(255, 235, 200, 0.06);
+  box-shadow: inset 0 0 0 1px #000, inset 0 2px 5px rgba(0, 0, 0, 0.75), inset 0 0 12px rgba(0, 0, 0, 0.6), 0 1px 0 rgba(255, 235, 200, 0.06);
 }
 /* A small square holding an icon: the whole slot, emblem and all. */
-:root[data-woke-look="game"] .w-socket {
-  background: url("/images/poe-ui/slot.png") center / 100% 100% no-repeat;
+:root[data-woke-art] .w-socket {
+  background: var(--art-slot) center / 100% 100% no-repeat;
   border: 0;
   border-radius: 0;
   box-shadow: 0 1px 0 rgba(255, 235, 200, 0.06), 0 0 6px #000;
 }
 
 /* ---------- Headings: the Options window's category bar ---------- */
-:root[data-woke-look="game"] .w-category {
+:root[data-woke-art] .w-category {
   display: flex;
   align-items: center;
   min-height: 30px;
   padding: 0 12px;
   border: 0 solid transparent;
   border-width: 0 22px;
-  border-image: url("/images/poe-ui/category.png") 0 24 fill / 0 22px stretch;
+  border-image: var(--art-category) 0 24 fill / 0 22px stretch;
   background: none;
   color: var(--w-opt-head, #e3c48d);
-  filter: drop-shadow(0 3px 4px rgba(0, 0, 0, 0.9));
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.55));
 }
-:root[data-woke-look="game"] .w-category::before,
-:root[data-woke-look="game"] .w-category::after { display: none; }
+:root[data-woke-art] .w-category::before,
+:root[data-woke-art] .w-category::after { display: none; }
 
 /* ---------- The game's bronze bar between two parts of a window ---------- */
-:root[data-woke-look="game"] .w-rule-r {
+:root[data-woke-art] .w-rule-r {
   border: 0 solid transparent !important;
   border-right-width: 12px !important;
-  border-image: url("/images/poe-ui/rule-v.png") 0 12 0 0 / 0 12px 0 0 repeat !important;
+  border-image: var(--art-rule-v) 0 12 0 0 / 0 12px 0 0 repeat !important;
 }
-:root[data-woke-look="game"] .w-rule-r { box-shadow: inset -10px 0 12px -6px rgba(0, 0, 0, 0.85); }
-:root[data-woke-look="game"] .w-rule-r + * { box-shadow: inset 10px 0 12px -6px rgba(0, 0, 0, 0.85); }
-:root[data-woke-look="game"] .w-rule-l {
+:root[data-woke-art] .w-rule-r { box-shadow: inset -8px 0 10px -6px rgba(0, 0, 0, 0.5); }
+:root[data-woke-art] .w-rule-r + * { box-shadow: inset 8px 0 10px -6px rgba(0, 0, 0, 0.5); }
+:root[data-woke-art] .w-rule-l {
   border: 0 solid transparent !important;
   border-left-width: 12px !important;
-  border-image: url("/images/poe-ui/rule-v.png") 0 0 0 12 / 0 0 0 12px repeat !important;
+  border-image: var(--art-rule-v) 0 0 0 12 / 0 0 0 12px repeat !important;
 }
-:root[data-woke-look="game"] .w-rule-b {
+:root[data-woke-art] .w-rule-b {
   border: 0 solid transparent !important;
   border-bottom-width: 8px !important;
-  border-image: url("/images/poe-ui/rule-h.png") 0 0 12 0 / 0 0 8px 0 repeat !important;
-  box-shadow: 0 6px 8px -4px rgba(0, 0, 0, 0.9);
+  border-image: var(--art-rule-h) 0 0 12 0 / 0 0 8px 0 repeat !important;
+  box-shadow: 0 4px 6px -4px rgba(0, 0, 0, 0.55);
 }
 
 /* ---------- Segmented choices: a row of the game's button plates, the picked one lit ---------- */
-:root[data-woke-look="game"] :is(.w-seg, .w-plates) {
+:root[data-woke-art] :is(.w-seg, .w-plates) {
   gap: 2px;
   border: 0;
   box-shadow: none;
   overflow: visible;
 }
-:root[data-woke-look="game"] :is(.w-seg, .w-plates) > button {
+:root[data-woke-art] :is(.w-seg, .w-plates) > button {
   background: none;
   border: 5px solid transparent;
-  border-image: url("/images/poe-ui/button.png") 12 fill / 5px stretch;
+  border-image: var(--art-button) 12 fill / 5px stretch;
   box-shadow: none;
   padding: 0 6px;
   color: #a38d6d;
   filter: brightness(0.75);
 }
-:root[data-woke-look="game"] :is(.w-seg, .w-plates) > button + button { border-left: 5px solid transparent; }
-:root[data-woke-look="game"] :is(.w-seg, .w-plates) > button:hover { color: #e7d3a8; filter: none; }
-:root[data-woke-look="game"] :is(.w-seg, .w-plates) > button:is([aria-pressed="true"], [aria-checked="true"]) {
+:root[data-woke-art] :is(.w-seg, .w-plates) > button + button { border-left: 5px solid transparent; }
+:root[data-woke-art] :is(.w-seg, .w-plates) > button:hover { color: #e7d3a8; filter: none; }
+:root[data-woke-art] :is(.w-seg, .w-plates) > button:is([aria-pressed="true"], [aria-checked="true"]) {
   background: none;
   box-shadow: none;
   color: #fff3d6;
@@ -102,24 +102,24 @@
 }
 
 /* ---------- Scrollbars ---------- */
-:root[data-woke-look="game"] :is([data-w-panel], [data-w-settings], [data-w-window]) ::-webkit-scrollbar { width: 14px; height: 14px; }
-:root[data-woke-look="game"] :is([data-w-panel], [data-w-settings], [data-w-window]) ::-webkit-scrollbar-track {
-  background: url("/images/poe-ui/scroll-track.png") center top / 14px auto repeat-y;
+:root[data-woke-art] :is([data-w-panel], [data-w-settings], [data-w-window]) ::-webkit-scrollbar { width: 14px; height: 14px; }
+:root[data-woke-art] :is([data-w-panel], [data-w-settings], [data-w-window]) ::-webkit-scrollbar-track {
+  background: var(--art-scroll-track) center top / 14px auto repeat-y;
 }
-:root[data-woke-look="game"] :is([data-w-panel], [data-w-settings], [data-w-window]) ::-webkit-scrollbar-thumb {
+:root[data-woke-art] :is([data-w-panel], [data-w-settings], [data-w-window]) ::-webkit-scrollbar-thumb {
   background: none;
   border: 0 solid transparent;
   border-width: 8px 0;
-  border-image: url("/images/poe-ui/scroll-thumb.png") 8 0 fill / 8px 0 stretch;
+  border-image: var(--art-scroll-thumb) 8 0 fill / 8px 0 stretch;
   border-radius: 0;
   min-height: 24px;
 }
-:root[data-woke-look="game"] :is([data-w-panel], [data-w-settings], [data-w-window]) ::-webkit-scrollbar-thumb:hover { filter: brightness(1.25); }
-:root[data-woke-look="game"] :is([data-w-panel], [data-w-settings], [data-w-window]) ::-webkit-scrollbar-corner { background: transparent; }
+:root[data-woke-art] :is([data-w-panel], [data-w-settings], [data-w-window]) ::-webkit-scrollbar-thumb:hover { filter: brightness(1.25); }
+:root[data-woke-art] :is([data-w-panel], [data-w-settings], [data-w-window]) ::-webkit-scrollbar-corner { background: transparent; }
 
 /* ---------- Panels' own parts ---------- */
 /* Group heads inside a tool panel become category bars. */
-:root[data-woke-look="game"] :is([data-w-panel], [data-w-settings], [data-w-window]) .w-group-label {
+:root[data-woke-art] :is([data-w-panel], [data-w-settings], [data-w-window]) .w-group-label {
   display: flex;
   align-items: center;
   min-height: 26px;
@@ -127,66 +127,66 @@
   padding: 0 12px;
   border: 0 solid transparent;
   border-width: 0 20px;
-  border-image: url("/images/poe-ui/category.png") 0 24 fill / 0 20px stretch;
+  border-image: var(--art-category) 0 24 fill / 0 20px stretch;
   background: none;
   color: var(--w-opt-head, #e3c48d);
-  filter: drop-shadow(0 3px 4px rgba(0, 0, 0, 0.9));
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.55));
 }
 /* Notices sit in a slot, their colour in the icon only. */
-:root[data-woke-look="game"] :is([data-w-panel], [data-w-settings]) .w-banner {
+:root[data-woke-art] :is([data-w-panel], [data-w-settings]) .w-banner {
   background: rgba(0, 0, 0, 0.55);
   border: 1px solid var(--w-slot-edge);
   border-radius: 0;
-  box-shadow: inset 0 0 0 1px #000, inset 0 2px 6px #000, inset 0 0 16px rgba(0, 0, 0, 0.9), 0 1px 0 rgba(255, 235, 200, 0.06);
+  box-shadow: inset 0 0 0 1px #000, inset 0 2px 5px rgba(0, 0, 0, 0.75), inset 0 0 12px rgba(0, 0, 0, 0.6), 0 1px 0 rgba(255, 235, 200, 0.06);
 }
 
 /* ---------- Pop-ups, cards, menus, tooltips, toasts and the icon rail ---------- */
 /* The floor inside the game's thin double bronze frame, shaded at the edges. */
-:root[data-woke-look="game"] [data-w-popup] {
+:root[data-woke-art] [data-w-popup] {
   background-color: rgba(9, 8, 7, 0.97);
   background-image: var(--w-floor);
   background-position: -11px -7px;
   border: 6px solid transparent !important;
-  border-image: url("/images/poe-ui/frame-thin.png") 11 / 6px stretch !important;
+  border-image: var(--art-frame-thin) 11 / 6px stretch !important;
   border-radius: 0 !important;
-  box-shadow: 0 0 0 1px #000, 0 8px 24px rgba(0, 0, 0, 0.8), inset 0 0 16px 3px rgba(0, 0, 0, 0.75) !important;
+  box-shadow: 0 0 0 1px #000, 0 8px 24px rgba(0, 0, 0, 0.7), inset 0 0 12px 2px rgba(0, 0, 0, 0.45) !important;
   text-shadow: 0 1px 1px #000, 0 0 3px rgba(0, 0, 0, 0.8);
 }
 
 /* ---------- Tabs: the inventory's stone tabs, the open one lit ---------- */
-:root[data-woke-look="game"] .w-tabs > [role="tab"] {
+:root[data-woke-art] .w-tabs > [role="tab"] {
   background: none;
   border: 0 solid transparent;
   border-width: 0 14px;
-  border-image: url("/images/poe-ui/tab.png") 0 28 fill / 0 14px stretch;
+  border-image: var(--art-tab) 0 28 fill / 0 14px stretch;
   border-radius: 0;
   box-shadow: none;
   padding-left: 2px;
   padding-right: 2px;
   color: #a38d6d;
 }
-:root[data-woke-look="game"] .w-tabs > [role="tab"]:hover { color: #e7d3a8; }
-:root[data-woke-look="game"] .w-tabs > [role="tab"][aria-selected="true"] {
-  border-image-source: url("/images/poe-ui/tab-on.png");
+:root[data-woke-art] .w-tabs > [role="tab"]:hover { color: #e7d3a8; }
+:root[data-woke-art] .w-tabs > [role="tab"][aria-selected="true"] {
+  border-image-source: var(--art-tab-on);
   color: #fff3d6;
   filter: brightness(1.25);
 }
 /* A tab with a colour of its own keeps it as a line along its top. */
-:root[data-woke-look="game"] .w-tabs > [role="tab"][style*="--tab-colour"] { box-shadow: inset 0 3px 0 -1px var(--tab-colour); }
+:root[data-woke-art] .w-tabs > [role="tab"][style*="--tab-colour"] { box-shadow: inset 0 3px 0 -1px var(--tab-colour); }
 /* The icon rail keeps its narrow width: a thinner run of the same frame. */
-:root[data-woke-look="game"] [data-w-popup][data-widget-drag] {
+:root[data-woke-art] [data-w-popup][data-widget-drag] {
   border-width: 4px !important;
   border-image-width: 4px !important;
 }
 
 /* The icon row you play with is no window: no frame, no floor. */
-:root[data-woke-look="game"] [data-w-panel][data-dock-row] {
+:root[data-woke-art] [data-w-panel][data-dock-row] {
   background-image: none;
   box-shadow: none !important;
 }
-:root[data-woke-look="game"] [data-w-panel][data-dock-row]::after { display: none; }
+:root[data-woke-art] [data-w-panel][data-dock-row]::after { display: none; }
 
 /* Tags and chips are cut square, as the game's are. */
-:root[data-woke-look="game"] :is([data-w-panel], [data-w-settings], [data-w-window], [data-w-popup]) {
+:root[data-woke-art] :is([data-w-panel], [data-w-settings], [data-w-window], [data-w-popup]) {
   --w-r-pill: 0;
 }
