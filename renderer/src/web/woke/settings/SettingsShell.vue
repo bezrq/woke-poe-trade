@@ -390,8 +390,8 @@ try {
 } catch {}
 const sizeStyle = computed(() => ({
   width: `min(${size.value.w}rem, calc(100vw - 2rem))`,
-  // 4rem, not 2rem: the game art's crest rises above the title bar and must stay on screen.
-  height: `min(${size.value.h}rem, calc(100vh - 4rem))`
+  // 8rem, not 2rem: the game art's Options crest rises above the title bar and must stay on screen.
+  height: `min(${size.value.h}rem, calc(100vh - 8rem))`
 }))
 
 function startResize (e: PointerEvent, edge: 'e' | 's' | 'se') {

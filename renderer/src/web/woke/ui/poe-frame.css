@@ -196,3 +196,23 @@
   background-clip: border-box, border-box, border-box, content-box, content-box;
   pointer-events: none;
 }
+
+/* ---------- Settings wears the game's Options header crest, title large on its plaque ---------- */
+/* Doubled selectors: these must outrank the shared banner rule above. */
+:root[data-woke-art] [data-w-settings][data-w-settings][data-w-settings] {
+  overflow-clip-margin: 72px;
+}
+:root[data-woke-art] [data-w-settings][data-w-settings] > header > :first-child:first-child {
+  font-size: calc(var(--w-fs-xl) * 1.2);
+  letter-spacing: 0.06em;
+}
+:root[data-woke-art] [data-w-settings][data-w-settings] > header > :first-child:first-child::before {
+  left: 50%;
+  right: auto;
+  width: auto;
+  height: var(--w-opt-crest-h);
+  aspect-ratio: var(--w-opt-crest-ratio);
+  padding: 0;
+  transform: translate(-50%, var(--w-opt-crest-y));
+  background: var(--art-options-crest) center / contain no-repeat;
+}
