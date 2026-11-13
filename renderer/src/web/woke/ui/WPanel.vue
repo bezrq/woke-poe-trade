@@ -5,6 +5,7 @@
       :title="headTip" @dblclick="onHeadDblClick">
       <WIcon v-if="icon" v-bind="iconProps" size="md" :class="$style.icon" />
       <span :class="$style.title" class="w-trunc">
+        <WIcon v-if="icon" v-bind="iconProps" size="sm" class="w-crest-icon" aria-hidden="true" />
         <slot name="title">{{ title }}</slot>
       </span>
       <span v-if="!minimized && (updated != null || hotkey || $slots.actions)" :class="$style.actions">

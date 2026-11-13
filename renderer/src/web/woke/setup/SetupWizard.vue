@@ -422,11 +422,11 @@ async function finish () {
 :global([data-woke-art]) .optOn { background: none; box-shadow: inset 0 0 0 1px #a8834c, inset 0 0 14px rgba(168, 131, 76, 0.35); }
 :global([data-woke-art]) :is(.opt, .toggle) { border-top-color: rgba(61, 49, 33, 0.6); }
 :global([data-woke-art]) .chip {
-  border: 5px solid transparent; border-image: var(--art-button) 12 fill / 5px stretch; border-radius: 0;
+  border: solid transparent; border-width: 0 var(--w-btn-end); border-image: var(--art-button) 0 var(--w-btn-slice) fill / 0 var(--w-btn-end) stretch; border-radius: 0; min-height: 28px;
   padding: 0 10px; color: #a38d6d; filter: brightness(0.8);
 }
-:global([data-woke-art]) .chip:hover { color: #e7d3a8; filter: none; }
-:global([data-woke-art]) .chipOn { background: none; color: #fff3d6; filter: sepia(0.4) saturate(1.6) brightness(1.1); }
+:global([data-woke-art]) .chip:hover { color: #fff3d6; filter: none; border-image-source: var(--art-button-hover); }
+:global([data-woke-art]) .chipOn { background: none; color: #fff3d6; filter: none; border-image-source: var(--art-button-hover); }
 :global([data-woke-art]) .rec { color: #e3c48d; }
 :global([data-woke-art]) .foot { background: none; border-top: 0; box-shadow: 0 -6px 10px -6px #000; position: relative; }
 .keys { display: grid; grid-template-columns: max-content 1fr; gap: 8px 14px; align-items: center; }

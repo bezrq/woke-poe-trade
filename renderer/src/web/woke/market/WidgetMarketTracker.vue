@@ -38,7 +38,7 @@
           ]" />
           <WCorruptedFilter v-model="corrupted" />
           <WChip v-if="!searching" clickable :active="!config.showThin" title="Leave thin-market items out: poe.ninja had no price on 3 or more of the last 7 days, so their moves are easy to fake."
-            @click="config.showThin = !config.showThin"><i class="fas fa-exclamation-circle" /> Skip thin</WChip>
+            @click="config.showThin = !config.showThin"><i class="fas fa-exclamation-circle" /> Skip low confidence</WChip>
         </template>
       </template>
 

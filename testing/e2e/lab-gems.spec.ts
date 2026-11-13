@@ -1,4 +1,4 @@
-// Lab gems: the Skip thin chip takes thin-market gems out of the lists and EVs.
+// Lab gems: the Skip low confidence chip takes thin-market gems out of the lists and EVs.
 import fs from 'fs'
 import { fileURLToPath } from 'url'
 import { test, expect } from './harness'
@@ -17,7 +17,7 @@ const GEMS = JSON.stringify({
   ]
 })
 
-test('Lab gems: Skip thin takes thin gems out of the list, EV and specific picks', async ({ overlay }) => {
+test('Lab gems: Skip low confidence takes thin gems out of the list, EV and specific picks', async ({ overlay }) => {
   const recorded = fs.readFileSync(DENSE, 'utf8')
   await overlay.page.route('**/dense/overviews*', (route) => route.fulfill({
     contentType: 'application/json',
@@ -33,7 +33,7 @@ test('Lab gems: Skip thin takes thin gems out of the list, EV and specific picks
   const evBefore = await redEv.innerText()
   await overlay.snap('lab gems, thin gems counted')
 
-  await w.getByText('Skip thin').click()
+  await w.getByText('Skip low confidence').click()
   await expect(w).not.toContainText('Dominating Blow of Inspiring')
   await expect(w).toContainText('Summon Stone Golem of Safeguarding')
   await expect(redPool).toContainText('1 thin left out')
@@ -52,6 +52,6 @@ test('Lab gems: Skip thin takes thin gems out of the list, EV and specific picks
   await overlay.snap('lab gems, specific tab with thin gems skipped')
 
   // Off again, everything is back.
-  await w.getByText('Skip thin').click()
+  await w.getByText('Skip low confidence').click()
   await expect(w).toContainText('Dominating Blow')
 })

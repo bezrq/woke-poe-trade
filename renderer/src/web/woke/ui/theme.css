@@ -456,3 +456,6 @@ body[data-woke-hidden] [data-w-panel] { display: none !important; }
   --w-pc-window: var(--w-pc-window-base);
   --w-pc-well: var(--w-pc-well-base);
 }
+
+/* A panel's icon set into its title crest; only the game art draws the crest (poe-frame.css). */
+.w-crest-icon { display: none !important; }

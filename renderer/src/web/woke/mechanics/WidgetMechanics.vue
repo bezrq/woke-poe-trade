@@ -47,7 +47,7 @@
             <template v-else>
               <div v-if="mech.groups.length" :class="$style.toolbar">
                 <WChip clickable :active="config.skipThin !== false" title="Leave thin-market prices out: poe.ninja had no price on 3 or more of the last 7 days, so they're easy to fake."
-                  @click="config.skipThin = config.skipThin === false"><i class="fas fa-exclamation-circle" /> Skip thin</WChip>
+                  @click="config.skipThin = config.skipThin === false"><i class="fas fa-exclamation-circle" /> Skip low confidence</WChip>
               </div>
               <MechanicPrices :mech="mech" :items="items" :divine="divine" :skip-thin="config.skipThin !== false" />
             </template>

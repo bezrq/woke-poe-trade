@@ -152,24 +152,43 @@
   overflow-clip-margin: 30px;
 }
 :root[data-woke-art] :is([data-w-panel]:not([data-pin]) > [data-widget-drag] > .w-trunc, [data-w-settings] > header > :first-child) {
-  position: relative;
-  flex: 0 1 auto;
-  margin: 0 auto;
+  /* Centred on the whole bar, kept clear of the buttons at both ends. */
+  position: absolute;
+  left: 50%;
+  top: calc(50% - 3px);
+  transform: translate(-50%, -50%);
+  width: max-content;
+  max-width: calc(100% - 2 * var(--w-title-clear, 130px));
+  flex: none;
+  margin: 0;
   min-width: var(--w-crest-min);
   padding: 0 6px;
   overflow: visible;
   text-align: center;
-  color: #2a1a0b;
-  text-shadow: 0 1px 0 rgba(255, 236, 190, 0.35);
+  color: #f3e2bd;
+  text-shadow: 0 1px 2px #000, 0 0 4px #000, 0 0 8px rgba(0, 0, 0, 0.7);
   user-select: none;
+  /* The crest spans over the bar's buttons: clicks go through it to them, and to the bar for dragging. */
+  pointer-events: none;
+}
+/* The window's icon in the crest's dome. */
+:root[data-woke-art] [data-w-panel]:not([data-pin]) > [data-widget-drag] > .w-trunc > .w-crest-icon {
+  display: block !important;
+  position: absolute;
+  left: 50%;
+  top: calc(50% + var(--w-crest-icon-y));
+  transform: translate(-50%, -50%);
+  width: 22px;
+  height: 22px;
+  filter: drop-shadow(0 0 2px #000);
 }
 :root[data-woke-art] [data-w-settings] > header > :first-child {
   left: auto;
   right: auto;
 }
-/* The title takes the free space's centre; the buttons beside it no longer push. */
+/* The title is centred on its own; the buttons keep to the bar's right end. */
 :root[data-woke-art] :is([data-w-panel] > [data-widget-drag] > .w-trunc + span, [data-w-settings] > header > :last-child) {
-  margin-left: 0;
+  margin-left: auto;
 }
 :root[data-woke-art] :is([data-w-panel]:not([data-pin]) > [data-widget-drag] > .w-trunc, [data-w-settings] > header > :first-child)::before {
   content: "";
@@ -205,6 +224,9 @@
 :root[data-woke-art] [data-w-settings][data-w-settings] > header > :first-child:first-child {
   font-size: calc(var(--w-fs-xl) * 1.2);
   letter-spacing: 0.06em;
+  /* The Options plaque is bright gold: dark lettering, as in the game. */
+  color: #2a1a0b;
+  text-shadow: 0 1px 0 rgba(255, 236, 190, 0.35);
 }
 :root[data-woke-art] [data-w-settings][data-w-settings] > header > :first-child:first-child::before {
   left: 50%;
@@ -215,4 +237,46 @@
   padding: 0;
   transform: translate(-50%, var(--w-opt-crest-y));
   background: var(--art-options-crest) center / contain no-repeat;
+}
+
+/* A title bar that also carries controls (Map mods' highlight buttons, Essence scan's
+   Start): no banner, the title at the left end, shortened with "…" when the bar is
+   narrow, so the controls never run into the title or the close coin's socket. */
+:root[data-woke-art] [data-w-panel] > [data-widget-drag]:has(> span :is(.w-btn, select, .w-seg, .w-plates, input)) {
+  padding-left: 52px;
+  padding-right: 62px;
+  gap: 4px;
+}
+:root[data-woke-art] [data-w-panel] > [data-widget-drag]:has(> span :is(.w-btn, select, .w-seg, .w-plates, input)) > .w-trunc {
+  position: static;
+  transform: none;
+  flex: 0 1 auto;
+  min-width: 4.5em;
+  max-width: none;
+  margin: 0 8px 0 0;
+  padding: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: left;
+}
+:root[data-woke-art] [data-w-panel] > [data-widget-drag]:has(> span :is(.w-btn, select, .w-seg, .w-plates, input)) > .w-trunc::before,
+:root[data-woke-art] [data-w-panel] > [data-widget-drag]:has(> span :is(.w-btn, select, .w-seg, .w-plates, input)) > .w-trunc > .w-crest-icon {
+  display: none !important;
+}
+/* Buttons in a title bar: the compact plate, so the bar's controls fit beside the title and short of the close socket. */
+:root[data-woke-art] [data-w-panel] > [data-widget-drag] .w-btn:not(.w-btn--ghost) {
+  min-height: 24px;
+  border-width: 0 10px;
+  border-image-width: 0 10px;
+  padding: 0 1px;
+  font-size: var(--w-fs-sm);
+}
+:root[data-woke-art] [data-w-panel] > [data-widget-drag] :is(.w-seg, .w-plates) > button {
+  min-height: 24px;
+  border-width: 0 10px;
+  border-image-width: 0 10px;
+}
+/* The button groups keep their size; only the title gives way. */
+:root[data-woke-art] [data-w-panel] > [data-widget-drag] > span:not(.w-trunc) {
+  flex: none;
 }

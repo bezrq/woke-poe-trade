@@ -127,13 +127,28 @@ onTipHide(cancel)
 
 function leave () {
   hovered = null
+  clearInterval(watch)
   hideTip()
+}
+
+// A row hidden without being removed (its panel closed, the overlay toggled) never
+// fires mouseleave, which left its tooltip on screen. While one is up, check the row
+// is still shown and under the pointer.
+let watch: ReturnType<typeof setInterval> | undefined
+function watchHovered () {
+  clearInterval(watch)
+  watch = setInterval(() => {
+    const el = hovered
+    if (!el) { clearInterval(watch); return }
+    if (!el.isConnected || el.offsetParent === null || !el.matches(':hover')) leave()
+  }, 400)
 }
 
 function enter (e: Event) {
   const el = e.currentTarget as HTMLElement
   const ref = refs.get(el)
   hovered = el
+  watchHovered()
   if (!ref?.name) { hideTip(); return }
   cancel()
   const mine = seq

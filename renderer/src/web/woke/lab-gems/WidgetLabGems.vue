@@ -25,7 +25,7 @@
           <WField v-model="config.minProfit" type="number" suffix="c profit min" style="width: 9rem;" />
         </template>
         <WChip clickable :active="!!config.skipThin" title="Leave thin-market gems out: they count as 0 and leave the lists. Most gems are thin, so EVs become a floor."
-          @click="config.skipThin = !config.skipThin"><i class="fas fa-exclamation-circle" /> Skip thin</WChip>
+          @click="config.skipThin = !config.skipThin"><i class="fas fa-exclamation-circle" /> Skip low confidence</WChip>
         <WChip clickable :active="!!config.runner" title="Count the lab entry, the gem you insert and your run time"
           @click="config.runner = !config.runner"><i class="fas fa-running" /> Runner</WChip>
         <WInfo class="ml-auto" :text="`EV: the best of 3 offered gems. Unpriced${config.skipThin ? ' and thin' : ''} gems count as 0. poe.ninja prices, uncorrupted only.`" />

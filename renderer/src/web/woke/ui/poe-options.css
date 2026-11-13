@@ -95,30 +95,31 @@
 }
 :root[data-woke-art] [data-w-settings] input[type="range"]:disabled::-webkit-slider-thumb { filter: grayscale(1) brightness(0.6); }
 
-/* ---------- Buttons: the game's stone plate with a bronze rim ---------- */
+/* ---------- Buttons: the game's menu buttons, lit on hover and dark when held ---------- */
 :root[data-woke-art] .w-btn:not(.w-btn--ghost) {
-  color: #e7d3a8;
+  min-height: 30px;
+  color: var(--w-btn-fg);
   background: none;
-  border: 6px solid transparent;
-  border-image: var(--art-button) 12 fill / 6px stretch;
+  border: solid transparent;
+  border-width: 0 var(--w-btn-end);
+  border-image: var(--art-button) 0 var(--w-btn-slice) fill / 0 var(--w-btn-end) stretch;
   border-radius: 0;
   box-shadow: none;
-  padding: 0 10px;
-  text-shadow: 0 1px 2px #000;
+  padding: 0 4px;
+  font-family: FontinSmallCaps, FrizQuadrataC, Georgia, serif;
+  letter-spacing: 0.04em;
+  text-shadow: 0 1px 2px #000, 0 0 6px rgba(0, 0, 0, 0.8);
 }
-:root[data-woke-art] .w-btn:not(.w-btn--ghost, :disabled):hover { color: #fff; filter: brightness(1.2); }
-:root[data-woke-art] .w-btn.w-btn--primary:not(.w-btn--ghost) { color: #f6dfbd; filter: sepia(0.4) saturate(1.6); }
-:root[data-woke-art] .w-btn.w-btn--primary:not(.w-btn--ghost, :disabled):hover { color: #fff; filter: sepia(0.4) saturate(1.6) brightness(1.35); }
-/* A quiet button is copper text; on hover it lights and takes the plate. */
+:root[data-woke-art] .w-btn:not(.w-btn--ghost, :disabled):hover { color: #fff3d6; border-image-source: var(--art-button-hover); }
+:root[data-woke-art] .w-btn:not(.w-btn--ghost, :disabled):active { border-image-source: var(--art-button-pressed); }
+:root[data-woke-art] .w-btn:disabled { filter: grayscale(0.6) brightness(0.7); }
+/* A quiet button is text that lights up: no plate, so its width never changes (icon buttons in rows). */
 :root[data-woke-art] .w-btn.w-btn--ghost {
   color: #ab774c;
-  border: 6px solid transparent;
   border-radius: 0;
-  padding: 0 10px;
 }
 :root[data-woke-art] .w-btn.w-btn--ghost:not(:disabled):hover {
   color: #fff3d6;
   background: none;
-  border-image: var(--art-button) 12 fill / 6px stretch;
-  filter: brightness(1.1);
+  text-shadow: 0 0 6px rgba(240, 190, 110, 0.7);
 }

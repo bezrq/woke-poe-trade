@@ -68,11 +68,18 @@ function readArt (): UiArt {
 
 export const uiArt = shallowRef<UiArt>(readArt())
 
+/** Whether windows wear the game's art: the game look with PoE 1's or PoE 2's art picked. */
+export function artShown (): boolean {
+  return lookOf(wokeTheme.value) === 'game' && uiArt.value !== 'simple'
+}
+/** The space the art keeps clear inside each side of a window (--w-frame-inset in poe-frame.css). */
+export const ART_FRAME_INSET = 11
+
 function apply () {
   const root = document.documentElement
   root.dataset.wokeTheme = wokeTheme.value
   root.dataset.wokeLook = lookOf(wokeTheme.value)
-  if (lookOf(wokeTheme.value) === 'game' && uiArt.value !== 'simple') root.dataset.wokeArt = uiArt.value
+  if (artShown()) root.dataset.wokeArt = uiArt.value
   else delete root.dataset.wokeArt
 }
 
