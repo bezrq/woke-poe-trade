@@ -2,13 +2,6 @@
   <div ref="winEl" class="w-corners" :class="$style.window" :style="sizeStyle" data-w-settings @keydown="onKeydown">
     <header :class="$style.bar">
       <span :class="$style.title">Settings</span>
-      <label :class="[$style.search, { [$style.searchOn]: query }]">
-        <i class="fas fa-search" />
-        <input ref="searchEl" v-model="query" placeholder="Find a setting, module or key" spellcheck="false"
-          @keydown.enter.prevent="results[0] && go(results[0])" @keydown.esc.stop.prevent="query = ''">
-        <w-kbd v-if="!query" keys="Ctrl + F" />
-        <button v-else type="button" class="w-icon-btn" title="Clear" @click="query = ''"><i class="fas fa-times" /></button>
-      </label>
       <span :class="$style.barEnd">
         <span class="w-dim" :class="$style.small">Changes save as you go</span>
         <w-kbd keys="Esc" />
@@ -18,6 +11,13 @@
 
     <div :class="$style.body">
       <nav class="w-rule-r" :class="$style.nav">
+        <label class="w-search" :class="[$style.search, { [$style.searchOn]: query }]">
+          <i class="fas fa-search" />
+          <input ref="searchEl" v-model="query" placeholder="Search settings" spellcheck="false"
+            @keydown.enter.prevent="results[0] && go(results[0])" @keydown.esc.stop.prevent="query = ''">
+          <w-kbd v-if="!query" keys="Ctrl + F" />
+          <button v-else type="button" class="w-icon-btn" title="Clear" @click="query = ''"><i class="fas fa-times" /></button>
+        </label>
         <template v-for="g in nav" :key="g.id">
           <div class="w-category" :class="$style.group">{{ g.label }}</div>
           <template v-for="item in g.items" :key="item.page.id">
@@ -433,6 +433,7 @@ function startResize (e: PointerEvent, edge: 'e' | 's' | 'se') {
   background: var(--w-panel-2); border: 1px solid var(--w-line); border-radius: var(--w-r-sm); color: var(--w-dim);
 }
 .search:focus-within, .searchOn { border-color: var(--w-accent); }
+.nav > .search { flex: none; max-width: none; margin: var(--w-s2) var(--w-s2) var(--w-s1); }
 .search input { flex: 1; min-width: 0; background: transparent; color: var(--w-fg); font-size: var(--w-fs-md); outline: none; }
 .search input::placeholder { color: var(--w-faint); }
 .barEnd { margin-left: auto; display: flex; align-items: center; gap: var(--w-s2); }

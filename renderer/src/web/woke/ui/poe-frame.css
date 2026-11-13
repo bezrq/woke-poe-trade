@@ -118,3 +118,12 @@
   color: #b39a73;
 }
 :root[data-woke-art] [data-w-panel] > [data-widget-drag] .w-icon-btn:not(:has(> .fa-times)):hover { color: #f0dcb2; }
+/* Settings' title centred over its bar, as a panel's is; the close coin keeps the right end. */
+:root[data-woke-art] [data-w-settings] > header > :first-child {
+  position: absolute;
+  left: 80px;
+  right: 80px;
+  text-align: center;
+  pointer-events: none;
+}
+:root[data-woke-art] [data-w-settings] > header > :last-child { position: relative; z-index: 1; }
