@@ -45,7 +45,16 @@ export function poeLook (filter: StatFilter): PoeLook {
   if (icon) return { kind: 'explicit', label: `${icon[1]} modifier`, icon: icon[0] }
   switch (tag) {
     case FilterTag.Property: return { kind: 'local', label: 'Property' }
-    case FilterTag.Pseudo: return { kind: 'pseudo', label: 'Pseudo total' }
+    // Only a total several mods add up to gets the total's colour (Guy's call);
+    // one mod's total looks like that mod.
+    case FilterTag.Pseudo: {
+      if (filter.sources.length > 1) return { kind: 'pseudo', label: 'Pseudo total' }
+      const type = filter.sources[0]?.modifier.info.type
+      if (type === ModifierType.Fractured) return { kind: 'fractured', label: 'Total, from a fractured modifier' }
+      if (type === ModifierType.Crafted) return { kind: 'crafted', label: 'Total, from a crafted modifier' }
+      if (type === ModifierType.Implicit) return { kind: 'implicit', label: 'Total, from an implicit' }
+      return { kind: 'explicit', label: 'Total, from one modifier' }
+    }
     case FilterTag.Enchant: return { kind: 'enchant', label: 'Enchant' }
     case FilterTag.Crafted: return { kind: 'crafted', label: 'Crafted modifier' }
     case FilterTag.Fractured: return { kind: 'fractured', label: 'Fractured modifier' }
@@ -111,4 +120,15 @@ export function fracturedIds (filter: StatFilter): string[] | undefined {
   if (filter.tag !== FilterTag.Explicit || filter.not || filter.sources.length !== 1) return undefined
   const src = filter.sources.find(s => s.modifier.info.type === ModifierType.Fractured)
   return src?.stat.stat.trade.ids[ModifierType.Fractured]
+}
+
+const ELDRITCH_TIERS = ['Lesser', 'Greater', 'Grand', 'Exceptional', 'Exquisite', 'Perfect']
+
+/** An eldritch implicit's altar and tier (1 Lesser … 6 Perfect), when the row is one. */
+export function eldritchMark (filter: StatFilter): { source: 'exarch' | 'eater', rank: number, label: string } | null {
+  if (filter.sources.length !== 1) return null
+  const { eldritch, rank } = filter.sources[0].modifier.info
+  if (!eldritch || rank == null) return null
+  const altar = eldritch === 'exarch' ? 'Searing Exarch' : 'Eater of Worlds'
+  return { source: eldritch, rank, label: `${ELDRITCH_TIERS[rank - 1] ?? `Rank ${rank}`} ${altar} implicit` }
 }

@@ -2,13 +2,6 @@
   <div ref="winEl" class="w-corners" :class="$style.window" :style="sizeStyle" data-w-settings @keydown="onKeydown">
     <header :class="$style.bar">
       <span :class="$style.title">Settings</span>
-      <label :class="[$style.search, { [$style.searchOn]: query }]">
-        <i class="fas fa-search" />
-        <input ref="searchEl" v-model="query" placeholder="Find a setting, module or key" spellcheck="false"
-          @keydown.enter.prevent="results[0] && go(results[0])" @keydown.esc.stop.prevent="query = ''">
-        <w-kbd v-if="!query" keys="Ctrl + F" />
-        <button v-else type="button" class="w-icon-btn" title="Clear" @click="query = ''"><i class="fas fa-times" /></button>
-      </label>
       <span :class="$style.barEnd">
         <span class="w-dim" :class="$style.small">Changes save as you go</span>
         <w-kbd keys="Esc" />
@@ -17,18 +10,23 @@
     </header>
 
     <div :class="$style.body">
-      <nav :class="$style.nav">
+      <nav class="w-rule-r" :class="$style.nav">
+        <label class="w-search" :class="[$style.search, { [$style.searchOn]: query }]">
+          <i class="fas fa-search" />
+          <input ref="searchEl" v-model="query" placeholder="Search settings" spellcheck="false"
+            @keydown.enter.prevent="results[0] && go(results[0])" @keydown.esc.stop.prevent="query = ''">
+          <w-kbd v-if="!query" keys="Ctrl + F" />
+          <button v-else type="button" class="w-icon-btn" title="Clear" @click="query = ''"><i class="fas fa-times" /></button>
+        </label>
         <template v-for="g in nav" :key="g.id">
-          <div :class="$style.group">{{ g.label }}</div>
+          <div class="w-category" :class="$style.group">{{ g.label }}</div>
           <template v-for="item in g.items" :key="item.page.id">
             <div v-if="item.sub" :class="$style.sub">{{ item.sub }}</div>
-            <div :class="[$style.item, { [$style.active]: item.page.id === pageId, [$style.dim]: item.off }]"
+            <div :class="[$style.item, { [$style.active]: item.page.id === pageId, [$style.dim]: item.off }]" :title="item.off ? `${item.page.name} is off. Its page turns it on.` : undefined"
               role="button" tabindex="0" @click="open(item.page.id)" @keydown.enter="open(item.page.id)">
               <span :class="$style.icon"><w-icon :src="item.page.icon.art ?? undefined" :item="item.page.icon.item" :fallback="item.page.icon.fa" size="md" /></span>
               <span :class="$style.name">{{ item.page.name }}</span>
               <span v-if="item.page.id === 'hotkeys' && hotkeyProblems" :class="$style.badge" :title="`${hotkeyProblems} hotkey problem${hotkeyProblems > 1 ? 's' : ''}`">{{ hotkeyProblems }}</span>
-              <w-toggle v-if="item.switchIds.length && clone" :model-value="!item.off" :title="item.off ? 'Turn on' : 'Turn off'"
-                @click.stop @update:model-value="setPageOn(item.switchIds, $event)" />
             </div>
           </template>
         </template>
@@ -47,8 +45,8 @@
           </div>
         </template>
         <template v-else-if="clone && current">
-          <div :class="$style.head">
-            <span :class="$style.headIcon"><w-icon :src="current.icon.art ?? undefined" :item="current.icon.item" :fallback="current.icon.fa" size="lg" /></span>
+          <div class="w-rule-b" :class="$style.head">
+            <span class="w-socket" :class="$style.headIcon"><w-icon :src="current.icon.art ?? undefined" :item="current.icon.item" :fallback="current.icon.fa" size="lg" /></span>
             <div>
               <div :class="$style.pageTitle">{{ current.name }}</div>
               <div class="w-dim" :class="$style.small">{{ current.description }}</div>
@@ -73,7 +71,7 @@ import { AppConfig, updateConfig, saveConfig, saveConfigQuietly, beforeQuitSave,
 import type { Config } from '@/web/Config'
 import type { Widget, WidgetManager } from '@/web/overlay/interfaces'
 import { Host } from '@/web/background/IPC'
-import { WIcon, WKbd, WToggle, provideHotkeyContext, toast } from '../ui'
+import { WIcon, WKbd, provideHotkeyContext, toast } from '../ui'
 import { ensureWokeConfig, isModuleOn, setModuleOn } from '../modules'
 import { useHotkeyHealth } from '../switchboard/hotkey-health'
 import { allowsCopies } from '../tab-bar/tools'
@@ -243,12 +241,6 @@ const nav = computed(() => GROUPS.map(g => {
   return { ...g, items }
 }))
 
-function setPageOn (ids: string[], on: boolean) {
-  if (!clone.value) return
-  const c = ensureWokeConfig(clone.value)
-  for (const id of ids) setModuleOn(c, id, on)
-}
-
 function open (id: string) {
   query.value = ''
   if (id.startsWith('widget:') || PAGE_BY_ID.has(id)) {
@@ -398,7 +390,8 @@ try {
 } catch {}
 const sizeStyle = computed(() => ({
   width: `min(${size.value.w}rem, calc(100vw - 2rem))`,
-  height: `min(${size.value.h}rem, calc(100vh - 2rem))`
+  // 8rem, not 2rem: the game art's Options crest rises above the title bar and must stay on screen.
+  height: `min(${size.value.h}rem, calc(100vh - 8rem))`
 }))
 
 function startResize (e: PointerEvent, edge: 'e' | 's' | 'se') {
@@ -424,7 +417,8 @@ function startResize (e: PointerEvent, edge: 'e' | 's' | 'se') {
 <style module>
 .window {
   position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
-  display: flex; flex-direction: column; overflow: hidden;
+  /* clip, not hidden: focusing a visually hidden radio (the app icons) must not scroll the window itself. */
+  display: flex; flex-direction: column; overflow: clip;
   background: var(--w-panel-solid); color: var(--w-fg);
   border: 1px solid var(--w-line-strong); border-radius: var(--w-r-md); box-shadow: var(--w-shadow);
   font-family: var(--w-body); font-size: var(--w-fs-md);
@@ -441,6 +435,7 @@ function startResize (e: PointerEvent, edge: 'e' | 's' | 'se') {
   background: var(--w-panel-2); border: 1px solid var(--w-line); border-radius: var(--w-r-sm); color: var(--w-dim);
 }
 .search:focus-within, .searchOn { border-color: var(--w-accent); }
+.nav > .search { flex: none; max-width: none; margin: var(--w-s2) var(--w-s2) var(--w-s1); }
 .search input { flex: 1; min-width: 0; background: transparent; color: var(--w-fg); font-size: var(--w-fs-md); outline: none; }
 .search input::placeholder { color: var(--w-faint); }
 .barEnd { margin-left: auto; display: flex; align-items: center; gap: var(--w-s2); }
@@ -477,15 +472,38 @@ function startResize (e: PointerEvent, edge: 'e' | 's' | 'se') {
 :global([data-woke-look="game"]) .group {
   font-family: var(--w-label); font-size: var(--w-fs-md); font-weight: 400; text-transform: none; letter-spacing: 0.04em; color: var(--w-gold);
 }
-:global([data-woke-look="game"]) .nav { border-right-color: var(--w-well-line); }
-:global([data-woke-look="game"]) .active { color: var(--w-gold-hi); background: var(--w-pressed); box-shadow: inset 0 1px 3px #000, inset 2px 0 0 var(--w-frame-lit); }
-:global([data-woke-look="game"]) .pageTitle { font-family: var(--w-label); color: var(--w-gold-hi); }
+:global([data-woke-look="game"]) .nav { gap: 0; padding: var(--w-s1) 0 var(--w-s3); background: none; }
+/* Group heads are the Options window's category bars (poe-content.css). */
+:global([data-woke-look="game"]) .group { margin: var(--w-s3) var(--w-s2) var(--w-s1); font-size: var(--w-fs-lg); }
+:global([data-woke-look="game"]) .sub { padding: var(--w-s3) var(--w-s4) 2px; font-family: var(--w-label); font-size: var(--w-fs-sm); color: #6f5a43; }
+/* Pages read like the Options window's labels: copper Fontin, the open one
+   lit cream with the game's copper arrow before it. */
+:global([data-woke-look="game"]) .item {
+  position: relative; margin: 0; padding: 0 var(--w-s3) 0 28px; min-height: calc(30px * var(--w-text-scale, 1)); gap: 8px;
+  border: 0; border-radius: 0; font-family: Fontin, FrizQuadrataC, Georgia, serif; font-size: var(--w-fs-lg); color: #ab774c;
+}
+:global([data-woke-look="game"]) .item:hover { background: none; color: #e7d3a8; }
+:global([data-woke-look="game"]) .item .icon { width: 22px; height: 22px; }
+:global([data-woke-look="game"]) .active, :global([data-woke-look="game"]) .active:hover { color: #fff3d6; background: none; box-shadow: none; }
+:global([data-woke-look="game"]) .active::before {
+  content: ""; position: absolute; left: 6px; top: 50%; width: 18px; height: 13px; margin-top: -6px;
+  background: var(--art-marker) center / contain no-repeat;
+}
+:global(:root[data-woke-look="game"]:not([data-woke-art])) .active::before {
+  content: "▸"; background: none; width: auto; height: auto; margin-top: -0.65em; left: 10px; color: var(--w-gold); font-size: var(--w-fs-md);
+}
+/* A module that's off: its icon goes dark, like a skill you can't use. */
+:global([data-woke-look="game"]) .dim .icon :is(img, i) { filter: grayscale(1) brightness(0.5); }
+:global([data-woke-look="game"]) .dim .name { color: #5e4c39; }
+:global([data-woke-look="game"]) .pageTitle { font-family: var(--w-label); font-size: calc(var(--w-fs-xl) * 1.15); color: #e3c48d; }
+:global([data-woke-look="game"]) .head { padding-bottom: var(--w-s3); }
+:global([data-woke-look="game"]) .headIcon { width: 40px; height: 40px; }
 .quit {
   margin-top: var(--w-s4); padding: var(--w-s1) var(--w-s2); text-align: left; color: var(--w-faint); font-size: var(--w-fs-sm);
   border-radius: var(--w-r-sm);
 }
 .quit:hover { color: var(--w-down); }
-.main { flex: 1; min-width: 0; overflow-y: auto; padding: var(--w-s4) var(--w-s5) var(--w-s6); display: flex; flex-direction: column; gap: var(--w-s4); }
+.main { position: relative; flex: 1; min-width: 0; overflow-y: auto; padding: var(--w-s4) var(--w-s5) var(--w-s6); display: flex; flex-direction: column; gap: var(--w-s4); }
 .head { display: flex; align-items: center; gap: var(--w-s3); }
 .headIcon { width: var(--w-icon-lg); height: var(--w-icon-lg); display: grid; place-items: center; flex: none; }
 .pageTitle { font-family: var(--w-head); font-size: var(--w-fs-xl); color: var(--w-fg); line-height: 1.2; }

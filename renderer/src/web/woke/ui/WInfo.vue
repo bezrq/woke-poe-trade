@@ -1,5 +1,5 @@
 <template>
-  <span :class="[$style.q, { [$style.on]: open }]" role="img" :aria-label="text" tabindex="0"
+  <span class="w-info" :class="[$style.q, { [$style.on]: open }]" role="img" :aria-label="text" tabindex="0"
     @mouseenter="show" @mouseleave="hide" @focus="onFocus" @blur="hide" title="" @click.stop.prevent @mousedown.stop @dblclick.stop>?</span>
 </template>
 

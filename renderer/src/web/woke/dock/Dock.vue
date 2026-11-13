@@ -1,8 +1,8 @@
 <template>
   <div v-if="groups.length || wm.active.value" :class="[$style.dock, { [$style.vertical]: cfg.vertical }]"
-    :style="{ left: `${cfg.x}%`, top: `${cfg.y}%` }" data-w-panel>
+    :style="{ left: `${cfg.x}%`, top: `${cfg.y}%` }" data-w-panel data-dock-row>
     <!-- Always takes its space, so the icons don't move when the overlay opens. -->
-    <span :class="$style.grip" :style="{ visibility: wm.active.value ? 'visible' : 'hidden' }" title="Drag to move the icon row. Double-click to stand it on its side. Right-click to bring back dismissed icons."
+    <span :class="$style.grip" data-woke-frame :style="{ visibility: wm.active.value ? 'visible' : 'hidden' }" title="Drag to move the icon row. Double-click to stand it on its side. Right-click to bring back dismissed icons."
       @pointerdown="startDrag" @dblclick="flip" @contextmenu="gripMenu"><i class="fas fa-grip-vertical" /></span>
     <DockIcon v-for="g in groups" :key="g.host.key" :host="g.host" :extras="g.extras" :vertical="cfg.vertical" />
   </div>

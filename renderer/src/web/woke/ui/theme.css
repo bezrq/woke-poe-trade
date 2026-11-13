@@ -18,7 +18,7 @@
   --w-line: rgba(212, 166, 74, 0.16);
   --w-line-soft: rgba(212, 166, 74, 0.07);
   --w-line-strong: rgba(212, 166, 74, 0.38);
-  --w-header-bg: linear-gradient(#211d18, #1a1713);
+  --w-header-bg: #1e1a15;
   --w-blur: none;
   --w-shadow: 0 10px 30px rgba(0, 0, 0, 0.55);
 
@@ -130,7 +130,8 @@
   --w-icon-md: 20px;
   --w-icon-lg: 24px;
 
-  /* The game look's parts (P5, P14), used by controls.css and game-look.css.
+  /* No gradients: every part is a flat colour, and lines are solid.
+   * The game look's parts (P5, P14), used by controls.css and game-look.css.
    * Hybrid and Native carry these values; the plain look (Modern, Classic)
    * resets them to neutral ones below, so a rule using them never shows bronze. */
   --w-frame: #6b5636;              /* bronze frame line */
@@ -139,24 +140,24 @@
   --w-frame-shadow: 0 0 0 1px #000, inset 0 0 0 1px rgba(255, 226, 160, 0.06), 0 10px 30px rgba(0, 0, 0, 0.6);
   --w-gold: #d9c08a;               /* label text on bronze */
   --w-gold-hi: #ffe2a0;            /* lit label text */
-  --w-bevel: linear-gradient(#2b251c, #16130f);
+  --w-bevel: #201b15;
   --w-bevel-shadow: inset 0 1px 0 rgba(255, 226, 160, 0.09);
-  --w-bevel-primary: linear-gradient(#6d4d1f, #3c290f);
+  --w-bevel-primary: #553c18;
   --w-bevel-primary-shadow: inset 0 1px 0 rgba(255, 226, 160, 0.25), 0 0 6px rgba(227, 183, 95, 0.25);
-  --w-pressed: linear-gradient(#120f0b, #1f1912);   /* the active choice, pressed in */
+  --w-pressed: #15110c;   /* the active choice, pressed in */
   --w-pressed-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.9), inset 0 -1px 0 rgba(227, 183, 95, 0.35);
   --w-well: #070605;               /* recessed field ground */
   --w-well-line: #3a3023;
   --w-well-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.9);
   --w-chip-line: #4a3d29;
   --w-chip-ground: #110e0a;
-  --w-chip-on: linear-gradient(#2a2216, #17120c);
-  --w-head-ground: linear-gradient(#2c2419, #15110c);
-  --w-gold-fade: linear-gradient(90deg, transparent, #8a7040 20%, #c7a25a 50%, #8a7040 80%, transparent);
-  --w-row-fade: linear-gradient(90deg, transparent, rgba(138, 112, 64, 0.35) 15%, rgba(138, 112, 64, 0.35) 85%, transparent);
+  --w-chip-on: #221b12;
+  --w-head-ground: #1d1812;
+  --w-gold-fade: #7a6340;
+  --w-row-fade: rgba(138, 112, 64, 0.35);
   --w-bad-line: #8a3a30;           /* a "not" or corrupted choice */
   --w-bad-fg: #ff8a7a;
-  --w-bad-ground: linear-gradient(#2a1410, #170b08);
+  --w-bad-ground: #200f0c;
 }
 
 :root[data-woke-look="plain"] {
@@ -179,8 +180,8 @@
   --w-chip-ground: transparent;
   --w-chip-on: var(--w-accent-soft);
   --w-head-ground: var(--w-header-bg);
-  --w-gold-fade: linear-gradient(var(--w-line), var(--w-line));
-  --w-row-fade: linear-gradient(var(--w-line-soft), var(--w-line-soft));
+  --w-gold-fade: var(--w-line);
+  --w-row-fade: var(--w-line-soft);
   --w-bad-line: color-mix(in srgb, var(--w-down) 55%, transparent);
   --w-bad-fg: var(--w-down);
   --w-bad-ground: color-mix(in srgb, var(--w-down) 14%, transparent);
@@ -199,7 +200,7 @@
   --w-line: #4a3a26;
   --w-line-soft: rgba(138, 106, 58, 0.18);
   --w-line-strong: #8a6a3a;
-  --w-header-bg: linear-gradient(#2b2015, #160f09);
+  --w-header-bg: #20180f;
   --w-shadow: 0 0 0 1px #000, 0 12px 30px rgba(0, 0, 0, 0.7);
   --w-fg: #e3d6bd;
   --w-dim: #a8957a;
@@ -455,3 +456,6 @@ body[data-woke-hidden] [data-w-panel] { display: none !important; }
   --w-pc-window: var(--w-pc-window-base);
   --w-pc-well: var(--w-pc-well-base);
 }
+
+/* A panel's icon set into its title crest; only the game art draws the crest (poe-frame.css). */
+.w-crest-icon { display: none !important; }

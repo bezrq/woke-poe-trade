@@ -1,5 +1,5 @@
 <template>
-  <div ref="el" :class="[$style.toast, 'w-enter']" :style="place" role="status">
+  <div ref="el" data-w-popup :class="[$style.toast, 'w-enter']" :style="place" role="status">
     <span :class="$style.text">{{ toast.text }}</span>
     <button v-if="toast.undo" type="button" :class="$style.undo" @click="undoToast(toast.id)">Undo</button>
     <WKbd v-if="toast.undo" keys="Ctrl + Z" />

@@ -1,5 +1,5 @@
 <template>
-  <div :class="[$style.banner, $style[tone]]" role="status">
+  <div class="w-banner" :class="[$style.banner, $style[tone]]" role="status">
     <i :class="[icon, $style.icon]" />
     <span :class="$style.text"><slot /></span>
     <span v-if="$slots.actions" :class="$style.actions"><slot name="actions" /></span>

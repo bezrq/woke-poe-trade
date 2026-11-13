@@ -354,3 +354,79 @@
 /* Labels in the rest of the window */
 #price-window.w-poe .w-pc-verdict-wait,
 #price-window.w-poe [data-roll-presets] { font-family: var(--w-label); }
+
+/* ---- PoE 1 / PoE 2 art: the header (Guy's pick "one chip style, joined presets") ----
+ * Every item chip is the same dark well; one whose filter is on gets a gold
+ * edge and gold text. Low / Approx / High are one pressed-in strip with the
+ * picked one lit. */
+:root[data-woke-art] #price-window.w-poe :is(.w-poe-chip, .w-poe-nchip) {
+  border-color: #3a2c18;
+  background: #0f0b07;
+  box-shadow: inset 0 1px 2px #000;
+  color: #8f897e;
+}
+:root[data-woke-art] #price-window.w-poe :is(.w-poe-chip, .w-poe-nchip).on {
+  border-color: #c8a25a;
+  background: #0f0b07;
+  color: var(--w-gold-hi);
+}
+:root[data-woke-art] #price-window [data-roll-presets] .w-seg {
+  gap: 0;
+  background: #0f0b07;
+  box-shadow: inset 0 1px 2px #000, 0 0 0 1px #3a2c18;
+}
+:root[data-woke-art] #price-window [data-roll-presets] .w-seg > button {
+  min-height: calc(24px * var(--w-text-scale, 1));
+  padding: 0 12px;
+  border: 0;
+  border-image: none;
+  color: #8f897e;
+}
+:root[data-woke-art] #price-window [data-roll-presets] .w-seg > button + button { border-left: 1px solid #2a2014; }
+:root[data-woke-art] #price-window [data-roll-presets] .w-seg > button:hover { color: #e8dcc0; }
+:root[data-woke-art] #price-window [data-roll-presets] .w-seg > button[aria-pressed="true"] {
+  background: linear-gradient(#e8c470, #a8792a);
+  color: #1a1209;
+}
+
+/* Pseudo / Base item: clicking the item's name already switches between the
+ * category and this base type, so PoE mode doesn't show the extra buttons. */
+#price-window.w-poe [data-trade-presets] { display: none; }
+
+/* Element words in stat lines (Guy's pick "soft shift"): each word moves part
+ * of the way from the line's colour toward its element's. */
+#price-window.w-poe .w-ele { color: color-mix(in srgb, var(--w-ele) 55%, currentColor); }
+.w-ele[data-ele="fire"] { --w-ele: #e05a3a; }
+.w-ele[data-ele="cold"] { --w-ele: #5aa8e8; }
+.w-ele[data-ele="lightning"] { --w-ele: #e8c84a; }
+.w-ele[data-ele="chaos"] { --w-ele: #c060c8; }
+.w-ele[data-ele="physical"] { --w-ele: #c8c0b0; }
+
+/* A ticked line keeps its text centred on the row, like the unticked lines
+ * (Guy's pick "ticked rows stay centred"). The row is three columns: tier,
+ * text, min/max. The side columns share the spare room equally, so the text
+ * sits on the same centre unless it's long enough to need that room.
+ * No checkbox (Guy, 2026-11-13): the frame and boxes show it's ticked, and
+ * clicking the text unticks it. */
+#price-window.w-poe .w-poe-row > div > div:first-child {
+  display: grid;
+  grid-template-columns: minmax(max-content, 1fr) minmax(0, auto) minmax(max-content, 1fr);
+  align-items: start;
+}
+#price-window.w-poe .w-poe-row > div > div:first-child > div:first-child { display: contents; }
+#price-window.w-poe .w-poe-row > div > div:first-child > div:first-child > .w-poe-tier { grid-column: 1; justify-self: start; }
+#price-window.w-poe .w-poe-row .w-pc-check { display: none; }
+#price-window.w-poe .w-poe-row button:has(> .w-poe-row-text) { grid-column: 2; min-width: 0; justify-content: center; text-align: center; }
+#price-window.w-poe .w-poe-row .w-poe-row-text { text-align: center; }
+#price-window.w-poe .w-poe-row > div > div:first-child > div:last-child { grid-column: 3; justify-self: end; }
+
+/* A line with mods behind it opens from its tier (Guy's pick "tier opens it"). */
+#price-window.w-poe .w-poe-tier-open {
+  cursor: pointer;
+  padding: 0;
+  background: none;
+  border: 0;
+  border-bottom: 1px dashed currentColor;
+  color: var(--w-dim);
+}
+#price-window.w-poe .w-poe-tier-open:hover { color: var(--w-gold-hi); }

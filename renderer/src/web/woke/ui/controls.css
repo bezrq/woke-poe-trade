@@ -218,16 +218,35 @@ button.w-chip:hover { color: var(--w-fg); }
 :root[data-woke-look="game"] :is([data-w-panel], .w-surface, [data-w-settings]) :is(.font-mono, .w-mono),
 :root[data-woke-look="game"] :is(.w-input, .w-field).font-mono { font-family: var(--w-mono); }
 
-/* ---------- Switch: a square bronze slot, gold when on ---------- */
+/* ---------- Switch: the game's options checkbox, a recessed square with a gold tick ---------- */
 :root[data-woke-look="game"] .w-toggle-track {
-  border-radius: var(--w-r-sm);
+  width: 16px;
+  height: 16px;
+  border-radius: 1px;
   background: var(--w-well);
   border-color: var(--w-frame);
-  box-shadow: inset 0 1px 3px #000;
+  box-shadow: inset 0 1px 3px #000, 0 0 0 1px #000;
 }
-:root[data-woke-look="game"] .w-toggle-knob { border-radius: 1px; background: var(--w-gold); }
-:root[data-woke-look="game"] .w-toggle.on .w-toggle-track { background: var(--w-bevel-primary); border-color: var(--w-frame-lit); }
-:root[data-woke-look="game"] .w-toggle.on .w-toggle-knob { background: var(--w-gold-hi); }
+:root[data-woke-look="game"] .w-toggle:hover .w-toggle-track { border-color: var(--w-frame-hi); }
+:root[data-woke-look="game"] .w-toggle-knob {
+  top: 1px;
+  left: 4px;
+  width: 5px;
+  height: 9px;
+  border-radius: 0;
+  background: none;
+  border: solid var(--w-gold-hi);
+  border-width: 0 2px 2px 0;
+  opacity: 0;
+  transform: rotate(45deg) scale(0.4);
+}
+:root[data-woke-look="game"] .w-toggle.on .w-toggle-track { background: var(--w-well); border-color: var(--w-frame-lit); }
+:root[data-woke-look="game"] .w-toggle.on .w-toggle-knob {
+  opacity: 1;
+  background: none;
+  transform: rotate(45deg);
+  filter: drop-shadow(0 0 2px var(--w-accent-soft));
+}
 
 /* ---------- Key caps: square, Inter ---------- */
 :root[data-woke-look="game"] .w-kbd {

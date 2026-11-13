@@ -48,7 +48,7 @@ export interface BossPrefs {
 // 'unid' = unidentified trade listings; 'median' is the poe.ninja price.
 export type PriceMode = 'unid' | 'min' | 'median' | 'custom'
 // Where the price on a row came from.
-// 'thin': poe.ninja's row is a thin market and Skip thin counts it as 0.
+// 'thin': poe.ninja's row is a thin market and Skip low confidence counts it as 0.
 export type PriceSource = 'trade' | 'ninja' | 'custom' | 'thin'
 
 // Price found on official trade, for drops poe.ninja can't price properly.
@@ -189,7 +189,7 @@ export function dropPrice (d: BossDrop, prices: Prices, prefs: BossPrefs): DropP
   if (mode === 'custom' && custom != null) return { price: custom, spread, mode, source: 'custom', listings: null }
   if (mode === 'unid' && quote) return { price: quote.chaos, spread, mode, source: 'trade', listings: quote.listings }
   const ninja = spread ? (mode === 'min' ? spread.min : spread.median) : null
-  // Every variant thin, with Skip thin on: counts as 0 like any thin row.
+  // Every variant thin, with Skip low confidence on: counts as 0 like any thin row.
   if (ninja == null && prefs.skipThin && prices.allThin(d.name)) return { price: 0, spread: null, mode, source: 'thin', listings: null }
   return { price: ninja, spread, mode, source: ninja == null ? null : 'ninja', listings: null }
 }

@@ -46,13 +46,9 @@
   box-shadow: var(--w-well-shadow);
 }
 
-/* Rows part with a gold line that fades at both ends, like the tooltip's. */
+/* Rows part with a thin bronze line. */
 :root[data-woke-look="game"] .w-row:not(.w-row--head) {
-  border-bottom-color: transparent;
-  background-image: var(--w-row-fade);
-  background-size: 100% 1px;
-  background-repeat: no-repeat;
-  background-position: 0 100%;
+  border-bottom-color: var(--w-row-fade);
 }
 /* Column heads and group labels: small caps, never under 13px (P19). */
 :root[data-woke-look="game"] :is(.w-row--head, .w-group-label) {
@@ -70,9 +66,9 @@
   box-shadow: var(--w-frame-shadow) !important;
 }
 
-/* A verdict strip (P7) reads as a game heading: a gold wash and a small caps headline. */
+/* A verdict strip (P7) reads as a game heading: a flat gold tint and a small caps headline. */
 :root[data-woke-look="game"] .w-verdict {
-  background: linear-gradient(color-mix(in srgb, var(--w-accent) 12%, transparent), color-mix(in srgb, var(--w-accent) 3%, transparent));
+  background: color-mix(in srgb, var(--w-accent) 8%, transparent);
 }
 :root[data-woke-look="game"] .w-verdict b {
   font-family: var(--w-label);

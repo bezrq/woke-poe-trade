@@ -16,7 +16,7 @@
         <button v-if="floating" data-testid="price-window-dock" title="Back to the side of the screen" @click="dock">
           <i class="fas fa-columns" />
         </button>
-        <ui-popover v-if="stableOrbCost" trigger="click" boundary="#price-window">
+        <ui-popover v-if="stableOrbCost" trigger="click" boundary="#price-window" placement="bottom">
           <template #target>
             <button><i class="fas fa-exchange-alt" /> {{ stableOrbCost }}</button>
           </template>
@@ -109,6 +109,7 @@ import ItemQuickPrice from '@/web/ui/ItemQuickPrice.vue'
 import { PriceCheckWidget, WidgetManager, WidgetSpec } from '../overlay/interfaces'
 import { clampDrag, clearGuides, releaseWebviewsForDrag, snapEdge, snapMove, swallowNextClick } from '@/web/woke/ui/snap'
 import { poeOn } from '@/web/woke/price-insight/window-style'
+import { artShown, ART_FRAME_INSET } from '@/web/woke/ui/theme'
 import '@/web/woke/price-insight/poe-mode.css'
 import { floatingArea, floatingLayout, movedPosition, resizedPosition } from './window-position'
 
@@ -117,6 +118,10 @@ const UNSUPPORTED = 'woke.unsupported'
 
 const DRAG_START_PX = 4
 const WINDOW_REM = 28.75
+// The game art keeps a buffer inside the frame; the window grows by it so the table keeps its room.
+function windowWidth () {
+  return WINDOW_REM * AppConfig().fontSize + (artShown() ? 2 * ART_FRAME_INSET : 0)
+}
 
 export default defineComponent({
   widget: {
@@ -191,7 +196,7 @@ export default defineComponent({
       closeBrowser()
       if (Host.isElectron && !e.focusOverlay) {
         // everything in CSS pixels
-        const width = WINDOW_REM * AppConfig().fontSize
+        const width = windowWidth()
         const screenX = ((e.position.x - window.screenX) > window.innerWidth / 2)
           ? (window.screenX + window.innerWidth) - wm.poePanelWidth.value - width
           : window.screenX + wm.poePanelWidth.value
@@ -268,13 +273,13 @@ export default defineComponent({
     const floating = computed(() => {
       const pos = props.config.wokeWindow
       if (!pos || isBrowserShown.value) return null
-      return floatingLayout(pos, screenSize(), WINDOW_REM * AppConfig().fontSize)
+      return floatingLayout(pos, screenSize(), windowWidth())
     })
     const windowStyle = computed(() => {
-      if (isBrowserShown.value) return { width: `${WINDOW_REM}rem` }
+      if (isBrowserShown.value) return { width: `${windowWidth()}px` }
       const f = floating.value
       return {
-        width: f ? `${f.width}px` : `${WINDOW_REM}rem`,
+        width: `${f ? f.width : windowWidth()}px`,
         height: f?.height ? `${f.height}px` : 'auto',
         maxHeight: '100%',
         alignSelf: 'flex-start'

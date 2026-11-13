@@ -1,5 +1,5 @@
 <template>
-  <div ref="railEl" :class="[$style.rail, { [$style.atEdge]: atEdge && !flat, [$style.onRight]: onRight && !flat, [$style.flat]: flat }]" class="w-surface" :style="railStyle" data-widget-drag
+  <div ref="railEl" :class="[$style.rail, { [$style.atEdge]: atEdge && !flat, [$style.onRight]: onRight && !flat, [$style.flat]: flat }]" class="w-surface" :style="railStyle" data-w-popup data-woke-frame data-widget-drag
     @mousedown="watchRailDrop" @wheel="onRailWheel">
     <!-- The mark gives way to the rail's settings while the mouse is on the rail. -->
     <span :class="$style.top">
@@ -57,116 +57,119 @@
       @contextmenu.prevent="openLayout"><i class="fas fa-grip-lines" /></span>
 
     <Teleport to="body">
-      <div v-if="iconDrag?.active && draggedTab" :class="[$style.ic, $style.ghost]" :style="{ left: `${iconDrag.x}px`, top: `${iconDrag.y}px` }">
-        <tool-icon :art="draggedTab.art" :icon="draggedTab.icon" />
-      </div>
-
-      <div v-if="tip && !popup && !iconDrag?.active" :class="[$style.tip, { [$style.tipLeft]: tip.left, [$style.tipFlat]: flat }]" :style="{ left: `${tip.x}px`, top: `${tip.y}px` }">
-        {{ tip.text }}<span v-if="tip.open" :class="$style.tipOpen">open</span>
-      </div>
-
-      <div v-if="popup" :class="$style.backdrop" @mousedown="closePopup" @contextmenu.prevent="closePopup" />
-
-      <!-- Tools: every tool, one box for search and item paste -->
-      <div v-if="popup?.kind === 'launcher'" ref="popupEl" :class="[$style.menu, $style.launcher]" :style="popupStyle" @contextmenu.prevent>
-        <label :class="$style.find">
-          <i class="fas fa-search" />
-          <textarea ref="searchInput" v-model="query" :class="$style.findInput" rows="1" spellcheck="false"
-            aria-label="Find a tool or an item, or paste an item" placeholder="Find a tool or an item, or paste an item (Ctrl V)"
-            @paste="onBoxPaste" @keydown.enter.prevent="openFirstMatch" />
-        </label>
-        <div v-if="priceGroups.length" :class="$style.prices">
-          <div :class="$style.head">Prices</div>
-          <button v-for="g in priceGroups" :key="groupKey(g)" :class="$style.priceRow" @click="openSearch(g.name)">
-            <WIcon :src="ninjaIcon(g.type, g.name) ?? undefined" size="md" />
-            <span :class="[$style.rowName, rarityClass(g.type)]">{{ g.name }}</span>
-            <span :class="$style.priceSub">{{ g.variants.length > 1 ? `${g.variants.length} prices` : g.variants[0].variant }}</span>
-            <span :class="$style.priceNow"><template v-if="g.low !== g.high"><WPrice :chaos="g.low" :divine="divine" /> to </template><WPrice :chaos="g.high" :divine="divine" /></span>
-          </button>
+      <!-- Outside the rail, so marked again to wear the app colours. -->
+      <div data-woke-frame :class="$style.contents">
+        <div v-if="iconDrag?.active && draggedTab" :class="[$style.ic, $style.ghost]" :style="{ left: `${iconDrag.x}px`, top: `${iconDrag.y}px` }">
+          <tool-icon :art="draggedTab.art" :icon="draggedTab.icon" />
         </div>
-        <div :class="$style.cols">
-          <div v-for="(col, i) in launcherColumns" :key="i">
-            <template v-for="group in col" :key="group.label">
-              <div v-if="group.items.length" :class="$style.head">{{ group.label }}</div>
-              <div v-for="entry in group.items" :key="entry.key"
-                :class="[$style.row, { [$style.rowOpen]: entry.tab?.open, [$style.rowOff]: entry.state === 'off' }]"
-                @contextmenu.prevent.stop="entry.tab && openMenu(entry.tab, $event)">
-                <button :class="$style.rowMain" :aria-label="entry.name" :title="ENTRY_HINT[entry.state]" @click="activate(entry)">
-                  <tool-icon :art="entry.art" :icon="entry.icon" />
-                  <span :class="$style.rowName">{{ entry.name }}</span>
-                  <span v-if="entry.tab && entry.tab.copies > 1" :class="$style.dup" title="Several copies of this tool">×{{ entry.tab.copies }}</span>
-                </button>
-                <span v-if="entry.state === 'off'" :class="$style.rowTag">Off</span>
-                <span v-else-if="entry.state === 'dock'" :class="$style.rowTag">Icon row</span>
-                <button v-else-if="entry.tab" :class="[$style.pin, { [$style.pinOn]: entry.tab.pinned }]"
-                  :aria-label="entry.tab.pinned ? `Unpin ${entry.name} from the rail` : `Pin ${entry.name} to the rail`"
-                  :title="entry.tab.pinned ? 'Unpin from the rail' : 'Pin to the rail'" @click="togglePin(entry.tab)">
-                  <i class="fas fa-thumbtack" />
-                </button>
-              </div>
-            </template>
+
+        <div v-if="tip && !popup && !iconDrag?.active" data-w-popup :class="[$style.tip, { [$style.tipLeft]: tip.left, [$style.tipFlat]: flat }]" :style="{ left: `${tip.x}px`, top: `${tip.y}px` }">
+          {{ tip.text }}<span v-if="tip.open" :class="$style.tipOpen">open</span>
+        </div>
+
+        <div v-if="popup" :class="$style.backdrop" @mousedown="closePopup" @contextmenu.prevent="closePopup" />
+
+        <!-- Tools: every tool, one box for search and item paste -->
+        <div v-if="popup?.kind === 'launcher'" ref="popupEl" data-w-popup :class="[$style.menu, $style.launcher]" :style="popupStyle" @contextmenu.prevent>
+          <label :class="$style.find">
+            <i class="fas fa-search" />
+            <textarea ref="searchInput" v-model="query" :class="$style.findInput" rows="1" spellcheck="false"
+              aria-label="Find a tool or an item, or paste an item" placeholder="Find a tool or an item, or paste an item (Ctrl V)"
+              @paste="onBoxPaste" @keydown.enter.prevent="openFirstMatch" />
+          </label>
+          <div v-if="priceGroups.length" :class="$style.prices">
+            <div :class="$style.head">Prices</div>
+            <button v-for="g in priceGroups" :key="groupKey(g)" :class="$style.priceRow" @click="openSearch(g.name)">
+              <WIcon :src="ninjaIcon(g.type, g.name) ?? undefined" size="md" />
+              <span :class="[$style.rowName, rarityClass(g.type)]">{{ g.name }}</span>
+              <span :class="$style.priceSub">{{ g.variants.length > 1 ? `${g.variants.length} prices` : g.variants[0].variant }}</span>
+              <span :class="$style.priceNow"><template v-if="g.low !== g.high"><WPrice :chaos="g.low" :divine="divine" /> to </template><WPrice :chaos="g.high" :divine="divine" /></span>
+            </button>
           </div>
+          <div :class="$style.cols">
+            <div v-for="(col, i) in launcherColumns" :key="i">
+              <template v-for="group in col" :key="group.label">
+                <div v-if="group.items.length" :class="$style.head">{{ group.label }}</div>
+                <div v-for="entry in group.items" :key="entry.key"
+                  :class="[$style.row, { [$style.rowOpen]: entry.tab?.open, [$style.rowOff]: entry.state === 'off' }]"
+                  @contextmenu.prevent.stop="entry.tab && openMenu(entry.tab, $event)">
+                  <button :class="$style.rowMain" :aria-label="entry.name" :title="ENTRY_HINT[entry.state]" @click="activate(entry)">
+                    <tool-icon :art="entry.art" :icon="entry.icon" />
+                    <span :class="$style.rowName">{{ entry.name }}</span>
+                    <span v-if="entry.tab && entry.tab.copies > 1" :class="$style.dup" title="Several copies of this tool">×{{ entry.tab.copies }}</span>
+                  </button>
+                  <span v-if="entry.state === 'off'" :class="$style.rowTag">Off</span>
+                  <span v-else-if="entry.state === 'dock'" :class="$style.rowTag">Icon row</span>
+                  <button v-else-if="entry.tab" :class="[$style.pin, { [$style.pinOn]: entry.tab.pinned }]"
+                    :aria-label="entry.tab.pinned ? `Unpin ${entry.name} from the rail` : `Pin ${entry.name} to the rail`"
+                    :title="entry.tab.pinned ? 'Unpin from the rail' : 'Pin to the rail'" @click="togglePin(entry.tab)">
+                    <i class="fas fa-thumbtack" />
+                  </button>
+                </div>
+              </template>
+            </div>
+          </div>
+          <div v-if="!launcherHasMatch && !priceGroups.length" :class="$style.none">Nothing matches "{{ launcherQuery }}"</div>
         </div>
-        <div v-if="!launcherHasMatch && !priceGroups.length" :class="$style.none">Nothing matches "{{ launcherQuery }}"</div>
-      </div>
 
-      <!-- the rail's own layout and size -->
-      <div v-if="popup?.kind === 'layout'" ref="popupEl" :class="[$style.menu, $style.layoutMenu]" :style="popupStyle" data-rail-layout @contextmenu.prevent>
-        <div :class="$style.chipHead">Theme</div>
-        <div :class="$style.chips" data-rail-theme>
-          <button v-for="t in WOKE_THEMES" :key="t.id" :class="[$style.chip, { [$style.chipOn]: wokeTheme === t.id }]" :title="`${t.label}: ${t.hint}`" @click="wokeTheme = t.id">{{ t.short }}</button>
-        </div>
-        <div :class="$style.chipHead">Layout</div>
-        <div :class="$style.chips">
-          <button :class="[$style.chip, { [$style.chipOn]: !flat }]" @click="setFlat(false)">Vertical</button>
-          <button :class="[$style.chip, { [$style.chipOn]: flat }]" @click="setFlat(true)">Horizontal</button>
-        </div>
-        <div :class="$style.chipHead">Size</div>
-        <div :class="$style.chips">
-          <button v-for="s in RAIL_SIZES" :key="s" :class="[$style.chip, { [$style.chipOn]: (config.railSize ?? RAIL_DEFAULT_SIZE) === s }]" @click="setSize(s)">{{ s.toUpperCase() }}</button>
-        </div>
-        <hr :class="$style.rule">
-        <button :class="$style.item" @click="resetRail(); closePopup()"><i class="fas fa-undo" />Reset position and size</button>
-        <div :class="$style.hint">Ctrl + scroll on the rail changes size. Drag icons to reorder.</div>
-      </div>
-
-      <!-- right-click menu -->
-      <div v-if="popup?.kind === 'menu' && menuTab" ref="popupEl" :class="$style.menu" :style="popupStyle" @contextmenu.prevent>
-        <div :class="$style.head">{{ menuTab.name }}</div>
-        <button :class="$style.item" @click="toggle(menuTab); closePopup()">
-          <i class="fas" :class="menuTab.open ? 'fa-eye-slash' : 'fa-eye'" />{{ menuTab.open ? 'Close window' : 'Open' }}
-        </button>
-        <button :class="$style.item" @click="togglePin(menuTab); closePopup()">
-          <i class="fas fa-thumbtack" />{{ menuTab.pinned ? 'Unpin from the rail' : 'Pin to the rail' }}
-        </button>
-        <template v-if="menuTab.pinned && !menuTab.iconOnly">
-          <button :class="$style.item" :disabled="!canShift(menuTab, -1)" @click="shift(menuTab, -1)"><i class="fas" :class="flat ? 'fa-chevron-left' : 'fa-chevron-up'" />{{ flat ? 'Move left' : 'Move up' }}</button>
-          <button :class="$style.item" :disabled="!canShift(menuTab, 1)" @click="shift(menuTab, 1)"><i class="fas" :class="flat ? 'fa-chevron-right' : 'fa-chevron-down'" />{{ flat ? 'Move right' : 'Move down' }}</button>
-        </template>
-        <hr :class="$style.rule">
-        <button v-if="menuTab.hasAnchor" :class="$style.item" @click="resetPosition(menuTab); closePopup()">
-          <i class="fas fa-undo" />Reset window position
-        </button>
-        <div v-if="renaming" :class="$style.renameRow">
-          <input ref="renameInput" v-model="renameValue" :class="$style.input" placeholder="Tool name"
-            @keydown.enter="commitRename" @keydown.esc="closePopup">
-          <button :class="$style.iconBtn" title="Save" @click="commitRename"><i class="fas fa-check" /></button>
-        </div>
-        <button v-else-if="!menuTab.iconOnly" :class="$style.item" @click="startRename"><i class="fas fa-pen" />Rename</button>
-        <button v-if="canAddCopy(menuTab.wmType)" :class="$style.item" @click="placeNew(menuTab.wmType); closePopup()">
-          <i class="fas fa-plus" />Add another copy
-        </button>
-        <template v-if="menuTab.removable">
+        <!-- the rail's own layout and size -->
+        <div v-if="popup?.kind === 'layout'" ref="popupEl" data-w-popup :class="[$style.menu, $style.layoutMenu]" :style="popupStyle" data-rail-layout @contextmenu.prevent>
+          <div :class="$style.chipHead">Theme</div>
+          <div :class="$style.chips" data-rail-theme>
+            <button v-for="t in WOKE_LOOKS" :key="t.id" :class="[$style.chip, { [$style.chipOn]: isLookPicked(t) }]" :title="`${t.label}: ${t.hint}`" @click="pickLook(t)">{{ t.short }}</button>
+          </div>
+          <div :class="$style.chipHead">Layout</div>
+          <div :class="$style.chips">
+            <button :class="[$style.chip, { [$style.chipOn]: !flat }]" @click="setFlat(false)">Vertical</button>
+            <button :class="[$style.chip, { [$style.chipOn]: flat }]" @click="setFlat(true)">Horizontal</button>
+          </div>
+          <div :class="$style.chipHead">Size</div>
+          <div :class="$style.chips">
+            <button v-for="s in RAIL_SIZES" :key="s" :class="[$style.chip, { [$style.chipOn]: (config.railSize ?? RAIL_DEFAULT_SIZE) === s }]" @click="setSize(s)">{{ s.toUpperCase() }}</button>
+          </div>
           <hr :class="$style.rule">
-          <button v-if="menuTab.copies > 1" :class="[$style.item, $style.danger]" @click="removeCopies(menuTab)">
-            <i class="fas fa-clone" />Remove extra copies ({{ menuTab.copies - 1 }})
-          </button>
-          <button :class="[$style.item, $style.danger]" @click="removeTab(menuTab)">
-            <i class="fas fa-trash" />{{ confirmRemove ? 'Click again to remove' : 'Remove from overlay' }}
-          </button>
-        </template>
-      </div>
+          <button :class="$style.item" @click="resetRail(); closePopup()"><i class="fas fa-undo" />Reset position and size</button>
+          <div :class="$style.hint">Ctrl + scroll on the rail changes size. Drag icons to reorder.</div>
+        </div>
 
+        <!-- right-click menu -->
+        <div v-if="popup?.kind === 'menu' && menuTab" ref="popupEl" data-w-popup :class="$style.menu" :style="popupStyle" @contextmenu.prevent>
+          <div :class="$style.head">{{ menuTab.name }}</div>
+          <button :class="$style.item" @click="toggle(menuTab); closePopup()">
+            <i class="fas" :class="menuTab.open ? 'fa-eye-slash' : 'fa-eye'" />{{ menuTab.open ? 'Close window' : 'Open' }}
+          </button>
+          <button :class="$style.item" @click="togglePin(menuTab); closePopup()">
+            <i class="fas fa-thumbtack" />{{ menuTab.pinned ? 'Unpin from the rail' : 'Pin to the rail' }}
+          </button>
+          <template v-if="menuTab.pinned && !menuTab.iconOnly">
+            <button :class="$style.item" :disabled="!canShift(menuTab, -1)" @click="shift(menuTab, -1)"><i class="fas" :class="flat ? 'fa-chevron-left' : 'fa-chevron-up'" />{{ flat ? 'Move left' : 'Move up' }}</button>
+            <button :class="$style.item" :disabled="!canShift(menuTab, 1)" @click="shift(menuTab, 1)"><i class="fas" :class="flat ? 'fa-chevron-right' : 'fa-chevron-down'" />{{ flat ? 'Move right' : 'Move down' }}</button>
+          </template>
+          <hr :class="$style.rule">
+          <button v-if="menuTab.hasAnchor" :class="$style.item" @click="resetPosition(menuTab); closePopup()">
+            <i class="fas fa-undo" />Reset window position
+          </button>
+          <div v-if="renaming" :class="$style.renameRow">
+            <input ref="renameInput" v-model="renameValue" :class="$style.input" placeholder="Tool name"
+              @keydown.enter="commitRename" @keydown.esc="closePopup">
+            <button :class="$style.iconBtn" title="Save" @click="commitRename"><i class="fas fa-check" /></button>
+          </div>
+          <button v-else-if="!menuTab.iconOnly" :class="$style.item" @click="startRename"><i class="fas fa-pen" />Rename</button>
+          <button v-if="canAddCopy(menuTab.wmType)" :class="$style.item" @click="placeNew(menuTab.wmType); closePopup()">
+            <i class="fas fa-plus" />Add another copy
+          </button>
+          <template v-if="menuTab.removable">
+            <hr :class="$style.rule">
+            <button v-if="menuTab.copies > 1" :class="[$style.item, $style.danger]" @click="removeCopies(menuTab)">
+              <i class="fas fa-clone" />Remove extra copies ({{ menuTab.copies - 1 }})
+            </button>
+            <button :class="[$style.item, $style.danger]" @click="removeTab(menuTab)">
+              <i class="fas fa-trash" />{{ confirmRemove ? 'Click again to remove' : 'Remove from overlay' }}
+            </button>
+          </template>
+        </div>
+
+      </div>
     </Teleport>
   </div>
 </template>
@@ -185,7 +188,7 @@ import { useHotkeyHealth } from '../switchboard/hotkey-health'
 import ToolIcon from './ToolIcon.vue'
 import { ICON_TOOL_NAMES, RAIL_DEFAULT_SIZE, RAIL_SIZES, RAIL_ZOOM, movePin, railAnchor, railDropEdge, stepRailSize, artFor, iconFor, allowsCopies, groupByModule, launcherEntries, looksLikeItem, migrateToRail, parseWidgetTitle } from './tools'
 import type { LauncherEntry, LauncherState, RailSize, TabBarConfig } from './tools'
-import { WIcon, WPrice, ninjaIcon, wokeTheme, WOKE_THEMES } from '../ui'
+import { WIcon, WPrice, ninjaIcon, WOKE_LOOKS, isLookPicked, pickLook } from '../ui'
 import { holdPricesForSearch, useSearchSnapshot } from '../market/price-index'
 import { groupKey, rarityClass, searchPrices } from '../search/search'
 import { searchRequest } from '../search/widget'
@@ -748,6 +751,7 @@ onBeforeUnmount(() => document.removeEventListener('paste', onOverlayPaste))
 </script>
 
 <style module>
+.contents { display: contents; }
 .rail {
   display: flex;
   flex-direction: column;
@@ -823,6 +827,19 @@ onBeforeUnmount(() => document.removeEventListener('paste', onOverlayPaste))
 .rail:hover .cfg, .cfg:focus-visible { opacity: 1; pointer-events: auto; }
 .rail:hover .mark { visibility: hidden; }
 .sep { flex: none; width: 22px; height: 1px; margin: 4px 0; background: var(--w-line); }
+/* The game look: each tool sits in a bag slot; an open one glows copper. */
+:global([data-woke-art]) .rail { padding: 3px 1px; gap: 3px; align-items: center; }
+/* Slots are square, the icon centred in each. */
+:global([data-woke-art]) .ic { width: 34px; height: 34px; display: grid; place-items: center; }
+:global([data-woke-art]) .ic { border-radius: 0; background: var(--art-slot) center / 100% 100% no-repeat; color: #a38d6d; }
+:global([data-woke-art]) .ic:hover { background: var(--art-slot) center / 100% 100% no-repeat; color: #e7d3a8; filter: brightness(1.3); }
+:global([data-woke-art]) .ic.open,
+:global([data-woke-art]) .toolsOn { background: var(--art-slot) center / 100% 100% no-repeat; box-shadow: inset 0 0 0 1px #a8834c, inset 0 0 12px rgba(214, 160, 80, 0.45); color: #fff3d6; }
+:global([data-woke-art]) .ic.open::after { display: none; }
+:global([data-woke-art]) .tools { color: #e3c48d; }
+:global([data-woke-art]) .top .ic, :global([data-woke-art]) .cfg { background: none; }
+:global([data-woke-art]) .sep { width: 26px; height: 2px; background: #3d3121; box-shadow: 0 1px 0 #000; }
+:global([data-woke-art]) .flat .sep { width: 2px; height: 26px; }
 .flat .sep { width: 1px; height: 22px; margin: 0 4px; }
 
 .tip {

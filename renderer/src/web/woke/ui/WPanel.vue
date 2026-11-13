@@ -1,10 +1,13 @@
 <template>
   <div ref="root" class="w-surface w-enter" :class="$style.panel" :style="boxStyle" data-w-panel
     @keydown="onKey">
-    <div v-if="title || $slots.title || $slots.actions || icon" :class="$style.head" data-widget-drag
+    <div v-if="title || $slots.title || $slots.actions || icon" ref="head" :class="$style.head" data-widget-drag
       :title="headTip" @dblclick="onHeadDblClick">
       <WIcon v-if="icon" v-bind="iconProps" size="md" :class="$style.icon" />
       <span :class="$style.title" class="w-trunc">
+        <!-- A plain image, not a second WIcon: one per panel adds up (perf budget). -->
+        <img v-if="crest?.src" :src="crest.src" class="w-crest-icon w-game-icon" alt="" aria-hidden="true" draggable="false">
+        <i v-else-if="crest" :class="[crest.fa, 'w-crest-icon']" aria-hidden="true" />
         <slot name="title">{{ title }}</slot>
       </span>
       <span v-if="!minimized && (updated != null || hotkey || $slots.actions)" :class="$style.actions">
@@ -51,7 +54,9 @@ import { snapEdge, clearGuides, releaseWebviewsForDrag } from './snap'
 import { anchorShare, heightCap, resizeAxis, unzoom } from './panel-fit'
 import type { Box, ResizeSide } from './panel-fit'
 import WIcon from './WIcon.vue'
+import { CURRENCY_ICONS, mechanicIcon } from './game-icons'
 import WKbd from './WKbd.vue'
+import { unwatchTitle, watchTitle } from './title-fit'
 import { ago, freshness } from './format'
 
 const props = withDefaults(defineProps<{
@@ -174,6 +179,13 @@ let stopWatchingSize: (() => void) | undefined
 onMounted(() => { if (root.value) stopWatchingSize = cfg?.watchSize?.(root.value) })
 onBeforeUnmount(() => stopWatchingSize?.())
 
+// ---- Title bar in the game art: the crest never runs into the bar's buttons ----
+const head = ref<HTMLElement | null>(null)
+// One shared ResizeObserver and one look watcher for every panel (title-fit.ts),
+// not a pair per panel.
+onMounted(() => { if (head.value) watchTitle(head.value) })
+onBeforeUnmount(() => { if (head.value) unwatchTitle(head.value) })
+
 function uiScale () {
   return parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--w-ui-scale')) || 1
 }
@@ -285,6 +297,15 @@ const iconProps = computed(() => {
   if (i.startsWith('/') || i.startsWith('http')) return { src: i }
   if (i === 'chaos' || i === 'divine' || i === 'exalted' || i === 'wisdom' || i === 'dust') return { currency: i }
   return { mechanic: i }
+})
+
+// The crest's copy of the icon, drawn only by the game art (poe-frame.css).
+const crest = computed(() => {
+  const p = props.icon ? iconProps.value : null
+  if (!p) return null
+  if ('src' in p) return { src: p.src, fa: 'fas fa-circle' }
+  if ('currency' in p) return { src: CURRENCY_ICONS[p.currency!] ?? null, fa: 'fas fa-coins' }
+  return mechanicIcon(p.mechanic!)
 })
 
 const fresh = computed(() => freshness(props.updated, props.freshMin, props.staleMin))

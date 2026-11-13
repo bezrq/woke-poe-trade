@@ -8,7 +8,7 @@
     <template v-for="g in shownGroups" :key="g.label">
       <div class="w-group-label">{{ g.label }}</div>
       <WSkeleton v-if="!items.length" :rows="Math.min(top ?? 4, 4)" />
-      <div v-else-if="g.thinOnly" class="w-faint text-xs" style="padding: 2px var(--w-pad) 6px;">Only thin-market prices here, and Skip thin hides them.</div>
+      <div v-else-if="g.thinOnly" class="w-faint text-xs" style="padding: 2px var(--w-pad) 6px;">Only thin-market prices here, and Skip low confidence hides them.</div>
       <div v-else-if="!g.rows.length" class="w-faint text-xs" style="padding: 2px var(--w-pad) 6px;">poe.ninja has no prices for these.</div>
       <div v-for="(row, i) in g.rows" :key="row.item.name" class="w-row" :class="$style.priceGrid">
         <span v-item-tip="row.item" class="w-trunc flex items-center gap-1">

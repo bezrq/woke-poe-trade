@@ -1,7 +1,7 @@
 <template>
   <div :class="$style.bar">
-    <span class="w-group-label" style="padding: 0">Start from</span>
-    <div :class="$style.seg" role="radiogroup" aria-label="Preset">
+    <span class="w-group-label" :class="$style.label">Start from</span>
+    <div class="w-plates" :class="$style.seg" role="radiogroup" aria-label="Preset">
       <button v-for="p in PRESETS" :key="p.id" type="button" role="radio"
         :aria-checked="active === p.id" :class="{ [$style.on]: active === p.id }"
         @click="pick(p)">{{ p.label }}</button>
@@ -30,6 +30,7 @@ function pick (p: Preset) { applyPreset(props.config, p) }
 
 <style module>
 .bar { display: flex; flex-direction: column; gap: 6px; padding: 10px var(--w-pad); }
+.label { padding: 0; }
 .seg {
   display: inline-flex;
   flex-wrap: wrap;

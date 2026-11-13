@@ -10,6 +10,8 @@ import type { PobItem, PobRarity } from '../pob-builds/widget'
 export type ListingMod = string | {
   description?: string
   domain?: string
+  // The trade stat, "stat.implicit.stat_1880071428".
+  hash?: string
   flags?: { fractured?: boolean, crafted?: boolean }
   // The mods behind this line: usually one, two when they share a stat. Uniques
   // and implicits have no name or tier. Tier is P1, S3, or R2 for a crafted mod.
@@ -38,6 +40,12 @@ export interface ListingItem {
   sockets?: Array<{ group: number, sColour: string }>
   fractured?: boolean
   synthesised?: boolean
+  // Eldritch implicits: from the Searing Exarch's altar, the Eater of Worlds', or both.
+  searing?: boolean
+  tangled?: boolean
+  scourgeMods?: ListingMod[]
+  // Unrevealed: description "Prefix02", one mod named "Veiled" with tier P… or S….
+  veiledMods?: ListingMod[]
   // In a value, the number says how the game colours it: 1 boosted, 4 fire,
   // 5 cold, 6 lightning, 7 chaos.
   properties?: Array<{ name?: string, type?: number, displayMode?: number, values: Array<[string, number]> }>
@@ -75,6 +83,19 @@ export function modDomain (mod: ListingMod): string {
   if (mod.flags?.fractured) return 'fractured'
   if (mod.flags?.crafted) return 'crafted'
   return mod.domain ?? ''
+}
+
+/** A listing's sockets as traders say them, for the listings' Sockets column:
+ *  6L (gold), 6S (blue: six sockets, not all linked), 5L, else the socket count. */
+export function socketSummary (sockets: ListingItem['sockets']): { text: string, tone: 'l6' | 's6' | '' } {
+  const groups = new Map<number, number>()
+  for (const s of sockets ?? []) groups.set(s.group, (groups.get(s.group) ?? 0) + 1)
+  const total = sockets?.length ?? 0
+  const link = Math.max(0, ...groups.values())
+  if (link >= 6) return { text: '6L', tone: 'l6' }
+  if (total >= 6) return { text: '6S', tone: 's6' }
+  if (link === 5) return { text: '5L', tone: '' }
+  return { text: total ? `${total}S` : '', tone: '' }
 }
 
 function socketsText (sockets: ListingItem['sockets']): string {

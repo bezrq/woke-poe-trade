@@ -20,7 +20,7 @@
         </component>
       </span>
     </div>
-    <div v-if="model.split?.length" :class="$style.split" aria-hidden="true">
+    <div v-if="(model.split?.length ?? 0) > 1" :class="$style.split" aria-hidden="true">
       <span v-for="s of model.split" :key="s.key" :style="{ flexGrow: s.share, background: s.color }" />
     </div>
     <div v-if="model.legend?.length" :class="$style.legend">
@@ -37,7 +37,7 @@
 <script setup lang="ts">
 import { computed, useCssModule } from 'vue'
 import type { HeaderCell, HeaderModel } from './stat-header'
-import { notePick } from './stat-header'
+import { notePick, pickFixed } from './stat-header'
 
 const props = defineProps<{ model: HeaderModel }>()
 const $style = useCssModule()
@@ -48,12 +48,13 @@ const cells = computed(() => {
 })
 
 function cellClass (c: HeaderCell) {
-  return { [$style.hit]: Boolean(c.filter), [$style.sel]: c.filter != null && !c.filter.disabled }
+  return { [$style.hit]: Boolean(c.filter), [$style.sel]: c.filter != null && !c.filter.disabled, [$style.ro]: !c.filter, [$style.fixed]: c.fixed }
 }
 
 function cellTitle (c: HeaderCell) {
   const name = c.name ?? c.label
   if (!c.filter) return `${name}: nothing on this item can change it`
+  if (c.fixed && c.filter.disabled) return `${name} is the same on every copy unless a corruption, enchant or quality raised it. Click to search at least yours.`
   const bar = (c.fill == null) ? ' Grey bar: nothing on this item can roll it.' : ' Bar: how close its rolls came to their max.'
   return (c.filter.disabled
     ? `Click to search ${name}. Searches only when you press Search.`
@@ -70,13 +71,17 @@ function onClick (e: MouseEvent) {
   const c = el && cells.value.get(el.dataset.cell!)
   if (!c?.filter) return
   const f = c.filter
-  if (f.disabled) notePick(f)
+  if (f.disabled) {
+    notePick(f)
+    pickFixed(f)
+  }
   f.disabled = !f.disabled
 }
 </script>
 
 <style module>
 .head {
+  user-select: none;
   margin: 0 6px 4px;
   padding: 2px 6px 8px;
   border-bottom: 1px solid var(--w-gold-fade, var(--w-line));
@@ -123,6 +128,9 @@ function onClick (e: MouseEvent) {
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
+.chip.ro { border-color: transparent; opacity: .7; cursor: default; }
+/* Nothing can roll it, so no roll bar either. */
+.ro .track, .fixed .track { visibility: hidden; }
 .track {
   position: relative;
   display: block;
@@ -136,6 +144,20 @@ function onClick (e: MouseEvent) {
 }
 .big .track { height: 4px; }
 .track.off > b { background: var(--w-faint) !important; opacity: .45; }
+/* PoE 1 / PoE 2 art: a sunken track and the stat's colour dyed down, with a lit
+ * top edge, like the tooltip's roll bars. */
+:global(:root[data-woke-art]) .track {
+  height: 4px;
+  background: #120d08;
+  border-radius: 2px;
+  box-shadow: inset 0 1px 2px #000, 0 0 0 1px #3a2c18;
+}
+:global(:root[data-woke-art]) .big .track { height: 5px; }
+:global(:root[data-woke-art]) .track > b {
+  border-radius: 2px;
+  filter: saturate(0.7) brightness(0.85);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
 .split { display: flex; gap: 1px; height: 8px; margin-top: 9px; }
 .split > span { display: block; height: 100%; flex-basis: 0; min-width: 2px; }
 .legend {

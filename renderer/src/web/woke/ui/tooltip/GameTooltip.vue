@@ -25,14 +25,19 @@
         <section v-if="sockets.length" :class="$style.block">
           <div :class="$style.sockets">
             <span :class="$style.label">Sockets:</span>
-            <SocketDots v-for="(g, i) in sockets" :key="i" :colours="g" />
+            <span class="w-num" :class="[$style.links, { [$style.links6]: maxLink >= 6 }]">{{ linkText }}</span>
+            <SocketDots v-for="(g, i) in sockets" :key="i" :colours="g" ring />
           </div>
         </section>
         <section v-if="item.itemLevel" :class="$style.block">
           <div><span :class="$style.label">Item Level: </span><span :class="$style.value">{{ item.itemLevel }}</span></div>
         </section>
-        <section v-if="listing.implicits.length" :class="$style.block">
-          <ListingModGroup :group="{ heading: '', lines: listing.implicits }" />
+        <!-- Enchants above implicits, each in its own block, as in the game. -->
+        <section v-if="enchantLines.length" :class="$style.block">
+          <ListingModGroup :group="{ heading: '', lines: enchantLines }" />
+        </section>
+        <section v-if="implicitLines.length" :class="$style.block">
+          <ListingModGroup :group="{ heading: '', lines: implicitLines }" />
         </section>
         <section v-if="listing.groups.length" :class="$style.block">
           <template v-for="(group, g) in listing.groups" :key="g">
@@ -61,7 +66,8 @@
         <section v-if="sockets.length" :class="$style.block">
           <div :class="$style.sockets">
             <span :class="$style.label">Sockets:</span>
-            <SocketDots v-for="(g, i) in sockets" :key="i" :colours="g" />
+            <span class="w-num" :class="[$style.links, { [$style.links6]: maxLink >= 6 }]">{{ linkText }}</span>
+            <SocketDots v-for="(g, i) in sockets" :key="i" :colours="g" ring />
           </div>
         </section>
         <section v-if="item.itemLevel" :class="$style.block">
@@ -132,7 +138,7 @@
 // Item and gem tooltips in the game's style, beside what's hovered. Sits on
 // the page rather than in the panel, so the panel's edges don't clip it.
 // Mounted once in the overlay.
-import { computed, inject, nextTick, onMounted, onUnmounted, ref, shallowRef, useCssModule, watch } from 'vue'
+import { computed, defineAsyncComponent, inject, nextTick, onMounted, onUnmounted, ref, shallowRef, useCssModule, watch } from 'vue'
 import { usePoeninja } from '@/web/background/Prices'
 import type { WidgetManager } from '@/web/overlay/interfaces'
 import SocketDots from '../../pob-builds/SocketDots.vue'
@@ -141,7 +147,8 @@ import { gemData } from '../../pob-builds/gems'
 import type { GemColour } from '../../pob-builds/gems'
 import type { PobItem } from '../../pob-builds/widget'
 import SwapCard from '../../pob-builds/SwapCard.vue'
-import ListingModGroup from './ListingModGroup.vue'
+// Only a trade listing's tooltip draws mod groups: loaded on first use.
+const ListingModGroup = defineAsyncComponent(() => import('./ListingModGroup.vue'))
 import WDelta from '../WDelta.vue'
 import WPrice from '../WPrice.vue'
 import WSpark from '../WSpark.vue'
@@ -154,6 +161,8 @@ const placed = shallowRef<{ left: number, top: number } | null>(null)
 
 const item = computed<PobItem | null>(() => tip.value?.content.kind === 'item' ? tip.value.content.item : null)
 const listing = computed(() => tip.value?.content.kind === 'item' ? tip.value.content.listing ?? null : null)
+const enchantLines = computed(() => listing.value?.implicits.filter(l => l.kind === 'enchant') ?? [])
+const implicitLines = computed(() => listing.value?.implicits.filter(l => l.kind !== 'enchant') ?? [])
 const gem = computed<GemTip | null>(() => tip.value?.content.kind === 'gem' ? tip.value.content : null)
 const swap = computed<SwapTip | null>(() => tip.value?.content.kind === 'swap' ? tip.value.content : null)
 const passive = computed<PassiveTip | null>(() => tip.value?.content.kind === 'passive' ? tip.value.content : null)
@@ -208,6 +217,14 @@ const itemProps = computed(() => {
 const sockets = computed<GemColour[][]>(() => socketGroups(item.value?.sockets ?? '')
   .map(g => g.filter((c): c is GemColour => ['r', 'g', 'b', 'w'].includes(c)))
   .filter(g => g.length))
+
+// "5L · 6S" before the sockets (Guy's pick "count first, then clusters"); "6L" when all are linked.
+const maxLink = computed(() => Math.max(0, ...sockets.value.map(g => g.length)))
+const linkText = computed(() => {
+  const total = sockets.value.reduce((n, g) => n + g.length, 0)
+  if (maxLink.value >= 2 && maxLink.value === total) return `${total}L`
+  return maxLink.value >= 2 ? `${maxLink.value}L · ${total}S` : `${total}S`
+})
 
 const ATTRIBUTE: Record<GemColour, string> = { r: 'Strength', g: 'Dexterity', b: 'Intelligence', w: 'Colourless' }
 const gemRole = computed(() => {
@@ -392,6 +409,10 @@ onUnmounted(() => {
 .corrupted { color: var(--w-down); }
 .note { color: var(--w-dim); font-family: var(--w-body); font-size: var(--w-fs-sm); white-space: pre-line; }
 .sockets { display: flex; align-items: center; justify-content: center; gap: 8px; }
+/* Unlinked groups stand further apart. */
+:global(:root[data-woke-art]) .sockets { gap: 14px; }
+.links { padding: 0 6px; color: #e8dcc0; font-weight: 600; font-size: var(--w-fs-sm); line-height: 1.5; border: 1px solid #3a2c18; background: #0f0b07; }
+.links6 { color: #1a1209; background: linear-gradient(#e8c470, #a8792a); border-color: #7a5518; }
 
 /* A listing's headings and tags need the room. */
 .wide { max-width: 46rem; --tip-range: #d9c48f; }

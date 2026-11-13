@@ -67,6 +67,8 @@ async function browse () {
 .field:focus { outline: none; border-color: var(--w-accent); }
 .field::placeholder { color: var(--w-faint); font-family: var(--w-body); }
 .chip { flex: none; font-size: var(--w-fs-xs); border-radius: var(--w-r-pill); padding: 0 8px; line-height: calc(18px * var(--w-text-scale, 1)); border: 1px solid currentColor; white-space: nowrap; }
+/* The game look: a quiet note beside the field, not a boxed tag next to the buttons. */
+:global([data-woke-look="game"]) .chip { border: 0; padding: 0 2px; font-style: italic; font-size: var(--w-fs-sm); opacity: 0.85; }
 .ok { color: var(--w-up); }
 .bad { color: var(--w-down); }
 .auto { color: var(--w-dim); }
