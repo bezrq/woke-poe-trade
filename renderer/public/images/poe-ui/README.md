@@ -24,6 +24,8 @@ Cut from the game's files (Steam install, `Bundles2`), version 3.29:
 | marker.png | ListSelectionMarker | Copper arrow at the open entry of a list |
 | rule-v.png, rule-h.png | LoadingScreenBorderLeft/Top, scaled to 12px | Bronze bar between parts of a window |
 | scroll-track.png, scroll-thumb.png | ScrollbarTrack, ScrollbarThumbTop/Middle/Bottom | Scrollbars, 14px wide |
+| frame-thin.png | Border2 TopLeft/Top/TopRight/Left/Right/BottomLeft/Bottom/BottomRight | Thin double bronze frame for pop-ups, cards, menus and the icon rail, 9-slice |
+| tab.png, tab-on.png | InventoryTabUnSelected/Selected | Tabs, 9-slice |
 
 How: LibBundle3 (github.com/aianlinb/LibGGPK3) reads `Bundles2/_.index.bin`;
 `Art/UIImages1.txt` (UTF-16) lists each sprite's sheet and rectangle; the

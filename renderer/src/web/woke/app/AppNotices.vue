@@ -1,17 +1,17 @@
 <template>
   <div v-if="show" :class="$style.stack">
-    <div v-if="updateReady" :class="$style.pill" role="status">
+    <div v-if="updateReady" data-w-popup :class="$style.pill" role="status">
       <i class="fas fa-arrow-circle-up w-accent" />
       <span>Update {{ updateReady }} ready, installs when you quit</span>
       <w-button size="sm" @click="restartNow">Restart now</w-button>
       <button type="button" class="w-icon-btn" title="Hide" aria-label="Hide" @click="hiddenUpdate = updateReady"><i class="fas fa-times" /></button>
     </div>
-    <div v-if="configNotice" :class="$style.pill" role="alert">
+    <div v-if="configNotice" data-w-popup :class="$style.pill" role="alert">
       <i class="fas fa-exclamation-circle w-down" />
       <span>{{ configNotice }}</span>
       <w-button size="sm" variant="ghost" @click="hiddenConfigNotice = true">Dismiss</w-button>
     </div>
-    <div v-if="crash" :class="$style.pill" role="alert">
+    <div v-if="crash" data-w-popup :class="$style.pill" role="alert">
       <i class="fas fa-exclamation-circle w-down" />
       <span>{{ crash.count > 1 ? `The app ran into ${crash.count} problems last time` : 'The app closed unexpectedly last time' }}</span>
       <w-button size="sm" variant="primary" title="Opens a pre-filled GitHub issue you can read and edit before sending" @click="report">Report…</w-button>

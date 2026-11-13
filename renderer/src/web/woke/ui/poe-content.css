@@ -12,12 +12,12 @@
 }
 
 /* ---------- Floor: the bag panel's stone, laid behind everything ---------- */
-:root[data-woke-look="game"] :is([data-w-panel], [data-w-settings]) {
+:root[data-woke-look="game"] :is([data-w-panel], [data-w-settings], [data-w-window]) {
   background-image: var(--w-stone);
   background-position: -37px -23px;
 }
 /* Text is cut into it: a dark lip under every line. */
-:root[data-woke-look="game"] :is([data-w-panel], [data-w-settings]) {
+:root[data-woke-look="game"] :is([data-w-panel], [data-w-settings], [data-w-window]) {
   text-shadow: 0 1px 1px #000, 0 0 3px rgba(0, 0, 0, 0.8);
 }
 
@@ -74,13 +74,13 @@
 }
 
 /* ---------- Segmented choices: a row of the game's button plates, the picked one lit ---------- */
-:root[data-woke-look="game"] .w-seg {
+:root[data-woke-look="game"] :is(.w-seg, .w-plates) {
   gap: 2px;
   border: 0;
   box-shadow: none;
   overflow: visible;
 }
-:root[data-woke-look="game"] .w-seg > button {
+:root[data-woke-look="game"] :is(.w-seg, .w-plates) > button {
   background: none;
   border: 5px solid transparent;
   border-image: url("/images/poe-ui/button.png") 12 fill / 5px stretch;
@@ -89,9 +89,9 @@
   color: #a38d6d;
   filter: brightness(0.75);
 }
-:root[data-woke-look="game"] .w-seg > button + button { border-left: 5px solid transparent; }
-:root[data-woke-look="game"] .w-seg > button:hover { color: #e7d3a8; filter: none; }
-:root[data-woke-look="game"] .w-seg > button[aria-pressed="true"] {
+:root[data-woke-look="game"] :is(.w-seg, .w-plates) > button + button { border-left: 5px solid transparent; }
+:root[data-woke-look="game"] :is(.w-seg, .w-plates) > button:hover { color: #e7d3a8; filter: none; }
+:root[data-woke-look="game"] :is(.w-seg, .w-plates) > button:is([aria-pressed="true"], [aria-checked="true"]) {
   background: none;
   box-shadow: none;
   color: #fff3d6;
@@ -99,11 +99,11 @@
 }
 
 /* ---------- Scrollbars ---------- */
-:root[data-woke-look="game"] :is([data-w-panel], [data-w-settings]) ::-webkit-scrollbar { width: 14px; height: 14px; }
-:root[data-woke-look="game"] :is([data-w-panel], [data-w-settings]) ::-webkit-scrollbar-track {
+:root[data-woke-look="game"] :is([data-w-panel], [data-w-settings], [data-w-window]) ::-webkit-scrollbar { width: 14px; height: 14px; }
+:root[data-woke-look="game"] :is([data-w-panel], [data-w-settings], [data-w-window]) ::-webkit-scrollbar-track {
   background: url("/images/poe-ui/scroll-track.png") center top / 14px auto repeat-y;
 }
-:root[data-woke-look="game"] :is([data-w-panel], [data-w-settings]) ::-webkit-scrollbar-thumb {
+:root[data-woke-look="game"] :is([data-w-panel], [data-w-settings], [data-w-window]) ::-webkit-scrollbar-thumb {
   background: none;
   border: 0 solid transparent;
   border-width: 8px 0;
@@ -111,12 +111,12 @@
   border-radius: 0;
   min-height: 24px;
 }
-:root[data-woke-look="game"] :is([data-w-panel], [data-w-settings]) ::-webkit-scrollbar-thumb:hover { filter: brightness(1.25); }
-:root[data-woke-look="game"] :is([data-w-panel], [data-w-settings]) ::-webkit-scrollbar-corner { background: transparent; }
+:root[data-woke-look="game"] :is([data-w-panel], [data-w-settings], [data-w-window]) ::-webkit-scrollbar-thumb:hover { filter: brightness(1.25); }
+:root[data-woke-look="game"] :is([data-w-panel], [data-w-settings], [data-w-window]) ::-webkit-scrollbar-corner { background: transparent; }
 
 /* ---------- Panels' own parts ---------- */
 /* Group heads inside a tool panel become category bars. */
-:root[data-woke-look="game"] [data-w-panel] .w-group-label {
+:root[data-woke-look="game"] :is([data-w-panel], [data-w-settings], [data-w-window]) .w-group-label {
   display: flex;
   align-items: center;
   min-height: 26px;
@@ -135,4 +135,55 @@
   border: 1px solid var(--w-slot-edge);
   border-radius: 0;
   box-shadow: inset 0 0 0 1px #000, inset 0 2px 6px #000, inset 0 0 16px rgba(0, 0, 0, 0.9), 0 1px 0 rgba(255, 235, 200, 0.06);
+}
+
+/* ---------- Pop-ups, cards, menus, tooltips, toasts and the icon rail ---------- */
+/* The stone floor inside the game's thin double bronze frame, shaded at the edges. */
+:root[data-woke-look="game"] [data-w-popup] {
+  background-color: rgba(9, 8, 7, 0.97);
+  background-image: var(--w-stone);
+  background-position: -11px -7px;
+  border: 6px solid transparent !important;
+  border-image: url("/images/poe-ui/frame-thin.png") 11 / 6px stretch !important;
+  border-radius: 0 !important;
+  box-shadow: 0 0 0 1px #000, 0 8px 24px rgba(0, 0, 0, 0.8), inset 0 0 16px 3px rgba(0, 0, 0, 0.75) !important;
+  text-shadow: 0 1px 1px #000, 0 0 3px rgba(0, 0, 0, 0.8);
+}
+
+/* ---------- Tabs: the inventory's stone tabs, the open one lit ---------- */
+:root[data-woke-look="game"] .w-tabs > [role="tab"] {
+  background: none;
+  border: 0 solid transparent;
+  border-width: 0 14px;
+  border-image: url("/images/poe-ui/tab.png") 0 28 fill / 0 14px stretch;
+  border-radius: 0;
+  box-shadow: none;
+  padding-left: 2px;
+  padding-right: 2px;
+  color: #a38d6d;
+}
+:root[data-woke-look="game"] .w-tabs > [role="tab"]:hover { color: #e7d3a8; }
+:root[data-woke-look="game"] .w-tabs > [role="tab"][aria-selected="true"] {
+  border-image-source: url("/images/poe-ui/tab-on.png");
+  color: #fff3d6;
+  filter: brightness(1.25);
+}
+/* A tab with a colour of its own keeps it as a line along its top. */
+:root[data-woke-look="game"] .w-tabs > [role="tab"][style*="--tab-colour"] { box-shadow: inset 0 3px 0 -1px var(--tab-colour); }
+/* The icon rail keeps its narrow width: a thinner run of the same frame. */
+:root[data-woke-look="game"] [data-w-popup][data-widget-drag] {
+  border-width: 4px !important;
+  border-image-width: 4px !important;
+}
+
+/* The icon row you play with is no window: no frame, no floor. */
+:root[data-woke-look="game"] [data-w-panel][data-dock-row] {
+  background-image: none;
+  box-shadow: none !important;
+}
+:root[data-woke-look="game"] [data-w-panel][data-dock-row]::after { display: none; }
+
+/* Tags and chips are cut square, as the game's are. */
+:root[data-woke-look="game"] :is([data-w-panel], [data-w-settings], [data-w-window], [data-w-popup]) {
+  --w-r-pill: 0;
 }

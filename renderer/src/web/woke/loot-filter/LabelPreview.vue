@@ -62,6 +62,8 @@ const labelStyle = computed(() => {
   font-family: FontinSmallCaps, FrizQuadrataC, Georgia, serif;
   white-space: nowrap;
   line-height: 1.35;
+  /* Drawn as the filter draws it in game: no shadow from the window around it. */
+  text-shadow: none;
 }
 .hidden {
   opacity: 0.45;

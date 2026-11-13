@@ -1,6 +1,6 @@
 <template>
-  <div :class="$style.wizard">
-    <nav :class="$style.rail" aria-label="Setup steps">
+  <div :class="$style.wizard" data-w-window>
+    <nav class="w-rule-r" :class="$style.rail" aria-label="Setup steps">
       <div :class="$style.brand">
         <img :src="appIconUrl(config.appIcon)" alt="" :class="$style.logo">
         <div>
@@ -396,6 +396,39 @@ async function finish () {
 .chip { padding: 3px 12px; border-radius: var(--w-r-pill); border: 1px solid var(--w-line); color: var(--w-dim); }
 .chip:hover { color: var(--w-fg); }
 .chipOn { border-color: var(--w-accent); color: var(--w-accent); background: var(--w-accent-soft); }
+/* The game look: the steps read like the Options window's list, the open one lit
+   with the game's copper arrow; lists and notes sit in bag slots; choices are
+   the game's button plates. Floor, rule and slots are poe-content.css's. */
+:global([data-woke-look="game"]) .wizard { background-color: #0a0807; }
+:global([data-woke-look="game"]) .rail { background: none; }
+:global([data-woke-look="game"]) .name { font-family: var(--w-label); color: #e3c48d; }
+:global([data-woke-look="game"]) .stepBtn {
+  position: relative; padding: 6px 10px 6px 30px; border-radius: 0;
+  font-family: Fontin, FrizQuadrataC, Georgia, serif; font-size: var(--w-fs-lg); color: #ab774c;
+}
+:global([data-woke-look="game"]) .stepBtn:hover { color: #e7d3a8; }
+:global([data-woke-look="game"]) .on { background: none; color: #fff3d6; }
+:global([data-woke-look="game"]) .on::before {
+  content: ""; position: absolute; left: 6px; top: 50%; width: 18px; height: 13px; margin-top: -6px;
+  background: url("/images/poe-ui/marker.png") center / contain no-repeat;
+}
+:global([data-woke-look="game"]) .done { color: #8f9a6a; }
+:global([data-woke-look="game"]) .h { font-family: var(--w-label); font-size: calc(var(--w-fs-xl) * 1.2); color: #e3c48d; }
+:global([data-woke-look="game"]) .h2 { font-family: var(--w-label); color: #e3c48d; }
+:global([data-woke-look="game"]) :is(.list, .note) {
+  border: 1px solid var(--w-slot-edge); border-radius: 0; background: rgba(0, 0, 0, 0.55);
+  box-shadow: inset 0 0 0 1px #000, inset 0 2px 6px #000, inset 0 0 16px rgba(0, 0, 0, 0.9), 0 1px 0 rgba(255, 235, 200, 0.06);
+}
+:global([data-woke-look="game"]) .optOn { background: none; box-shadow: inset 0 0 0 1px #a8834c, inset 0 0 14px rgba(168, 131, 76, 0.35); }
+:global([data-woke-look="game"]) :is(.opt, .toggle) { border-top-color: rgba(61, 49, 33, 0.6); }
+:global([data-woke-look="game"]) .chip {
+  border: 5px solid transparent; border-image: url("/images/poe-ui/button.png") 12 fill / 5px stretch; border-radius: 0;
+  padding: 0 10px; color: #a38d6d; filter: brightness(0.8);
+}
+:global([data-woke-look="game"]) .chip:hover { color: #e7d3a8; filter: none; }
+:global([data-woke-look="game"]) .chipOn { background: none; color: #fff3d6; filter: sepia(0.4) saturate(1.6) brightness(1.1); }
+:global([data-woke-look="game"]) .rec { color: #e3c48d; }
+:global([data-woke-look="game"]) .foot { background: none; border-top: 0; box-shadow: 0 -6px 10px -6px #000; position: relative; }
 .keys { display: grid; grid-template-columns: max-content 1fr; gap: 8px 14px; align-items: center; }
 .foot {
   display: flex;

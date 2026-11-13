@@ -1,6 +1,6 @@
 <template>
   <Teleport to="body">
-    <div v-if="tip" ref="el" :class="$style.card" :style="pos" role="tooltip">
+    <div v-if="tip" ref="el" data-w-popup :class="$style.card" :style="pos" role="tooltip">
       <p v-for="(p, i) in paragraphs" :key="i" :class="{ [$style.more]: i > 0 }">{{ p }}</p>
     </div>
   </Teleport>

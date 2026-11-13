@@ -19,10 +19,10 @@
       <span v-if="host.props.led" :class="[$style.led, $style['led-' + host.props.led]]" />
       <i v-if="offDock" class="fas fa-thumbtack" :class="$style.pinMark" title="Pinned: the card is on screen" />
     </span>
-    <div v-if="menuOpen" ref="menuEl" data-woke-frame :class="[$style.card, placement]">
+    <div v-if="menuOpen" ref="menuEl" data-w-popup data-woke-frame :class="[$style.card, placement]">
       <DockMenu :host="host" :extras="extras" @close="menuOpen = false" />
     </div>
-    <div v-if="cardOpen" ref="cardEl" :class="[$style.card, placement]"
+    <div v-if="cardOpen" ref="cardEl" data-w-popup :class="[$style.card, placement]"
       :style="{ width: host.props.cardWidth ?? '20rem' }">
       <div :class="$style.cardHead">
         <i :class="dockIcon(host.props)" class="w-accent" />

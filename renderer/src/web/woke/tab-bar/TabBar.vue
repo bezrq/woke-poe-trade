@@ -1,5 +1,5 @@
 <template>
-  <div ref="railEl" :class="[$style.rail, { [$style.atEdge]: atEdge && !flat, [$style.onRight]: onRight && !flat, [$style.flat]: flat }]" class="w-surface" :style="railStyle" data-woke-frame data-widget-drag
+  <div ref="railEl" :class="[$style.rail, { [$style.atEdge]: atEdge && !flat, [$style.onRight]: onRight && !flat, [$style.flat]: flat }]" class="w-surface" :style="railStyle" data-w-popup data-woke-frame data-widget-drag
     @mousedown="watchRailDrop" @wheel="onRailWheel">
     <!-- The mark gives way to the rail's settings while the mouse is on the rail. -->
     <span :class="$style.top">
@@ -63,14 +63,14 @@
           <tool-icon :art="draggedTab.art" :icon="draggedTab.icon" />
         </div>
 
-        <div v-if="tip && !popup && !iconDrag?.active" :class="[$style.tip, { [$style.tipLeft]: tip.left, [$style.tipFlat]: flat }]" :style="{ left: `${tip.x}px`, top: `${tip.y}px` }">
+        <div v-if="tip && !popup && !iconDrag?.active" data-w-popup :class="[$style.tip, { [$style.tipLeft]: tip.left, [$style.tipFlat]: flat }]" :style="{ left: `${tip.x}px`, top: `${tip.y}px` }">
           {{ tip.text }}<span v-if="tip.open" :class="$style.tipOpen">open</span>
         </div>
 
         <div v-if="popup" :class="$style.backdrop" @mousedown="closePopup" @contextmenu.prevent="closePopup" />
 
         <!-- Tools: every tool, one box for search and item paste -->
-        <div v-if="popup?.kind === 'launcher'" ref="popupEl" :class="[$style.menu, $style.launcher]" :style="popupStyle" @contextmenu.prevent>
+        <div v-if="popup?.kind === 'launcher'" ref="popupEl" data-w-popup :class="[$style.menu, $style.launcher]" :style="popupStyle" @contextmenu.prevent>
           <label :class="$style.find">
             <i class="fas fa-search" />
             <textarea ref="searchInput" v-model="query" :class="$style.findInput" rows="1" spellcheck="false"
@@ -113,7 +113,7 @@
         </div>
 
         <!-- the rail's own layout and size -->
-        <div v-if="popup?.kind === 'layout'" ref="popupEl" :class="[$style.menu, $style.layoutMenu]" :style="popupStyle" data-rail-layout @contextmenu.prevent>
+        <div v-if="popup?.kind === 'layout'" ref="popupEl" data-w-popup :class="[$style.menu, $style.layoutMenu]" :style="popupStyle" data-rail-layout @contextmenu.prevent>
           <div :class="$style.chipHead">Theme</div>
           <div :class="$style.chips" data-rail-theme>
             <button v-for="t in WOKE_THEMES" :key="t.id" :class="[$style.chip, { [$style.chipOn]: wokeTheme === t.id }]" :title="`${t.label}: ${t.hint}`" @click="wokeTheme = t.id">{{ t.short }}</button>
@@ -133,7 +133,7 @@
         </div>
 
         <!-- right-click menu -->
-        <div v-if="popup?.kind === 'menu' && menuTab" ref="popupEl" :class="$style.menu" :style="popupStyle" @contextmenu.prevent>
+        <div v-if="popup?.kind === 'menu' && menuTab" ref="popupEl" data-w-popup :class="$style.menu" :style="popupStyle" @contextmenu.prevent>
           <div :class="$style.head">{{ menuTab.name }}</div>
           <button :class="$style.item" @click="toggle(menuTab); closePopup()">
             <i class="fas" :class="menuTab.open ? 'fa-eye-slash' : 'fa-eye'" />{{ menuTab.open ? 'Close window' : 'Open' }}
@@ -827,6 +827,17 @@ onBeforeUnmount(() => document.removeEventListener('paste', onOverlayPaste))
 .rail:hover .cfg, .cfg:focus-visible { opacity: 1; pointer-events: auto; }
 .rail:hover .mark { visibility: hidden; }
 .sep { flex: none; width: 22px; height: 1px; margin: 4px 0; background: var(--w-line); }
+/* The game look: each tool sits in a bag slot; an open one glows copper. */
+:global([data-woke-look="game"]) .rail { padding: 1px; gap: 2px; }
+:global([data-woke-look="game"]) .ic { border-radius: 0; background: url("/images/poe-ui/slot.png") center / 100% 100% no-repeat; color: #a38d6d; }
+:global([data-woke-look="game"]) .ic:hover { background: url("/images/poe-ui/slot.png") center / 100% 100% no-repeat; color: #e7d3a8; filter: brightness(1.3); }
+:global([data-woke-look="game"]) .ic.open,
+:global([data-woke-look="game"]) .toolsOn { background: url("/images/poe-ui/slot.png") center / 100% 100% no-repeat; box-shadow: inset 0 0 0 1px #a8834c, inset 0 0 12px rgba(214, 160, 80, 0.45); color: #fff3d6; }
+:global([data-woke-look="game"]) .ic.open::after { display: none; }
+:global([data-woke-look="game"]) .tools { color: #e3c48d; }
+:global([data-woke-look="game"]) .top .ic, :global([data-woke-look="game"]) .cfg { background: none; }
+:global([data-woke-look="game"]) .sep { width: 26px; height: 2px; background: #3d3121; box-shadow: 0 1px 0 #000; }
+:global([data-woke-look="game"]) .flat .sep { width: 2px; height: 26px; }
 .flat .sep { width: 1px; height: 22px; margin: 0 4px; }
 
 .tip {
