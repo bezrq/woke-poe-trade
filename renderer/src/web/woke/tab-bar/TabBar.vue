@@ -828,7 +828,9 @@ onBeforeUnmount(() => document.removeEventListener('paste', onOverlayPaste))
 .rail:hover .mark { visibility: hidden; }
 .sep { flex: none; width: 22px; height: 1px; margin: 4px 0; background: var(--w-line); }
 /* The game look: each tool sits in a bag slot; an open one glows copper. */
-:global([data-woke-art]) .rail { padding: 1px; gap: 2px; }
+:global([data-woke-art]) .rail { padding: 3px 1px; gap: 3px; align-items: center; }
+/* Slots are square, the icon centred in each. */
+:global([data-woke-art]) .ic { width: 34px; height: 34px; display: grid; place-items: center; }
 :global([data-woke-art]) .ic { border-radius: 0; background: var(--art-slot) center / 100% 100% no-repeat; color: #a38d6d; }
 :global([data-woke-art]) .ic:hover { background: var(--art-slot) center / 100% 100% no-repeat; color: #e7d3a8; filter: brightness(1.3); }
 :global([data-woke-art]) .ic.open,

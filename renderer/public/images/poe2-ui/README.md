@@ -11,3 +11,11 @@ CategoryLine, Border2*, InventoryTab*, Scrollbar*, and so on; see `../poe-ui/REA
 
 PoE 2's title bar middle has black edge columns; they are trimmed so the tile
 repeats without seams.
+
+Two pieces differ from the PoE 1 recipe:
+- `stone.png`: PoE 2's PanelBottom is a row of gothic arches. The floor is cut
+  exactly three arches wide (one arch repeats every 162px at 4K) so it tiles
+  side to side with no blending; rows join through a short blend. Then the
+  same quiet grey, warm treatment as PoE 1's floor.
+- `frame-thin.png`: PoE 2's Border2 pieces are darker than PoE 1's; brightened
+  to PoE 1's level so pop-up frames read as a border.

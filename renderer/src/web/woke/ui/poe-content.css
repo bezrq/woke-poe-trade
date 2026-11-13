@@ -178,6 +178,10 @@
   border-width: 4px !important;
   border-image-width: 4px !important;
 }
+/* Cards bring their own header marks from the plain game look; the frame replaces them. */
+:root[data-woke-art] [data-w-popup] > :first-child:not(button) {
+  background: none !important;
+}
 
 /* The icon row you play with is no window: no frame, no floor. */
 :root[data-woke-art] [data-w-panel][data-dock-row] {
@@ -204,3 +208,5 @@
 :root[data-woke-art] [data-w-settings] .w-search input { color: #ece3d3; font-size: var(--w-fs-md); }
 :root[data-woke-art] [data-w-settings] .w-search input::placeholder { color: #7d705d; }
 :root[data-woke-art] [data-w-settings] .w-search kbd { opacity: 0.75; }
+/* Stone tabs stand on the floor: no baseline running through the gaps between them. */
+:root[data-woke-art] .w-tabs { border-bottom: 0; }

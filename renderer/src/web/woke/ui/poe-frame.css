@@ -92,11 +92,10 @@
   display: none;
 }
 :root[data-woke-art] [data-w-panel] > [data-widget-drag] > .w-trunc {
-  position: absolute;
-  left: 80px;
-  right: 80px;
+  /* In the flow, centred in what the buttons leave: a narrow window's title can't run into them. */
+  flex: 1;
+  min-width: 0;
   text-align: center;
-  pointer-events: none;
 }
 /* Buttons: one even row at the right, no divider between the panel's own and the window's. */
 :root[data-woke-art] [data-w-panel] > [data-widget-drag] > span:not(.w-trunc) {
@@ -127,3 +126,14 @@
   pointer-events: none;
 }
 :root[data-woke-art] [data-w-settings] > header > :last-child { position: relative; z-index: 1; }
+
+/* ---------- A buffer inside the frame: nothing sits under its solid edge ---------- */
+:root[data-woke-art] { --w-frame-inset: 11px; }
+:root[data-woke-art] :is([data-w-panel], [data-w-settings]):not([data-dock-row]) {
+  padding: 0 var(--w-frame-inset) var(--w-frame-inset);
+}
+/* The title bar still spans the whole top edge. */
+:root[data-woke-art] :is([data-w-panel] > [data-widget-drag], [data-w-settings] > header, [data-w-panel][data-pin] > :first-child) {
+  margin-left: calc(-1 * var(--w-frame-inset));
+  margin-right: calc(-1 * var(--w-frame-inset));
+}
