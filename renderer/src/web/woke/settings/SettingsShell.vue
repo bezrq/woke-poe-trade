@@ -416,7 +416,8 @@ function startResize (e: PointerEvent, edge: 'e' | 's' | 'se') {
 <style module>
 .window {
   position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
-  display: flex; flex-direction: column; overflow: hidden;
+  /* clip, not hidden: focusing a visually hidden radio (the app icons) must not scroll the window itself. */
+  display: flex; flex-direction: column; overflow: clip;
   background: var(--w-panel-solid); color: var(--w-fg);
   border: 1px solid var(--w-line-strong); border-radius: var(--w-r-md); box-shadow: var(--w-shadow);
   font-family: var(--w-body); font-size: var(--w-fs-md);
@@ -470,35 +471,38 @@ function startResize (e: PointerEvent, edge: 'e' | 's' | 'se') {
 :global([data-woke-look="game"]) .group {
   font-family: var(--w-label); font-size: var(--w-fs-md); font-weight: 400; text-transform: none; letter-spacing: 0.04em; color: var(--w-gold);
 }
-:global([data-woke-art]) .nav { gap: 0; padding: var(--w-s1) 0 var(--w-s3); background: none; }
+:global([data-woke-look="game"]) .nav { gap: 0; padding: var(--w-s1) 0 var(--w-s3); background: none; }
 /* Group heads are the Options window's category bars (poe-content.css). */
-:global([data-woke-art]) .group { margin: var(--w-s3) var(--w-s2) var(--w-s1); font-size: var(--w-fs-lg); }
-:global([data-woke-art]) .sub { padding: var(--w-s3) var(--w-s4) 2px; font-family: var(--w-label); font-size: var(--w-fs-sm); color: #6f5a43; }
+:global([data-woke-look="game"]) .group { margin: var(--w-s3) var(--w-s2) var(--w-s1); font-size: var(--w-fs-lg); }
+:global([data-woke-look="game"]) .sub { padding: var(--w-s3) var(--w-s4) 2px; font-family: var(--w-label); font-size: var(--w-fs-sm); color: #6f5a43; }
 /* Pages read like the Options window's labels: copper Fontin, the open one
    lit cream with the game's copper arrow before it. */
-:global([data-woke-art]) .item {
+:global([data-woke-look="game"]) .item {
   position: relative; margin: 0; padding: 0 var(--w-s3) 0 28px; min-height: calc(30px * var(--w-text-scale, 1)); gap: 8px;
   border: 0; border-radius: 0; font-family: Fontin, FrizQuadrataC, Georgia, serif; font-size: var(--w-fs-lg); color: #ab774c;
 }
-:global([data-woke-art]) .item:hover { background: none; color: #e7d3a8; }
-:global([data-woke-art]) .item .icon { width: 22px; height: 22px; }
-:global([data-woke-art]) .active, :global([data-woke-art]) .active:hover { color: #fff3d6; background: none; box-shadow: none; }
-:global([data-woke-art]) .active::before {
+:global([data-woke-look="game"]) .item:hover { background: none; color: #e7d3a8; }
+:global([data-woke-look="game"]) .item .icon { width: 22px; height: 22px; }
+:global([data-woke-look="game"]) .active, :global([data-woke-look="game"]) .active:hover { color: #fff3d6; background: none; box-shadow: none; }
+:global([data-woke-look="game"]) .active::before {
   content: ""; position: absolute; left: 6px; top: 50%; width: 18px; height: 13px; margin-top: -6px;
   background: var(--art-marker) center / contain no-repeat;
 }
+:global(:root[data-woke-look="game"]:not([data-woke-art])) .active::before {
+  content: "▸"; background: none; width: auto; height: auto; margin-top: -0.65em; left: 10px; color: var(--w-gold); font-size: var(--w-fs-md);
+}
 /* A module that's off: its icon goes dark, like a skill you can't use. */
-:global([data-woke-art]) .dim .icon :is(img, i) { filter: grayscale(1) brightness(0.5); }
-:global([data-woke-art]) .dim .name { color: #5e4c39; }
-:global([data-woke-art]) .pageTitle { font-family: var(--w-label); font-size: calc(var(--w-fs-xl) * 1.15); color: #e3c48d; }
-:global([data-woke-art]) .head { padding-bottom: var(--w-s3); }
-:global([data-woke-art]) .headIcon { width: 40px; height: 40px; }
+:global([data-woke-look="game"]) .dim .icon :is(img, i) { filter: grayscale(1) brightness(0.5); }
+:global([data-woke-look="game"]) .dim .name { color: #5e4c39; }
+:global([data-woke-look="game"]) .pageTitle { font-family: var(--w-label); font-size: calc(var(--w-fs-xl) * 1.15); color: #e3c48d; }
+:global([data-woke-look="game"]) .head { padding-bottom: var(--w-s3); }
+:global([data-woke-look="game"]) .headIcon { width: 40px; height: 40px; }
 .quit {
   margin-top: var(--w-s4); padding: var(--w-s1) var(--w-s2); text-align: left; color: var(--w-faint); font-size: var(--w-fs-sm);
   border-radius: var(--w-r-sm);
 }
 .quit:hover { color: var(--w-down); }
-.main { flex: 1; min-width: 0; overflow-y: auto; padding: var(--w-s4) var(--w-s5) var(--w-s6); display: flex; flex-direction: column; gap: var(--w-s4); }
+.main { position: relative; flex: 1; min-width: 0; overflow-y: auto; padding: var(--w-s4) var(--w-s5) var(--w-s6); display: flex; flex-direction: column; gap: var(--w-s4); }
 .head { display: flex; align-items: center; gap: var(--w-s3); }
 .headIcon { width: var(--w-icon-lg); height: var(--w-icon-lg); display: grid; place-items: center; flex: none; }
 .pageTitle { font-family: var(--w-head); font-size: var(--w-fs-xl); color: var(--w-fg); line-height: 1.2; }

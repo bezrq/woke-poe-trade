@@ -78,54 +78,52 @@
 }
 
 /* Settings' title bar keeps to the title and search: the carved ends need the room. */
-:root[data-woke-art] [data-w-settings] > header > :last-child > :not(button[title="Close"]) {
+:root[data-woke-look="game"] [data-w-settings] > header > :last-child > :not(button[title="Close"]) {
   display: none;
 }
 
 /* ---------- Title bar layout: the title centred over the whole bar, the window's
    buttons together at the right end, as on the game's windows ---------- */
-:root[data-woke-art] [data-w-panel] > [data-widget-drag] {
+:root[data-woke-look="game"] [data-w-panel] > [data-widget-drag] {
   gap: 6px;
 }
 /* The game's windows carry no icon in the title bar. */
-:root[data-woke-art] [data-w-panel] > [data-widget-drag] > :first-child:not(.w-trunc):not(span) {
+:root[data-woke-look="game"] [data-w-panel] > [data-widget-drag] > :first-child:not(.w-trunc):not(span) {
   display: none;
 }
-:root[data-woke-art] [data-w-panel] > [data-widget-drag] > .w-trunc {
+:root[data-woke-look="game"] [data-w-panel] > [data-widget-drag] > .w-trunc {
   /* In the flow, centred in what the buttons leave: a narrow window's title can't run into them. */
   flex: 1;
   min-width: 0;
   text-align: center;
 }
 /* Buttons: one even row at the right, no divider between the panel's own and the window's. */
-:root[data-woke-art] [data-w-panel] > [data-widget-drag] > span:not(.w-trunc) {
-  position: relative;
-  z-index: 1;
+:root[data-woke-look="game"] [data-w-panel] > [data-widget-drag] > span:not(.w-trunc) {
   display: flex;
   align-items: center;
   gap: 6px;
   border-left: 0;
   padding-left: 0;
 }
-:root[data-woke-art] [data-w-panel] > [data-widget-drag] > span:not(.w-trunc):first-of-type:not(:only-of-type),
-:root[data-woke-art] [data-w-panel] > [data-widget-drag] > .w-trunc + span {
+:root[data-woke-look="game"] [data-w-panel] > [data-widget-drag] > span:not(.w-trunc):first-of-type:not(:only-of-type),
+:root[data-woke-look="game"] [data-w-panel] > [data-widget-drag] > .w-trunc + span {
   margin-left: auto;
 }
-:root[data-woke-art] [data-w-panel] > [data-widget-drag] .w-icon-btn:not(:has(> .fa-times)) {
+:root[data-woke-look="game"] [data-w-panel] > [data-widget-drag] .w-icon-btn:not(:has(> .fa-times)) {
   width: 22px;
   height: 22px;
   color: #b39a73;
 }
-:root[data-woke-art] [data-w-panel] > [data-widget-drag] .w-icon-btn:not(:has(> .fa-times)):hover { color: #f0dcb2; }
+:root[data-woke-look="game"] [data-w-panel] > [data-widget-drag] .w-icon-btn:not(:has(> .fa-times)):hover { color: #f0dcb2; }
 /* Settings' title centred over its bar, as a panel's is; the close coin keeps the right end. */
-:root[data-woke-art] [data-w-settings] > header > :first-child {
+:root[data-woke-look="game"] [data-w-settings] > header > :first-child {
   position: absolute;
   left: 80px;
   right: 80px;
   text-align: center;
   pointer-events: none;
 }
-:root[data-woke-art] [data-w-settings] > header > :last-child { position: relative; z-index: 1; }
+:root[data-woke-look="game"] [data-w-settings] > header > :last-child { z-index: 1; }
 
 /* ---------- A buffer inside the frame: nothing sits under its solid edge ---------- */
 :root[data-woke-art] { --w-frame-inset: 11px; }
@@ -136,4 +134,63 @@
 :root[data-woke-art] :is([data-w-panel] > [data-widget-drag], [data-w-settings] > header, [data-w-panel][data-pin] > :first-child) {
   margin-left: calc(-1 * var(--w-frame-inset));
   margin-right: calc(-1 * var(--w-frame-inset));
+}
+
+/* ---------- The close coin sits in the dark socket of the bar's right end, as on the game's windows ---------- */
+:root[data-woke-art] :is([data-w-panel] > [data-widget-drag] button:has(> .fa-times), [data-w-settings] > header button[title="Close"]) {
+  position: absolute;
+  right: calc(var(--w-socket-right) - 11px);
+  top: var(--w-socket-top);
+  transform: translateY(-50%);
+  z-index: 2;
+}
+
+/* ---------- The banner: the style's winged crest behind the window's title, as on the game's windows ---------- */
+/* Windows let it rise a little above the title bar. */
+:root[data-woke-art] :is([data-w-panel], [data-w-settings]):not([data-dock-row]):not([data-pin]) {
+  overflow: clip;
+  overflow-clip-margin: 30px;
+}
+:root[data-woke-art] :is([data-w-panel]:not([data-pin]) > [data-widget-drag] > .w-trunc, [data-w-settings] > header > :first-child) {
+  position: relative;
+  flex: 0 1 auto;
+  margin: 0 auto;
+  min-width: var(--w-crest-min);
+  padding: 0 6px;
+  overflow: visible;
+  text-align: center;
+  color: #2a1a0b;
+  text-shadow: 0 1px 0 rgba(255, 236, 190, 0.35);
+}
+:root[data-woke-art] [data-w-settings] > header > :first-child {
+  left: auto;
+  right: auto;
+}
+/* The title takes the free space's centre; the buttons beside it no longer push. */
+:root[data-woke-art] :is([data-w-panel] > [data-widget-drag] > .w-trunc + span, [data-w-settings] > header > :last-child) {
+  margin-left: 0;
+}
+:root[data-woke-art] :is([data-w-panel]:not([data-pin]) > [data-widget-drag] > .w-trunc, [data-w-settings] > header > :first-child)::before {
+  content: "";
+  display: block !important;
+  position: absolute;
+  z-index: -1;
+  top: 50%;
+  left: calc(-1 * var(--w-crest-cap));
+  right: calc(-1 * var(--w-crest-cap));
+  width: auto;
+  height: 60px;
+  margin: 0;
+  transform: translateY(var(--w-crest-y));
+  background:
+    var(--art-crest-left) left top / auto 100% no-repeat,
+    var(--art-crest-right) right top / auto 100% no-repeat,
+    var(--art-crest-centre) center top / auto 100% no-repeat,
+    var(--art-crest-fill) left top / auto 100% repeat-x;
+  /* The fill runs only between the two ends. */
+  padding: 0 var(--w-crest-cap);
+  box-sizing: border-box;
+  background-origin: border-box, border-box, border-box, content-box;
+  background-clip: border-box, border-box, border-box, content-box;
+  pointer-events: none;
 }

@@ -1,8 +1,8 @@
 <template>
   <w-setting-section title="Theme">
     <div :class="$style.themes">
-      <label v-for="t in WOKE_THEMES" :key="t.id" class="w-slot" :class="[$style.option, { [$style.picked]: wokeTheme === t.id }]">
-        <input type="radio" name="woke-theme" :value="t.id" :checked="wokeTheme === t.id" class="sr-only" @change="wokeTheme = t.id">
+      <label v-for="t in LOOKS" :key="t.id" class="w-slot" :class="[$style.option, { [$style.picked]: isPicked(t) }]">
+        <input type="radio" name="woke-theme" :value="t.id" :checked="isPicked(t)" class="sr-only" @change="pick(t)">
         <span :class="$style.swatch" :data-theme="t.id" />
         <span :class="$style.text">
           <span>{{ t.label }}</span>
@@ -10,9 +10,6 @@
         </span>
       </label>
     </div>
-    <w-setting-row v-if="lookOf(wokeTheme) === 'game'" label="UI style" hint="The window art: Path of Exile 1's interface, Path of Exile 2's, or none (Simple). App colours below still apply.">
-      <w-segmented :model-value="uiArt" :options="UI_ARTS" @update:model-value="uiArt = $event as UiArt" />
-    </w-setting-row>
     <w-setting-row label="Text size" hint="Makes text bigger or smaller everywhere. Windows keep their width.">
       <span class="w-num w-dim">{{ textScale }}%</span>
       <input id="woke-text-scale" type="range" :min="MIN_TEXT_SCALE" :max="MAX_TEXT_SCALE" step="5" :class="$style.range"
@@ -65,8 +62,8 @@ export default {
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { lookOf, uiArt, UI_ARTS, wokeTheme, WOKE_THEMES } from './theme'
-import type { UiArt } from './theme'
+import { uiArt, wokeTheme, WOKE_THEMES } from './theme'
+import type { UiArt, WokeTheme } from './theme'
 import { MAX_SCALE, MIN_SCALE, uiScale } from './scale'
 import { MAX_TEXT_SCALE, MIN_TEXT_SCALE, textScale } from './text-scale'
 import { MAX_PIN_SCALE, MIN_PIN_SCALE, pinScale } from '../pins/pins'
@@ -78,6 +75,22 @@ import { density } from './density'
 import type { Density } from './density'
 import { appColors, APP_COLOR_PRESETS, DEFAULT_APP_COLORS, sameColors } from './app-colors'
 import type { AppColors } from './app-colors'
+
+// One picker for the look: the game look with PoE 1's or PoE 2's own window art
+// first, then the themes. Hybrid and PoE-native are the game look without art.
+interface Look { id: string, label: string, hint: string, theme: WokeTheme, art?: UiArt }
+const LOOKS: Look[] = [
+  { id: 'poe1', label: 'PoE 1', hint: 'The window art of Path of Exile 1: stone title bars, bronze frames, copper coins', theme: 'hybrid', art: 'poe1' },
+  { id: 'poe2', label: 'PoE 2', hint: 'The window art of Path of Exile 2: iron title bars, pewter coins, gothic arches', theme: 'hybrid', art: 'poe2' },
+  ...WOKE_THEMES.map(t => ({ id: t.id, label: t.label, hint: t.hint, theme: t.id, art: t.id === 'hybrid' || t.id === 'native' ? 'simple' as UiArt : undefined }))
+]
+function isPicked (t: Look) {
+  return wokeTheme.value === t.theme && (t.art === undefined || uiArt.value === t.art)
+}
+function pick (t: Look) {
+  wokeTheme.value = t.theme
+  if (t.art) uiArt.value = t.art
+}
 
 const DENSITIES = [{ value: 'comfortable', label: 'Comfortable' }, { value: 'compact', label: 'Compact' }]
 
@@ -123,4 +136,7 @@ function setScale (v: string) {
 .swatch[data-theme="native"] { background: linear-gradient(135deg, #0e0b08 55%, #8a6a3a 55%); }
 .swatch[data-theme="modern"] { background: linear-gradient(135deg, #111216 55%, #9aa8ff 55%); }
 .swatch[data-theme="classic"] { background: linear-gradient(135deg, #1a202c 55%, #4a5568 55%); }
+/* PoE 1 and PoE 2 preview with their own title bar and coin. */
+.swatch[data-theme="poe1"] { background: url("/images/poe-ui/checkbox-on.png") right 2px center / 16px no-repeat, url("/images/poe-ui/titlebar-middle.png") center / auto 100%; }
+.swatch[data-theme="poe2"] { background: url("/images/poe2-ui/checkbox-on.png") right 2px center / 16px no-repeat, url("/images/poe2-ui/titlebar-middle.png") center / auto 100%; }
 </style>

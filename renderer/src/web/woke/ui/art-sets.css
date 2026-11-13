@@ -54,3 +54,24 @@
 }
 /* PoE 2's frame art is solid further in; drawn narrower, its edge is as thick as PoE 1's. */
 :root[data-woke-art="poe2"] { --w-frame-width: 24px; }
+/* Where the dark socket sits in each style's title bar right end (64px art drawn at the bar's 40px). */
+:root[data-woke-art="poe1"] { --w-socket-right: 21px; --w-socket-top: 44%; }
+:root[data-woke-art="poe2"] { --w-socket-right: 25px; --w-socket-top: 45%; }
+:root[data-woke-art="poe1"] {
+  --art-crest-left: url("/images/poe-ui/crest-left.png");
+  --art-crest-centre: url("/images/poe-ui/crest-centre.png");
+  --art-crest-right: url("/images/poe-ui/crest-right.png");
+  --art-crest-fill: url("/images/poe-ui/crest-fill.png");
+  --w-crest-cap: 19px;      /* each end's width at the banner's 60px */
+  --w-crest-min: 52px;      /* the centre ornament's width */
+  --w-crest-y: -70%;          /* lifts the banner so its plaque sits behind the title */
+}
+:root[data-woke-art="poe2"] {
+  --art-crest-left: url("/images/poe2-ui/crest-left.png");
+  --art-crest-centre: url("/images/poe2-ui/crest-centre.png");
+  --art-crest-right: url("/images/poe2-ui/crest-right.png");
+  --art-crest-fill: url("/images/poe2-ui/crest-fill.png");
+  --w-crest-cap: 73px;      /* each end's width at the banner's 60px */
+  --w-crest-min: 73px;      /* the centre ornament's width */
+  --w-crest-y: -77%;          /* lifts the banner so its plaque sits behind the title */
+}
