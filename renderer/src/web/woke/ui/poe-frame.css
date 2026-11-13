@@ -161,6 +161,7 @@
   text-align: center;
   color: #2a1a0b;
   text-shadow: 0 1px 0 rgba(255, 236, 190, 0.35);
+  user-select: none;
 }
 :root[data-woke-art] [data-w-settings] > header > :first-child {
   left: auto;
@@ -186,11 +187,12 @@
     var(--art-crest-left) left top / auto 100% no-repeat,
     var(--art-crest-right) right top / auto 100% no-repeat,
     var(--art-crest-centre) center top / auto 100% no-repeat,
-    var(--art-crest-fill) left top / auto 100% repeat-x;
+    var(--art-crest-fill-l) left top / 50% 100% no-repeat,
+    var(--art-crest-fill-r) right top / 50% 100% no-repeat;
   /* The fill runs only between the two ends. */
   padding: 0 var(--w-crest-cap);
   box-sizing: border-box;
-  background-origin: border-box, border-box, border-box, content-box;
-  background-clip: border-box, border-box, border-box, content-box;
+  background-origin: border-box, border-box, border-box, content-box, content-box;
+  background-clip: border-box, border-box, border-box, content-box, content-box;
   pointer-events: none;
 }

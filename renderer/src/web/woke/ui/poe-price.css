@@ -62,6 +62,7 @@
   padding: 0 6px;
   overflow: visible;
   color: #2a1a0b !important;
+  user-select: none;
   text-shadow: 0 1px 0 rgba(255, 236, 190, 0.35);
 }
 :root[data-woke-art] #price-window#price-window [data-price-title-text]::before,
@@ -84,9 +85,10 @@
     var(--art-crest-left) left top / auto 100% no-repeat,
     var(--art-crest-right) right top / auto 100% no-repeat,
     var(--art-crest-centre) center top / auto 100% no-repeat,
-    var(--art-crest-fill) left top / auto 100% repeat-x;
-  background-origin: border-box, border-box, border-box, content-box;
-  background-clip: border-box, border-box, border-box, content-box;
+    var(--art-crest-fill-l) left top / 50% 100% no-repeat,
+    var(--art-crest-fill-r) right top / 50% 100% no-repeat;
+  background-origin: border-box, border-box, border-box, content-box, content-box;
+  background-clip: border-box, border-box, border-box, content-box, content-box;
   pointer-events: none;
 }
 

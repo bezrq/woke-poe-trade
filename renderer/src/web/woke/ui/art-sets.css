@@ -61,8 +61,9 @@
   --art-crest-left: url("/images/poe-ui/crest-left.png");
   --art-crest-centre: url("/images/poe-ui/crest-centre.png");
   --art-crest-right: url("/images/poe-ui/crest-right.png");
-  --art-crest-fill: url("/images/poe-ui/crest-fill.png");
-  --w-crest-cap: 19px;      /* each end's width at the banner's 60px */
+  --art-crest-fill-l: url("/images/poe-ui/crest-fill-l.png");
+  --art-crest-fill-r: url("/images/poe-ui/crest-fill-r.png");
+  --w-crest-cap: 33px;      /* each end's width at the banner's 60px */
   --w-crest-min: 52px;      /* the centre ornament's width */
   --w-crest-y: -70%;          /* lifts the banner so its plaque sits behind the title */
 }
@@ -70,8 +71,11 @@
   --art-crest-left: url("/images/poe2-ui/crest-left.png");
   --art-crest-centre: url("/images/poe2-ui/crest-centre.png");
   --art-crest-right: url("/images/poe2-ui/crest-right.png");
-  --art-crest-fill: url("/images/poe2-ui/crest-fill.png");
-  --w-crest-cap: 73px;      /* each end's width at the banner's 60px */
+  --art-crest-fill-l: url("/images/poe2-ui/crest-fill-l.png");
+  --art-crest-fill-r: url("/images/poe2-ui/crest-fill-r.png");
+  --w-crest-cap: 85px;      /* each end's width at the banner's 60px */
   --w-crest-min: 73px;      /* the centre ornament's width */
   --w-crest-y: -77%;          /* lifts the banner so its plaque sits behind the title */
 }
+:root[data-woke-art="poe1"] { --art-scroll-thumb-lit: url("/images/poe-ui/scroll-thumb-lit.png"); }
+:root[data-woke-art="poe2"] { --art-scroll-thumb-lit: url("/images/poe2-ui/scroll-thumb-lit.png"); }
