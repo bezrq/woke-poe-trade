@@ -10,6 +10,7 @@ const PROXY_HOSTS = [
   { host: 'poe.kakaogames.com', official: true },
   { host: 'poe.ninja', official: false },
   { host: 'www.poeprices.info', official: false },
+  { host: 'api.poeplanner.com', official: false },
 ]
 
 export class HttpProxy {
@@ -43,6 +44,9 @@ export class HttpProxy {
       proxyReq.addListener('response', (proxyRes) => {
         const resHeaders = { ...proxyRes.headers }
         // `net.request` returns an already decoded body
+        // and the upstream length counts the encoded bytes (api.poeplanner.com
+        // sends gzip with a length), so it would cut the body short.
+        if (resHeaders['content-encoding']) delete resHeaders['content-length']
         delete resHeaders['content-encoding']
         // woke: cookies stay in Electron's store (net.request keeps them); the
         // overlay page never sees one, such as a pathofexile.com login.
