@@ -80,8 +80,8 @@ import type { AppColors } from './app-colors'
 // first, then the themes. Hybrid and PoE-native are the game look without art.
 interface Look { id: string, label: string, hint: string, theme: WokeTheme, art?: UiArt }
 const LOOKS: Look[] = [
-  { id: 'poe1', label: 'PoE 1', hint: 'The window art of Path of Exile 1: stone title bars, bronze frames, copper coins', theme: 'hybrid', art: 'poe1' },
-  { id: 'poe2', label: 'PoE 2', hint: 'The window art of Path of Exile 2: iron title bars, pewter coins, gothic arches', theme: 'hybrid', art: 'poe2' },
+  { id: 'poe1', label: 'PoE 1', hint: 'The default UI theme of Path of Exile 1', theme: 'hybrid', art: 'poe1' },
+  { id: 'poe2', label: 'PoE 2', hint: 'The default UI theme of Path of Exile 2', theme: 'hybrid', art: 'poe2' },
   ...WOKE_THEMES.map(t => ({ id: t.id, label: t.label, hint: t.hint, theme: t.id, art: t.id === 'hybrid' || t.id === 'native' ? 'simple' as UiArt : undefined }))
 ]
 function isPicked (t: Look) {
