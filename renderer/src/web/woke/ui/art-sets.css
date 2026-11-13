@@ -52,3 +52,5 @@
   --art-titlebar-middle: url("/images/poe2-ui/titlebar-middle.png");
   --art-titlebar-right: url("/images/poe2-ui/titlebar-right.png");
 }
+/* PoE 2's frame art is solid further in; drawn narrower, its edge is as thick as PoE 1's. */
+:root[data-woke-art="poe2"] { --w-frame-width: 24px; }

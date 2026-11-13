@@ -117,6 +117,9 @@ export class Overlay {
   // Starts the overlay with this setup: writes config.json, loads the page
   // and waits until it has connected and sent its hotkeys to the app.
   async boot (opts: BootOptions = {}) {
+    // WOKE_UI_ART=poe1|poe2|simple runs a test in that UI style, to look over each.
+    const art = process.env.WOKE_UI_ART
+    if (art) await this.page.addInitScript(a => { try { localStorage.setItem('woke.uiArt', a) } catch {} }, art)
     const config = await this.defaultConfig()
     config.leagueId = 'Testleague'
     config.woke = { ...(config.woke ?? {}), setupDone: !opts.firstRun, off: opts.off ?? [] }
