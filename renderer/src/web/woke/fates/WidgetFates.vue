@@ -75,7 +75,10 @@ const advice = shallowRef<FateAdvice | null>(null)
 const shown = shallowRef(false)
 const status = shallowRef('')
 let watchTimer: ReturnType<typeof setTimeout> | undefined
-let lastSig = ''
+// The cards' layout as the looks see it, marks showing. Set by the first look
+// after a read: the read's own capture is taken with the marks down, which
+// looks different, and comparing the two re-read the window over and over.
+let lastSig: string | null = null
 // A changed layout is read again only once it holds still for a look: cards
 // slide in when a window opens, and each read takes the marks down briefly.
 let pendingSig = ''
@@ -118,7 +121,8 @@ async function read (quiet = false) {
     status.value = ''
     if (learned && !quiet) toast(learned)
     shown.value = true
-    lastSig = res.sig ?? ''
+    lastSig = null
+    pendingSig = ''
     gone = 0
     watch()
   } catch (err) {
@@ -141,6 +145,9 @@ function watch () {
         // null: the game isn't in front, so the screen says nothing.
         if (sig === '') {
           if (++gone >= GONE_LOOKS) { hide(); return }
+        } else if (sig !== null && lastSig === null) {
+          gone = 0
+          lastSig = sig
         } else if (sig !== null) {
           gone = 0
           if (sig !== lastSig) {
