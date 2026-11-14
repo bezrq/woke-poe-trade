@@ -66,6 +66,39 @@ describe('Viscera', () => {
     }
   })
 
+  // Real copy of a live listing (trade fetch, 2026-11-15). The trade site lists
+  // only the plain base; the copy names the tier. It's a plain copy, so mods
+  // aren't read: Guy's advanced copy below checks the implicit.
+  const LEG = () => fixture('items/viscera-lesser-skeletal-leg.txt')
+
+  it('reads a tiered name as its base', () => {
+    for (const name of ["Lesser Skeletal Warrior's Leg", "Greater Skeletal Warrior's Leg"]) {
+      const item = parseItem(LEG().replace("Lesser Skeletal Warrior's Leg", name))
+      expect(item.info.refName, name).toBe("Skeletal Warrior's Leg")
+      expect(item.category).toBe(ItemCategory.Viscera)
+      expect(item.visceraSlot).toBe('Lower Limb')
+      expect(item.unknownModifiers).toEqual([])
+      const exact = createTradeRequest(createFilters(item, { ...OPTS, exact: true }), [])
+      expect(exact.query.type).toBe("Skeletal Warrior's Leg")
+    }
+  })
+
+  // Guy's copy from his price check screenshot (damage type cut off on screen;
+  // Cold, as on the Lesser tier).
+  it("reads Guy's Greater Skeletal Warrior's Leg", () => {
+    const item = parseItem(fixture('items/viscera-greater-skeletal-leg.txt'))
+    expect(item.info.refName).toBe("Skeletal Warrior's Leg")
+    expect(item.visceraSlot).toBe('Lower Limb')
+    expect(item.itemLevel).toBe(78)
+    expect(item.unknownModifiers).toEqual([])
+    const implicit = item.statsByType.find(s => s.type === ModifierType.Implicit)
+    expect(implicit?.stat.ref).toMatch(/additional Cold Damage/)
+  })
+
+  it('still finds nothing for an unknown name', () => {
+    expect(() => parseItem(LEG().replace("Lesser Skeletal Warrior's Leg", 'Lesser Nonexistent Thing'))).toThrow()
+  })
+
   it('offers the implicit as a stat filter', () => {
     const item = parseItem(CLAW())
     const { presets } = createPresets(item, OPTS)
