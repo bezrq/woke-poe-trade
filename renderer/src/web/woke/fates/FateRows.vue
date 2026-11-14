@@ -57,7 +57,7 @@ function chipTitle (c: RewardChip): string {
 .chip { display: inline-flex; align-items: center; gap: 1px; font-size: var(--w-fs-sm); color: var(--w-fg); }
 .chip img { width: 22px; height: 22px; }
 .chip.open { opacity: 0.45; }
-.mod { font-size: var(--w-fs-xs); color: var(--w-accent); }
+.mod { margin-left: 3px; font-size: var(--w-fs-xs); color: var(--w-accent); }
 .unknown { font-size: var(--w-fs-xs); color: var(--w-dim); border: 1px solid var(--w-line); border-radius: var(--w-r-sm); padding: 0 3px; }
 .none { padding: 6px var(--w-pad); color: var(--w-dim); font-size: var(--w-fs-sm); }
 </style>
