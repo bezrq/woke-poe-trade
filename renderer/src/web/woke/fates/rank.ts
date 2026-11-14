@@ -200,7 +200,7 @@ export interface PickAdvice {
 
 // Ranks the offered Fates: what each adds to the best invocation you could
 // make with what you've already collected in this area.
-export function advisePick (collection: FateCard[], offers: FateCard[], s: FateSettings): PickAdvice[] {
+export function advisePick (collection: FateCard[], offers: FateCard[], s: FateSettings, name: (icon: string) => string = i => i): PickAdvice[] {
   const base = bestInvocation(collection, s, true)
   const baseScore = base.value + openParts(base, s) / 2
   const held = (fate: string) => collection.filter(c => c.fate === fate).length
@@ -209,13 +209,13 @@ export function advisePick (collection: FateCard[], offers: FateCard[], s: FateS
     const invocation = allowed ? bestInvocation([...collection, card], s, true) : base
     const gain = invocation.value - base.value
     const score = allowed ? invocation.value + openParts(invocation, s) / 2 - baseScore : -Infinity
-    return { card, index, allowed, invocation, gain, score, reasons: allowed ? explain(base, invocation, card) : [held(card.fate) >= 2 ? 'Already have two' : 'Over your tier limit'] }
+    return { card, index, allowed, invocation, gain, score, reasons: allowed ? explain(base, invocation, card, name) : [held(card.fate) >= 2 ? 'Already have two' : 'Over your tier limit'] }
   })
   return advice.sort((a, b) => b.score - a.score || a.index - b.index)
 }
 
 // Short reasons a pick helps, from the change in the best invocation.
-export function explain (before: Invocation, after: Invocation, card: FateCard): string[] {
+export function explain (before: Invocation, after: Invocation, card: FateCard, name: (icon: string) => string = i => i): string[] {
   const out: string[] = []
   const was = new Map(before.fights.map(f => [f.fate, f]))
   for (const f of after.fights) {
@@ -224,8 +224,8 @@ export function explain (before: Invocation, after: Invocation, card: FateCard):
   const paidBefore = new Map(before.payouts.map(p => [`${p.icon}/${p.need}`, p.paid]))
   for (const p of after.payouts) {
     const more = p.paid - (paidBefore.get(`${p.icon}/${p.need}`) ?? 0)
-    if (more > 0) out.push(p.need > 1 ? `Completes ${p.icon} (${p.need}/${p.need})` + (more > 1 ? ` x${more}` : '') : `+${more} ${p.icon}`)
-    else if (p.need > 1 && p.parts % p.need && card.rewards.some(x => x.icon === p.icon && x.need === p.need)) out.push(`${p.icon} ${p.parts % p.need}/${p.need}`)
+    if (more > 0) out.push(p.need > 1 ? `Completes ${name(p.icon)} (${p.need}/${p.need})` + (more > 1 ? ` x${more}` : '') : `+${more} ${name(p.icon)}`)
+    else if (p.need > 1 && p.parts % p.need && card.rewards.some(x => x.icon === p.icon && x.need === p.need)) out.push(`${name(p.icon)} ${p.parts % p.need}/${p.need}`)
   }
   if (!out.length && !after.order.includes(card)) out.push('Not worth invoking with what you have')
   return out

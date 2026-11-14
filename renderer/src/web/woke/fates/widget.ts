@@ -44,11 +44,14 @@ export function parseFatesHotkeyTarget (target: string): number | null {
   return m ? Number(m[1]) : null
 }
 
+// Tried in order for the default hotkey; the first one free is used.
+export const FATES_KEYS = ['Shift + F', 'Alt + F', 'Ctrl + Shift + F', 'Alt + Shift + F']
+
 export function initFatesWidget (w: FatesWidget) {
   w.wmTitle = 'Fates'
   w.wmFlags = ['invisible-on-blur']
   w.anchor = { pos: 'tr', x: 98, y: 30 }
-  w.hotkey = 'Alt + F'
+  w.hotkey = FATES_KEYS[0]
   w.values = { ...DEFAULT_VALUES }
   w.maxTier = {}
   w.slots = 3
@@ -60,16 +63,26 @@ export function initFatesWidget (w: FatesWidget) {
 export function seedFatesWidget (wmId: number, taken: string[] = []): FatesWidget {
   const w = { wmId, wmType: FATES_TYPE, wmTitle: '', wmWants: 'hide', wmZorder: null, wmFlags: [] } as unknown as FatesWidget
   initFatesWidget(w)
-  const used = new Set(taken.map(sortKeys))
-  if (w.hotkey && used.has(sortKeys(w.hotkey))) w.hotkey = null
+  w.hotkey = freeFatesKey(taken)
   return w
+}
+
+export function freeFatesKey (taken: string[]): string | null {
+  const used = new Set(taken.map(sortKeys))
+  return FATES_KEYS.find(k => !used.has(sortKeys(k))) ?? null
+}
+
+// Hotkeys already in a config, plus the price check's.
+export function takenKeys (config: object, priceCheckKey: string | null): string[] {
+  const taken = [...JSON.stringify(config).matchAll(/"((?:[A-Z][a-z]+ \+ )+\w+)"/g)].map(m => m[1])
+  if (priceCheckKey) taken.push(priceCheckKey)
+  return taken
 }
 
 // Puts a seeded widget on `config` when there's none. Returns whether it did.
 export function addFatesWidget<W extends object> (config: { widgets: W[] }, priceCheckKey: string | null): boolean {
   if (config.widgets.some(w => (w as unknown as Widget).wmType === FATES_TYPE)) return false
-  const taken = [...JSON.stringify(config).matchAll(/"((?:[A-Z][a-z]+ \+ )+\w+)"/g)].map(m => m[1])
-  if (priceCheckKey) taken.push(priceCheckKey)
+  const taken = takenKeys(config, priceCheckKey)
   const wmId = Math.max(0, ...config.widgets.map(w => (w as unknown as Widget).wmId)) + 1
   config.widgets.push(seedFatesWidget(wmId, taken) as unknown as W)
   return true

@@ -137,6 +137,8 @@ export interface WokeOps {
   'area-mods-read': Op<{ delayMs?: number }, { lines: string[] | null, ocrMissing?: boolean }>
   // Covens Fate windows; the answer is FateRead from main/src/woke/fate-read.ts.
   'fate-read': Op<{ uiScale?: number }, Json>
+  // Where Fate cards are, coarsely ('' for none); null while the game isn't in front.
+  'fate-glance': Op<{ uiScale?: number }, { sig: string | null }>
   'stash-read': Op<NoArgs, Json>
   'stash-watch-stop': Op<NoArgs, null>
   'tree-overlay-points': Op<{ x: number[], y: number[], r: number[] }, null>

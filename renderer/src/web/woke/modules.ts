@@ -126,6 +126,7 @@ export interface WokeModulesConfig {
   // The essence scan widget has been put on the overlay once (Config.ts).
   essenceScanSeeded?: boolean
   fatesSeeded?: boolean
+  fatesKeyRetried?: boolean
   // Icon dock position and switches (dock/dock.ts).
   dock?: DockConfig
   // Price check: dust per chaos and a "disenchant it" verdict for uniques,

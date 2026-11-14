@@ -39,6 +39,16 @@ export interface FateAdvice {
   placed: number
 }
 
+// Short name of a reward icon, for reasons on the cards.
+const ICON_NAMES: Record<string, string> = {
+  IncreasedRarityAffectedMonster: 'Rarity',
+  UniqueAuguryItem: 'Covens Unique',
+  ExceptionalGems: 'Exceptional Gem',
+  Divination: 'Stacked Decks'
+}
+export function rewardName (icon: string): string {
+  return ICON_NAMES[icon] ?? icon.replace(/([a-z])([A-Z])/g, '$1 $2')
+}
 export function fateName (id: string): string {
   return FATES.find(f => f.id === id)?.name ?? id
 }
@@ -66,7 +76,7 @@ export function adviseFates (read: Extract<FateRead, { found: true }>, s: FateSe
 
   if (read.window === 'pick') {
     const offerCards = offers.map(toCard)
-    const advice = advisePick(heldCards, offerCards, s)
+    const advice = advisePick(heldCards, offerCards, s, rewardName)
     const rows: AdviceRow[] = []
     advice.forEach((a, i) => {
       const card = offers[offerCards.indexOf(a.card)]

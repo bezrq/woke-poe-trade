@@ -11,7 +11,7 @@ import { cachedNeverSink, downloadNeverSink, latestNeverSink, pruneNeverSink, re
 import { ScreenScanner, MAP_SCAN, ESSENCE_SCAN, ensureOcr, readAllEssenceLabels, readAreaMods } from './map-scan'
 import { WokeHoverTracker } from './hover'
 import { readStashTab } from './stash-read'
-import { readFates } from './fate-read'
+import { glanceFates, readFates } from './fate-read'
 import { StashWatch } from './stash-watch'
 import { TreeOverlay } from './tree-overlay'
 import { ATLAS_FIT } from './tree-fit'
@@ -105,9 +105,22 @@ export function initWoke (server: ServerEvents, logger: Logger, poeWindow: GameW
     if (!bounds.width || !bounds.height) return { found: false }
     const t0 = performance.now()
     const scale = Number(args?.uiScale)
-    const read = readFates(poeWindow.screenshot(), bounds.width, bounds.height, scale > 0.5 && scale < 2 ? scale : 1)
+    const ui = scale > 0.5 && scale < 2 ? scale : 1
+    const shot = poeWindow.screenshot()
+    const read = readFates(shot, bounds.width, bounds.height, ui)
     perfRecord('Fates: read the window', performance.now() - t0)
-    return read
+    return { ...read, sig: glanceFates(shot, bounds.width, bounds.height, ui) }
+  })
+  // Asked for about twice a second, only while the Fates marks are up, to
+  // take them down when the window closes.
+  registerWokeHandler('fate-glance', async (args) => {
+    const bounds = poeWindow.bounds
+    if (!poeWindow.hasFocus || !bounds.width || !bounds.height) return { sig: null }
+    const scale = Number(args?.uiScale)
+    const t0 = performance.now()
+    const sig = glanceFates(poeWindow.screenshot(), bounds.width, bounds.height, scale > 0.5 && scale < 2 ? scale : 1)
+    perfRecord('Fates: glance', performance.now() - t0)
+    return { sig }
   })
   const stashWatch = new StashWatch(() => {
     server.sendEventTo('broadcast', { name: 'MAIN->CLIENT::woke-event', payload: { topic: 'stash-clear', data: null } })

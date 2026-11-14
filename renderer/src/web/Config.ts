@@ -7,7 +7,8 @@ import type * as widget from './overlay/widgets'
 import { wokeGlobalShortcuts, wokeShortcutsFor } from './woke/shortcuts'
 import { LOOT_FILTER_TYPE, seedLootFilterWidget } from './woke/loot-filter/widget'
 import { addEssenceScanWidget } from './woke/essence-scan/widget'
-import { addFatesWidget } from './woke/fates/widget'
+import { addFatesWidget, freeFatesKey, takenKeys, FATES_TYPE } from './woke/fates/widget'
+import type { FatesWidget } from './woke/fates/widget'
 import { ensureWokeConfig, renameOldDefaultTitles, filterAptShortcuts, isModuleOn, needsGameLog, WOKE_CONFIG_VERSION } from './woke/modules'
 import { MAP_CHECK_TYPE, initMapCheckWidget } from './woke/map-mods/map-check'
 import { DEATH_RECAP_TYPE, initDeathRecapWidget } from './woke/death-recap/widget'
@@ -552,6 +553,13 @@ function upgradeConfig (_config: Config): Config {
   if (!modules.woke?.fatesSeeded && isModuleOn(modules, 'fates')) {
     addFatesWidget(config, `${priceCheck.hotkeyHold} + ${priceCheck.hotkey}`)
     ensureWokeConfig(modules).woke.fatesSeeded = true
+  }
+  // woke: the first Fates build only offered Alt + F and left the key empty
+  // when that was taken. Once, give it the first free one.
+  if (!modules.woke?.fatesKeyRetried) {
+    const fates = config.widgets.find(w => w.wmType === FATES_TYPE) as FatesWidget | undefined
+    if (fates && !fates.hotkey) fates.hotkey = freeFatesKey(takenKeys(config, `${priceCheck.hotkeyHold} + ${priceCheck.hotkey}`))
+    ensureWokeConfig(modules).woke.fatesKeyRetried = true
   }
   // woke: map mod ratings follow mods the game has reworded.
   for (const w of config.widgets as Array<{ wmType: string, profiles?: Array<{ ratings?: Record<string, ModRating> }> }>) {

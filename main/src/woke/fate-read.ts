@@ -346,6 +346,50 @@ function findConfirm (gray: Gray, s: number, cards: Hit[]): number | null {
   return r.score >= CONFIRM_MIN ? r.y : null
 }
 
+
+// A quick look for Fate cards, cheap enough to repeat while the marks are up:
+// the screen shrunk by a whole factor straight from the capture, and the
+// banner strip slid over the middle of it. Returns where the cards are,
+// coarsely, as a string that changes when cards come, go or move (a click
+// into a slot), or '' when there are none.
+const GLANCE_MIN = 0.78
+export function glanceFates (bgra: Uint8Array, width: number, height: number, uiScale = 1): string {
+  templates ??= loadTemplates()
+  const s0 = height / SPRITE_HEIGHT * uiScale
+  const k = Math.max(1, Math.round(s0 / COARSE))
+  const w = Math.floor(width / k)
+  const h = Math.floor(height / k)
+  // Only the middle of the window: the Fate windows are centred.
+  const half = Math.min(w, Math.round(h * 0.9))
+  const x0 = Math.max(0, Math.floor(w / 2) - half)
+  const x1 = Math.min(w, Math.floor(w / 2) + half)
+  const small = { width: x1 - x0, height: h, data: new Float32Array((x1 - x0) * h) }
+  for (let y = 0; y < h; y++) {
+    for (let x = x0; x < x1; x++) {
+      let sum = 0
+      for (let j = 0; j < k; j++) {
+        let p = ((y * k + j) * width + x * k) * 4
+        for (let i = 0; i < k; i++, p += 4) sum += bgra[p] + bgra[p + 1] + bgra[p + 2]
+      }
+      small.data[y * small.width + x - x0] = sum / (3 * k * k)
+    }
+  }
+  const t = scaled(templates.top, s0 / k / NORM)
+  const hits: Array<{ x: number, y: number, score: number }> = []
+  for (let y = 0; y <= small.height - t.height; y++) {
+    for (let x = 0; x <= small.width - t.width; x++) {
+      const v = matchAt(small, 1, t, x, y)
+      if (v < GLANCE_MIN) continue
+      const near = hits.find(h => Math.abs(h.x - x) < t.width / 2 && Math.abs(h.y - y) < t.height * 2)
+      if (!near) hits.push({ x, y, score: v })
+      else if (v > near.score) Object.assign(near, { x, y, score: v })
+    }
+  }
+  // Rounded to a quarter of a card, so a pixel of jitter doesn't count as a move.
+  const step = Math.max(1, t.width / 4)
+  return hits.map(h => `${Math.round(h.x / step)},${Math.round(h.y / step)}`).sort().join(' ')
+}
+
 export function readFates (bgra: Uint8Array, width: number, height: number, uiScale = 1): FateRead {
   templates ??= loadTemplates()
   const gray = toGray(bgra, width, height)

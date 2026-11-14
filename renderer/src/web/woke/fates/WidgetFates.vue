@@ -8,7 +8,7 @@
     </DockItem>
     <WPanel :title="config.wmTitle || 'Fates'" icon="/images/fates/covens.png" width="24rem">
       <template #actions>
-        <button type="button" class="w-icon-btn" title="Read the Fate window on screen" @click="read"><i class="fas fa-eye" /></button>
+        <button type="button" class="w-icon-btn" title="Read the Fate window on screen" @click="read()"><i class="fas fa-eye" /></button>
       </template>
       <div v-if="status" class="w-dim text-xs px-3 pt-2">{{ status }}</div>
       <template v-if="advice">
@@ -63,13 +63,20 @@ import type { FateRead, FatesWidget } from './widget'
 const props = defineProps<{ config: FatesWidget }>()
 normalizeFatesWidget(props.config)
 
-// The marks stay over the game for a while, or until the hotkey again.
-const SHOW_MS = 60_000
+// While the marks are up, a quick look at the screen this often: they go when
+// the Fate window closes, and are read again when cards move (a click into a
+// slot). Nothing runs while they're down.
+const WATCH_MS = 400
+// Two looks without cards in a row before hiding, so one odd frame (a tooltip
+// over the cards) doesn't take them down.
+const GONE_LOOKS = 2
 
 const advice = shallowRef<FateAdvice | null>(null)
 const shown = shallowRef(false)
 const status = shallowRef('')
-let hideTimer: ReturnType<typeof setTimeout> | undefined
+let watchTimer: ReturnType<typeof setTimeout> | undefined
+let lastSig = ''
+let gone = 0
 
 const headline = computed(() => {
   const a = advice.value
@@ -78,35 +85,58 @@ const headline = computed(() => {
   return a.rows.length ? 'Click your Fates in this order (C1 is the leftmost)' : 'Invoke: nothing worth invoking'
 })
 
-async function read () {
-  status.value = 'Reading the screen…'
+async function read (quiet = false) {
+  if (!quiet) status.value = 'Reading the screen…'
   try {
-    const res = await hostRequest('fate-read', { uiScale: props.config.uiScale }) as FateRead
+    const res = await hostRequest('fate-read', { uiScale: props.config.uiScale }) as FateRead & { sig?: string }
     if (!res.found) {
-      advice.value = null
-      shown.value = false
-      status.value = 'No Fate window found. Open a Fate pick or Invoke Fates first.'
-      toast('No Fate window on screen')
+      hide()
+      if (!quiet) {
+        status.value = 'No Fate window found. Open a Fate pick or Invoke Fates first.'
+        toast('No Fate window on screen')
+      }
       return
     }
     advice.value = adviseFates(res, { values: props.config.values, maxTier: props.config.maxTier, slots: props.config.slots })
     status.value = ''
     shown.value = true
-    clearTimeout(hideTimer)
-    hideTimer = setTimeout(() => { shown.value = false }, SHOW_MS)
+    lastSig = res.sig ?? ''
+    gone = 0
+    watch()
   } catch (err) {
     status.value = `Couldn't read the screen: ${(err as Error).message}`
   }
 }
 
+function hide () {
+  shown.value = false
+  clearTimeout(watchTimer)
+}
+
+function watch () {
+  clearTimeout(watchTimer)
+  watchTimer = setTimeout(() => {
+    if (!shown.value) return
+    hostRequest('fate-glance', { uiScale: props.config.uiScale })
+      .then(({ sig }) => {
+        if (!shown.value) return
+        // null: the game isn't in front, so the screen says nothing.
+        if (sig === '') {
+          if (++gone >= GONE_LOOKS) { hide(); return }
+        } else if (sig !== null) {
+          gone = 0
+          if (sig !== lastSig) { read(true).catch(() => {}); return }
+        }
+        watch()
+      })
+      .catch(() => { watch() })
+  }, WATCH_MS)
+}
+
 // Hotkey: read, or hide the marks if they're up.
 function onHotkey () {
-  if (shown.value) {
-    shown.value = false
-    clearTimeout(hideTimer)
-  } else {
-    read().catch(() => {})
-  }
+  if (shown.value) hide()
+  else read().catch(() => {})
 }
 
 function markStyle (m: CardMark) {
@@ -133,12 +163,12 @@ const hotkeys = MainProcess.onEvent('MAIN->CLIENT::widget-action', (e) => {
 
 onUnmounted(() => {
   hotkeys.abort()
-  clearTimeout(hideTimer)
+  clearTimeout(watchTimer)
 })
 
 const dockMenu = computed<DockMenuAction[]>(() => [
   { label: 'Read the Fate window', icon: 'fas fa-eye', action: () => { read().catch(() => {}) } },
-  { label: 'Clear', icon: 'fas fa-broom', disabled: !advice.value, action: () => { advice.value = null; shown.value = false } }
+  { label: 'Clear', icon: 'fas fa-broom', disabled: !advice.value, action: () => { advice.value = null; hide() } }
 ])
 </script>
 
