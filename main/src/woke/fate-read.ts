@@ -42,6 +42,9 @@ export interface FateReadReward {
   need: number
   // Parts the game already shows as filled, counting what's collected.
   filled: number
+  // The icon's centre, as fractions of the window.
+  x: number
+  y: number
 }
 
 export interface FateReadCard {
@@ -309,7 +312,10 @@ function readCard (bgra: Uint8Array, width: number, height: number, hit: Hit) {
       const r = bestNear(card, 3, b.pic, spotX(p.k) + shift.dx, (ROW_Y + 33) * NORM + shift.dy, 4)
       if (r.score > bar.score) bar = { need: b.need, filled: b.filled, score: r.score }
     }
-    return { icon: p.icon, need: bar.need, filled: bar.filled }
+    // Back from the card cut-out to the window.
+    const x = hit.x + (spotX(p.k) + shift.dx) / NORM * hit.s
+    const y = hit.y + (ROW_Y * NORM + shift.dy) / NORM * hit.s
+    return { icon: p.icon, need: bar.need, filled: bar.filled, x: x / width, y: y / height }
   })
   return { fate: fate.score >= FATE_MIN ? fate.fate : '', tier: tier.tier, rewards }
 }

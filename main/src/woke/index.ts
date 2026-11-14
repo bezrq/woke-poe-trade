@@ -8,10 +8,11 @@ import { deleteBuild, duplicateBuild, importBuild, listBuilds, moveBuild, openBu
 import { timelessRewrites } from './pob-timeless'
 import { listFilters, readFilter, writeFilter, showFilterFolder, listSounds, readSound, installSound } from './loot-filter'
 import { cachedNeverSink, downloadNeverSink, latestNeverSink, pruneNeverSink, readNeverSink } from './neversink'
-import { ScreenScanner, MAP_SCAN, ESSENCE_SCAN, ensureOcr, readAllEssenceLabels, readAreaMods } from './map-scan'
+import { ScreenScanner, MAP_SCAN, ESSENCE_SCAN, ensureOcr, readAllEssenceLabels, readAreaMods, cursorInScreenPixels, ocrTextLines } from './map-scan'
 import { WokeHoverTracker } from './hover'
 import { readStashTab } from './stash-read'
 import { glanceFates, readFates } from './fate-read'
+import { parseRewardModifier, rewardTooltipLines } from './fate-tooltip'
 import { StashWatch } from './stash-watch'
 import { TreeOverlay } from './tree-overlay'
 import { ATLAS_FIT } from './tree-fit'
@@ -109,7 +110,22 @@ export function initWoke (server: ServerEvents, logger: Logger, poeWindow: GameW
     const shot = poeWindow.screenshot()
     const read = readFates(shot, bounds.width, bounds.height, ui)
     perfRecord('Fates: read the window', performance.now() - t0)
-    return { ...read, sig: glanceFates(shot, bounds.width, bounds.height, ui) }
+    const sig = glanceFates(shot, bounds.width, bounds.height, ui)
+    if (!read.found) return { ...read, sig }
+    // With the cursor on a reward, its tooltip says which modifier gear
+    // rewards have: read it (OCR loads only here).
+    const cursor = cursorInScreenPixels()
+    const cx = cursor.x - bounds.x
+    const cy = cursor.y - bounds.y
+    const s = bounds.height / 2160 * read.scale
+    let hover: { card: number, reward: number } | null = null
+    read.cards.forEach((c, ci) => c.rewards.forEach((r, ri) => {
+      if (Math.hypot(r.x * bounds.width - cx, r.y * bounds.height - cy) < 32 * s) hover = { card: ci, reward: ri }
+    }))
+    if (!hover) return { ...read, sig, hover: null }
+    const lines = rewardTooltipLines(shot, bounds.width, bounds.height, cx, cy, s)
+    const text = lines.length ? await ocrTextLines(lines) : null
+    return { ...read, sig, hover: { ...(hover as { card: number, reward: number }), modifier: text ? parseRewardModifier(text) : null, text: text?.join(' ') ?? null } }
   })
   // Asked for about twice a second, only while the Fates marks are up, to
   // take them down when the window closes.

@@ -145,3 +145,25 @@ describe('widget specs', () => {
     for (const b of blocks) expect(b, b.split(' ')[0]).toMatch(/initInstance:/)
   })
 })
+
+describe('gear modifiers', () => {
+  const r2 = (icon: string, mod: string | null, need = 1) => ({ icon, need, mod })
+
+  it('adds the modifier\'s worth, and keeps different modifiers apart', () => {
+    const s = settings({ values: { Boots: 1 }, modValues: { 'Speed': 5, 'no Defence': 1 } })
+    const a: FateCard = { fate: 'Dryad', tier: 1, rewards: [r2('Boots', 'Speed')] }
+    const b: FateCard = { fate: 'Rot', tier: 1, rewards: [r2('Boots', 'no Defence')] }
+    const inv = invoke([a, b], s)!
+    expect(inv.value).toBe(6 + 2)
+    expect(inv.payouts.map(p => `${p.icon}:${p.mod}`).sort()).toEqual(['Boots:Speed', 'Boots:no Defence'])
+  })
+
+  it('prefers tripling the copy whose gear has the better modifier', () => {
+    const s = settings({ values: { Wand: 1 }, modValues: { Gem: 6, Mana: 0 } })
+    const gem: FateCard = { fate: 'Tempest', tier: 1, rewards: [r2('Wand', 'Gem')] }
+    const mana: FateCard = { fate: 'Tempest', tier: 1, rewards: [r2('Wand', 'Mana')] }
+    const best = bestInvocation([mana, gem], s)
+    expect(best.order[0]).toBe(gem)
+    expect(best.value).toBe(21)
+  })
+})

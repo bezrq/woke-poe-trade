@@ -631,6 +631,26 @@ export async function readAreaMods (poeWindow: GameWindow, delayMs = 0): Promise
   }
 }
 
+// OCR of line images the caller cut out (Fates reward tooltips). Null when
+// the OCR files aren't there yet. Loads the shared worker, which stops again
+// after a while unused.
+export async function ocrTextLines (lines: LineImage[]): Promise<string[] | null> {
+  const check = await ensureOcr(0)
+  if (!check.ok) return null
+  let worker: OcrWorker
+  try {
+    worker = await getWorker()
+  } catch (err) {
+    sharedWorker = null
+    throw err
+  }
+  try {
+    return await worker.ocrLines(lines)
+  } finally {
+    releaseWorker()
+  }
+}
+
 // BGRA. Mod text is #8888FF; this is loose on purpose, as the worker looks properly.
 function hasBlueText (bgra: Uint8Array, refH: number): boolean {
   const need = Math.round((refH / 1080) * (refH / 1080) * 400)
@@ -642,7 +662,7 @@ function hasBlueText (bgra: Uint8Array, refH: number): boolean {
 }
 
 // Same units as uiohook's mouse events: physical pixels on Windows.
-function cursorInScreenPixels (): { x: number, y: number } {
+export function cursorInScreenPixels (): { x: number, y: number } {
   const p = screen.getCursorScreenPoint()
   return process.platform === 'win32' ? screen.dipToScreenPoint(p) : p
 }

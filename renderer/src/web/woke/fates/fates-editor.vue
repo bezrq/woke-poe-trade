@@ -27,6 +27,17 @@
       </div>
     </div>
     <div>
+      <div class="mb-1">Extra worth of a gear reward, by its modifier</div>
+      <div class="text-sm mb-1" style="color: var(--w-dim);">Gear rewards (boots, wands...) say their modifier only in their tooltip: hover one and press the hotkey, and it's remembered for that card.</div>
+      <div class="grid gap-x-3 gap-y-1" style="grid-template-columns: repeat(3, minmax(0, 1fr));">
+        <label v-for="m in mods" :key="m" class="flex items-center gap-2">
+          <span class="flex-1 w-trunc">{{ m }}</span>
+          <input :value="modValue(m)" type="number" min="0" step="1" class="rounded w-input px-1 block" style="width: 3.5rem;"
+            @change="setModValue(m, ($event.target as HTMLInputElement).valueAsNumber)">
+        </label>
+      </div>
+    </div>
+    <div>
       <div class="mb-1">Highest tier you'll fight, per Fate</div>
       <div class="grid gap-x-3 gap-y-1" style="grid-template-columns: repeat(2, minmax(0, 1fr));">
         <label v-for="f in fates" :key="f.id" class="flex items-center gap-2" :title="f.summary">
@@ -55,7 +66,7 @@ import { configModelValue, configProp } from '@/web/settings/utils'
 import type { FatesWidget } from './widget'
 import { normalizeFatesWidget } from './widget'
 import { FATES, REWARD_ICONS } from './data'
-import { DEFAULT_VALUE } from './rank'
+import { DEFAULT_MOD_VALUES, DEFAULT_VALUE, GEAR_MODS } from './rank'
 
 export default defineComponent({
   name: 'Fates',
@@ -71,6 +82,9 @@ export default defineComponent({
       uiScale: configModelValue(() => props.configWidget, 'uiScale'),
       rewards,
       fates,
+      mods: GEAR_MODS,
+      modValue: (m: string) => props.configWidget.modValues[m] ?? DEFAULT_MOD_VALUES[m] ?? 0,
+      setModValue: (m: string, v: number) => { props.configWidget.modValues = { ...props.configWidget.modValues, [m]: Number.isFinite(v) && v >= 0 ? v : 0 } },
       value: (icon: string) => props.configWidget.values[icon] ?? DEFAULT_VALUE,
       setValue: (icon: string, v: number) => { props.configWidget.values = { ...props.configWidget.values, [icon]: Number.isFinite(v) && v >= 0 ? v : 0 } },
       maxTierOf: (id: string) => props.configWidget.maxTier[id] ?? 3,

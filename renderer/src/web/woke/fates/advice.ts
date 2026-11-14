@@ -1,12 +1,20 @@
 // Turns a read of a Fate window into what the overlay shows: a mark on each
 // offered card, C1, C2... on the collected ones, and a list of click orders
 // with the rewards each pays.
-import { advisePick, rankOutcomes } from './rank'
+import { GEAR_ICONS, advisePick, rankOutcomes } from './rank'
 import type { FateCard, FateSettings, Invocation } from './rank'
 import { FATES } from './data'
 import type { FateRead, FateReadCard } from './widget'
 
-export interface RewardChip { icon: string, count: number, need: number }
+export interface RewardChip {
+  icon: string
+  count: number
+  need: number
+  // Gear: the modifier, once read off the reward's tooltip.
+  mod: string | null
+  // Gear whose modifier hasn't been read yet.
+  unknown: boolean
+}
 
 export interface AdviceRow {
   // "Take Stormcaller" on a pick; empty on Invoke Fates.
@@ -53,11 +61,35 @@ export function fateName (id: string): string {
   return FATES.find(f => f.id === id)?.name ?? id
 }
 
-const toCard = (c: FateReadCard): FateCard => ({ fate: c.fate, tier: c.tier, rewards: c.rewards.map(r => ({ icon: r.icon, need: r.need })) })
+// Gear modifiers read off hovered rewards, per card (its Fate, tier and
+// rewards), kept for the session: a card keeps them when it moves from the
+// pick into the collection, and on to Invoke Fates.
+const remembered = new Map<string, Array<string | null>>()
+const cardKey = (c: FateReadCard) => `${c.fate}|${c.tier}|${c.rewards.map(r => `${r.icon}/${r.need}`).join(',')}`
+
+export function rememberHover (read: Extract<FateRead, { found: true }>): string | null {
+  const h = read.hover
+  const card = h ? read.cards[h.card] : undefined
+  if (!h || !card || !h.modifier) return null
+  const key = cardKey(card)
+  const mods = remembered.get(key) ?? card.rewards.map(() => null)
+  mods[h.reward] = h.modifier
+  remembered.set(key, mods)
+  return `${rewardName(card.rewards[h.reward].icon)}: ${h.modifier} modifier`
+}
+
+export function forgetHovers () { remembered.clear() }
+
+const toCard = (c: FateReadCard): FateCard => {
+  const mods = remembered.get(cardKey(c))
+  return { fate: c.fate, tier: c.tier, rewards: c.rewards.map((r, i) => ({ icon: r.icon, need: r.need, mod: mods?.[i] ?? null })) }
+}
 
 function chips (inv: Invocation): { rewards: RewardChip[], open: RewardChip[] } {
-  const rewards = inv.payouts.filter(p => p.paid).map(p => ({ icon: p.icon, count: p.paid, need: p.need }))
-  const open = inv.payouts.filter(p => p.parts % p.need).map(p => ({ icon: p.icon, count: p.parts % p.need, need: p.need }))
+  const chip = (icon: string, count: number, need: number, mod: string | null | undefined) =>
+    ({ icon, count, need, mod: mod ?? null, unknown: GEAR_ICONS.has(icon) && !mod })
+  const rewards = inv.payouts.filter(p => p.paid).map(p => chip(p.icon, p.paid, p.need, p.mod))
+  const open = inv.payouts.filter(p => p.parts % p.need).map(p => chip(p.icon, p.parts % p.need, p.need, p.mod))
   return { rewards: rewards.sort((a, b) => b.count - a.count), open }
 }
 

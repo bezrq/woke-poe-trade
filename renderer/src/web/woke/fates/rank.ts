@@ -18,6 +18,9 @@ export interface FateReward {
   icon: string
   // Parts needed to pay out: 1 for a plain icon, 2 or 3 for a barred one.
   need: number
+  // Gear rewards: the modifier their items have ("Speed", "no Attack"), from
+  // the reward's tooltip. Same icon either way, so unknown until hovered.
+  mod?: string | null
 }
 
 export interface FateCard {
@@ -33,6 +36,8 @@ export interface FateSettings {
   // Highest tier you'll fight, per Fate; 0 means never. Fates not listed: any tier.
   maxTier: Record<string, number>
   slots: number
+  // Added to a gear reward's worth for its modifier.
+  modValues?: Record<string, number>
 }
 
 export const DEFAULT_VALUE = 1
@@ -57,13 +62,45 @@ export const DEFAULT_VALUES: Record<string, number> = {
   UniqueFlask: 2
 }
 
+// Gear modifiers the rewards can have, as the game words them.
+export const GEAR_MODS = ['Speed', 'Physical', 'Critical', 'Elemental', 'Chaos', 'Gem', 'Life', 'Resistance', 'Attack', 'Damage',
+  'Defence', 'Attribute', 'Mana', 'Drop', 'Angling', 'no Attack', 'no Defence', 'no Elemental', 'no Life', 'no Physical']
+
+export const DEFAULT_MOD_VALUES: Record<string, number> = {
+  'Speed': 3,
+  'Physical': 3,
+  'Critical': 2,
+  'Elemental': 2,
+  'Chaos': 2,
+  'Gem': 3,
+  'Life': 2,
+  'Resistance': 2,
+  'Attack': 1,
+  'Damage': 1,
+  'Defence': 1,
+  'Attribute': 1,
+  'Mana': 1,
+  'Drop': 1,
+  'Angling': 0,
+  'no Attack': 1,
+  'no Defence': 1,
+  'no Elemental': 1,
+  'no Life': 1,
+  'no Physical': 1
+}
+
+// Reward icons for gear, which come with a modifier.
+export const GEAR_ICONS = new Set(['Boots', 'Helmet', 'BodyArmour', 'Gloves', 'Shield', 'Claw', 'Staff', 'Wand', 'Sword', 'Sceptre', 'Quiver',
+  'Ring', 'Amulet', 'Belt', 'Axe', 'Bow', 'Dagger', 'Mace', 'FishingRod', 'RareWeapon'])
+
 export function defaultFateSettings (): FateSettings {
-  return { values: { ...DEFAULT_VALUES }, maxTier: {}, slots: 3 }
+  return { values: { ...DEFAULT_VALUES }, maxTier: {}, slots: 3, modValues: { ...DEFAULT_MOD_VALUES } }
 }
 
 export interface Payout {
   icon: string
   need: number
+  mod?: string | null
   // Parts invoked, and how many rewards they pay.
   parts: number
   paid: number
@@ -78,7 +115,8 @@ export interface Invocation {
   value: number
 }
 
-const valueOf = (s: FateSettings, icon: string) => s.values[icon] ?? DEFAULT_VALUE
+const valueOf = (s: FateSettings, icon: string, mod?: string | null) =>
+  (s.values[icon] ?? DEFAULT_VALUE) + (mod ? s.modValues?.[mod] ?? DEFAULT_MOD_VALUES[mod] ?? 0 : 0)
 
 // What a slot order pays, or null if it breaks a rule or your tier limits.
 export function invoke (order: FateCard[], s: FateSettings): Invocation | null {
@@ -102,8 +140,9 @@ export function invoke (order: FateCard[], s: FateSettings): Invocation | null {
     if (tier > limit) return null
     fights.push({ fate: card.fate, tier, tripled })
     for (const r of card.rewards) {
-      const key = `${r.icon}/${r.need}`
-      const p = parts.get(key) ?? { icon: r.icon, need: r.need, parts: 0, paid: 0 }
+      // Gear with different modifiers is a different reward.
+      const key = `${r.icon}/${r.need}/${r.mod ?? ''}`
+      const p = parts.get(key) ?? { icon: r.icon, need: r.need, mod: r.mod ?? null, parts: 0, paid: 0 }
       p.parts += tripled ? 3 : 1
       parts.set(key, p)
     }
@@ -112,7 +151,7 @@ export function invoke (order: FateCard[], s: FateSettings): Invocation | null {
   const payouts = [...parts.values()]
   for (const p of payouts) {
     p.paid = Math.floor(p.parts / Math.max(p.need, 1))
-    value += p.paid * valueOf(s, p.icon)
+    value += p.paid * valueOf(s, p.icon, p.mod)
   }
   return { order, fights, payouts, value }
 }
@@ -123,7 +162,7 @@ export function openParts (inv: Invocation, s: FateSettings): number {
   let v = 0
   for (const p of inv.payouts) {
     const left = p.parts - p.paid * p.need
-    if (left > 0) v += valueOf(s, p.icon) * left / p.need
+    if (left > 0) v += valueOf(s, p.icon, p.mod) * left / p.need
   }
   return v
 }
@@ -175,7 +214,7 @@ export function rankOutcomes (collection: FateCard[], s: FateSettings, limit = 8
     if (!order.length) continue
     const inv = invoke(order, s)
     if (!inv || inv.value <= 0) continue
-    const key = inv.payouts.filter(p => p.paid).map(p => `${p.icon}/${p.need}x${p.paid}`).sort().join(' ')
+    const key = inv.payouts.filter(p => p.paid).map(p => `${p.icon}/${p.need}/${p.mod ?? ''}x${p.paid}`).sort().join(' ')
     const had = byPay.get(key)
     if (had && (danger(had.invocation) < danger(inv) || (danger(had.invocation) === danger(inv) && had.clicks.length <= order.length))) continue
     byPay.set(key, { clicks: order.map(c => collection.indexOf(c)), invocation: inv })
@@ -221,11 +260,12 @@ export function explain (before: Invocation, after: Invocation, card: FateCard, 
   for (const f of after.fights) {
     if (f.fate === card.fate && f.tripled && !was.get(f.fate)?.tripled) out.push(`Triples ${f.fate}'s rewards (tier ${f.tier})`)
   }
-  const paidBefore = new Map(before.payouts.map(p => [`${p.icon}/${p.need}`, p.paid]))
+  const paidBefore = new Map(before.payouts.map(p => [`${p.icon}/${p.need}/${p.mod ?? ''}`, p.paid]))
   for (const p of after.payouts) {
-    const more = p.paid - (paidBefore.get(`${p.icon}/${p.need}`) ?? 0)
-    if (more > 0) out.push(p.need > 1 ? `Completes ${name(p.icon)} (${p.need}/${p.need})` + (more > 1 ? ` x${more}` : '') : `+${more} ${name(p.icon)}`)
-    else if (p.need > 1 && p.parts % p.need && card.rewards.some(x => x.icon === p.icon && x.need === p.need)) out.push(`${name(p.icon)} ${p.parts % p.need}/${p.need}`)
+    const more = p.paid - (paidBefore.get(`${p.icon}/${p.need}/${p.mod ?? ''}`) ?? 0)
+    const n = p.mod ? `${name(p.icon)} (${p.mod})` : name(p.icon)
+    if (more > 0) out.push(p.need > 1 ? `Completes ${n} (${p.need}/${p.need})` + (more > 1 ? ` x${more}` : '') : `+${more} ${n}`)
+    else if (p.need > 1 && p.parts % p.need && card.rewards.some(x => x.icon === p.icon && x.need === p.need)) out.push(`${n} ${p.parts % p.need}/${p.need}`)
   }
   if (!out.length && !after.order.includes(card)) out.push('Not worth invoking with what you have')
   return out

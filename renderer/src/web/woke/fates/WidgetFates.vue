@@ -55,7 +55,7 @@ import { hostRequest } from '../shared/host'
 import DockItem from '../dock/DockItem.vue'
 import type { DockMenuAction } from '../dock/dock'
 import FateRows from './FateRows.vue'
-import { adviseFates } from './advice'
+import { adviseFates, rememberHover } from './advice'
 import type { CardMark, FateAdvice } from './advice'
 import { normalizeFatesWidget, parseFatesHotkeyTarget } from './widget'
 import type { FateRead, FatesWidget } from './widget'
@@ -85,10 +85,21 @@ const headline = computed(() => {
   return a.rows.length ? 'Click your Fates in this order (C1 is the leftmost)' : 'Invoke: nothing worth invoking'
 })
 
+// The capture copies the desktop, overlay included: the marks come down for a
+// couple of frames so they aren't read as cards or as a reward's tooltip.
+async function clearScreen () {
+  if (!shown.value) return
+  shown.value = false
+  await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(resolve, 30))))
+}
+
 async function read (quiet = false) {
   if (!quiet) status.value = 'Reading the screen…'
   try {
+    const wasShown = shown.value
+    await clearScreen()
     const res = await hostRequest('fate-read', { uiScale: props.config.uiScale }) as FateRead & { sig?: string }
+    if (!res.found && wasShown && quiet) { shown.value = true; watch(); return }
     if (!res.found) {
       hide()
       if (!quiet) {
@@ -97,8 +108,10 @@ async function read (quiet = false) {
       }
       return
     }
-    advice.value = adviseFates(res, { values: props.config.values, maxTier: props.config.maxTier, slots: props.config.slots })
+    const learned = rememberHover(res)
+    advice.value = adviseFates(res, { values: props.config.values, maxTier: props.config.maxTier, slots: props.config.slots, modValues: props.config.modValues })
     status.value = ''
+    if (learned && !quiet) toast(learned)
     shown.value = true
     lastSig = res.sig ?? ''
     gone = 0
@@ -133,10 +146,10 @@ function watch () {
   }, WATCH_MS)
 }
 
-// Hotkey: read, or hide the marks if they're up.
+// Hotkey: read the window. With the cursor on a gear reward, also reads its
+// modifier from the tooltip. The marks go by themselves when the window closes.
 function onHotkey () {
-  if (shown.value) hide()
-  else read().catch(() => {})
+  read().catch(() => {})
 }
 
 function markStyle (m: CardMark) {

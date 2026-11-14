@@ -1,6 +1,6 @@
 import type { Widget, Anchor } from '@/web/overlay/widgets'
 import { sortKeys } from '../loot-filter/hotkey-match'
-import { DEFAULT_VALUES } from './rank'
+import { DEFAULT_MOD_VALUES, DEFAULT_VALUES } from './rank'
 
 export const FATES_TYPE = 'woke-fates'
 
@@ -12,6 +12,8 @@ export interface FatesWidget extends Widget {
   values: Record<string, number>
   // Highest tier you'll fight, per Fate; 0 means never.
   maxTier: Record<string, number>
+  // Added to a gear reward's worth for its modifier (Speed, Physical...).
+  modValues: Record<string, number>
   // Invoke slots Mora has unlocked so far.
   slots: number
   // Multiplies the size the reader expects the Fate window at. 1 fits the
@@ -20,7 +22,7 @@ export interface FatesWidget extends Widget {
 }
 
 // What main's reader sends back (main/src/woke/fate-read.ts, FateRead).
-export interface FateReadReward { icon: string, need: number, filled: number }
+export interface FateReadReward { icon: string, need: number, filled: number, x: number, y: number }
 export interface FateReadCard {
   fate: string
   tier: number
@@ -33,7 +35,14 @@ export interface FateReadCard {
 }
 export type FateRead =
   | { found: false }
-  | { found: true, window: 'pick' | 'invoke', scale: number, cards: FateReadCard[] }
+  | {
+    found: true
+    window: 'pick' | 'invoke'
+    scale: number
+    cards: FateReadCard[]
+    // The reward under the cursor, and the gear modifier its tooltip names.
+    hover?: { card: number, reward: number, modifier: string | null, text: string | null } | null
+  }
 
 export function fatesHotkeyTarget (wmId: number): string {
   return `woke-fates:${wmId}`
@@ -53,6 +62,7 @@ export function initFatesWidget (w: FatesWidget) {
   w.anchor = { pos: 'tr', x: 98, y: 30 }
   w.hotkey = FATES_KEYS[0]
   w.values = { ...DEFAULT_VALUES }
+  w.modValues = { ...DEFAULT_MOD_VALUES }
   w.maxTier = {}
   w.slots = 3
   w.uiScale = 1
@@ -93,6 +103,7 @@ export function normalizeFatesWidget (w: FatesWidget) {
   if (w.hotkey === undefined) w.hotkey = null
   if (!w.values || typeof w.values !== 'object') w.values = { ...DEFAULT_VALUES }
   if (!w.maxTier || typeof w.maxTier !== 'object') w.maxTier = {}
+  if (!w.modValues || typeof w.modValues !== 'object') w.modValues = { ...DEFAULT_MOD_VALUES }
   if (![1, 2, 3].includes(w.slots)) w.slots = 3
   if (typeof w.uiScale !== 'number' || !(w.uiScale > 0.5 && w.uiScale < 2)) w.uiScale = 1
 }
