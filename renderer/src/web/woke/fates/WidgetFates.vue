@@ -1,0 +1,176 @@
+<template>
+  <Widget :config="config" move-handles="corners" :inline-edit="false">
+    <DockItem id="fates" title="Fates" :show="!!advice" :menu="dockMenu" :wm-id="config.wmId" card-width="22rem">
+      <template #card>
+        <div v-if="advice" class="w-dim text-xs px-3 pt-2">{{ headline }}</div>
+        <FateRows v-if="advice" :rows="advice.rows" />
+      </template>
+    </DockItem>
+    <WPanel :title="config.wmTitle || 'Fates'" icon="/images/fates/covens.png" width="24rem">
+      <template #actions>
+        <button type="button" class="w-icon-btn" title="Read the Fate window on screen" @click="read"><i class="fas fa-eye" /></button>
+      </template>
+      <div v-if="status" class="w-dim text-xs px-3 pt-2">{{ status }}</div>
+      <template v-if="advice">
+        <div class="w-dim text-xs px-3 pt-2">{{ headline }}</div>
+        <FateRows :rows="advice.rows" />
+      </template>
+      <WEmpty v-else :art="{ mechanic: 'covens' }">
+        Open a Fate pick or Invoke Fates in game, then press <WKbd v-if="config.hotkey" :keys="config.hotkey" /><template v-else>the read button</template>.
+      </WEmpty>
+    </WPanel>
+    <Teleport to="body">
+      <div v-if="advice && shown" :class="$style.layer">
+        <div v-for="(m, i) in advice.marks" :key="i" :class="[$style.mark, m.rank === 1 && $style.take, !m.allowed && $style.no]" :style="markStyle(m)">
+          <template v-if="m.rank === 1">Take</template>
+          <template v-else-if="m.rank">#{{ m.rank }}</template>
+          <template v-else-if="m.label">{{ m.label }}</template>
+          <template v-else>Skip</template>
+          <div v-if="m.rank && m.reasons.length" :class="$style.why">{{ m.reasons.join(' · ') }}</div>
+        </div>
+        <div :class="$style.side" :style="sideStyle">
+          <div :class="$style.sideHead">{{ headline }}</div>
+          <FateRows :rows="advice.rows" />
+          <div v-if="advice.placed" :class="$style.note">
+            Fates already in the slots aren't counted: their rewards aren't shown. Take them out and read again.
+          </div>
+        </div>
+      </div>
+    </Teleport>
+  </Widget>
+</template>
+
+<script lang="ts">
+import { widgetFatesSpec } from '../widget-specs'
+
+export default { widget: widgetFatesSpec }
+</script>
+
+<script setup lang="ts">
+import { computed, onUnmounted, shallowRef } from 'vue'
+import { MainProcess } from '@/web/background/IPC'
+import Widget from '@/web/overlay/Widget.vue'
+import { WPanel, WEmpty, WKbd, toast } from '../ui'
+import { hostRequest } from '../shared/host'
+import DockItem from '../dock/DockItem.vue'
+import type { DockMenuAction } from '../dock/dock'
+import FateRows from './FateRows.vue'
+import { adviseFates } from './advice'
+import type { CardMark, FateAdvice } from './advice'
+import { normalizeFatesWidget, parseFatesHotkeyTarget } from './widget'
+import type { FateRead, FatesWidget } from './widget'
+
+const props = defineProps<{ config: FatesWidget }>()
+normalizeFatesWidget(props.config)
+
+// The marks stay over the game for a while, or until the hotkey again.
+const SHOW_MS = 60_000
+
+const advice = shallowRef<FateAdvice | null>(null)
+const shown = shallowRef(false)
+const status = shallowRef('')
+let hideTimer: ReturnType<typeof setTimeout> | undefined
+
+const headline = computed(() => {
+  const a = advice.value
+  if (!a) return ''
+  if (a.window === 'pick') return 'Pick: best Fate to take, and what you could invoke with it'
+  return a.rows.length ? 'Click your Fates in this order (C1 is the leftmost)' : 'Invoke: nothing worth invoking'
+})
+
+async function read () {
+  status.value = 'Reading the screen…'
+  try {
+    const res = await hostRequest('fate-read', { uiScale: props.config.uiScale }) as FateRead
+    if (!res.found) {
+      advice.value = null
+      shown.value = false
+      status.value = 'No Fate window found. Open a Fate pick or Invoke Fates first.'
+      toast('No Fate window on screen')
+      return
+    }
+    advice.value = adviseFates(res, { values: props.config.values, maxTier: props.config.maxTier, slots: props.config.slots })
+    status.value = ''
+    shown.value = true
+    clearTimeout(hideTimer)
+    hideTimer = setTimeout(() => { shown.value = false }, SHOW_MS)
+  } catch (err) {
+    status.value = `Couldn't read the screen: ${(err as Error).message}`
+  }
+}
+
+// Hotkey: read, or hide the marks if they're up.
+function onHotkey () {
+  if (shown.value) {
+    shown.value = false
+    clearTimeout(hideTimer)
+  } else {
+    read().catch(() => {})
+  }
+}
+
+function markStyle (m: CardMark) {
+  // Above the card's top edge, centred on it.
+  const top = m.card.y - m.card.width * 0.72
+  return { left: `${m.card.x * 100}%`, top: `${Math.max(0, top) * 100}%` }
+}
+
+// Beside the cards, on whichever side has room.
+const sideStyle = computed(() => {
+  const cards = advice.value?.marks.map(m => m.card) ?? []
+  if (!cards.length) return {}
+  const right = Math.max(...cards.map(c => c.x + c.width / 2))
+  const left = Math.min(...cards.map(c => c.x - c.width / 2))
+  const top = Math.min(...cards.map(c => c.y - c.width * 0.7))
+  return right < 0.72
+    ? { left: `${(right + 0.012) * 100}%`, top: `${top * 100}%` }
+    : { right: `${(1 - left + 0.012) * 100}%`, top: `${top * 100}%` }
+})
+
+const hotkeys = MainProcess.onEvent('MAIN->CLIENT::widget-action', (e) => {
+  if (parseFatesHotkeyTarget(e.target) === props.config.wmId) onHotkey()
+})
+
+onUnmounted(() => {
+  hotkeys.abort()
+  clearTimeout(hideTimer)
+})
+
+const dockMenu = computed<DockMenuAction[]>(() => [
+  { label: 'Read the Fate window', icon: 'fas fa-eye', action: () => { read().catch(() => {}) } },
+  { label: 'Clear', icon: 'fas fa-broom', disabled: !advice.value, action: () => { advice.value = null; shown.value = false } }
+])
+</script>
+
+<style module>
+.layer { position: fixed; inset: 0; pointer-events: none; z-index: 1000; }
+.mark {
+  position: absolute;
+  transform: translate(-50%, -100%);
+  padding: 2px 10px;
+  background: var(--w-panel);
+  border: 1px solid var(--w-line-strong);
+  border-radius: var(--w-r-md);
+  box-shadow: var(--w-shadow);
+  font-family: var(--w-heading, var(--w-body));
+  font-size: var(--w-fs-md);
+  color: var(--w-fg);
+  text-align: center;
+  white-space: nowrap;
+}
+.mark.take { color: var(--w-accent-fg); background: var(--w-up); border-color: var(--w-up); font-weight: 600; }
+.mark.no { color: var(--w-dim); }
+.why { max-width: 15rem; white-space: normal; font-size: var(--w-fs-xs); font-weight: 400; }
+.side {
+  position: absolute;
+  width: 22rem;
+  background: var(--w-panel);
+  border: 1px solid var(--w-line-strong);
+  border-radius: var(--w-r-md);
+  box-shadow: var(--w-shadow);
+  font-family: var(--w-body);
+  color: var(--w-fg);
+}
+.sideHead { padding: 6px var(--w-pad); font-size: var(--w-fs-sm); color: var(--w-dim); border-bottom: 1px solid var(--w-line); }
+.note { padding: 6px var(--w-pad); font-size: var(--w-fs-xs); color: var(--w-warn, var(--w-dim)); }
+</style>

@@ -11,6 +11,7 @@ import { cachedNeverSink, downloadNeverSink, latestNeverSink, pruneNeverSink, re
 import { ScreenScanner, MAP_SCAN, ESSENCE_SCAN, ensureOcr, readAllEssenceLabels, readAreaMods } from './map-scan'
 import { WokeHoverTracker } from './hover'
 import { readStashTab } from './stash-read'
+import { readFates } from './fate-read'
 import { StashWatch } from './stash-watch'
 import { TreeOverlay } from './tree-overlay'
 import { ATLAS_FIT } from './tree-fit'
@@ -97,6 +98,17 @@ export function initWoke (server: ServerEvents, logger: Logger, poeWindow: GameW
   }
   registerWokeHandler('essence-scan-once', async () => await readAllEssenceLabels(poeWindow))
   registerWokeHandler('area-mods-read', async (args) => await readAreaMods(poeWindow, Number(args?.delayMs) || 0))
+  // One screenshot of a Covens Fate window. The capture copies the desktop,
+  // so it's only read while the game is in front.
+  registerWokeHandler('fate-read', async (args) => {
+    const bounds = poeWindow.bounds
+    if (!poeWindow.hasFocus || !bounds.width || !bounds.height) return { found: false }
+    const t0 = performance.now()
+    const scale = Number(args?.uiScale)
+    const read = readFates(poeWindow.screenshot(), bounds.width, bounds.height, scale > 0.5 && scale < 2 ? scale : 1)
+    perfRecord('Fates: read the window', performance.now() - t0)
+    return read
+  })
   const stashWatch = new StashWatch(() => {
     server.sendEventTo('broadcast', { name: 'MAIN->CLIENT::woke-event', payload: { topic: 'stash-clear', data: null } })
   })

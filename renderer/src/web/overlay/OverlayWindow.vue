@@ -43,6 +43,7 @@ import LoadingAnimation from './LoadingAnimation.vue'
 import { WokeOverlay } from '@/web/woke'
 import { isModuleOn, isWidgetTypeOn } from '@/web/woke/modules'
 import { addEssenceScanWidget } from '@/web/woke/essence-scan/widget'
+import { addFatesWidget } from '@/web/woke/fates/widget'
 import { requestRestore } from '@/web/woke/ui/window-anchor'
 // ---
 import { usePoeninja } from '@/web/background/Prices'
@@ -66,6 +67,11 @@ export default defineComponent({
       if (!on || was !== false) return
       const pc = AppConfig<PriceCheckWidget>('price-check')
       if (addEssenceScanWidget(AppConfig(), pc ? `${pc.hotkeyHold} + ${pc.hotkey}` : null)) { pushHostConfig(); saveConfig() }
+    })
+    watch(() => isModuleOn(AppConfig(), 'fates'), (on, was) => {
+      if (!on || was !== false) return
+      const pc = AppConfig<PriceCheckWidget>('price-check')
+      if (addFatesWidget(AppConfig(), pc ? `${pc.hotkeyHold} + ${pc.hotkey}` : null)) { pushHostConfig(); saveConfig() }
     })
 
     const active = shallowRef(!Host.isElectron)

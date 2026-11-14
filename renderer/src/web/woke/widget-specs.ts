@@ -13,6 +13,7 @@ import { DEATH_RECAP_TYPE, initDeathRecapWidget } from './death-recap/widget'
 import { DISENCHANT_TYPE } from './disenchant/widget'
 import { DROP_COUNTER_TYPE } from './drop-counter/drop-counter'
 import { ESSENCE_SCAN_TYPE } from './essence-scan/widget'
+import { FATES_TYPE } from './fates/widget'
 import { FARMING_TYPE } from './farming/farming'
 import { LAB_GEMS_TYPE } from './lab-gems/widget'
 import { LAB_TYPE } from './lab/lab'
@@ -146,6 +147,12 @@ export const widgetEssenceScanSpec = {
   type: ESSENCE_SCAN_TYPE,
   instances: 'multi',
   trNameKey: 'Essence scan'
+} satisfies WidgetSpec
+
+export const widgetFatesSpec = {
+  type: FATES_TYPE,
+  instances: 'single',
+  trNameKey: 'Fates'
 } satisfies WidgetSpec
 
 export const widgetLabGemsSpec = {

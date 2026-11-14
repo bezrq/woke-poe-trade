@@ -245,6 +245,17 @@ export const PAGES: SettingsPage[] = shallowReactive<SettingsPage[]>([
     find: ['MEDS', 'Value alert', 'Essence']
   },
   {
+    id: 'fates',
+    name: 'Fates',
+    group: 'modules',
+    sub: 'Maps & atlas',
+    icon: modulePageIcon('fates'),
+    description: 'Reads the Covens Fate windows: which Fate to take after an encounter, and the order to invoke them at the boss.',
+    modules: ['fates'],
+    widgets: ['woke-fates'],
+    find: ['Covens', 'Fate', 'Invoke', 'Mora', 'Grim Fate', 'Wickerman']
+  },
+  {
     id: 'atlas',
     name: 'Atlas strategies',
     group: 'modules',

@@ -19,6 +19,8 @@ import type { MapScanWidget } from './map-mods/scan'
 import { isModuleOn, isWidgetTypeOn } from './modules'
 import { ESSENCE_SCAN_TYPE, essenceHotkeyTarget, essenceOnceTarget } from './essence-scan/widget'
 import type { EssenceScanWidget } from './essence-scan/widget'
+import { FATES_TYPE, fatesHotkeyTarget } from './fates/widget'
+import type { FatesWidget } from './fates/widget'
 import { LOOT_FILTER_TYPE, LOOT_FILTER_SAMPLE_TARGET, editorHotkeyTarget, reloadHotkeyTarget, strictnessHotkeyTarget } from './loot-filter/widget'
 import type { LootFilterWidget } from './loot-filter/widget'
 import { CAMPAIGN_TYPE, hotkeyTarget as campaignHotkeyTarget } from './campaign/widget'
@@ -169,6 +171,10 @@ export function wokeShortcutsFor (widget: Widget, config: { woke?: { setupDone: 
     if (scan.hotkey) out.push({ shortcut: scan.hotkey, keepModKeys: true, action: { type: 'trigger-event', target: essenceHotkeyTarget(widget.wmId) } })
     if (scan.onceHotkey) out.push({ shortcut: scan.onceHotkey, keepModKeys: true, action: { type: 'trigger-event', target: essenceOnceTarget(widget.wmId) } })
     return out
+  }
+  if (widget.wmType === FATES_TYPE) {
+    const key = (widget as FatesWidget).hotkey
+    return key ? [{ shortcut: key, keepModKeys: true, action: { type: 'trigger-event', target: fatesHotkeyTarget(widget.wmId) } }] : []
   }
   if (widget.wmType === LOOT_FILTER_TYPE) {
     const lf = widget as LootFilterWidget

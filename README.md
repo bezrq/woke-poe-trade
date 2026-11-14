@@ -87,6 +87,7 @@ Pick a preset on first run (Mapper, Leveling, Trader, Everything or Price check 
 | Mapping | Map scan | Reads map tooltips on screen |
 | Mapping | Death recap | Where you died, and the mods of maps you checked |
 | Mapping | Essence scan | Reads essence monoliths and flags MEDS |
+| Mapping | Fates | Reads Covens Fate windows: what to take and what to invoke |
 | Mapping | Loot filter editor | Edit the NeverSink rule for a sampled item |
 | Mapping | Atlas strategies | Atlas tree, Threads and regex per strategy |
 | Mapping | League mechanics | Prices and picks for each league mechanic |

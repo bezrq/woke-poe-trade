@@ -73,6 +73,7 @@ export const MODULES: ModuleDef[] = shallowReactive<ModuleDef[]>([
   { id: 'map-scan', name: 'Map scan', description: 'Reads map tooltips on screen', group: 'mapping', widgetTypes: ['woke-map-scan'], icon: { fa: 'fas fa-crosshairs', mechanic: 'map' }, needs: ['ocr', 'hotkeys'] },
   { id: 'death-recap', name: 'Death recap', description: 'Where you died, and the mods of maps you checked', group: 'mapping', widgetTypes: ['woke-death-recap'], icon: { fa: 'fas fa-skull', item: 'Portal Scroll' }, needs: ['log'] },
   { id: 'essence-scan', name: 'Essence scan', description: 'Reads essence monoliths and flags MEDS', group: 'mapping', widgetTypes: ['woke-essence-scan'], icon: { fa: 'fas fa-flask', mechanic: 'essence' }, needs: ['ocr', 'hotkeys', 'prices', 'log'] },
+  { id: 'fates', name: 'Fates', description: 'Reads Covens Fate windows: what to take and what to invoke', group: 'mapping', widgetTypes: ['woke-fates'], icon: { fa: 'fas fa-feather-alt', mechanic: 'covens' }, needs: ['hotkeys'] },
   { id: 'loot-filter', name: 'Loot filter editor', description: 'Edit the NeverSink rule for a sampled item', group: 'mapping', widgetTypes: ['woke-loot-filter'], icon: { fa: 'fas fa-filter', item: 'Orb of Scouring' }, needs: ['log', 'hotkeys'] },
   { id: 'atlas', name: 'Atlas strategies', description: 'Atlas tree, Threads and regex per strategy', group: 'mapping', widgetTypes: ['woke-atlas-strategies'], icon: { fa: 'fas fa-globe', src: '/images/art/atlas-maps-wheel.png' }, needs: ['network', 'prices'] },
   { id: 'mechanics', name: 'League mechanics', description: 'Prices and picks for each league mechanic', group: 'mapping', widgetTypes: ['woke-mechanics'], icon: { fa: 'fas fa-puzzle-piece', mechanic: 'incursion' }, needs: ['log', 'prices'] },
@@ -124,6 +125,7 @@ export interface WokeModulesConfig {
   lootFilterSeeded?: boolean
   // The essence scan widget has been put on the overlay once (Config.ts).
   essenceScanSeeded?: boolean
+  fatesSeeded?: boolean
   // Icon dock position and switches (dock/dock.ts).
   dock?: DockConfig
   // Price check: dust per chaos and a "disenchant it" verdict for uniques,

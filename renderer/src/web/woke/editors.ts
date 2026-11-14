@@ -17,6 +17,7 @@ import { MECHANICS_TYPE } from './mechanics/widget'
 import { MAP_MODS_TYPE } from './map-mods/widget'
 import { MAP_SCAN_TYPE } from './map-mods/scan'
 import { ESSENCE_SCAN_TYPE } from './essence-scan/widget'
+import { FATES_TYPE } from './fates/widget'
 import { LOOT_FILTER_TYPE } from './loot-filter/widget'
 import { TRADE_TYPE } from './trade/widget'
 import { SCARAB_FLIP_TYPE } from './scarab-flip/widget'
@@ -41,6 +42,7 @@ const MechanicsEditor = defineAsyncComponent(() => import('./mechanics/mechanics
 const MapModsEditor = defineAsyncComponent(() => import('./map-mods/map-mods-editor.vue'))
 const MapScanEditor = defineAsyncComponent(() => import('./map-mods/map-scan-editor.vue'))
 const EssenceScanEditor = defineAsyncComponent(() => import('./essence-scan/essence-scan-editor.vue'))
+const FatesEditor = defineAsyncComponent(() => import('./fates/fates-editor.vue'))
 const LootFilterEditor = defineAsyncComponent(() => import('./loot-filter/loot-filter-editor.vue'))
 const TradeEditor = defineAsyncComponent(() => import('./trade/trade-editor.vue'))
 const FlipsEditor = defineAsyncComponent(() => import('./scarab-flip/flips-editor.vue'))
@@ -63,6 +65,7 @@ const editors: Record<string, Component> = {
   [MAP_MODS_TYPE]: MapModsEditor,
   [MAP_SCAN_TYPE]: MapScanEditor,
   [ESSENCE_SCAN_TYPE]: EssenceScanEditor,
+  [FATES_TYPE]: FatesEditor,
   [MECHANICS_TYPE]: MechanicsEditor,
   [LOOT_FILTER_TYPE]: LootFilterEditor,
   [FARMING_TYPE]: FarmingEditor,

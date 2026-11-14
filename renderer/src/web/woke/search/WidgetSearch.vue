@@ -149,6 +149,7 @@ import type { LookupTab } from '../item-lookup/lookup'
 import { LOOT_FILTER_TYPE, reloadHotkeyTarget, strictnessHotkeyTarget } from '../loot-filter/widget'
 import { MAP_SCAN_TYPE, scanHotkeyTarget } from '../map-mods/scan'
 import { ESSENCE_SCAN_TYPE, essenceHotkeyTarget, essenceOnceTarget } from '../essence-scan/widget'
+import { FATES_TYPE, fatesHotkeyTarget } from '../fates/widget'
 import { RUN_TIMER_TYPE, hotkeyTarget as timerTarget } from '../campaign/run-timer'
 import { PRICE_GROUP_LIMIT, baseUniqueName, changeSince, groupKey, groupTip, rarityClass, searchNamed, searchPrices, tradeUrl, typeLabel } from './search'
 import type { PriceGroup } from './search'
@@ -293,6 +294,8 @@ function commandEntries (): ActionEntry[] {
     } else if (w.wmType === ESSENCE_SCAN_TYPE) {
       add(w, 'Essence scan on or off', 'hotkey', essenceHotkeyTarget(w.wmId))
       add(w, 'Read every essence once', 'onceHotkey', essenceOnceTarget(w.wmId))
+    } else if (w.wmType === FATES_TYPE) {
+      add(w, 'Read the Fate window', 'hotkey', fatesHotkeyTarget(w.wmId))
     } else if (w.wmType === RUN_TIMER_TYPE) {
       add(w, 'Pause or resume the run timer', 'hotkeyPause', timerTarget(w.wmId, 'pause'))
     }

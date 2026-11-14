@@ -47,6 +47,7 @@ const WOKE_KEYS: Record<string, { page: string, keys: Array<[string, string]> }>
   'woke-map-mods': { page: 'map-mods', keys: [['hotkey', 'Check the hovered map'], ['regexHotkey', 'Paste the map regex']] },
   'woke-map-scan': { page: 'map-mods', keys: [['hotkey', 'Map scan on / off'], ['rollHotkey', 'Map scan: rolling mode']] },
   'woke-essence-scan': { page: 'essence-scan', keys: [['hotkey', 'Essence scan on / off'], ['onceHotkey', 'Read every essence once']] },
+  'woke-fates': { page: 'fates', keys: [['hotkey', 'Read the Fate window']] },
   'woke-loot-filter': { page: 'loot-filter', keys: [['sampleHotkey', 'Loot filter rule for the hovered item'], ['editorHotkey', 'Open the loot filter editor'], ['reloadHotkey', 'Reload the saved loot filter in game'], ['stricterHotkey', 'Loot filter one step stricter'], ['looserHotkey', 'Loot filter one step looser']] },
   'woke-farming': { page: 'farming', keys: [['lootHotkey', 'Farming: add the hovered item']] },
   'woke-drop-counter': { page: 'drop-counter', keys: [['hotkey', 'Drop counter: +1 the hovered item']] },
