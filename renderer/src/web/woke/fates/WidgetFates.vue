@@ -67,9 +67,9 @@ normalizeFatesWidget(props.config)
 // the Fate window closes, and are read again when cards move (a click into a
 // slot). Nothing runs while they're down.
 const WATCH_MS = 400
-// Two looks without cards in a row before hiding, so one odd frame (a tooltip
+// Three looks without cards in a row before hiding, so one odd frame (a tooltip
 // over the cards) doesn't take them down.
-const GONE_LOOKS = 2
+const GONE_LOOKS = 3
 
 const advice = shallowRef<FateAdvice | null>(null)
 const shown = shallowRef(false)
@@ -169,9 +169,16 @@ function onHotkey () {
   read().catch(() => {})
 }
 
+// Half a card's height, as a fraction of the window's height. Cards are given
+// by their width as a fraction of the window's width (450x622 at 4K).
+function halfHeight (width: number): number {
+  return width * (window.innerWidth / Math.max(1, window.innerHeight)) * (622 / 450) / 2
+}
+
 function markStyle (m: CardMark) {
-  // Above the card's top edge, centred on it.
-  const top = m.card.y - m.card.width * 0.72
+  // Clear above the card's top edge, so the marks never cover the name
+  // banners the looks find the cards by.
+  const top = m.card.y - halfHeight(m.card.width) - 0.006
   return { left: `${m.card.x * 100}%`, top: `${Math.max(0, top) * 100}%` }
 }
 
@@ -181,7 +188,7 @@ const sideStyle = computed(() => {
   if (!cards.length) return {}
   const right = Math.max(...cards.map(c => c.x + c.width / 2))
   const left = Math.min(...cards.map(c => c.x - c.width / 2))
-  const top = Math.min(...cards.map(c => c.y - c.width * 0.7))
+  const top = Math.min(...cards.map(c => c.y - halfHeight(c.width)))
   return right < 0.72
     ? { left: `${(right + 0.012) * 100}%`, top: `${top * 100}%` }
     : { right: `${(1 - left + 0.012) * 100}%`, top: `${top * 100}%` }
