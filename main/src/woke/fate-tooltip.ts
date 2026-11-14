@@ -19,6 +19,12 @@ const TEXT_MAX_H = 70
 export const GEAR_ICONS = new Set(['Boots', 'Helmet', 'BodyArmour', 'Gloves', 'Shield', 'Claw', 'Staff', 'Wand', 'Sword', 'Sceptre', 'Quiver',
   'Ring', 'Amulet', 'Belt', 'Axe', 'Bow', 'Dagger', 'Mace', 'FishingRod', 'RareWeapon'])
 
+// Names one reward of one card for the sweep's skip list. Must match
+// sweepKey in renderer/src/web/woke/fates/advice.ts.
+export function sweepKey (card: { fate: string, tier: number, rewards: Array<{ icon: string, need: number }> }, reward: number): string {
+  return `${card.fate}|${card.tier}|${card.rewards.map(r => `${r.icon}/${r.need}`).join(',')}#${reward}`
+}
+
 const MODIFIERS = ['Chaos', 'Critical', 'Damage', 'Defence', 'Drop', 'Gem', 'Life', 'Mana', 'Physical', 'Resistance', 'Speed',
   'Angling', 'Attack', 'Attribute', 'Elemental']
 

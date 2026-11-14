@@ -137,7 +137,8 @@ export interface WokeOps {
   'area-mods-read': Op<{ delayMs?: number }, { lines: string[] | null, ocrMissing?: boolean }>
   // Covens Fate windows; the answer is FateRead from main/src/woke/fate-read.ts.
   // sweep: also hover each gear reward (moving the cursor) to read its modifier.
-  'fate-read': Op<{ uiScale?: number, sweep?: boolean }, Json>
+  // known: "card key#reward" of modifiers already read (fate-tooltip.ts sweepKey), skipped.
+  'fate-read': Op<{ uiScale?: number, sweep?: boolean, known?: string[] }, Json>
   // Where Fate cards are, coarsely ('' for none); null while the game isn't in front.
   'fate-glance': Op<{ uiScale?: number }, { sig: string | null }>
   'stash-read': Op<NoArgs, Json>

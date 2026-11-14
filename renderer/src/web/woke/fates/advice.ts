@@ -89,6 +89,14 @@ export function rememberHover (read: Extract<FateRead, { found: true }>): string
 
 export function forgetHovers () { remembered.clear() }
 
+// Rewards whose modifier is already known, for the sweep to skip. Same form
+// as sweepKey in main/src/woke/fate-tooltip.ts.
+export function knownRewards (): string[] {
+  const out: string[] = []
+  for (const [key, mods] of remembered) mods.forEach((m, i) => { if (m) out.push(`${key}#${i}`) })
+  return out
+}
+
 const toCard = (c: FateReadCard): FateCard => {
   const mods = remembered.get(cardKey(c))
   return { fate: c.fate, tier: c.tier, rewards: c.rewards.map((r, i) => ({ icon: r.icon, need: r.need, mod: mods?.[i] ?? null })) }

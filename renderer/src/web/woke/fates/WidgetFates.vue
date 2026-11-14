@@ -55,7 +55,7 @@ import { hostRequest } from '../shared/host'
 import DockItem from '../dock/DockItem.vue'
 import type { DockMenuAction } from '../dock/dock'
 import FateRows from './FateRows.vue'
-import { adviseFates, rememberHover } from './advice'
+import { adviseFates, knownRewards, rememberHover } from './advice'
 import type { CardMark, FateAdvice } from './advice'
 import { normalizeFatesWidget, parseFatesHotkeyTarget } from './widget'
 import type { FateRead, FatesWidget } from './widget'
@@ -76,6 +76,9 @@ const shown = shallowRef(false)
 const status = shallowRef('')
 let watchTimer: ReturnType<typeof setTimeout> | undefined
 let lastSig = ''
+// A changed layout is read again only once it holds still for a look: cards
+// slide in when a window opens, and each read takes the marks down briefly.
+let pendingSig = ''
 let gone = 0
 
 const headline = computed(() => {
@@ -100,7 +103,7 @@ async function read (quiet = false) {
     await clearScreen()
     // The hotkey sweeps the gear rewards' tooltips; refreshes while you click
     // cards into slots don't move your cursor.
-    const res = await hostRequest('fate-read', { uiScale: props.config.uiScale, sweep: !quiet }) as FateRead & { sig?: string }
+    const res = await hostRequest('fate-read', { uiScale: props.config.uiScale, sweep: !quiet, known: knownRewards() }) as FateRead & { sig?: string }
     if (!res.found && wasShown && quiet) { shown.value = true; watch(); return }
     if (!res.found) {
       hide()
@@ -140,7 +143,12 @@ function watch () {
           if (++gone >= GONE_LOOKS) { hide(); return }
         } else if (sig !== null) {
           gone = 0
-          if (sig !== lastSig) { read(true).catch(() => {}); return }
+          if (sig !== lastSig) {
+            if (sig === pendingSig) { pendingSig = ''; read(true).catch(() => {}); return }
+            pendingSig = sig
+          } else {
+            pendingSig = ''
+          }
         }
         watch()
       })
