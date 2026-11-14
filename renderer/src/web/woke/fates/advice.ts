@@ -67,15 +67,24 @@ export function fateName (id: string): string {
 const remembered = new Map<string, Array<string | null>>()
 const cardKey = (c: FateReadCard) => `${c.fate}|${c.tier}|${c.rewards.map(r => `${r.icon}/${r.need}`).join(',')}`
 
+// Keeps the modifiers a read found (a sweep, or the hovered reward). Returns a
+// line saying what was learned, or null.
 export function rememberHover (read: Extract<FateRead, { found: true }>): string | null {
-  const h = read.hover
-  const card = h ? read.cards[h.card] : undefined
-  if (!h || !card || !h.modifier) return null
-  const key = cardKey(card)
-  const mods = remembered.get(key) ?? card.rewards.map(() => null)
-  mods[h.reward] = h.modifier
-  remembered.set(key, mods)
-  return `${rewardName(card.rewards[h.reward].icon)}: ${h.modifier} modifier`
+  const found = [...(read.mods ?? []), ...(read.hover ? [read.hover] : [])]
+  let learned = 0
+  let last = ''
+  for (const h of found) {
+    const card = read.cards[h.card]
+    if (!card || !h.modifier) continue
+    const key = cardKey(card)
+    const mods = remembered.get(key) ?? card.rewards.map(() => null)
+    mods[h.reward] = h.modifier
+    remembered.set(key, mods)
+    learned++
+    last = `${rewardName(card.rewards[h.reward].icon)}: ${h.modifier} modifier`
+  }
+  if (!learned) return null
+  return learned === 1 ? last : `Read ${learned} gear modifiers`
 }
 
 export function forgetHovers () { remembered.clear() }

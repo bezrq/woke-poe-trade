@@ -28,7 +28,7 @@
     </div>
     <div>
       <div class="mb-1">Extra worth of a gear reward, by its modifier</div>
-      <div class="text-sm mb-1" style="color: var(--w-dim);">Gear rewards (boots, wands...) say their modifier only in their tooltip: hover one and press the hotkey, and it's remembered for that card.</div>
+      <div class="text-sm mb-1" style="color: var(--w-dim);">Gear rewards (boots, wands...) say their modifier only in their tooltip, so the hotkey moves your cursor over each one for a moment to read it (no clicks), then puts it back.</div>
       <div class="grid gap-x-3 gap-y-1" style="grid-template-columns: repeat(3, minmax(0, 1fr));">
         <label v-for="m in mods" :key="m" class="flex items-center gap-2">
           <span class="flex-1 w-trunc">{{ m }}</span>

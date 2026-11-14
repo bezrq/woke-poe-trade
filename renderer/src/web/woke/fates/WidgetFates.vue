@@ -98,7 +98,9 @@ async function read (quiet = false) {
   try {
     const wasShown = shown.value
     await clearScreen()
-    const res = await hostRequest('fate-read', { uiScale: props.config.uiScale }) as FateRead & { sig?: string }
+    // The hotkey sweeps the gear rewards' tooltips; refreshes while you click
+    // cards into slots don't move your cursor.
+    const res = await hostRequest('fate-read', { uiScale: props.config.uiScale, sweep: !quiet }) as FateRead & { sig?: string }
     if (!res.found && wasShown && quiet) { shown.value = true; watch(); return }
     if (!res.found) {
       hide()
@@ -146,8 +148,8 @@ function watch () {
   }, WATCH_MS)
 }
 
-// Hotkey: read the window. With the cursor on a gear reward, also reads its
-// modifier from the tooltip. The marks go by themselves when the window closes.
+// Hotkey: read the window, hovering each gear reward for its modifier. The
+// marks go by themselves when the window closes.
 function onHotkey () {
   read().catch(() => {})
 }

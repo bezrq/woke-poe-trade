@@ -15,6 +15,10 @@ const REACH_Y = 650
 const TEXT_MIN_H = 18
 const TEXT_MAX_H = 70
 
+// Reward icons for gear, which come with a modifier (as in fate-read-data).
+export const GEAR_ICONS = new Set(['Boots', 'Helmet', 'BodyArmour', 'Gloves', 'Shield', 'Claw', 'Staff', 'Wand', 'Sword', 'Sceptre', 'Quiver',
+  'Ring', 'Amulet', 'Belt', 'Axe', 'Bow', 'Dagger', 'Mace', 'FishingRod', 'RareWeapon'])
+
 const MODIFIERS = ['Chaos', 'Critical', 'Damage', 'Defence', 'Drop', 'Gem', 'Life', 'Mana', 'Physical', 'Resistance', 'Speed',
   'Angling', 'Attack', 'Attribute', 'Elemental']
 

@@ -42,6 +42,8 @@ export type FateRead =
     cards: FateReadCard[]
     // The reward under the cursor, and the gear modifier its tooltip names.
     hover?: { card: number, reward: number, modifier: string | null, text: string | null } | null
+    // After a sweep: every gear reward's modifier.
+    mods?: Array<{ card: number, reward: number, modifier: string | null, text: string | null }>
   }
 
 export function fatesHotkeyTarget (wmId: number): string {
