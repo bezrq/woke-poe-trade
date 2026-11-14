@@ -4,6 +4,8 @@ import { describe, it, expect } from 'vitest'
 import { advisePick, bestInvocation, defaultFateSettings, invoke, rankOutcomes } from '@/web/woke/fates/rank'
 import type { FateCard, FateSettings } from '@/web/woke/fates/rank'
 import { FATES, REWARD_ICONS } from '@/web/woke/fates/data'
+import fs from 'node:fs'
+import path from 'node:path'
 
 const r = (icon: string, need = 1) => ({ icon, need })
 const settings = (over: Partial<FateSettings> = {}): FateSettings => ({ ...defaultFateSettings(), ...over })
@@ -129,5 +131,17 @@ describe('Fate data', () => {
     expect(FATES.every(f => f.tiers.length === 3)).toBe(true)
     expect(FATES.find(f => f.id === 'Stormcaller')!.summary).toBe('Creates leylines of lightning')
     expect(REWARD_ICONS.map(i => i.icon)).toContain('Currency')
+  })
+})
+
+describe('widget specs', () => {
+  // A single-instance widget without initInstance stops the whole overlay
+  // from loading (Config builds those on start).
+  // (Read as text: the specs module pulls in browser-only code.)
+  it('every single-instance widget can make its instance', () => {
+    const src = fs.readFileSync(path.join(__dirname, '../../src/web/woke/widget-specs.ts'), 'utf8')
+    const blocks = src.split('export const ').filter(b => b.includes("instances: 'single'"))
+    expect(blocks.length).toBeGreaterThan(0)
+    for (const b of blocks) expect(b, b.split(' ')[0]).toMatch(/initInstance:/)
   })
 })

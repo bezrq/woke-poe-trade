@@ -151,7 +151,7 @@ export const widgetEssenceScanSpec = {
 
 export const widgetFatesSpec = {
   type: FATES_TYPE,
-  instances: 'single',
+  instances: 'multi',
   trNameKey: 'Fates'
 } satisfies WidgetSpec
 
