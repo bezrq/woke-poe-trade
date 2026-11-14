@@ -39,6 +39,22 @@ export function emptyEntry (entries: RegexEntry[]): RegexEntry {
   }
 }
 
+// 3.30 renamed the map Item Quantity line to Atlas Drops, so a map search on
+// "tity: +" (the starter, an edited copy, one brought over from APT) matches
+// nothing. Points Maps entries at the new line; a rerun finds nothing to change.
+const OLD_QUANTITY = /tity: (\\\+|\.)/g
+export function renameQuantityStarter (widgets: Array<{ wmType: string, entries?: RegexEntry[] }>): void {
+  for (const w of widgets) {
+    if (w.wmType !== REGEX_LIBRARY_TYPE) continue
+    for (const e of w.entries ?? []) {
+      if (e.category !== 'Maps' || !e.text.includes('tity: ')) continue
+      e.text = e.text.replace(OLD_QUANTITY, 'ops: $1')
+      if (e.name === 'Quantity 80%+') e.name = 'Atlas Drops 80%+'
+      if (e.notes === 'Item Quantity of 80% or more.') e.notes = 'Atlas Drops (Item Quantity before 3.30) of 80% or more.'
+    }
+  }
+}
+
 export function starterEntries (): RegexEntry[] {
   // Strings people actually use: map ones highlight maps you CAN run (the
   // "!" excludes), the rest sort a dump tab. Build longer map strings with
@@ -46,7 +62,7 @@ export function starterEntries (): RegexEntry[] {
   const base = [
     { name: 'No reflect', text: '"!eflec"', category: 'Maps', tags: ['safe'], notes: 'Highlights maps without physical or elemental reflect.' },
     { name: 'No reflect, no regen', text: '"!eflec|t regen"', category: 'Maps', tags: ['safe'], notes: 'Also skips "Players cannot Regenerate…".' },
-    { name: 'Quantity 80%+', text: '"tity: \\+([89]\\d|\\d{3})%"', category: 'Maps', tags: ['juice'], notes: 'Item Quantity of 80% or more.' },
+    { name: 'Atlas Drops 80%+', text: '"ops: \\+([89]\\d|\\d{3})%"', category: 'Maps', tags: ['juice'], notes: 'Atlas Drops (Item Quantity before 3.30) of 80% or more.' },
     { name: 'Pack size 30%+', text: '"ze: \\+([3-9]\\d|\\d{3})%"', category: 'Maps', tags: ['juice'], notes: 'Monster Pack Size of 30% or more.' },
     { name: 'Chaos recipe (ilvl 60-74)', text: '"m level: (6\\d|7[0-4])"', category: 'Dump sorting', tags: ['vendor'], notes: 'Item level 60 to 74, for the chaos recipe.' },
     { name: 'Unidentified', text: 'unidentified', category: 'Dump sorting', tags: ['vendor'], notes: '' },
