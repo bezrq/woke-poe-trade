@@ -230,7 +230,8 @@ export const HARSHEST: { [K in Key]: Presets[K] } = {
   volume: { on: true, percent: 5 },
   beams: { on: true, keepTiers: 2 },
   weapons: { on: true, archetype: 'custom', classes: [] },
-  look: { on: true, size: LOOK_LIMITS.size.min, background: LOOK_LIMITS.background.min, colour: LOOK_LIMITS.colour.min }
+  look: { on: true, size: LOOK_LIMITS.size.min, background: LOOK_LIMITS.background.min, colour: LOOK_LIMITS.colour.min },
+  lowTiers: { on: true, tier: 5 }
 }
 
 export const PRESET_KEYS = Object.keys(HARSHEST) as Key[]
@@ -249,7 +250,8 @@ const HARSH_WORDS: Partial<Record<Key, string>> = {
   volume: '5%',
   beams: 'tiers 1-2, the least it allows',
   weapons: 'no weapon types kept',
-  look: 'smallest text, no background, grey'
+  look: 'smallest text, no background, grey',
+  lowTiers: 'below tier 5'
 }
 
 // "Quiet mode (keeps tier 1 only)": the preset as the editor names it.
