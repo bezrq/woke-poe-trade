@@ -323,6 +323,28 @@ describe('gearDiff across ring and flask slots', () => {
   })
 })
 
+describe('jewelDiff', () => {
+  it('places read jewels by the game slot order and compares socket by socket', async () => {
+    const { jewelDiff } = await import('@/web/woke/pob-builds/character')
+    const rows = jewelDiff(
+      [{ node: 100, item: item('UNIQUE', 'Watcher\'s Eye', 'Prismatic Jewel') }, { node: 200, item: item('RARE', 'Grim Spark', 'Cobalt Jewel') }],
+      [{ x: 1, item: item('RARE', 'Rune Eye', 'Cobalt Jewel') }, { x: 2, item: item('MAGIC', 'Lucky Jewel', 'Crimson Jewel') }],
+      [100, 200, 300],
+      null
+    )
+    expect(Object.fromEntries(rows.map(r => [r.node, r.state]))).toEqual({ 100: 'missing', 200: 'base', 300: 'extra' })
+  })
+})
+
+describe('jewelDiff edge cases', () => {
+  it('shows nothing without the slot order, and skips jewels in sockets the build tree no longer takes', async () => {
+    const { jewelDiff } = await import('@/web/woke/pob-builds/character')
+    const build = [{ node: 100, item: item('RARE', 'Grim Spark', 'Cobalt Jewel') }, { node: 200, item: item('RARE', 'Old One', 'Cobalt Jewel') }]
+    expect(jewelDiff(build, [], [], null)).toEqual([])
+    expect(jewelDiff(build, [], [100, 200], null, [100]).map(r => r.node)).toEqual([100])
+  })
+})
+
 describe('socket colours', () => {
   it('reads newer replies that give only the attribute', () => {
     const raw = {
