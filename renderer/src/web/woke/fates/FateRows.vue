@@ -11,7 +11,7 @@
         <span :class="$style.rewards">
           <span v-for="(c, j) in r.rewards" :key="j" :class="$style.chip" :title="chipTitle(c)">
             <img :src="iconSrc(c.icon)" alt="" draggable="false"><span v-if="c.count > 1">×{{ c.count }}</span>
-            <span v-if="c.mod" :class="$style.mod">{{ c.mod }}</span>
+            <span v-if="c.mod" :class="$style.mod">{{ c.short ?? c.mod }}</span>
             <span v-else-if="c.unknown" :class="$style.unknown">?</span>
           </span>
           <span v-for="(c, j) in r.open" :key="'o' + j" :class="[$style.chip, $style.open]" :title="`${chipTitle(c)}: ${c.count}/${c.need} parts, not paid`">
@@ -39,9 +39,9 @@ function rewardTitle (icon: string, need: number): string {
 }
 function chipTitle (c: RewardChip): string {
   const base = rewardTitle(c.icon, c.need)
-  if (c.mod === 'Valuable') return `Valuable ${base}`
+  if (c.short) return `${base}: ${c.mod}`
   if (c.mod) return `${base}, with a ${c.mod} modifier`
-  if (c.unknown) return `${base}. Its modifier couldn't be read: press the Fates hotkey again`
+  if (c.unknown) return `${base}. Its tooltip couldn't be read: press the Fates hotkey again`
   return base
 }
 </script>

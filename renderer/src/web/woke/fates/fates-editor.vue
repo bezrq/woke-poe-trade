@@ -38,6 +38,18 @@
       </div>
     </div>
     <div>
+      <div class="mb-1">Extra worth of a better grade</div>
+      <div class="text-sm mb-1" style="color: var(--w-dim);">Some rewards share an icon across grades ("additional Gold", "hoards of Gold"), so the hotkey reads their tooltips too. Added to the reward's worth above.</div>
+      <div class="grid gap-x-3 gap-y-1" style="grid-template-columns: repeat(2, minmax(0, 1fr));">
+        <label v-for="g in grades" :key="g.mod" class="flex items-center gap-2">
+          <img :src="`/images/fates/${g.icon}.png`" alt="" style="width: 22px; height: 22px;">
+          <span class="flex-1 w-trunc">{{ g.mod }}</span>
+          <input :value="modValue(g.mod)" type="number" min="0" max="2" step="0.01" class="rounded w-input px-1 block" style="width: 3.5rem;"
+            @change="setModValue(g.mod, ($event.target as HTMLInputElement).valueAsNumber)">
+        </label>
+      </div>
+    </div>
+    <div>
       <div class="mb-1">Highest tier you'll fight, per Fate</div>
       <div class="grid gap-x-3 gap-y-1" style="grid-template-columns: repeat(2, minmax(0, 1fr));">
         <label v-for="f in fates" :key="f.id" class="flex items-center gap-2" :title="f.summary">
@@ -66,7 +78,7 @@ import { configModelValue, configProp } from '@/web/settings/utils'
 import type { FatesWidget } from './widget'
 import { normalizeFatesWidget } from './widget'
 import { FATES, REWARD_ICONS } from './data'
-import { DEFAULT_MOD_VALUES, DEFAULT_VALUE, GEAR_MODS } from './rank'
+import { DEFAULT_MOD_VALUES, DEFAULT_VALUE, GEAR_MODS, GRADES } from './rank'
 
 export default defineComponent({
   name: 'Fates',
@@ -83,6 +95,7 @@ export default defineComponent({
       rewards,
       fates,
       mods: GEAR_MODS,
+      grades: GRADES,
       modValue: (m: string) => props.configWidget.modValues[m] ?? DEFAULT_MOD_VALUES[m] ?? 0,
       setModValue: (m: string, v: number) => { props.configWidget.modValues = { ...props.configWidget.modValues, [m]: Number.isFinite(v) && v >= 0 ? v : 0 } },
       value: (icon: string) => props.configWidget.values[icon] ?? DEFAULT_VALUE,

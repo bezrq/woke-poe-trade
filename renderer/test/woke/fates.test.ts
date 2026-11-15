@@ -171,13 +171,13 @@ describe('gear modifiers', () => {
 describe('Fates weights', () => {
   it('replaces values saved from older defaults, and caps gear below Currency', async () => {
     const { normalizeFatesWidget } = await import('@/web/woke/fates/widget')
-    const { DEFAULT_MOD_VALUES, DEFAULT_VALUE, DEFAULT_VALUES } = await import('@/web/woke/fates/rank')
+    const { DEFAULT_MOD_VALUES, DEFAULT_VALUE, DEFAULT_VALUES, GEAR_MODS } = await import('@/web/woke/fates/rank')
     const w = { values: { Currency: 10, Gold: 3 }, modValues: { Speed: 3 }, maxTier: {}, slots: 3, uiScale: 1, hotkey: null } as unknown as import('@/web/woke/fates/widget').FatesWidget
     normalizeFatesWidget(w)
     expect(w.modValues.Speed).toBe(DEFAULT_MOD_VALUES.Speed)
     expect(w.values.Gold).toBe(DEFAULT_VALUES.Gold)
     expect(Math.max(...Object.values(DEFAULT_VALUES))).toBeLessThanOrEqual(2)
-    expect(DEFAULT_VALUE + Math.max(...Object.values(DEFAULT_MOD_VALUES))).toBeLessThan(DEFAULT_VALUES.Currency)
+    expect(DEFAULT_VALUE + Math.max(...GEAR_MODS.map(m => DEFAULT_MOD_VALUES[m]))).toBeLessThan(DEFAULT_VALUES.Currency)
   })
 })
 
@@ -187,5 +187,16 @@ describe('Fates scores', () => {
     expect(formatScore(1.3500001)).toBe('1.35')
     expect(formatScore(0.6)).toBe('0.6')
     expect(formatScore(2)).toBe('2')
+  })
+})
+
+describe('Fates grades', () => {
+  it('values a better grade above the plain one, and treats plain like unread', () => {
+    const s = defaultFateSettings()
+    const gold = (mod: string | null): FateCard => ({ fate: 'Sanguine', tier: 2, rewards: [{ icon: 'Gold', need: 1, mod }] })
+    expect(invoke([gold('Hoards of Gold')], s)!.value).toBeGreaterThan(invoke([gold('Normal')], s)!.value)
+    expect(invoke([gold('Normal')], s)!.value).toBe(invoke([gold(null)], s)!.value)
+    const gems = (mod: string | null, fate: string): FateCard => ({ fate, tier: 2, rewards: [{ icon: 'Gems', need: 2, mod }] })
+    expect(invoke([gems('Normal', 'Sanguine'), gems(null, 'Golemancer')], s)!.payouts[0].paid).toBe(1)
   })
 })

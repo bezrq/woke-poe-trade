@@ -19,9 +19,29 @@ const TEXT_MAX_H = 70
 export const GEAR_ICONS = new Set(['Boots', 'Helmet', 'BodyArmour', 'Gloves', 'Shield', 'Claw', 'Staff', 'Wand', 'Sword', 'Sceptre', 'Quiver',
   'Ring', 'Amulet', 'Belt', 'Axe', 'Bow', 'Dagger', 'Mace', 'FishingRod', 'RareWeapon'])
 
-// Unique rewards: plain or "Valuable", which share one icon, so the sweep
-// reads these too. As in renderer/src/web/woke/fates/rank.ts.
-export const UNIQUE_ICONS = new Set(['UniqueWeapon', 'UniqueArmour', 'UniqueJewellery'])
+// Rewards that come in grades sharing one icon ("additional Gold", "hoards
+// of Gold"), so the sweep reads these too. As in renderer/src/web/woke/fates/rank.ts.
+export const GRADED_ICONS = new Set(['UniqueWeapon', 'UniqueArmour', 'UniqueJewellery', 'Currency', 'IncreasedRarityAffectedMonster',
+  'Gold', 'Threads', 'Divination', 'Maps', 'Gems'])
+
+// Each grade's wording (OCR slips allowed), most specific first. The names
+// must match GRADES in rank.ts. A reward with none of these is "Normal".
+const GRADES: Array<[RegExp, string]> = [
+  [/\bva[l1i]u?ab[l1i]e\s+cur/i, 'Valuable Currency'],
+  [/\bva[l1i]u?ab[l1i]e\s+un/i, 'Valuable'],
+  [/\bhoards?\s+of\b/i, 'Hoards of Gold'],
+  [/\bmany\b.{0,25}\bthr/i, 'Many Threads'],
+  [/\bmany\b.{0,25}\bstack/i, 'Many Stacked Decks'],
+  [/\bmany\b.{0,25}\bmaps?\b/i, 'Many Maps'],
+  [/\bh[il1]gh[l1i]y\s+inc/i, 'Highly increased Rarity'],
+  [/\bgreat[l1i]y\s+inc/i, 'Greatly increased Rarity'],
+  [/\bmass[il1]ve[l1i]y\s+inc/i, 'Massively increased Rarity'],
+  [/\bextreme[l1i]y\s+inc/i, 'Extremely increased Rarity'],
+  [/\bsome\b.{0,20}\bmax/i, 'Some max Quality Gems'],
+  [/\bmax[il1]mum\s+qua/i, 'Max Quality Gems'],
+  [/\bsk[il1][l1i]{2}\s+gem/i, 'Skill Gem'],
+  [/\bsupport\s+gem/i, 'Support Gem']
+]
 
 // Names one reward of one card for the sweep's skip list. Must match
 // sweepKey in renderer/src/web/woke/fates/advice.ts.
@@ -146,11 +166,15 @@ function editDistance (a: string, b: string): number {
 }
 
 // "Physical", "Speed", "no Attack"... from the OCR'd lines, or null for a
-// reward without a modifier line. Tolerates a letter or two misread. A unique
-// reward gives "Valuable" or "Normal".
-export function parseRewardModifier (lines: string[]): string | null {
+// reward without a modifier line. Tolerates a letter or two misread. A
+// graded reward (`icon` in GRADED_ICONS) gives its grade, or "Normal".
+export function parseRewardModifier (lines: string[], icon?: string): string | null {
   const text = lines.join(' ')
-  if (/\bun[il1]que\b/i.test(text)) return /\bva[l1i]u?ab[l1i]e/i.test(text) ? 'Valuable' : 'Normal'
+  if (icon && GRADED_ICONS.has(icon)) {
+    const grade = GRADES.find(([re]) => re.test(text))
+    if (grade) return grade[1]
+    return /monster|empow|additional|increased/i.test(text) ? 'Normal' : null
+  }
   const m = /dropped by .{0,30}?have (an? |no )([A-Za-z]{3,12}) modif/i.exec(text)
   if (!m) return null
   const word = m[2].toLowerCase()

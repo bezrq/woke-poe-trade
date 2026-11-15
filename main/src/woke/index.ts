@@ -12,7 +12,7 @@ import { ScreenScanner, MAP_SCAN, ESSENCE_SCAN, ensureOcr, readAllEssenceLabels,
 import { WokeHoverTracker } from './hover'
 import { readStashTab } from './stash-read'
 import { glanceFates, readFates } from './fate-read'
-import { GEAR_ICONS, UNIQUE_ICONS, parseRewardModifier, rewardTooltipLines, sweepKey } from './fate-tooltip'
+import { GEAR_ICONS, GRADED_ICONS, parseRewardModifier, rewardTooltipLines, sweepKey } from './fate-tooltip'
 import { canMoveCursor, moveCursor } from './cursor-mover'
 import type { LineImage } from './map-scan-vision'
 import { StashWatch } from './stash-watch'
@@ -133,7 +133,7 @@ export function initWoke (server: ServerEvents, logger: Logger, poeWindow: GameW
           // screen, and its cards were read when they were offered.
           if (read.window === 'pick' && c.role !== 'offer') continue
           for (const [ri, r] of c.rewards.entries()) {
-            if (!(GEAR_ICONS.has(r.icon) || UNIQUE_ICONS.has(r.icon)) || known.has(sweepKey(c, ri))) continue
+            if (!(GEAR_ICONS.has(r.icon) || GRADED_ICONS.has(r.icon)) || known.has(sweepKey(c, ri))) continue
             const x = r.x * bounds.width
             const y = r.y * bounds.height
             await moveCursor(bounds.x + x, bounds.y + y)
@@ -155,7 +155,7 @@ export function initWoke (server: ServerEvents, logger: Logger, poeWindow: GameW
       const mods = spots.map(p => {
         const lines = text?.slice(at, at + p.lines.length) ?? []
         at += p.lines.length
-        return { card: p.card, reward: p.reward, modifier: lines.length ? parseRewardModifier(lines) : null, text: lines.join(' ') || null }
+        return { card: p.card, reward: p.reward, modifier: lines.length ? parseRewardModifier(lines, read.cards[p.card].rewards[p.reward].icon) : null, text: lines.join(' ') || null }
       })
       perfRecord('Fates: sweep gear tooltips', performance.now() - t1)
       return { ...read, sig, hover: null, mods }
@@ -169,7 +169,9 @@ export function initWoke (server: ServerEvents, logger: Logger, poeWindow: GameW
     if (!hover) return { ...read, sig, hover: null }
     const lines = rewardTooltipLines(shot, bounds.width, bounds.height, cx, cy, s)
     const text = lines.length ? await ocrTextLines(lines) : null
-    return { ...read, sig, hover: { ...(hover as { card: number, reward: number }), modifier: text ? parseRewardModifier(text) : null, text: text?.join(' ') ?? null } }
+    const at = hover as { card: number, reward: number }
+    const icon = read.cards[at.card].rewards[at.reward].icon
+    return { ...read, sig, hover: { ...at, modifier: text ? parseRewardModifier(text, icon) : null, text: text?.join(' ') ?? null } }
   })
   // Asked for about twice a second, only while the Fates marks are up, to
   // take them down when the window closes.

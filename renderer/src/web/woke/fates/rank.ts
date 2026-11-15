@@ -66,7 +66,7 @@ export const DEFAULT_VALUES: Record<string, number> = {
 
 // Gear modifiers the rewards can have, as the game words them.
 export const GEAR_MODS = ['Speed', 'Physical', 'Critical', 'Elemental', 'Chaos', 'Gem', 'Life', 'Resistance', 'Attack', 'Damage',
-  'Defence', 'Attribute', 'Mana', 'Drop', 'Angling', 'Valuable', 'no Attack', 'no Defence', 'no Elemental', 'no Life', 'no Physical']
+  'Defence', 'Attribute', 'Mana', 'Drop', 'Angling', 'no Attack', 'no Defence', 'no Elemental', 'no Life', 'no Physical']
 
 // Added to a rare item's 0.05, so the best gear is still under Currency.
 export const DEFAULT_MOD_VALUES: Record<string, number> = {
@@ -85,8 +85,21 @@ export const DEFAULT_MOD_VALUES: Record<string, number> = {
   'Mana': 0.02,
   'Drop': 0.02,
   'Angling': 0,
-  // Unique weapon, armour or jewellery: "Valuable" ones, or plain.
+  // Grades of rewards that share one icon (GRADES), on top of the plain one.
   'Valuable': 0.2,
+  'Valuable Currency': 0.5,
+  'Hoards of Gold': 0.1,
+  'Many Threads': 0.1,
+  'Many Stacked Decks': 0.3,
+  'Many Maps': 0.1,
+  'Highly increased Rarity': 0.05,
+  'Greatly increased Rarity': 0.1,
+  'Massively increased Rarity': 0.2,
+  'Extremely increased Rarity': 0.35,
+  'Some max Quality Gems': 0.05,
+  'Max Quality Gems': 0.1,
+  'Skill Gem': 0,
+  'Support Gem': 0,
   'Normal': 0,
   'no Attack': 0,
   'no Defence': 0,
@@ -96,14 +109,33 @@ export const DEFAULT_MOD_VALUES: Record<string, number> = {
 }
 
 // Bumped when the defaults above change, so saved copies of old ones are replaced.
-export const WEIGHTS_VERSION = 5
+export const WEIGHTS_VERSION = 6
 
 // Reward icons for gear, which come with a modifier.
 export const GEAR_ICONS = new Set(['Boots', 'Helmet', 'BodyArmour', 'Gloves', 'Shield', 'Claw', 'Staff', 'Wand', 'Sword', 'Sceptre', 'Quiver',
   'Ring', 'Amulet', 'Belt', 'Axe', 'Bow', 'Dagger', 'Mace', 'FishingRod', 'RareWeapon'])
 
-// Unique rewards whose tooltip says plain or "Valuable" (one icon for both).
-export const UNIQUE_ICONS = new Set(['UniqueWeapon', 'UniqueArmour', 'UniqueJewellery'])
+// Rewards that come in grades sharing one icon: only the tooltip tells
+// "additional Gold" from "hoards of Gold". The names match GRADES in
+// main/src/woke/fate-tooltip.ts; `short` is what the list shows.
+export const GRADES: Array<{ mod: string, short: string, icon: string }> = [
+  { mod: 'Valuable', short: 'Valuable', icon: 'UniqueArmour' },
+  { mod: 'Valuable Currency', short: 'Valuable', icon: 'Currency' },
+  { mod: 'Hoards of Gold', short: 'Hoards', icon: 'Gold' },
+  { mod: 'Many Threads', short: 'Many', icon: 'Threads' },
+  { mod: 'Many Stacked Decks', short: 'Many', icon: 'Divination' },
+  { mod: 'Many Maps', short: 'Many', icon: 'Maps' },
+  { mod: 'Highly increased Rarity', short: 'Highly', icon: 'IncreasedRarityAffectedMonster' },
+  { mod: 'Greatly increased Rarity', short: 'Greatly', icon: 'IncreasedRarityAffectedMonster' },
+  { mod: 'Massively increased Rarity', short: 'Massively', icon: 'IncreasedRarityAffectedMonster' },
+  { mod: 'Extremely increased Rarity', short: 'Extremely', icon: 'IncreasedRarityAffectedMonster' },
+  { mod: 'Some max Quality Gems', short: 'Some max Q', icon: 'Gems' },
+  { mod: 'Max Quality Gems', short: 'Max Q', icon: 'Gems' },
+  { mod: 'Skill Gem', short: 'Skill', icon: 'Gems' },
+  { mod: 'Support Gem', short: 'Support', icon: 'Gems' }
+]
+export const GRADED_ICONS = new Set(['UniqueWeapon', 'UniqueArmour', 'UniqueJewellery', 'Currency', 'IncreasedRarityAffectedMonster',
+  'Gold', 'Threads', 'Divination', 'Maps', 'Gems'])
 
 export function defaultFateSettings (): FateSettings {
   return { values: { ...DEFAULT_VALUES }, maxTier: {}, slots: 3, modValues: { ...DEFAULT_MOD_VALUES } }
@@ -152,9 +184,11 @@ export function invoke (order: FateCard[], s: FateSettings): Invocation | null {
     if (tier > limit) return null
     fights.push({ fate: card.fate, tier, tripled })
     for (const r of card.rewards) {
-      // Gear with different modifiers is a different reward.
-      const key = `${r.icon}/${r.need}/${r.mod ?? ''}`
-      const p = parts.get(key) ?? { icon: r.icon, need: r.need, mod: r.mod ?? null, parts: 0, paid: 0 }
+      // Gear with different modifiers is a different reward, as is a
+      // better grade; a plain grade is the same as one not read yet.
+      const mod = r.mod === 'Normal' ? null : r.mod ?? null
+      const key = `${r.icon}/${r.need}/${mod ?? ''}`
+      const p = parts.get(key) ?? { icon: r.icon, need: r.need, mod, parts: 0, paid: 0 }
       p.parts += tripled ? 3 : 1
       parts.set(key, p)
     }
