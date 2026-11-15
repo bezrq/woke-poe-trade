@@ -26,6 +26,7 @@
           <template v-else-if="m.rank">#{{ m.rank }}</template>
           <template v-else-if="m.label">{{ m.label }}</template>
           <template v-else>Skip</template>
+          <span v-if="m.score !== null" :class="$style.score">{{ m.score >= 0 ? '+' : '' }}{{ formatScore(m.score) }}</span>
           <div v-if="m.rank && m.reasons.length" :class="$style.why">{{ m.reasons.join(' · ') }}</div>
         </div>
         <div :class="$style.side" :style="sideStyle">
@@ -55,7 +56,7 @@ import { hostRequest } from '../shared/host'
 import DockItem from '../dock/DockItem.vue'
 import type { DockMenuAction } from '../dock/dock'
 import FateRows from './FateRows.vue'
-import { adviseFates, knownRewards, rememberHover } from './advice'
+import { adviseFates, formatScore, knownRewards, rememberHover } from './advice'
 import type { CardMark, FateAdvice } from './advice'
 import { normalizeFatesWidget, parseFatesHotkeyTarget } from './widget'
 import type { FateRead, FatesWidget } from './widget'
@@ -227,6 +228,7 @@ const dockMenu = computed<DockMenuAction[]>(() => [
 }
 .mark.take { color: var(--w-accent-fg); background: var(--w-up); border-color: var(--w-up); font-weight: 600; }
 .mark.no { color: var(--w-dim); }
+.score { margin-left: 6px; font-weight: 400; opacity: 0.85; }
 .why { max-width: 15rem; white-space: normal; font-size: var(--w-fs-xs); font-weight: 400; }
 .side {
   position: absolute;

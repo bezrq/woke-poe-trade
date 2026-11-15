@@ -18,6 +18,7 @@
             <img :src="iconSrc(c.icon)" alt="" draggable="false"><span>{{ c.count }}/{{ c.need }}</span>
           </span>
         </span>
+        <span :class="$style.value" title="Total worth of the rewards this pays, from your reward values">{{ formatScore(r.value) }}</span>
       </div>
     </div>
     <div v-if="!rows.length" :class="$style.none">Nothing here pays a reward you value.</div>
@@ -25,6 +26,7 @@
 </template>
 
 <script setup lang="ts">
+import { formatScore } from './advice'
 import type { AdviceRow, RewardChip } from './advice'
 import { REWARD_ICONS } from './data'
 
@@ -53,11 +55,12 @@ function chipTitle (c: RewardChip): string {
 .click { min-width: 1.6em; text-align: center; padding: 0 3px; border: 1px solid var(--w-line-strong); border-radius: var(--w-r-sm); font-size: var(--w-fs-sm); color: var(--w-fg); }
 .click.new { color: var(--w-accent); border-color: color-mix(in srgb, var(--w-accent) 60%, transparent); }
 .arrow { color: var(--w-faint); }
-.rewards { display: flex; flex-wrap: wrap; gap: 4px; }
+.rewards { flex: 1; display: flex; flex-wrap: wrap; gap: 4px; }
 .chip { display: inline-flex; align-items: center; gap: 1px; font-size: var(--w-fs-sm); color: var(--w-fg); }
 .chip img { width: 22px; height: 22px; }
 .chip.open { opacity: 0.45; }
 .mod { margin-left: 3px; font-size: var(--w-fs-xs); color: var(--w-accent); }
 .unknown { font-size: var(--w-fs-xs); color: var(--w-dim); border: 1px solid var(--w-line); border-radius: var(--w-r-sm); padding: 0 3px; }
+.value { flex: none; margin-left: auto; font-size: var(--w-fs-sm); color: var(--w-dim); font-variant-numeric: tabular-nums; }
 .none { padding: 6px var(--w-pad); color: var(--w-dim); font-size: var(--w-fs-sm); }
 </style>

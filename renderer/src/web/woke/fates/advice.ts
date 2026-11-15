@@ -36,6 +36,9 @@ export interface CardMark {
   rank: number | null
   reasons: string[]
   allowed: boolean
+  // What taking this card adds to the best invocation (half for barred
+  // rewards left part-way), in reward worth; null for collected cards.
+  score: number | null
 }
 
 export interface FateAdvice {
@@ -57,6 +60,11 @@ const ICON_NAMES: Record<string, string> = {
 export function rewardName (icon: string): string {
   return ICON_NAMES[icon] ?? icon.replace(/([a-z])([A-Z])/g, '$1 $2')
 }
+// "1.35", "0.6": a score at most two decimals long.
+export function formatScore (n: number): string {
+  return String(Math.round(n * 100) / 100)
+}
+
 export function fateName (id: string): string {
   return FATES.find(f => f.id === id)?.name ?? id
 }
@@ -121,7 +129,7 @@ export function adviseFates (read: Extract<FateRead, { found: true }>, s: FateSe
   const placed = read.cards.filter(c => c.role === 'slot').length
   const heldCards = held.map(toCard)
   const label = (c: FateCard, extra?: FateCard) => c === extra ? 'New' : `C${heldCards.indexOf(c) + 1}`
-  const marks: CardMark[] = held.map((card, i) => ({ card, label: `C${i + 1}`, rank: null, reasons: [], allowed: true }))
+  const marks: CardMark[] = held.map((card, i) => ({ card, label: `C${i + 1}`, rank: null, reasons: [], allowed: true, score: null }))
 
   if (read.window === 'pick') {
     const offerCards = offers.map(toCard)
@@ -129,7 +137,7 @@ export function adviseFates (read: Extract<FateRead, { found: true }>, s: FateSe
     const rows: AdviceRow[] = []
     advice.forEach((a, i) => {
       const card = offers[offerCards.indexOf(a.card)]
-      marks.push({ card, label: '', rank: a.allowed ? i + 1 : null, reasons: a.reasons, allowed: a.allowed })
+      marks.push({ card, label: '', rank: a.allowed ? i + 1 : null, reasons: a.reasons, allowed: a.allowed, score: a.allowed ? a.score : null })
       if (a.allowed && a.invocation.order.length) rows.push(row(`Take ${fateName(a.card.fate)}`, a.invocation, c => label(c, a.card)))
     })
     return { window: 'pick', marks, rows, placed }

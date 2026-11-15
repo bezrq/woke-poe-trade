@@ -180,3 +180,12 @@ describe('Fates weights', () => {
     expect(DEFAULT_VALUE + Math.max(...Object.values(DEFAULT_MOD_VALUES))).toBeLessThan(DEFAULT_VALUES.Currency)
   })
 })
+
+describe('Fates scores', () => {
+  it('writes scores at most two decimals long', async () => {
+    const { formatScore } = await import('@/web/woke/fates/advice')
+    expect(formatScore(1.3500001)).toBe('1.35')
+    expect(formatScore(0.6)).toBe('0.6')
+    expect(formatScore(2)).toBe('2')
+  })
+})
