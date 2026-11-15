@@ -345,6 +345,45 @@ describe('jewelDiff edge cases', () => {
   })
 })
 
+describe('3.30 mod lines', () => {
+  it('reads mods given as { description, flags } objects, crafted and fractured kept', () => {
+    const r = parseCharacterItems(JSON.stringify({
+      items: [{
+        inventoryId: 'Belt',
+        frameType: 2,
+        name: 'Horror Shackle',
+        typeLine: 'Heavy Belt',
+        baseType: 'Heavy Belt',
+        implicitMods: [{ description: '+25 to Strength' }],
+        explicitMods: [
+          { description: '16% increased Elemental Damage with Attack Skills', flags: { crafted: true } },
+          { description: '+80 to maximum [Life|Life]' },
+          { description: '+30% to Fire Resistance', flags: { fractured: true } }
+        ]
+      }, {
+        inventoryId: 'Flask',
+        x: 0,
+        frameType: 1,
+        typeLine: 'Quicksilver Flask of Adrenaline',
+        baseType: 'Quicksilver Flask',
+        utilityMods: ['40% increased Movement Speed']
+      }]
+    }))!
+    expect(r.gear[0].item.implicits).toEqual(['+25 to Strength'])
+    expect(r.gear[0].item.mods).toEqual(['+30% to Fire Resistance', '+80 to maximum Life', '16% increased Elemental Damage with Attack Skills'])
+    expect(r.gear[0].item.modKinds).toEqual(['fractured', '', 'crafted'])
+    expect(r.gear[1].item.mods).toEqual(['40% increased Movement Speed'])
+  })
+})
+
+describe('stash reader mod lines', () => {
+  it('reads 3.30 { description } mod objects as well as plain lines', async () => {
+    const { parseItem } = await import('../../../main/src/woke/personal/stash-parse')
+    const it2 = parseItem({ frameType: 2, name: 'Foe Pelt', typeLine: 'Majestic Plate', implicitMods: ['+1 to Level'], explicitMods: [{ description: '+150 to maximum Life' }, { description: 'Hits can\'t be Evaded', flags: { crafted: true } }] })
+    expect(it2?.mods).toEqual(['+1 to Level', '+150 to maximum Life', 'Hits can\'t be Evaded'])
+  })
+})
+
 describe('socket colours', () => {
   it('reads newer replies that give only the attribute', () => {
     const raw = {
