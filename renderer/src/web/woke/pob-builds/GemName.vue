@@ -1,8 +1,8 @@
 <template>
   <span v-item-tip="tipRef" :class="[$style.gem, `w-gem-${colour}`, { [$style.off]: off }]">
-    <WIcon v-if="art" :src="art" :size="size" title="" /><span :class="[$style.name, { 'line-through': struck, [$style.missing]: mine && !mine.have }]">{{ name }}</span><slot />
-    <span v-if="mine?.have && !mine.behind" class="w-up text-xs" :title="`Socketed on ${charName}`"><i class="fas fa-check" /></span>
-    <span v-else-if="mine?.have" :class="$style.behind" class="text-xs w-num whitespace-nowrap" :title="`${charName} has it lower`">{{ mine.behind }}</span>
+    <WIcon v-if="art" :src="art" :size="size" title="" /><span :class="[$style.name, { 'line-through': struck }]">{{ name }}</span><slot />
+    <!-- Against your character (toggle on the Links heading): yours, only where lower or missing. Rows with a level column show it there instead. -->
+    <span v-if="mine && !column && (mine.behind || !mine.have)" class="text-xs w-num whitespace-nowrap" :class="mine.have ? $style.low : $style.none">{{ mine.have ? mine.lq : 'none' }}</span>
   </span>
 </template>
 
@@ -24,7 +24,9 @@ const props = withDefaults(defineProps<{
   size?: 'sm' | 'md'
   off?: boolean
   struck?: boolean
-}>(), { level: undefined, quality: undefined, note: undefined, size: 'md', off: false, struck: false })
+  // The row has its own level/quality column, which shows yours.
+  column?: boolean
+}>(), { level: undefined, quality: undefined, note: undefined, size: 'md', off: false, struck: false, column: false })
 
 const colour = computed(() => gemData(props.name)?.colour ?? 'w')
 const art = computed(() => gemArt(props.name))
@@ -36,12 +38,20 @@ const where = computed(() => cls ? gemWhere(props.name, cls.value) || undefined 
 const compareOn = inject(CHARACTER_GEMS_ON, null)
 const mine = computed(() => compareOn?.value && !props.off && !props.struck ? gemHave(props.name, props.level, props.quality) : null)
 const charName = computed(() => character.value?.character.name ?? 'your character')
+// The tooltip's foot line: yours, or that you don't socket it.
+const yoursNote = computed(() => {
+  const m = mine.value
+  if (!m) return undefined
+  if (!m.have) return `${charName.value} doesn't socket it`
+  return `Yours (${charName.value}): ${m.yours || 'socketed'}${m.behind ? ` · ${m.behind}` : ''}`
+})
 
 // The game's full gem tooltip at this gem's level and quality, as other
 // screens show it, with where to get it under; the short one if the data
 // lacks the gem.
 const tipRef = computed<ItemTipRef>(() => {
-  const note = props.note ?? where.value
+  // Its own line in the tooltip, under where to get it.
+  const note = [props.note ?? where.value, yoursNote.value].filter(Boolean).join('\n') || undefined
   const level = props.level ?? 1
   return {
     name: gemData(props.name)?.name ?? props.name,
@@ -61,6 +71,6 @@ const tipRef = computed<ItemTipRef>(() => {
 .gem { display: inline-flex; align-items: center; gap: 5px; min-width: 0; }
 .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .off { opacity: 0.5; }
-.missing { text-decoration: underline dashed var(--w-accent); text-underline-offset: 3px; }
-.behind { color: var(--w-accent); }
+.low { color: var(--w-warn, #e2b34a); }
+.none { color: var(--w-accent); }
 </style>

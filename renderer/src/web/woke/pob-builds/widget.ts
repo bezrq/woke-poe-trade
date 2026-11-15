@@ -39,6 +39,9 @@ export interface PobBuildsWidget extends Widget {
   // Main also reads your character (Character tab) on entering an area, at
   // most every 5 minutes. Off: only Read now. Missing = off (Guy's pick).
   characterAutoRead?: boolean
+  // Gem names in the build window marked against your character (yours where
+  // lower or missing, numbers in the gem's tooltip). Missing = off.
+  characterGemMarks?: boolean
   // Each read of your character is saved as a PoB build, Live/<name>.xml in
   // the builds folder. Missing = on.
   characterLiveBuild?: boolean

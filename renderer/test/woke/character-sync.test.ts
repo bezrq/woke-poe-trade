@@ -395,6 +395,23 @@ describe('socket colours', () => {
   })
 })
 
+describe('gemHave', () => {
+  it('says what you socket for the gem tooltip', async () => {
+    const { characterStatus, gemHave } = await import('@/web/woke/pob-builds/character')
+    const { personalOn } = await import('@/web/woke/personal')
+    personalOn.value = true
+    characterStatus.value = {
+      snapshot: { version: 2, account: 'a', readAt: 0, character: { name: 'whekq', league: 'Covens', class: 'Gladiator', level: 81 }, gear: [], gems: [{ slot: 'Helmet', gems: [{ name: 'Elemental Hit', level: 19, quality: 5, support: false, colour: 'G' }] }], tree: { nodes: [], clusterNodes: [], masteries: {}, jewels: [] } },
+      error: null,
+      pending: false,
+      auto: false,
+      nextAutoAt: 0
+    }
+    expect(gemHave('Elemental Hit', 20, 20)).toEqual({ have: true, behind: '19 → 20 · q5 → 20', yours: 'level 19, quality 5%', lq: '19/5' })
+    expect(gemHave('Trinity', 20, 0).have).toBe(false)
+  })
+})
+
 describe('fileStore with an older read', () => {
   it('reads a version 1 snapshot again from the replies saved beside it, or drops it', async () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'woke-char-v1-'))

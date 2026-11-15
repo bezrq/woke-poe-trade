@@ -24,6 +24,10 @@
       <WToggle v-model="treeRefunds" />
     </WSettingRow>
     <template v-if="personalOn">
+      <WSettingRow label="Mark gems against your character"
+        hint="In the build window, your level/quality in amber beside a gem where yours is lower, 'none' where you don't socket it. Hover a gem for your numbers. Also on the Links heading.">
+        <WToggle v-model="characterGemMarks" />
+      </WSettingRow>
       <WSettingRow label="Read your character on area changes"
         hint="For the build window's Character tab, which compares the character you play with a build. At most every 5 minutes. Off, it's read only when you press Read now. Reading never changes the build.">
         <WToggle v-model="characterAutoRead" />
@@ -64,6 +68,10 @@ export default defineComponent({
         set: (on: boolean) => { props.configWidget.treeRefunds = on }
       }),
       personalOn,
+      characterGemMarks: computed({
+        get: () => props.configWidget.characterGemMarks === true,
+        set: (on: boolean) => { props.configWidget.characterGemMarks = on }
+      }),
       characterLiveBuild: computed({
         get: () => props.configWidget.characterLiveBuild !== false,
         set: (on: boolean) => { props.configWidget.characterLiveBuild = on }
