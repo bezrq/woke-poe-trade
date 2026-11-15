@@ -3,11 +3,12 @@
 // with one. Main reads in the background; this only shows the result. Off
 // unless the stash reader is on.
 import { computed, effectScope, shallowRef, watch } from 'vue'
-import type { Ref } from 'vue'
+import type { InjectionKey, Ref } from 'vue'
 import { MainProcess } from '@/web/background/IPC'
 import { personalOn } from '../personal'
 import { hostRequest } from '../shared/host'
 import { gearOrder, isGearSlot, itemBase, loadoutOf, orderedGems } from './build-model'
+import type { LivePoints } from './build-model'
 import { loadPassiveTree, treeDiff } from './passive-tree'
 import type { TreeDiff, TreeNode } from './passive-tree'
 import type { LoadoutPick, PobDetails, PobItem, PobSkillGroup, PobTreeSpec } from './widget'
@@ -71,6 +72,57 @@ export function readCharacterNow (hint: string) {
     .catch((e: Error) => { characterStatus.value = { ...characterStatus.value, pending: false, error: e.message } })
 }
 
+// The best level and quality of each gem your character sockets, by gemKey.
+export const characterGems = computed(() => {
+  const out = new Map<string, { level: number | null, quality: number | null }>()
+  for (const g of character.value?.gems ?? []) {
+    for (const x of g.gems) {
+      const k = gemKey(x.name)
+      const was = out.get(k)
+      if (!was || (x.level ?? 0) > (was.level ?? 0) || ((x.level ?? 0) === (was.level ?? 0) && (x.quality ?? 0) > (was.quality ?? 0))) {
+        out.set(k, { level: x.level, quality: x.quality })
+      }
+    }
+  }
+  return out
+})
+
+// Provided by a build window while your character is read: gem names there
+// mark what you socket, and at what level.
+export const CHARACTER_GEMS_ON = Symbol('character gems on') as InjectionKey<Ref<boolean>>
+
+export interface GemHave {
+  have: boolean
+  // Behind the build: "18 → 20", "q5 → 20".
+  behind: string
+}
+
+// level, quality: what the build asks for (null: not set, as on the leveling list).
+export function gemHave (name: string, level: number | null | undefined, quality: number | null | undefined): GemHave {
+  const h = characterGems.value.get(gemKey(name))
+  if (!h) return { have: false, behind: '' }
+  const parts: string[] = []
+  if (level != null && h.level != null && h.level < level) parts.push(`${h.level} → ${level}`)
+  if (quality != null && quality > 0 && (h.quality ?? 0) < quality) parts.push(`q${h.quality ?? 0} → ${quality}`)
+  return { have: true, behind: parts.join(' · ') }
+}
+
+// The passive points you really spent, for the leveling guide's stage: only
+// when the read is of the character Client.txt says you play, at the level it
+// says, and once the tree data has loaded to tell points from start and
+// ascendancy nodes. Otherwise null: the guide guesses by level.
+const CLUSTER_ID_START = 0x10000
+const NOT_POINTS = ['asc', 'ascstart', 'start']
+export function livePointsFor (name: string, level: number | null): LivePoints | null {
+  const s = personalOn.value ? character.value : null
+  if (!s || !name || name !== s.character.name) return null
+  if (level == null || s.character.level == null || s.character.level < level) return null
+  const nodes = treeNodes.value
+  if (!nodes) { loadTreeNodes(); return null }
+  const points = (ids: number[]) => ids.filter(id => id < CLUSTER_ID_START && !NOT_POINTS.includes(nodes.get(id)?.kind ?? '')).length
+  return { have: points(s.tree.nodes), points }
+}
+
 export const CHARACTER_TREE = 'Your character'
 const CLUSTER_IDS = 0x10000
 
@@ -128,7 +180,7 @@ export interface GemGroupDiff {
   extra: string[]
 }
 
-const gemKey = (name: string) => name.replace(/ Support$/i, '').trim().toLowerCase()
+export const gemKey = (name: string) => name.replace(/ Support$/i, '').trim().toLowerCase()
 
 // Each enabled build group against the character's group in the same slot
 // that shares most gems with it (any slot when none shares).
@@ -192,11 +244,15 @@ export function readAgo (readAt: number, now = Date.now()): string {
 
 // Loaded once something compares; shared by the card and the tab.
 const treeNodes = shallowRef<Map<number, TreeNode> | null>(null)
+let treeLoading = false
+function loadTreeNodes () {
+  if (treeNodes.value || treeLoading) return
+  treeLoading = true
+  loadPassiveTree().then((n) => { treeNodes.value = n }, () => {}).finally(() => { treeLoading = false })
+}
 
 export function useCharacterDiff (details: Ref<PobDetails | null>, level: Ref<number | null>, act: Ref<number | null>, pick: Ref<LoadoutPick | undefined>) {
-  watch(character, (s) => {
-    if (s && !treeNodes.value) loadPassiveTree().then((n) => { treeNodes.value = n }, () => {})
-  }, { immediate: true })
+  watch(character, (s) => { if (s) loadTreeNodes() }, { immediate: true })
   return computed(() => character.value && details.value
     ? characterDiff(character.value, details.value, treeNodes.value, level.value, act.value, pick.value)
     : null)
