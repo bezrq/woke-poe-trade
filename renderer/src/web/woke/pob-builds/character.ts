@@ -150,6 +150,8 @@ function sameName (a: PobItem, b: PobItem) {
 // match: the same unique, or the same item named the same. base: a rare or
 // magic item on the build's base (its mods aren't weighed). Flasks and swap
 // weapons only when the build has one there.
+const slotGroup = (slot: string) => /^Ring/.test(slot) ? 'ring' : /^Flask/.test(slot) ? 'flask' : null
+
 export function gearDiff (build: Array<{ slot: string, item: PobItem }>, worn: Array<{ slot: string, item: PobItem }>): GearRowDiff[] {
   const b = new Map(build.filter(s => isGearSlot(s.slot) || /^Flask/.test(s.slot)).map(s => [s.slot, s.item]))
   const w = new Map(worn.map(s => [s.slot, s.item]))
@@ -165,6 +167,14 @@ export function gearDiff (build: Array<{ slot: string, item: PobItem }>, worn: A
       const wb = itemBase(want).toLowerCase()
       const hb = itemBase(have).toLowerCase()
       state = wb && wb === hb ? (sameName(want, have) ? 'match' : 'base') : 'differs'
+    }
+    // Rings and flasks in another order are still the same gear.
+    if (want && state !== 'match') {
+      const group = slotGroup(slot)
+      const elsewhere = group ? worn.filter(x => x.slot !== slot && slotGroup(x.slot) === group).map(x => x.item) : []
+      const named = want.rarity === 'UNIQUE' || want.rarity === 'RELIC' || want.rarity === 'RARE'
+      if (elsewhere.some(x => sameName(want, x) && (named || itemBase(x).toLowerCase() === itemBase(want).toLowerCase()))) state = 'match'
+      else if (!named && state !== 'base' && elsewhere.some(x => itemBase(x) && itemBase(x).toLowerCase() === itemBase(want).toLowerCase())) state = 'base'
     }
     return { slot, build: want, worn: have, state }
   })
@@ -256,4 +266,31 @@ export function useCharacterDiff (details: Ref<PobDetails | null>, level: Ref<nu
   return computed(() => character.value && details.value
     ? characterDiff(character.value, details.value, treeNodes.value, level.value, act.value, pick.value)
     : null)
+}
+
+export interface UpgradeRow {
+  slot: string
+  item: PobItem
+  // Uniques only: poe.ninja's price (null: none known).
+  price: { chaos: number, high?: number } | null
+  unique: boolean
+}
+
+// Slots that differ or are empty, as a shopping list: priced uniques cheapest
+// first, then uniques with no price, then rares (their price is in their mods).
+export function upgradeList (rows: GearRowDiff[], priceOf: (item: PobItem) => UpgradeRow['price']): { rows: UpgradeRow[], chaos: number, atLeast: boolean } {
+  const out: UpgradeRow[] = []
+  for (const r of rows) {
+    if (!r.build || (r.state !== 'differs' && r.state !== 'missing')) continue
+    const unique = r.build.rarity === 'UNIQUE' || r.build.rarity === 'RELIC'
+    out.push({ slot: r.slot, item: r.build, price: unique ? priceOf(r.build) : null, unique })
+  }
+  const rank = (x: UpgradeRow) => x.unique ? (x.price ? 0 : 1) : 2
+  out.sort((a, b) => rank(a) - rank(b) || (a.price?.chaos ?? 0) - (b.price?.chaos ?? 0))
+  const priced = out.filter(x => x.price)
+  return {
+    rows: out,
+    chaos: priced.reduce((n, x) => n + x.price!.chaos, 0),
+    atLeast: out.length > priced.length || priced.some(x => x.price!.high != null)
+  }
 }
