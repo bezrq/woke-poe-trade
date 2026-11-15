@@ -12,7 +12,7 @@ import { ScreenScanner, MAP_SCAN, ESSENCE_SCAN, ensureOcr, readAllEssenceLabels,
 import { WokeHoverTracker } from './hover'
 import { readStashTab } from './stash-read'
 import { glanceFates, readFates } from './fate-read'
-import { GEAR_ICONS, parseRewardModifier, rewardTooltipLines, sweepKey } from './fate-tooltip'
+import { GEAR_ICONS, UNIQUE_ICONS, parseRewardModifier, rewardTooltipLines, sweepKey } from './fate-tooltip'
 import { canMoveCursor, moveCursor } from './cursor-mover'
 import type { LineImage } from './map-scan-vision'
 import { StashWatch } from './stash-watch'
@@ -133,7 +133,7 @@ export function initWoke (server: ServerEvents, logger: Logger, poeWindow: GameW
           // screen, and its cards were read when they were offered.
           if (read.window === 'pick' && c.role !== 'offer') continue
           for (const [ri, r] of c.rewards.entries()) {
-            if (!GEAR_ICONS.has(r.icon) || known.has(sweepKey(c, ri))) continue
+            if (!(GEAR_ICONS.has(r.icon) || UNIQUE_ICONS.has(r.icon)) || known.has(sweepKey(c, ri))) continue
             const x = r.x * bounds.width
             const y = r.y * bounds.height
             await moveCursor(bounds.x + x, bounds.y + y)

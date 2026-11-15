@@ -1,7 +1,7 @@
 // Turns a read of a Fate window into what the overlay shows: a mark on each
 // offered card, C1, C2... on the collected ones, and a list of click orders
 // with the rewards each pays.
-import { GEAR_ICONS, advisePick, rankOutcomes } from './rank'
+import { GEAR_ICONS, UNIQUE_ICONS, advisePick, rankOutcomes } from './rank'
 import type { FateCard, FateSettings, Invocation } from './rank'
 import { FATES } from './data'
 import type { FateRead, FateReadCard } from './widget'
@@ -112,7 +112,7 @@ const toCard = (c: FateReadCard): FateCard => {
 
 function chips (inv: Invocation): { rewards: RewardChip[], open: RewardChip[] } {
   const chip = (icon: string, count: number, need: number, mod: string | null | undefined) =>
-    ({ icon, count, need, mod: mod ?? null, unknown: GEAR_ICONS.has(icon) && !mod })
+    ({ icon, count, need, mod: mod && mod !== 'Normal' ? mod : null, unknown: (GEAR_ICONS.has(icon) || UNIQUE_ICONS.has(icon)) && !mod })
   const rewards = inv.payouts.filter(p => p.paid).map(p => chip(p.icon, p.paid, p.need, p.mod))
   const open = inv.payouts.filter(p => p.parts % p.need).map(p => chip(p.icon, p.parts % p.need, p.need, p.mod))
   return { rewards: rewards.sort((a, b) => b.count - a.count), open }

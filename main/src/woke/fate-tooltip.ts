@@ -19,6 +19,10 @@ const TEXT_MAX_H = 70
 export const GEAR_ICONS = new Set(['Boots', 'Helmet', 'BodyArmour', 'Gloves', 'Shield', 'Claw', 'Staff', 'Wand', 'Sword', 'Sceptre', 'Quiver',
   'Ring', 'Amulet', 'Belt', 'Axe', 'Bow', 'Dagger', 'Mace', 'FishingRod', 'RareWeapon'])
 
+// Unique rewards: plain or "Valuable", which share one icon, so the sweep
+// reads these too. As in renderer/src/web/woke/fates/rank.ts.
+export const UNIQUE_ICONS = new Set(['UniqueWeapon', 'UniqueArmour', 'UniqueJewellery'])
+
 // Names one reward of one card for the sweep's skip list. Must match
 // sweepKey in renderer/src/web/woke/fates/advice.ts.
 export function sweepKey (card: { fate: string, tier: number, rewards: Array<{ icon: string, need: number }> }, reward: number): string {
@@ -142,9 +146,11 @@ function editDistance (a: string, b: string): number {
 }
 
 // "Physical", "Speed", "no Attack"... from the OCR'd lines, or null for a
-// reward without a modifier line. Tolerates a letter or two misread.
+// reward without a modifier line. Tolerates a letter or two misread. A unique
+// reward gives "Valuable" or "Normal".
 export function parseRewardModifier (lines: string[]): string | null {
   const text = lines.join(' ')
+  if (/\bun[il1]que\b/i.test(text)) return /\bva[l1i]u?ab[l1i]e/i.test(text) ? 'Valuable' : 'Normal'
   const m = /dropped by .{0,30}?have (an? |no )([A-Za-z]{3,12}) modif/i.exec(text)
   if (!m) return null
   const word = m[2].toLowerCase()

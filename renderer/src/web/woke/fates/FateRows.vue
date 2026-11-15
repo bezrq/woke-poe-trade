@@ -39,6 +39,7 @@ function rewardTitle (icon: string, need: number): string {
 }
 function chipTitle (c: RewardChip): string {
   const base = rewardTitle(c.icon, c.need)
+  if (c.mod === 'Valuable') return `Valuable ${base}`
   if (c.mod) return `${base}, with a ${c.mod} modifier`
   if (c.unknown) return `${base}. Its modifier couldn't be read: press the Fates hotkey again`
   return base

@@ -38,6 +38,9 @@ describe('Fate reward tooltip', () => {
     expect(parseRewardModifier(['Wands dropped by Empowered Monster will have no Attack modifiers'])).toBe('no Attack')
     expect(parseRewardModifier(['Boots dropped by Empowered Monster will have a Spced modifier'])).toBe('Speed')
     expect(parseRewardModifier(['Empowered Monster will drop additional Rare Maces'])).toBeNull()
+    expect(parseRewardModifier(['Empowered Monster will drop an additional Valuable Unique Armour'])).toBe('Valuable')
+    expect(parseRewardModifier(['Empowered Monster will drop an additional Vaiuable Unlque Weapon'])).toBe('Valuable')
+    expect(parseRewardModifier(['Empowered Monster will drop an additional Unique Jewellery Item'])).toBe('Normal')
   })
 })
 

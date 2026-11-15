@@ -58,15 +58,15 @@ export const DEFAULT_VALUES: Record<string, number> = {
   Maps: 0.2,
   Gold: 0.1,
   Gems: 0.1,
-  UniqueWeapon: 0.1,
-  UniqueArmour: 0.1,
-  UniqueJewellery: 0.1,
+  UniqueWeapon: 0.05,
+  UniqueArmour: 0.05,
+  UniqueJewellery: 0.05,
   UniqueFlask: 0.05
 }
 
 // Gear modifiers the rewards can have, as the game words them.
 export const GEAR_MODS = ['Speed', 'Physical', 'Critical', 'Elemental', 'Chaos', 'Gem', 'Life', 'Resistance', 'Attack', 'Damage',
-  'Defence', 'Attribute', 'Mana', 'Drop', 'Angling', 'no Attack', 'no Defence', 'no Elemental', 'no Life', 'no Physical']
+  'Defence', 'Attribute', 'Mana', 'Drop', 'Angling', 'Valuable', 'no Attack', 'no Defence', 'no Elemental', 'no Life', 'no Physical']
 
 // Added to a rare item's 0.05, so the best gear is still under Currency.
 export const DEFAULT_MOD_VALUES: Record<string, number> = {
@@ -85,6 +85,9 @@ export const DEFAULT_MOD_VALUES: Record<string, number> = {
   'Mana': 0.02,
   'Drop': 0.02,
   'Angling': 0,
+  // Unique weapon, armour or jewellery: "Valuable" ones, or plain.
+  'Valuable': 0.2,
+  'Normal': 0,
   'no Attack': 0,
   'no Defence': 0,
   'no Elemental': 0,
@@ -93,11 +96,14 @@ export const DEFAULT_MOD_VALUES: Record<string, number> = {
 }
 
 // Bumped when the defaults above change, so saved copies of old ones are replaced.
-export const WEIGHTS_VERSION = 4
+export const WEIGHTS_VERSION = 5
 
 // Reward icons for gear, which come with a modifier.
 export const GEAR_ICONS = new Set(['Boots', 'Helmet', 'BodyArmour', 'Gloves', 'Shield', 'Claw', 'Staff', 'Wand', 'Sword', 'Sceptre', 'Quiver',
   'Ring', 'Amulet', 'Belt', 'Axe', 'Bow', 'Dagger', 'Mace', 'FishingRod', 'RareWeapon'])
+
+// Unique rewards whose tooltip says plain or "Valuable" (one icon for both).
+export const UNIQUE_ICONS = new Set(['UniqueWeapon', 'UniqueArmour', 'UniqueJewellery'])
 
 export function defaultFateSettings (): FateSettings {
   return { values: { ...DEFAULT_VALUES }, maxTier: {}, slots: 3, modValues: { ...DEFAULT_MOD_VALUES } }
