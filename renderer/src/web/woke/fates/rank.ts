@@ -46,13 +46,13 @@ export const DEFAULT_VALUE = 0.05
 // is 0.05, plus its modifier.
 export const DEFAULT_VALUES: Record<string, number> = {
   UniqueAuguryItem: 0.75,
-  ExceptionalGems: 1,
+  ExceptionalGems: 0.75,
   Currency: 0.5,
   Divination: 0.5,
   Transformative: 0.3,
   Viscera: 0.3,
   UniqueJewel: 0.25,
-  Threads: 0.25,
+  Threads: 0.15,
   Essences: 0.2,
   IncreasedRarityAffectedMonster: 0.2,
   Maps: 0.2,
@@ -93,7 +93,7 @@ export const DEFAULT_MOD_VALUES: Record<string, number> = {
 }
 
 // Bumped when the defaults above change, so saved copies of old ones are replaced.
-export const WEIGHTS_VERSION = 3
+export const WEIGHTS_VERSION = 4
 
 // Reward icons for gear, which come with a modifier.
 export const GEAR_ICONS = new Set(['Boots', 'Helmet', 'BodyArmour', 'Gloves', 'Shield', 'Claw', 'Staff', 'Wand', 'Sword', 'Sceptre', 'Quiver',
