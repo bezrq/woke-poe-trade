@@ -61,6 +61,6 @@ function chipTitle (c: RewardChip): string {
 .chip.open { opacity: 0.45; }
 .mod { margin-left: 3px; font-size: var(--w-fs-xs); color: var(--w-accent); }
 .unknown { font-size: var(--w-fs-xs); color: var(--w-dim); border: 1px solid var(--w-line); border-radius: var(--w-r-sm); padding: 0 3px; }
-.value { flex: none; margin-left: auto; font-size: var(--w-fs-sm); color: var(--w-dim); font-variant-numeric: tabular-nums; }
+.value { flex: none; margin-left: auto; min-width: 2.6em; text-align: right; font-size: var(--w-fs-md); font-weight: 700; color: var(--w-accent); font-variant-numeric: tabular-nums; text-shadow: 0 1px 2px #000; }
 .none { padding: 6px var(--w-pad); color: var(--w-dim); font-size: var(--w-fs-sm); }
 </style>

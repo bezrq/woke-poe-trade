@@ -228,7 +228,7 @@ const dockMenu = computed<DockMenuAction[]>(() => [
 }
 .mark.take { color: var(--w-accent-fg); background: var(--w-up); border-color: var(--w-up); font-weight: 600; }
 .mark.no { color: var(--w-dim); }
-.score { margin-left: 6px; font-weight: 400; opacity: 0.85; }
+.score { display: inline-block; margin-left: 8px; padding: 0 6px; border-radius: var(--w-r-sm); background: var(--w-panel); color: var(--w-accent); font-size: var(--w-fs-lg, var(--w-fs-md)); font-weight: 700; font-variant-numeric: tabular-nums; text-shadow: 0 1px 2px #000; }
 .why { max-width: 15rem; white-space: normal; font-size: var(--w-fs-xs); font-weight: 400; }
 .side {
   position: absolute;
