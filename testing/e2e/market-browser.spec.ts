@@ -30,6 +30,13 @@ test('the Prices tab lists every category and filters and sorts one', async ({ o
   // Each category wears its art, like poe.ninja.
   await expect(side.getByRole('button', { name: /^Currency/ }).locator('img')).toHaveCount(1)
   await overlay.snap('currency')
+  // A live download (MARKET_DENSE) has 3.30's Viscera, with poe.ninja's art.
+  if (process.env.MARKET_DENSE) {
+    await side.getByRole('button', { name: /^Viscera/ }).click()
+    await expect(panel.locator('.w-row img').first()).toBeVisible()
+    await overlay.snap('viscera')
+    await side.getByRole('button', { name: /^Currency/ }).click()
+  }
 
   // Right-click: the item strip, then poe.ninja's 1-day and 7-day change.
   await panel.locator('.w-row', { hasText: 'Divine Orb' }).first().click({ button: 'right' })
@@ -97,5 +104,32 @@ test('a separate Market window from a dev build folds back into one window with 
   const market = config.widgets.find(w => w.wmType === 'woke-market-tracker')!
   expect(market).toMatchObject({ wmTitle: 'Market', view: 'prices', priceCategory: 'Essence' })
   expect(config.widgets.find(w => w.wmType === 'menu')?.pinned).toEqual([market.wmId])
+  expect(overlay.errors).toEqual([])
+})
+
+test('a Viscera tooltip lists each of its effects with its price', async ({ overlay }) => {
+  const recorded = fs.readFileSync(new URL('../fixtures/http/poe.ninja/poe1/api/economy/current/dense/overviews.json', import.meta.url), 'utf8')
+  const rows = [
+    { name: "Greater Sirus' Head", variant: 'Enemies you Kill have a #% chance to Explode', chaos: 3000, graph: [] },
+    { name: "Greater Sirus' Head", variant: 'Transfiguration of Soul', chaos: 900, graph: [] },
+    { name: "Greater Sirus' Head", variant: 'Transfiguration of Body', chaos: 200, graph: [] }
+  ]
+  await overlay.page.route('**/dense/overviews*', route => route.fulfill({
+    contentType: 'application/json',
+    body: recorded.replace(/\[\s*\{"type":"/, () => `[{"type":"Viscera","lines":${JSON.stringify(rows)}},{"type":"`)
+  }))
+  await overlay.page.setViewportSize({ width: 2560, height: 1440 })
+  await overlay.boot({
+    overlayActive: true,
+    widgets: [{ wmType: 'woke-market-tracker', wmWants: 'show', wmFlags: ['uninitialized'], anchor: { pos: 'tl', x: 20, y: 12 } }]
+  })
+  const panel = overlay.widget('woke-market-tracker')
+  await panel.getByRole('navigation', { name: 'Categories' }).getByRole('button', { name: /^Viscera/ }).click({ timeout: 20_000 })
+  await panel.locator('.w-row', { hasText: 'Transfiguration of Soul' }).hover()
+  const tip = overlay.page.getByRole('tooltip')
+  await expect(tip).toContainText('Viscera · 3 effects')
+  await expect(tip).toContainText('Enemies you Kill have a #% chance to Explode')
+  await expect(tip).toContainText('Transfiguration of Body')
+  await overlay.snap('viscera tooltip')
   expect(overlay.errors).toEqual([])
 })

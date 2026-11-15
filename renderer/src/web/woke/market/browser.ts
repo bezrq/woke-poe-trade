@@ -1,20 +1,21 @@
 // The Market window: every poe.ninja category, like poe.ninja's economy pages.
 // It reads the dense overview APT already keeps in memory (hook.ts), and
 // parses only the category on screen, so it holds no copy of the prices.
-import { graphGaps } from './parse'
+import { categoryGaps } from './parse'
 import type { DenseChunk } from './parse'
 import { SKIPPED_TYPES, typeForSlug } from './types'
 
 // The order and grouping of poe.ninja's side list. A category poe.ninja adds
 // later (a league's new currency) lands under General.
 export const CATEGORY_GROUPS: Array<{ label: string, types: string[] }> = [
-  { label: 'General', types: ['Currency', 'Fragment', 'Wombgift', 'Runegraft', 'AllflameEmber', 'Corpse', 'Tattoo', 'Omen', 'DjinnCoin', 'Ducat', 'EnshroudingCrystal', 'DivinationCard', 'Artifact', 'Oil', 'Incubator', 'Coffin', 'ScryingOrb'] },
+  { label: 'General', types: ['Currency', 'Fragment', 'Viscera', 'Wombgift', 'Runegraft', 'AllflameEmber', 'Corpse', 'Tattoo', 'Omen', 'DjinnCoin', 'Ducat', 'EnshroudingCrystal', 'DivinationCard', 'Artifact', 'Oil', 'Incubator', 'Coffin', 'ScryingOrb'] },
   { label: 'Equipment & gems', types: ['UniqueWeapon', 'UniqueArmour', 'UniqueAccessory', 'UniqueFlask', 'UniqueJewel', 'UniqueTincture', 'UniqueRelic', 'UniqueIdol', 'SkillGem', 'ImbuedGem', 'Flask'] },
   { label: 'Atlas', types: ['Map', 'UniqueMap', 'BlightedMap', 'BlightRavagedMap', 'ValdoMap', 'Invitation', 'Scarab', 'DeliriumOrb', 'Astrolabe', 'Memory', 'IncursionTemple'] },
   { label: 'Crafting', types: ['Essence', 'Fossil', 'Resonator', 'Vial', 'Beast'] }
 ]
 
 const LABELS: Record<string, string> = {
+  Viscera: 'Viscera',
   Currency: 'Currency',
   Fragment: 'Fragments',
   DivinationCard: 'Divination Cards',
@@ -198,8 +199,9 @@ function readRows (type: string, chunk: DenseChunk, days: number): MarketRow[] {
     } catch {}
     pos = lines.indexOf(ENTRY_START, end)
   }
-  // Days before the league started aren't gaps (see parse.ts).
-  for (let i = 0; i < out.length; i++) out[i].gaps = graphGaps(graphs[i], days)
+  // Days before the league started aren't gaps, nor a new category's (parse.ts).
+  const gapsOf = categoryGaps(graphs, days)
+  for (let i = 0; i < out.length; i++) out[i].gaps = gapsOf(graphs[i])
   return out
 }
 

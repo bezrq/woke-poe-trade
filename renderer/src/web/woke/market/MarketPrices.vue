@@ -32,8 +32,12 @@
           <WEmpty v-if="!shown.length" icon="fas fa-search">No {{ category.label.toLowerCase() }} match<template v-if="query.trim()"> "{{ query.trim() }}"</template>.</WEmpty>
           <div v-for="r in shown" :key="r.key" v-item-tip="r" class="w-row" :class="$style.grid" @contextmenu="rowMenu($event, r)">
             <span class="w-trunc inline-flex items-center gap-2" :class="rarityClass(r.type)">
-              <WIcon :src="ninjaIcon(r.type, r.name) ?? undefined" size="md" />
-              <span class="w-trunc">{{ r.name }}<span v-if="r.variant" class="w-dim ml-1">{{ r.variant }}</span></span>
+              <WIcon :src="rowIcon(r)" size="md" />
+              <!-- A long variant (a Viscera's effect) gets its own line under the name. -->
+              <span v-if="r.variant.length > LONG_VARIANT" :class="$style.twoLine">
+                <span class="w-trunc">{{ r.name }}</span><span class="w-trunc w-dim" :class="$style.sub" :title="r.variant">{{ r.variant }}</span>
+              </span>
+              <span v-else class="w-trunc">{{ r.name }}<span v-if="r.variant" class="w-dim ml-1">{{ r.variant }}</span></span>
             </span>
             <span :class="$style.value">
               <WPrice :chaos="r.chaos" :divine="divine" :unit="mainUnit(r)" bulk />
@@ -64,6 +68,7 @@ import { computed, inject, onScopeDispose, shallowRef, watch } from 'vue'
 import type { WidgetManager } from '@/web/overlay/interfaces'
 import { useLeagues } from '@/web/background/Leagues'
 import { usePoeninja } from '@/web/background/Prices'
+import { ninjaArt } from './ninja-icons'
 import { WChip, WDelta, WEmpty, WField, WIcon, WPrice, WSegmented, WSkeleton, WSpark, ninjaIcon, openMenu, vItemTip } from '../ui'
 import type { MenuEntry } from '../ui/layer'
 import WCorruptedFilter from '../ui/WCorruptedFilter.vue'
@@ -134,6 +139,8 @@ const corrupted = computed({
 })
 
 const ROW_LIMIT = 200
+// Gem levels and links fit beside the name; longer text goes under it.
+const LONG_VARIANT = 24
 // Sorted once per category or sort; typing only filters.
 const sorted = computed(() => sortRows(rows.value, props.config.priceSort ?? 'value', props.config.priceDesc ?? true))
 const filtered = computed(() => {
@@ -171,11 +178,16 @@ function subUnit (r: MarketRow): 'chaos' | 'div' | null {
   return mainUnit(r) === 'div' ? 'chaos' : 'div'
 }
 
+// Game art, or poe.ninja's for items the game data lacks (Viscera).
+function rowIcon (r: MarketRow): string | undefined {
+  return ninjaIcon(r.type, r.name) ?? ninjaArt(r.type, r.name)
+}
+
 // poe.ninja's art for the category: its chosen item, or its first with art.
 function categoryIcon (c: Category): string | undefined {
   for (const name of [ICON_ITEMS[c.type], ...c.sample]) {
     if (!name) continue
-    const src = ninjaIcon(c.type, name)
+    const src = ninjaIcon(c.type, name) ?? ninjaArt(c.type, name)
     if (src) return src
   }
   return undefined
@@ -221,6 +233,7 @@ function rowMenu (e: MouseEvent, r: MarketRow) {
 .right { justify-content: flex-end; }
 .value { display: flex; flex-direction: column; align-items: flex-end; line-height: 1.15; }
 .sub { font-size: var(--w-fs-xs); }
+.twoLine { display: flex; flex-direction: column; min-width: 0; line-height: 1.2; }
 .trend { display: flex; align-items: center; justify-content: flex-end; gap: var(--w-s2); }
 .delta { min-width: 3.2rem; text-align: right; }
 .note { padding: var(--w-s1) var(--w-pad); }

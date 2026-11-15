@@ -14,9 +14,12 @@ const ENTRY_START = '{"name":'
 export function parseDenseChunks (chunks: DenseChunk[]): PriceItem[] {
   const out: PriceItem[] = []
   const graphs: unknown[] = []
+  // Where each category's rows start, for categoryDays.
+  const starts: number[] = []
   for (const chunk of chunks) {
     const type = typeForSlug(chunk.url)
     if (!type || SKIPPED_TYPES.has(type)) continue
+    starts.push(out.length)
 
     let pos = chunk.lines.indexOf(ENTRY_START)
     while (pos !== -1) {
@@ -46,8 +49,24 @@ export function parseDenseChunks (chunks: DenseChunk[]): PriceItem[] {
   // Gaps only count inside the days the league has prices for, or every
   // item reads as thin in a league's first week.
   const days = leagueDays(graphs)
-  for (let i = 0; i < out.length; i++) out[i].gaps = graphGaps(graphs[i], days)
+  starts.push(out.length)
+  for (let c = 0; c + 1 < starts.length; c++) {
+    const from = starts[c]
+    const to = starts[c + 1]
+    const gapsOf = categoryGaps(graphs.slice(from, to), days)
+    for (let i = from; i < to; i++) out[i].gaps = gapsOf(graphs[i])
+  }
   return out
+}
+
+// Gaps for one category's rows. A category poe.ninja started tracking after
+// the league did (3.30's Viscera, two days in) counts only the days it has been
+// tracked, so a row priced on each of them isn't thin; a row with no history
+// at all yet isn't either.
+export function categoryGaps (graphs: unknown[], days: number): (graph: unknown) => number {
+  const own = Math.min(days, leagueDays(graphs))
+  if (own >= days) return graph => graphGaps(graph, days)
+  return graph => Array.isArray(graph) && graph.every(v => v == null) ? 0 : graphGaps(graph, own)
 }
 
 // poe.ninja's graph is 7 daily values: % change since a week ago, today last.

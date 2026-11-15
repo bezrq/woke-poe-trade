@@ -33,6 +33,11 @@ describe('market browser', () => {
     expect(groups[1].categories[0].sample).toEqual(["Kaom's Heart"])
   })
 
+  it('lists Viscera, which is too big for an unknown category, under General', () => {
+    const groups = categoryGroups([currency, chunk('viscera', [{ name: "Greater Sirus' Head", variant: 'Area Skills have #% chance to deal Double Damage', chaos: 900, graph: [] }])])
+    expect(groups[0].categories.map(c => [c.type, c.label])).toEqual([['Currency', 'Currency'], ['Viscera', 'Viscera']])
+  })
+
   it('names categories', () => {
     expect(categoryLabel('UniqueWeapon')).toBe('Unique Weapons')
     expect(categoryLabel('DivinationCard')).toBe('Divination Cards')
@@ -133,5 +138,46 @@ describe('one Market window with tabs', () => {
     const widgets: W[] = [menu([1])]
     foldMarketWindow(widgets)
     expect(widgets).toEqual([menu([1])])
+  })
+})
+
+describe('League mechanics: Covens Viscera', () => {
+  it('fills each slot from poe.ninja Viscera, every tier, at its cheapest effect', async () => {
+    const { MECHANICS, priceGroup } = await import('@/web/woke/mechanics/data')
+    const covens = MECHANICS.find(m => m.id === 'covens')!
+    const head = covens.groups.find(g => g.label === 'Head Viscera')!
+    const v = (name: string, variant: string, chaos: number) => ({ type: 'Viscera', name, variant, chaos })
+    const rows = priceGroup(head, [
+      v("Greater Sirus' Head", 'Enemies you Kill have a #% chance to Explode', 3000),
+      v("Sirus' Head", 'Transfiguration of Soul', 916),
+      v("Sirus' Head", 'Transfiguration of Body', 218),
+      v("Warden's Arm", 'Something', 50),
+      { type: 'Currency', name: "Sirus' Head", variant: '', chaos: 1 }
+    ])
+    expect(rows.map(r => [r.item.name, r.chaos])).toEqual([["Greater Sirus' Head", 3000], ["Sirus' Head", 218]])
+  })
+})
+
+describe('a category poe.ninja just started tracking', () => {
+  it("doesn't call a row thin just because it has no history yet", async () => {
+    const { parseDenseChunks } = await import('@/web/woke/market/parse')
+    const items = parseDenseChunks([
+      chunk('currency', [
+        { name: 'Divine Orb', chaos: 112, graph: [0, 1, 2, 3, 4, 5, 6] },
+        { name: 'Rare Orb', chaos: 5, graph: [] }
+      ]),
+      chunk('viscera', [
+        { name: "Sirus' Head", variant: 'Transfiguration of Soul', chaos: 900, graph: [] },
+        // Tracked for two days: priced on both is full, priced on one is thin.
+        { name: "Shaper's Head", variant: 'x', chaos: 90, graph: [null, null, null, null, null, 0, 5] },
+        { name: "Elder's Head", variant: 'x', chaos: 80, graph: [null, null, null, null, null, null, 5] }
+      ])
+    ])
+    const gaps = Object.fromEntries(items.map(i => [i.name, i.gaps]))
+    expect(gaps['Rare Orb']).toBe(7)
+    expect(gaps["Sirus' Head"]).toBe(0)
+    expect(gaps["Shaper's Head"]).toBe(0)
+    expect(gaps["Elder's Head"]).toBe(4)
+    expect(parseCategory('Viscera', chunk('viscera', [{ name: "Sirus' Head", variant: 'x', chaos: 900, graph: [] }]), 7)[0].gaps).toBe(0)
   })
 })
