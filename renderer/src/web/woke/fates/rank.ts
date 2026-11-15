@@ -40,54 +40,60 @@ export interface FateSettings {
   modValues?: Record<string, number>
 }
 
-export const DEFAULT_VALUE = 1
+export const DEFAULT_VALUE = 0.05
 
+// Worth to the player, not how rare, from 0 to 2. A rare item (DEFAULT_VALUE)
+// is 0.05, plus its modifier.
 export const DEFAULT_VALUES: Record<string, number> = {
-  Currency: 10,
-  UniqueAuguryItem: 12,
-  Divination: 8,
-  ExceptionalGems: 10,
-  Transformative: 6,
-  Viscera: 6,
-  IncreasedRarityAffectedMonster: 6,
-  Maps: 5,
-  Essences: 4,
-  Threads: 4,
-  UniqueJewel: 5,
-  Gold: 3,
-  Gems: 3,
-  UniqueWeapon: 3,
-  UniqueArmour: 3,
-  UniqueJewellery: 3,
-  UniqueFlask: 2
+  UniqueAuguryItem: 1.5,
+  ExceptionalGems: 1,
+  Currency: 0.5,
+  Divination: 0.5,
+  Transformative: 0.3,
+  Viscera: 0.3,
+  UniqueJewel: 0.25,
+  Threads: 0.25,
+  Essences: 0.2,
+  IncreasedRarityAffectedMonster: 0.2,
+  Maps: 0.2,
+  Gold: 0.1,
+  Gems: 0.1,
+  UniqueWeapon: 0.1,
+  UniqueArmour: 0.1,
+  UniqueJewellery: 0.1,
+  UniqueFlask: 0.05
 }
 
 // Gear modifiers the rewards can have, as the game words them.
 export const GEAR_MODS = ['Speed', 'Physical', 'Critical', 'Elemental', 'Chaos', 'Gem', 'Life', 'Resistance', 'Attack', 'Damage',
   'Defence', 'Attribute', 'Mana', 'Drop', 'Angling', 'no Attack', 'no Defence', 'no Elemental', 'no Life', 'no Physical']
 
+// Added to a rare item's 0.05, so the best gear is still under Currency.
 export const DEFAULT_MOD_VALUES: Record<string, number> = {
-  'Speed': 3,
-  'Physical': 3,
-  'Critical': 2,
-  'Elemental': 2,
-  'Chaos': 2,
-  'Gem': 3,
-  'Life': 2,
-  'Resistance': 2,
-  'Attack': 1,
-  'Damage': 1,
-  'Defence': 1,
-  'Attribute': 1,
-  'Mana': 1,
-  'Drop': 1,
+  'Speed': 0.15,
+  'Physical': 0.15,
+  'Gem': 0.15,
+  'Critical': 0.1,
+  'Elemental': 0.1,
+  'Life': 0.05,
+  'Resistance': 0.05,
+  'Chaos': 0.05,
+  'Attack': 0.02,
+  'Damage': 0.02,
+  'Defence': 0.02,
+  'Attribute': 0.02,
+  'Mana': 0.02,
+  'Drop': 0.02,
   'Angling': 0,
-  'no Attack': 1,
-  'no Defence': 1,
-  'no Elemental': 1,
-  'no Life': 1,
-  'no Physical': 1
+  'no Attack': 0,
+  'no Defence': 0,
+  'no Elemental': 0,
+  'no Life': 0,
+  'no Physical': 0
 }
+
+// Bumped when the defaults above change, so saved copies of old ones are replaced.
+export const WEIGHTS_VERSION = 2
 
 // Reward icons for gear, which come with a modifier.
 export const GEAR_ICONS = new Set(['Boots', 'Helmet', 'BodyArmour', 'Gloves', 'Shield', 'Claw', 'Staff', 'Wand', 'Sword', 'Sceptre', 'Quiver',

@@ -1,6 +1,6 @@
 import type { Widget, Anchor } from '@/web/overlay/widgets'
 import { sortKeys } from '../loot-filter/hotkey-match'
-import { DEFAULT_MOD_VALUES, DEFAULT_VALUES } from './rank'
+import { DEFAULT_MOD_VALUES, DEFAULT_VALUES, WEIGHTS_VERSION } from './rank'
 
 export const FATES_TYPE = 'woke-fates'
 
@@ -14,6 +14,8 @@ export interface FatesWidget extends Widget {
   maxTier: Record<string, number>
   // Added to a gear reward's worth for its modifier (Speed, Physical...).
   modValues: Record<string, number>
+  // Which defaults `values` and `modValues` were seeded from (WEIGHTS_VERSION).
+  weights?: number
   // Invoke slots Mora has unlocked so far.
   slots: number
   // Multiplies the size the reader expects the Fate window at. 1 fits the
@@ -65,6 +67,7 @@ export function initFatesWidget (w: FatesWidget) {
   w.hotkey = FATES_KEYS[0]
   w.values = { ...DEFAULT_VALUES }
   w.modValues = { ...DEFAULT_MOD_VALUES }
+  w.weights = WEIGHTS_VERSION
   w.maxTier = {}
   w.slots = 3
   w.uiScale = 1
@@ -106,6 +109,11 @@ export function normalizeFatesWidget (w: FatesWidget) {
   if (!w.values || typeof w.values !== 'object') w.values = { ...DEFAULT_VALUES }
   if (!w.maxTier || typeof w.maxTier !== 'object') w.maxTier = {}
   if (!w.modValues || typeof w.modValues !== 'object') w.modValues = { ...DEFAULT_MOD_VALUES }
+  if ((w.weights ?? 1) < WEIGHTS_VERSION) {
+    w.values = { ...DEFAULT_VALUES }
+    w.modValues = { ...DEFAULT_MOD_VALUES }
+    w.weights = WEIGHTS_VERSION
+  }
   if (![1, 2, 3].includes(w.slots)) w.slots = 3
   if (typeof w.uiScale !== 'number' || !(w.uiScale > 0.5 && w.uiScale < 2)) w.uiScale = 1
 }

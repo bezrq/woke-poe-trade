@@ -21,7 +21,7 @@
         <label v-for="r in rewards" :key="r.icon" class="flex items-center gap-2" :title="r.examples.join('\n')">
           <img :src="`/images/fates/${r.icon}.png`" alt="" style="width: 22px; height: 22px;">
           <span class="flex-1 w-trunc">{{ r.label }}</span>
-          <input :value="value(r.icon)" type="number" min="0" step="1" class="rounded w-input px-1 block" style="width: 4rem;"
+          <input :value="value(r.icon)" type="number" min="0" max="2" step="0.01" class="rounded w-input px-1 block" style="width: 4rem;"
             @change="setValue(r.icon, ($event.target as HTMLInputElement).valueAsNumber)">
         </label>
       </div>
@@ -32,7 +32,7 @@
       <div class="grid gap-x-3 gap-y-1" style="grid-template-columns: repeat(3, minmax(0, 1fr));">
         <label v-for="m in mods" :key="m" class="flex items-center gap-2">
           <span class="flex-1 w-trunc">{{ m }}</span>
-          <input :value="modValue(m)" type="number" min="0" step="1" class="rounded w-input px-1 block" style="width: 3.5rem;"
+          <input :value="modValue(m)" type="number" min="0" max="2" step="0.01" class="rounded w-input px-1 block" style="width: 3.5rem;"
             @change="setModValue(m, ($event.target as HTMLInputElement).valueAsNumber)">
         </label>
       </div>

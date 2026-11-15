@@ -167,3 +167,16 @@ describe('gear modifiers', () => {
     expect(best.value).toBe(21)
   })
 })
+
+describe('Fates weights', () => {
+  it('replaces values saved from older defaults, and caps gear below Currency', async () => {
+    const { normalizeFatesWidget } = await import('@/web/woke/fates/widget')
+    const { DEFAULT_MOD_VALUES, DEFAULT_VALUE, DEFAULT_VALUES } = await import('@/web/woke/fates/rank')
+    const w = { values: { Currency: 10, Gold: 3 }, modValues: { Speed: 3 }, maxTier: {}, slots: 3, uiScale: 1, hotkey: null } as unknown as import('@/web/woke/fates/widget').FatesWidget
+    normalizeFatesWidget(w)
+    expect(w.modValues.Speed).toBe(DEFAULT_MOD_VALUES.Speed)
+    expect(w.values.Gold).toBe(DEFAULT_VALUES.Gold)
+    expect(Math.max(...Object.values(DEFAULT_VALUES))).toBeLessThanOrEqual(2)
+    expect(DEFAULT_VALUE + Math.max(...Object.values(DEFAULT_MOD_VALUES))).toBeLessThan(DEFAULT_VALUES.Currency)
+  })
+})
