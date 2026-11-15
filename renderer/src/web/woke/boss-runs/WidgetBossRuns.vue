@@ -10,7 +10,7 @@
             <div v-for="d in cardDrops(r.drops, CARD_DROPS)" :key="d.name" :class="$style.cardDrop">
               <span v-item-tip="{ name: d.name, type: typeByName.get(d.name), variant: d.variant }" class="w-trunc">{{ d.name }}</span>
               <span class="text-right" :class="d.chance == null ? 'w-faint' : 'w-dim'">{{ d.chance == null ? '?' : pct(d.chance) }}</span>
-              <span class="text-right"><WPrice :chaos="d.price" :divine="divine" /></span>
+              <span class="text-right" :title="cardPriceTitle(d)"><WPrice :chaos="d.price" :divine="divine" /></span>
             </div>
             <div v-if="!r.drops.length" class="w-faint text-xs">No drop list for this boss yet.</div>
             <div v-else-if="r.drops.length > CARD_DROPS" class="w-faint text-xs">+{{ r.drops.length - CARD_DROPS }} more</div>
@@ -279,7 +279,7 @@ import { arenaBosses as arenaBossIds, useZone } from '../shared/zone'
 import { bossesAtLevel, cardDrops, evaluateBoss, formatRunTime, killDropPrice, luck, parseRunTime, priceResolver, tradeWanted, unidentifiedTradeUrl } from './calc'
 import type { BossResult, DropRow, KillRecord, PriceMode, RateSource } from './calc'
 import { ESTIMATE_SOURCE_LABEL, estimateUrl } from './estimates'
-import { useTradePrices } from './use-trade-prices'
+import { useTradePrices } from '../shared/unid-prices'
 import { OWN_RATE_KILLS } from './calc'
 
 const props = defineProps<{
@@ -331,7 +331,15 @@ function dropThin (d: { name: string, variant?: string, priceSource: string | nu
   return px.value.allThin(d.name) ? px.value.thin(d.name) : null
 }
 
-// Trade lookups only while this panel is on screen.
+// Bosses this arena can hold (shared/zone.ts), across every tier.
+const zone = useZone()
+const arenaBosses = computed(() => {
+  const ids = zone.kind === 'boss' ? arenaBossIds(zone.areaId, zone.name) : []
+  return bossesAtLevel(BOSSES.filter(b => ids.includes(b.id)), zone.areaLevel).map(b => evaluateBoss(b, props.config, px.value))
+})
+
+// Trade lookups only while this panel is on screen. The icon's card uses
+// what's already looked up, else poe.ninja.
 const onScreen = computed(() => props.config.wmWants === 'show' && wm.active.value)
 const wantedKey = computed(() => tradeWanted(BOSSES, props.config.selected, props.config, px.value).join('\n'))
 watch([onScreen, () => prices.snapshot.value?.league, divine, wantedKey], ([show, league, rate, key]) => {
@@ -362,13 +370,6 @@ const ranked = computed(() => {
     losing: withData.filter(r => r.profit < 0),
     noData: results.value.filter(r => !r.ready)
   }
-})
-
-// Bosses this arena can hold (shared/zone.ts), across every tier.
-const zone = useZone()
-const arenaBosses = computed(() => {
-  const ids = zone.kind === 'boss' ? arenaBossIds(zone.areaId, zone.name) : []
-  return bossesAtLevel(BOSSES.filter(b => ids.includes(b.id)), zone.areaLevel).map(b => evaluateBoss(b, props.config, px.value))
 })
 
 const CARD_DROPS = 8
@@ -446,6 +447,11 @@ const modeOptions = [{ value: 'unid', label: 'Unidentified' }, { value: 'median'
 function modeLabel (d: DropRow) {
   if (d.priceMode === 'unid' && d.priceSource !== 'trade') return tradePrices.pending(d.name) ? '…' : 'ninja'
   return { unid: 'unid', min: 'cheapest', median: 'ninja', custom: 'my price' }[d.priceMode!]
+}
+function cardPriceTitle (d: DropRow) {
+  if (d.priceMode !== 'unid') return undefined
+  if (d.priceSource === 'trade') return `Unidentified: middle of the cheapest 10 of ${d.listings} instant buyouts on trade.`
+  return 'poe.ninja. Open Boss runs to look up unidentified copies on trade.'
 }
 function spreadTitle (d: DropRow) {
   const ask = 'Click to choose how to price it.'

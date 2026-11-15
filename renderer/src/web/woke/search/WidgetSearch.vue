@@ -58,6 +58,13 @@
                   <button v-if="tracker" class="w-icon-btn" :class="{ 'w-icon-btn--on': isWatched(v) }" :title="isWatched(v) ? 'Stop watching' : 'Watch price'" :aria-label="isWatched(v) ? 'Stop watching' : 'Watch price'" @click="toggleWatch(v)"><i :class="isWatched(v) ? 'fas fa-star' : 'far fa-star'" /></button>
                 </span>
               </div>
+              <!-- Rolled uniques drop unidentified: poe.ninja's row stands for that; a click checks real listings. -->
+              <div v-if="unidName" :class="[$style.grid, $style.row]" :title="unidTitle">
+                <span class="w-trunc">Unidentified on trade</span>
+                <WPrice v-if="unidQuote" bulk :chaos="unidQuote.chaos" :divine="divine" class="text-right" />
+                <span v-else-if="tradePrices.pending(unidName)" class="text-right w-faint">…</span>
+                <span v-else class="text-right"><button class="w-icon-btn" title="Search trade for unidentified copies" aria-label="Search trade for unidentified copies" @click="lookUpUnid"><i class="fas fa-search" /></button></span>
+              </div>
               <UniqueDetails v-if="details" v-model:variant="pickedVariant" v-model:foul="pickedFoul" v-bind="details" :divine="divine" />
               <BaseUniques v-if="baseUniques" v-bind="baseUniques" :divine="divine" no-price="No poe.ninja price" @pick="pickUnique" />
               <div v-if="conv" :class="$style.convBox" :style="{ '--conv-cols': convCols }">
@@ -187,12 +194,15 @@ import { onSharedDataChange } from '../app/live-data'
 import { dropOf } from '../ui/tooltip/tip-content'
 import type { TipItem, TipPack } from '../ui/tooltip/tip-content'
 import { SEARCH_TARGET, searchRequest } from './widget'
+import { VARIABLE_ITEMS, useTradePrices } from '../shared/unid-prices'
+import { poeWebApi } from '@/web/Config'
 import type { SearchWidget } from './widget'
 
 const props = defineProps<{ config: SearchWidget }>()
 const wm = inject<WidgetManager>('wm')!
 const { t } = useI18n()
 const leagues = useLeagues()
+const tradePrices = useTradePrices()
 const snapshot = useSearchSnapshot()
 
 interface Base { id: string, name: string, sub: string }
@@ -399,7 +409,8 @@ const lookupContext = computed<LookupContext>(() => {
     items: snapshot.value?.items ?? [],
     divine: divine.value,
     now: Date.now(),
-    league: league ? { name: league, startedAt: leagues.startedAt.value } : null
+    league: league ? { name: league, startedAt: leagues.startedAt.value } : null,
+    unid: (name: string) => league ? tradePrices.get(league, name)?.chaos ?? null : null
   }
 })
 const currencyNames = computed(() => [...new Set((snapshot.value?.items ?? []).filter(i => i.type === 'Currency').map(i => i.name))])
@@ -572,6 +583,30 @@ const sections = computed<Array<{ label: string, entries: Entry[], capped?: bool
 const entries = computed(() => sections.value.flatMap(s => s.entries))
 
 const selected = shallowRef<Entry | null>(null)
+
+// Rolled uniques (jewels and the like) drop unidentified. poe.ninja's row is
+// their price; a click checks the middle of the cheapest unidentified listings
+// on trade, kept for an hour (shared with Boss runs). Never searched by itself.
+const unidName = computed(() => {
+  const e = selected.value
+  const name = e?.kind === 'price' ? e.group.name : e?.kind === 'lookup' && e.card.id.startsWith('drop:') ? e.card.id.slice(5) : null
+  return name && VARIABLE_ITEMS.has(name) ? name : null
+})
+const unidQuote = computed(() => {
+  const league = leagues.selectedId.value
+  return unidName.value && league ? tradePrices.get(league, unidName.value) : null
+})
+const unidTitle = computed(() => unidQuote.value
+  ? `Middle of the cheapest 10 of ${unidQuote.value.listings} unidentified instant buyouts on trade.`
+  : 'One trade search for unidentified copies.')
+function lookUpUnid () {
+  const league = leagues.selectedId.value
+  const name = unidName.value
+  // The queries use English names, which the regional trade sites won't match.
+  if (poeWebApi() !== 'www.pathofexile.com') { toast('Needs the international trade site'); return }
+  if (!name || !league || !divine.value) return
+  tradePrices.ask(league, divine.value, name)
+}
 // A currency's round amounts in chaos and divines, under its prices.
 const conv = computed(() => {
   const e = selected.value
