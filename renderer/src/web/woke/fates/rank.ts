@@ -45,7 +45,7 @@ export const DEFAULT_VALUE = 0.05
 // Worth to the player, not how rare, from 0 to 2. A rare item (DEFAULT_VALUE)
 // is 0.05, plus its modifier.
 export const DEFAULT_VALUES: Record<string, number> = {
-  UniqueAuguryItem: 1.5,
+  UniqueAuguryItem: 0.75,
   ExceptionalGems: 1,
   Currency: 0.5,
   Divination: 0.5,
@@ -93,7 +93,7 @@ export const DEFAULT_MOD_VALUES: Record<string, number> = {
 }
 
 // Bumped when the defaults above change, so saved copies of old ones are replaced.
-export const WEIGHTS_VERSION = 2
+export const WEIGHTS_VERSION = 3
 
 // Reward icons for gear, which come with a modifier.
 export const GEAR_ICONS = new Set(['Boots', 'Helmet', 'BodyArmour', 'Gloves', 'Shield', 'Claw', 'Staff', 'Wand', 'Sword', 'Sceptre', 'Quiver',
