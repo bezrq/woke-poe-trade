@@ -14,6 +14,7 @@ import type { GameWindow } from '../windowing/GameWindow'
 import type { GameConfig } from '../host-files/GameConfig'
 import type { ServerEvents } from '../server'
 import { perfRecord } from '../woke/perf'
+import { liftAltForCopy, restoreAltAfterCopy } from './synthetic-keys'
 import { noteItemText } from '../woke/claude-link/last-item'
 
 type UiohookKeyT = keyof typeof UiohookKey
@@ -276,6 +277,10 @@ function pressKeysToCopyItemText (pressedModKeys: string[] = [], showModsKey: st
 
   let keys = mergeTwoHotkeys('Ctrl + C', showModsKey).split(' + ')
   keys = keys.filter(key => key !== 'C')
+  // woke: 3.30 copies nothing on Ctrl+Alt+C, so a held Alt (an "Alt + D"
+  // price check, the loot filter's Alt+F) made every copy time out. Let go of
+  // Alt for the copy and press it again after (synthetic-keys.ts).
+  let liftAlt = false
   if (process.platform !== 'darwin') {
     // On non-Mac platforms, don't toggle keys that are already being pressed.
     //
@@ -284,8 +289,10 @@ function pressKeysToCopyItemText (pressedModKeys: string[] = [], showModsKey: st
     // to "Alt + any letter". They'll work with this line, but not if it's
     // commented out.
     keys = keys.filter(key => !pressedModKeys.includes(key))
+    liftAlt = pressedModKeys.includes('Alt')
   }
 
+  if (liftAlt) liftAlt = liftAltForCopy()
   for (const key of keys) {
     uIOhook.keyToggle(UiohookKey[key as UiohookKeyT], 'down')
   }
@@ -297,6 +304,7 @@ function pressKeysToCopyItemText (pressedModKeys: string[] = [], showModsKey: st
   for (const key of keys) {
     uIOhook.keyToggle(UiohookKey[key as UiohookKeyT], 'up')
   }
+  if (liftAlt) restoreAltAfterCopy()
 }
 
 function isStashArea (mouse: UiohookWheelEvent, poeWindow: GameWindow): boolean {
