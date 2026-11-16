@@ -9,6 +9,7 @@ import type { OwnRule } from './rules'
 import type { Presets } from './presets'
 import { defaultPresets } from './presets'
 import type { PriceMove } from './economy'
+import { tierLabel } from './names'
 
 export interface Settings {
   edits: FilterEdit[]
@@ -146,6 +147,25 @@ function describeEditStep (prev: FilterEdit | undefined, next: FilterEdit, lookO
   return describeEdit(next)
 }
 
+// "A, B and 3 more": enough to tell steps apart, short enough for one line.
+// Only the ones shown get described: a step can hold hundreds.
+function listOf<T> (items: T[], say: (x: T) => string, show = 2): string {
+  const named = items.slice(0, show).map(say)
+  if (items.length <= show) return named.join(' and ')
+  return `${named.join(', ')} and ${items.length - show} more`
+}
+
+// A saved step in words, worked out again from what it changed, so steps saved
+// with the older, vaguer labels read like new ones.
+export function describeSavedStep (step: TimelineStep, lookOf: (type: string, tier: string) => StylePatch = () => ({})): string {
+  const base: Settings = { edits: [], rules: [], presets: defaultPresets(), moves: [], locks: [] }
+  try {
+    return describeStep({ ...base, ...step.before }, { ...base, ...step.after }, lookOf)
+  } catch {
+    return step.label
+  }
+}
+
 // A step in a line, for the Changes tab.
 export function describeStep (before: Settings, after: Settings, lookOf: (type: string, tier: string) => StylePatch = () => ({})): string {
   const parts: string[] = []
@@ -156,13 +176,22 @@ export function describeStep (before: Settings, after: Settings, lookOf: (type: 
     const dropped = before.edits.filter(e => !ids.has(e.id))
     if (changed.length === 1 && !dropped.length) parts.push(describeEditStep(prev.get(changed[0].id), changed[0], lookOf))
     else if (!changed.length && dropped.length === 1) parts.push(`Took back: ${describeEdit(dropped[0])}`)
-    else if (!changed.length) parts.push(`Took back ${dropped.length} changes`)
-    else if (!dropped.length) parts.push(`${changed.length} changes`)
-    else parts.push(`${changed.length + dropped.length} changes`)
+    else if (!changed.length) parts.push(`Took back ${listOf(dropped, describeEdit)}`)
+    else if (!dropped.length) parts.push(listOf(changed, e => describeEditStep(prev.get(e.id), e, lookOf)))
+    else parts.push(`${listOf(changed, e => describeEditStep(prev.get(e.id), e, lookOf))}; took back ${listOf(dropped, describeEdit)}`)
   }
   if (!same(before.moves, after.moves)) {
-    const n = after.moves.length - before.moves.length
-    parts.push(!after.moves.length ? 'Back to NeverSink\'s tiers' : n > 0 ? `Price moves: ${n} more` : n < 0 ? `Price moves: ${-n} fewer` : 'Price moves changed')
+    // A move to another tier is still a move, not a put-back.
+    const key = (m: PriceMove) => `${m.type}|${m.base}`
+    const was = new Map(before.moves.map(m => [key(m), m.to]))
+    const has = new Set(after.moves.map(key))
+    const added = after.moves.filter(m => was.get(key(m)) !== m.to)
+    const gone = before.moves.filter(m => !has.has(key(m)))
+    const move = (m: PriceMove) => `${m.base} ${tierLabel(m.from)} → ${tierLabel(m.to)}`
+    if (!after.moves.length) parts.push('Back to NeverSink\'s tiers')
+    else if (added.length) parts.push(`Prices moved ${listOf(added, move)}${gone.length ? `; put back ${listOf(gone, m => m.base)}` : ''}`)
+    else if (gone.length) parts.push(`Prices put back ${listOf(gone, m => m.base)}`)
+    else parts.push('Price moves changed')
   }
   if (!same(before.rules, after.rules)) {
     const names = new Map(before.rules.map(r => [r.id, r]))
@@ -182,7 +211,12 @@ export function describeStep (before: Settings, after: Settings, lookOf: (type: 
     parts.push(key ? `Preset: ${PRESET_NAMES[key]} ${after.presets[key].on ? (was(key).on ? 'changed' : 'on') : 'off'}` : 'Changed presets')
   }
   if (!same(before.locks, after.locks) && !parts.length) {
-    parts.push(after.locks.length > before.locks.length ? 'Kept an item where it is' : 'Let prices move an item again')
+    const base = (k: string) => k.slice(k.lastIndexOf('|') + 1)
+    const kept = after.locks.filter(k => !before.locks.includes(k))
+    const freed = before.locks.filter(k => !after.locks.includes(k))
+    parts.push(kept.length
+      ? `Kept ${listOf(kept, base)} where ${kept.length === 1 ? 'it is' : 'they are'}`
+      : `Let prices move ${listOf(freed, base)} again`)
   }
   return parts.join('; ') || 'Changed settings'
 }
