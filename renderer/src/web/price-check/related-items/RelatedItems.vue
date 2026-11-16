@@ -3,18 +3,27 @@
     <div v-if="'error' in result" class="p-2">
       {{ result.error }}
     </div>
-    <template v-if="'related' in result && result.related.length > 1">
-      <div :class="$style.hd">Related to {{ item!.info.name }}</div>
-      <div v-for="row in result.related" :key="row.name" v-item-tip="{ name: row.name }"
-        :class="[$style.row, { [$style.me]: row.highlight }]">
-        <img :class="$style.art" :src="row.icon" :alt="''">
-        <span :class="$style.name">{{ row.name }}</span>
-        <span :class="$style.price">
-          <template v-if="row.price">{{ priceText(row.price) }}<img :class="$style.coin" :src="coin(row.price)" :alt="row.price.currency"></template>
-          <span v-else :class="$style.none" title="poe.ninja has no price for this">?</span>
-        </span>
+    <!-- woke: the item's family, then its own drop group when that adds items.
+         A click price checks the row's item; nothing searches before that. -->
+    <template v-for="sec in sections" :key="sec.title">
+      <div :class="$style.hd">
+        <span>{{ sec.title }}</span>
+        <span v-if="sec.family" :class="$style.count">{{ sec.rows.length }} · poe.ninja</span>
+      </div>
+      <div :class="[$style.list, { [$style.tight]: sec.family }]">
+        <div v-for="row in sec.rows" :key="row.name" v-item-tip="{ name: row.name }"
+          :class="[$style.row, { [$style.me]: row.highlight, [$style.click]: row.check && !row.highlight }]"
+          @click="!row.highlight && row.check && $emit('check', row.check)">
+          <img :class="$style.art" :src="row.icon" :alt="''">
+          <span :class="$style.name">{{ row.name }}</span>
+          <span :class="$style.price">
+            <template v-if="row.price">{{ priceText(row.price) }}<img :class="$style.coin" :src="coin(row.price)" :alt="row.price.currency"></template>
+            <span v-else :class="$style.none" title="poe.ninja has no price for this">?</span>
+          </span>
+        </div>
       </div>
     </template>
+    <div v-if="sections.some(sec => sec.rows.some(r => r.check && !r.highlight))" :class="$style.ft">Click to price check</div>
     <template v-if="'items' in result && result.items.length">
       <div :class="$style.hd">Drops in {{ item!.info.name }}</div>
       <div v-for="row in result.items" :key="row.name" v-item-tip="{ name: row.name }" :class="$style.row">
@@ -31,11 +40,14 @@
 
 <script lang="ts">
 import { computed, defineComponent, PropType } from 'vue'
-import { BaseType, ITEM_BY_REF, ITEM_DROP } from '@/assets/data'
+import { BaseType, ITEM_BY_REF, ITEM_DROP, ITEMS_ITERATOR } from '@/assets/data'
 import { usePoeninja, CurrencyValue, displayRounding } from '@/web/background/Prices'
 import { getDetailsId } from '../trends/getDetailsId'
 import { vItemTip } from '@/web/woke/ui/tooltip/item-tip'
 import { ParsedItem } from '@/parser'
+import { AppConfig } from '@/web/Config'
+import { priceCheckInput, type PriceCheckInput } from '@/web/woke/ui/tooltip/item-menu-logic'
+import { familyOf, familyRows, type Family } from '@/web/woke/related-family/family'
 
 const { findPriceByQuery, autoCurrency, xchgRate } = usePoeninja()
 
@@ -60,12 +72,49 @@ function findPriceByQueryId (queryId: string) {
   }
 }
 
+interface RelatedRow { name: string, icon: string, price?: CurrencyValue, highlight: boolean, check?: PriceCheckInput | null }
+
+// woke: what a click on a row price checks: a stackable item as the game copies it.
+function checkInput (info: BaseType): PriceCheckInput | null {
+  if (info.namespace !== 'ITEM') return null
+  return priceCheckInput({ name: info.refName }, 'item', info, AppConfig().language === 'en')
+}
+
+// woke: the rest of a bulk item's family (fossils, catalysts, essences of its
+// tier...), dearest first, from the item data and poe.ninja rows already loaded.
+// Members come from a scan of the item data, so each family is read once.
+const familyCache = new Map<string, Family | null>()
+function cachedFamily (info: BaseType): Family | null {
+  const key = `${info.namespace}::${info.refName}`
+  if (!familyCache.has(key)) {
+    familyCache.set(key, familyOf(info, needle => ITEMS_ITERATOR(needle), ref => ITEM_BY_REF('ITEM', ref)?.[0]))
+  }
+  return familyCache.get(key)!
+}
+
+function getFamily (item: ParsedItem) {
+  const fam = cachedFamily(item.info)
+  if (!fam) return null
+  const rows = familyRows(fam, item.info.refName, ref => findPriceByQuery({ ns: 'ITEM', name: ref, variant: undefined })?.chaos ?? null)
+  return {
+    label: fam.label,
+    related: rows.map((row): RelatedRow => ({
+      name: row.info.name,
+      icon: row.info.icon,
+      price: row.chaos != null ? autoCurrency(row.chaos) : undefined,
+      highlight: row.own,
+      check: checkInput(row.info)
+    }))
+  }
+}
+
 function getItemPrices (queryId: string) {
   const dropEntry = ITEM_DROP.find(entry => entry.query.includes(queryId))
   if (!dropEntry) return null
 
   const out = {
-    related: [] as Array<{ name: string, icon: string, price?: CurrencyValue, highlight: boolean }>,
+    label: undefined as string | undefined,
+    related: [] as RelatedRow[],
     items: [] as Array<{ name: string, icon: string, price?: CurrencyValue, chaos: number }>
   }
   for (const itemId of dropEntry.query) {
@@ -76,7 +125,8 @@ function getItemPrices (queryId: string) {
       icon: dbItem.icon,
       name: dbItem.name,
       price: findPriceByQueryId(itemId),
-      highlight: (itemId === queryId)
+      highlight: (itemId === queryId),
+      check: checkInput(dbItem)
     })
   }
   for (const itemId of dropEntry.items) {
@@ -108,18 +158,43 @@ export default defineComponent({
       required: true
     }
   },
+  emits: ['check'],
   setup (props) {
+    const { updatedAt } = usePoeninja()
     const result = computed(() => {
-      if (!props.item) return
+      // Prices arrive after the panel first shows.
+      if (!props.item || updatedAt.value === undefined) return
 
       const queryId = getDetailsId(props.item)
-      if (!queryId) return
+      const drops = queryId
+        ? getItemPrices(`${queryId.ns}::${queryId.name}${queryId.variant ? ` // ${queryId.variant}` : ''}`)
+        : null
+      const family = getFamily(props.item)
+      if (!family) return drops ?? undefined
+      if (!drops || 'error' in drops) return { ...family, items: [], dropRelated: [] as RelatedRow[] }
+      // The drop group stays when it adds items (an essence's other tiers), and
+      // what the item drops leaves out what the family already lists.
+      const listed = new Set(family.related.map(r => r.name))
+      return {
+        ...family,
+        dropRelated: drops.related.some(r => !listed.has(r.name)) ? drops.related : [],
+        items: drops.items.filter(r => !listed.has(r.name))
+      }
+    })
 
-      return getItemPrices(`${queryId.ns}::${queryId.name}${queryId.variant ? ` // ${queryId.variant}` : ''}`)
+    interface Section { title: string, family: boolean, rows: RelatedRow[] }
+    const sections = computed<Section[]>(() => {
+      const res = result.value
+      if (!res || !('related' in res)) return []
+      const out: Section[] = []
+      if (res.related.length > 1) out.push({ title: res.label ?? `Related to ${props.item!.info.name}`, family: res.label != null, rows: res.related })
+      if ('dropRelated' in res && res.dropRelated.length > 1) out.push({ title: `Related to ${props.item!.info.name}`, family: false, rows: res.dropRelated })
+      return out
     })
 
     return {
       result,
+      sections,
       priceText: (price: CurrencyValue) => (price.min === price.max)
         ? displayRounding(price.min, true)
         : `${displayRounding(price.min, true)}–${displayRounding(price.max, true)}`,
@@ -144,6 +219,10 @@ export default defineComponent({
   box-shadow: var(--w-shadow);
 }
 .hd {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
   padding: 6px 12px;
   background: var(--w-panel-solid);
   border-bottom: 1px solid var(--w-line);
@@ -161,6 +240,13 @@ export default defineComponent({
   border-bottom: 1px solid var(--w-line-soft);
 }
 .row:last-child { border-bottom: 0; }
+.count { font-family: var(--w-body); font-size: var(--w-fs-sm); color: var(--w-faint); white-space: nowrap; }
+/* woke: a long family scrolls inside the panel; the panel never outgrows the window. */
+.list { max-height: min(26rem, 60vh); overflow-y: auto; overscroll-behavior: contain; }
+.tight .row { min-height: 30px; }
+.click { cursor: pointer; }
+.click:hover { background: var(--w-panel-3); }
+.ft { padding: 4px 12px; border-top: 1px solid var(--w-line); font-size: var(--w-fs-sm); color: var(--w-faint); }
 .me { background: var(--w-accent-soft); }
 .art { width: 28px; height: 28px; object-fit: contain; }
 .name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #d98a4a; }
