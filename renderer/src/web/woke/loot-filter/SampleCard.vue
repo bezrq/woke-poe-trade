@@ -167,6 +167,7 @@
 </template>
 
 <script setup lang="ts">
+import { conditionWords } from './ladder'
 import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
 import { WPanel, WBanner, WButton, WSegmented, WChip, toast } from '../ui'
 import { SAFETY_LOOK, SAFETY_RULE_TYPE } from './safety'
@@ -498,9 +499,10 @@ function tri (r: Tri) {
 function conditionText (c: FilterCondition): string {
   if (c.key === 'BaseType' && c.values.length > 3) {
     const hit = c.values.find(v => v === base.value || base.value.includes(v))
-    return `BaseType ${c.op} … ${hit ? `"${hit}"` : ''} … (${c.values.length} items)`
+    return `Item: ${hit ? `${hit} and ` : ''}${hit ? c.values.length - 1 : c.values.length} more`
   }
-  return formatCondition(c)
+  // Every mod name, so the card shows which of the item's mods hit.
+  return c.key === 'HasExplicitMod' ? formatCondition(c) : conditionWords(c)
 }
 
 function unknownKeys (m: BlockMatch): string[] {
