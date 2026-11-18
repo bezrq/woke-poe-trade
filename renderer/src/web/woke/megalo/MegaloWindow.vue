@@ -1,5 +1,4 @@
 <template>
-  <Widget :config="config" move-handles="corners" :inline-edit="false" readonly :removable="false">
     <WPanel ref="panel" size-key="megalo" title="Megalomaniac searcher" icon="/images/art/o-eternal.png" width="34rem" max-height="80vh">
       <div :class="$style.wrap" data-qa="megalo">
         <!-- Where the build comes from -->
@@ -39,17 +38,18 @@
         <section :class="$style.sec">
           <div :class="$style.head">
             <span>Notables</span>
-            <WInfo text="Click a notable to tick or untick it. The number is its weight: the best fit is 100. Click the number to change it; ↺ goes back to the suggestion. Hover a notable to see what it does." />
+            <WInfo text="Right-click a notable to make it a must-have (up to 3): every result has it. Click a notable to tick or untick it. The number is its weight: the best fit is 100. Click the number to change it; ↺ goes back to the suggestion. Hover a notable to see what it does." />
             <WField v-model="filter" :class="$style.end" :style="{ width: '11rem' }" placeholder="Filter notables or tags" icon="fas fa-filter" data-qa="megalo-filter" />
           </div>
-          <div v-if="!pool.length" :class="$style.dim">Loading the notable list…</div>
+          <div v-if="!pool.length" :class="$style.dim">The notable list loads when the window opens…</div>
           <div v-for="g in shownGroups" :key="g.tag" :class="$style.ngroup">
             <span :class="$style.glabel">{{ g.tag }}</span>
             <div :class="$style.chips">
-              <span v-for="r in g.rows" :key="r.name" :class="[$style.nchip, { [$style.on]: isOn(r.name) }]" data-qa="megalo-notable"
+              <span v-for="r in g.rows" :key="r.name" :class="[$style.nchip, { [$style.on]: isOn(r.name), [$style.must]: isMust(r.name) }]" data-qa="megalo-notable"
                 role="checkbox" :aria-checked="isOn(r.name)" tabindex="0"
-                @click="toggleOn(r.name)" @keydown.enter.space.prevent="toggleOn(r.name)"
+                @click="toggleOn(r.name)" @keydown.enter.space.prevent="toggleOn(r.name)" @contextmenu.prevent="toggleMust(r.name)"
                 @mouseenter="tip($event, r)" @mouseleave="untip" @focus="tip($event, r)" @blur="untip">
+                <i v-if="isMust(r.name)" class="fas fa-lock" :class="$style.lock" title="Must have: every result has it" />
                 <span>{{ r.name }}</span>
                 <input :class="[$style.wt, { [$style.edited]: edited(r.name) }]" type="number" min="0" max="100" step="5"
                   :value="weightOf(r)" :aria-label="`Weight for ${r.name}`" data-qa="megalo-weight"
@@ -82,26 +82,27 @@
           <input :class="$style.num" type="number" min="0" step="0.5" placeholder="any" :value="config.maxDiv ?? ''"
             aria-label="Highest price in divines" data-qa="megalo-max" @keydown.stop @change="setMax(($event.target as HTMLInputElement).value)">
           <span :class="$style.dim">div</span>
-          <WButton size="sm" variant="primary" :class="$style.end" data-qa="megalo-search" :disabled="!ticked.length" @click="search">Search</WButton>
+          <span :class="$style.end" data-qa="megalo-save"><SaveSearchButton :get-link="searchLink" :suggest-name="saveName" /></span>
+          <WButton size="sm" variant="primary" data-qa="megalo-search" :disabled="!ticked.length" @click="search">Search</WButton>
         </div>
         <div :class="$style.dim" data-qa="megalo-summary">{{ summary }}</div>
       </div>
     </WPanel>
-  </Widget>
 </template>
 
 <script setup lang="ts">
 // The Megalomaniac searcher: reads your build's tags, scores every notable
 // Megalomaniac can roll, and searches trade for jewels with the ones you tick.
-import { computed, onBeforeUnmount, onMounted, shallowRef, watch } from 'vue'
-import Widget from '@/web/overlay/Widget.vue'
+import { computed, onBeforeUnmount, shallowRef, watch } from 'vue'
 import { STAT_BY_REF_V2, ITEM_BY_REF } from '@/assets/data'
 import { AppConfig, poeWebApi } from '@/web/Config'
+import type { PriceCheckWidget } from '@/web/overlay/widgets'
 import { useLeagues } from '@/web/background/Leagues'
 import { getTradeEndpoint } from '@/web/price-check/trade/common'
 import { WButton, WChip, WField, WInfo, WPanel, WSegmented, toast } from '../ui'
 import { hideHelp, showHelp } from '../ui/help-tip'
 import { tradeUrl } from '../search/search'
+import SaveSearchButton from '../trade-searches/SaveSearchButton.vue'
 import { useActiveBuild } from '../pob-builds/active'
 import { character } from '../pob-builds/character'
 import { mainGroupOf } from '../pob-builds/build-model'
@@ -128,7 +129,10 @@ const active = useActiveBuild()
 // ---- the notable list ----
 const pool = shallowRef<Notable[]>([])
 const unknown = shallowRef(0)
-onMounted(async () => {
+let loaded = false
+async function loadPool () {
+  if (loaded) return
+  loaded = true
   try {
     await loadPassiveTree()
     // A notable the trade data doesn't know yet (a new league's) can't be searched.
@@ -137,7 +141,8 @@ onMounted(async () => {
     unknown.value = all.length - pool.value.length
   } catch { /* No tree data yet: the list says it's loading. */ }
   if (!pool.value.length) toast("Couldn't read the notable list. Open the PoB builds window once to download the tree data.", { anchor: panel.value?.el })
-})
+}
+watch(() => config.wmWants, (w) => { if (w === 'show') loadPool().catch(() => {}) }, { immediate: true })
 
 // ---- the build ----
 // No build to read yet: show the list, save no changes.
@@ -244,8 +249,14 @@ function setPick (name: string, change: NotablePick) {
   const mine = { ...picks.value, [name]: { ...picks.value[name], ...change } }
   config.picks = { ...config.picks, [source.value.key]: mine }
 }
-function isOn (name: string): boolean { return picks.value[name]?.on ?? defaults.value.has(name) }
-function toggleOn (name: string) { setPick(name, { on: !isOn(name) }) }
+function isOn (name: string): boolean { return isMust(name) || (picks.value[name]?.on ?? defaults.value.has(name)) }
+// Unticking a must-have drops the must too.
+function toggleOn (name: string) { setPick(name, isOn(name) ? { on: false, must: undefined } : { on: true }) }
+function isMust (name: string): boolean { return picks.value[name]?.must === true }
+function toggleMust (name: string) {
+  if (!isMust(name) && mustCount.value >= 3) { toast('Up to 3 must-haves: a Megalomaniac has 3 notables', { anchor: panel.value?.el }); return }
+  setPick(name, isMust(name) ? { must: undefined } : { must: true, on: true })
+}
 function edited (name: string): boolean { return picks.value[name]?.weight != null }
 function weightOf (r: Scored): number { return picks.value[r.name]?.weight ?? r.weight }
 function setWeight (r: Scored, raw: string) {
@@ -259,7 +270,8 @@ function resetWeight (name: string) { setPick(name, { weight: undefined }) }
 const filter = shallowRef<string | number>('')
 const showOther = shallowRef(false)
 function matches (r: Scored, q: string): boolean {
-  return !q || r.name.toLowerCase().includes(q) || r.tags.some(t => t.toLowerCase().includes(q))
+  return !q || r.name.toLowerCase().includes(q) || r.tags.some(t => t.toLowerCase().includes(q)) ||
+    r.stats.some(s => s.toLowerCase().includes(q))
 }
 const otherRows = computed(() => scoredAll.value.filter(r => !r.matched.length))
 const shownGroups = computed(() => {
@@ -275,7 +287,7 @@ const shownGroups = computed(() => {
     else if (showOther.value || q) other.push(r)
   }
   const out = [...groups].filter(([, rows]) => rows.length).map(([tag, rows]) => ({ tag, rows }))
-  if (other.length) out.push({ tag: 'Fits none of your tags', rows: other })
+  if (other.length) out.push({ tag: q ? 'Other matches (outside your tags)' : 'Fits none of your tags', rows: other })
   return out
 })
 
@@ -289,15 +301,17 @@ function tip (e: Event, r: Scored) {
     `Tags: ${r.tags.length ? r.tags.join(', ') : 'none'}`,
     hits.length ? `Suggested ${r.weight}: fits ${hits.join(', ')}.` : 'Fits none of your tags.',
     ...(edited(r.name) ? [`Your weight: ${weightOf(r)}.`] : []),
+    isMust(r.name) ? 'Must have: every result has it. Right-click to undo.' : 'Right-click: must have it.',
     isOn(r.name) ? 'Click to leave it out of the search.' : 'Click to add it to the search.'
   ]
-  showHelp(tipOwner, e.currentTarget as HTMLElement, parts.join('\n\n'))
+  showHelp(tipOwner, e.currentTarget as HTMLElement, parts.join('\n\n'), undefined, { lines: true })
 }
 function untip () { hideHelp(tipOwner) }
 onBeforeUnmount(untip)
 
 // ---- search ----
-const ticked = computed(() => scoredAll.value.filter(r => isOn(r.name)).sort((a, b) => weightOf(b) - weightOf(a)))
+const ticked = computed(() => scoredAll.value.filter(r => isOn(r.name)).sort((a, b) => Number(isMust(b.name)) - Number(isMust(a.name)) || weightOf(b) - weightOf(a)))
+const mustCount = computed(() => ticked.value.filter(r => isMust(r.name)).length)
 const minSuggested = computed(() => suggestedMinWeight(ticked.value.map(weightOf)))
 const minWeight = computed(() => config.minWeight ?? minSuggested.value)
 
@@ -308,11 +322,15 @@ const summary = computed(() => {
   const n = ticked.value.length
   if (!n) return 'Tick at least one notable to search.'
   const over = n > MAX_TRADE_FILTERS ? ` Only the top ${MAX_TRADE_FILTERS} go in: the trade site takes no more.` : ''
+  const must = ticked.value.filter(r => isMust(r.name)).map(r => r.name)
+  const has = must.length ? `Jewels with ${must.join(' and ')}` : 'Jewels'
   if (config.mode === 'count') {
     const need = Math.min(config.need, n)
+    const left = Math.min(Math.max(0, need - must.length), n - must.length)
+    if (must.length) return left > 0 ? `${has}, and ${left} more of the other ${n - must.length}.${over}` : `${has}.${over}`
     return `Jewels with at least ${need} of these ${n} notables.${over}`
   }
-  return `Jewels whose ticked notables add up to ${minWeight.value} or more, out of ${n}.${over}`
+  return `${has}${must.length ? ',' : ''} whose ticked notables add up to ${minWeight.value} or more, out of ${n}.${over}`
 })
 
 function statId (name: string): string | null {
@@ -321,18 +339,40 @@ function statId (name: string): string | null {
   return s.trade.ids.explicit?.[0] ?? null
 }
 
-function search () {
+// The trade site link for what's ticked, or '' (and a note why) when there's none.
+function searchLink (quiet = false): string {
+  const say = (text: string) => { if (!quiet) toast(text, { anchor: panel.value?.el }) }
   const league = leagues.selectedId.value
-  if (!league) { toast('Pick a league in the settings first', { anchor: panel.value?.el }); return }
-  const picksForTrade = ticked.value.flatMap(r => { const id = statId(r.name); return id ? [{ statId: id, weight: weightOf(r) }] : [] })
-  if (!picksForTrade.length) { toast("The trade data doesn't know these notables yet", { anchor: panel.value?.el }); return }
+  if (!league) { say('Pick a league in the settings first'); return '' }
+  const picksForTrade = ticked.value.flatMap(r => { const id = statId(r.name); return id ? [{ statId: id, weight: weightOf(r), must: isMust(r.name) }] : [] })
+  if (!picksForTrade.length) { say('Tick at least one notable first'); return '' }
   const q = megaloQuery(picksForTrade, { mode: config.mode, need: Math.min(config.need, picksForTrade.length), minWeight: minWeight.value, maxDiv: config.maxDiv })
   // The international site takes English names, a regional one its own.
   if (poeWebApi() !== 'www.pathofexile.com') {
     q.name = ITEM_BY_REF('UNIQUE', MEGALO_NAME)?.[0]?.name ?? MEGALO_NAME
     q.type = ITEM_BY_REF('ITEM', MEGALO_BASE)?.[0]?.name ?? MEGALO_BASE
   }
-  window.open(tradeUrl(league, q, getTradeEndpoint()))
+  const full = { ...q, status: { option: tradeStatus() } }
+  return tradeUrl(league, full, getTradeEndpoint())
+}
+
+function search () {
+  const link = searchLink()
+  if (link) window.open(link)
+}
+
+// The same listings as the price check: Instant buyout when that's its
+// setting (the default), else any seller who's online.
+function tradeStatus (): 'securable' | 'available' {
+  return AppConfig<PriceCheckWidget>('price-check')?.merchantOnly === false ? 'available' : 'securable'
+}
+
+// "Megalomaniac: Feasting Fiends, Renewal +3 (2 of 5)" for the save box.
+function saveName (): string {
+  const names = ticked.value.map(r => r.name)
+  const head = names.slice(0, 2).join(', ') + (names.length > 2 ? ` +${names.length - 2}` : '')
+  const rule = config.mode === 'count' ? `${Math.min(config.need, names.length)} of ${names.length}` : `weight ${minWeight.value}+`
+  return `Megalomaniac: ${head} (${rule})`
 }
 
 const sourceLine = computed(() => source.value.label)
@@ -358,6 +398,8 @@ const sourceLine = computed(() => source.value.label)
 }
 .nchip:hover, .nchip:focus-visible { color: var(--w-fg); outline: none; border-color: var(--w-line-strong); }
 .nchip.on { color: var(--w-fg); border-color: var(--w-accent); background: var(--w-accent-soft); }
+.nchip.must { border-color: var(--w-gold-hi); box-shadow: inset 0 0 0 1px var(--w-gold-hi); }
+.lock { color: var(--w-gold-hi); font-size: 0.8em; }
 .wt {
   width: 3.1em; background: transparent; border: 1px solid transparent; color: var(--w-gold-hi);
   font: inherit; font-variant-numeric: tabular-nums; text-align: right; padding: 0 2px;
