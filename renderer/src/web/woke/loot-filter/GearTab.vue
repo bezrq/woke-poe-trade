@@ -4,20 +4,22 @@
       <span v-if="g.on" class="w-dim">Your table replaces {{ store.gearReplaced.value }} of NeverSink's gear rules.</span>
       <span v-else class="w-dim">Showing NeverSink's gear rules as they are. Change anything to take them over.</span>
       <WInfo text="Magic and rare gear that drops with a 3.30 item tier. Each cell is the lowest drop tier that shows. Influenced, fractured, veiled and other special gear keeps NeverSink's own rules, which come first." />
-      <WButton v-if="g.on" size="sm" variant="ghost" style="margin-left: auto;" @click="backToNeverSink">Back to NeverSink</WButton>
+      <WButton size="sm" variant="ghost" icon="fas fa-magic" style="margin-left: auto;" title="One-click setups for the whole table" @click="quickMenu">Quick setups ▾</WButton>
+      <WButton v-if="g.on" size="sm" variant="ghost" @click="backToNeverSink">Back to NeverSink</WButton>
     </div>
 
-    <WSegmented v-model="view" :options="[{ value: 'table', label: 'Table' }, { value: 'ranks', label: `Base ranks${movedCount ? ` · ${movedCount} moved` : ''}` }]" />
+    <div :class="$style.subTabs" role="tablist" aria-label="Base types">
+      <button type="button" role="tab" :aria-selected="view === 'table'" :class="[$style.subTab, view === 'table' && $style.subTabOn]" @click="view = 'table'">
+        <span :class="$style.subNum">1</span>
+        <span class="flex flex-col items-start"><span>Drop tiers</span><span :class="$style.subHint">What shows, by rank and rarity</span></span>
+      </button>
+      <button type="button" role="tab" :aria-selected="view === 'ranks'" :class="[$style.subTab, view === 'ranks' && $style.subTabOn]" @click="view = 'ranks'">
+        <span :class="$style.subNum">2</span>
+        <span class="flex flex-col items-start"><span>Base ranks{{ movedCount ? ` · ${movedCount} moved` : '' }}</span><span :class="$style.subHint">Which bases sit in which rank</span></span>
+      </button>
+    </div>
 
     <template v-if="view === 'table'">
-      <div class="flex flex-wrap items-center gap-1">
-        <span class="w-dim text-xs">Quick</span>
-        <WButton size="sm" @click="quick(magicOff)">Magic off</WButton>
-        <WButton size="sm" @click="quick(magicLikeRares)">Magic like rares</WButton>
-        <WButton size="sm" :disabled="!buildCount" @click="quick(onlyBuild)">Only my build's bases</WButton>
-        <WButton size="sm" @click="quick(x => shiftAll(x, 1))">Stricter</WButton>
-        <WButton size="sm" @click="quick(x => shiftAll(x, -1))">Looser</WButton>
-      </div>
 
       <div :class="$style.card">
         <div :class="$style.grid">
@@ -32,7 +34,12 @@
           </template>
           <template v-for="row in GEAR_ROWS" :key="row">
             <span :class="$style.rowHead">
-              <span>{{ ROW_LABEL[row] }}</span>
+              <span class="flex items-center gap-1">
+                <button v-if="SLOT_ROWS.includes(row)" type="button" :class="$style.expand" :aria-expanded="openRows.includes(row)"
+                  :title="openRows.includes(row) ? 'Hide the slots' : 'Give slots their own lines'" @click="toggle(openRows, row)">{{ openRows.includes(row) ? '▾' : '▸' }}</button>
+                <span>{{ ROW_LABEL[row] }}</span>
+                <span v-if="slotCount(row)" :class="$style.slotDot" :title="`${slotCount(row)} slot(s) with their own line`">●</span>
+              </span>
               <span class="w-faint text-xs">{{ rowSub(row) }}</span>
             </span>
             <template v-for="r in RARITIES" :key="r">
@@ -40,6 +47,20 @@
                 :aria-pressed="shown[row][r] === v" :aria-label="stepTitle(row, r, v)" :disabled="row === 'build' && !buildCount"
                 :title="stepTitle(row, r, v)" @click="setShow(row, r, v)">{{ cellText(row, r, v) }}</button>
               <span v-if="r === 'magic'" />
+            </template>
+            <template v-if="openRows.includes(row)">
+              <template v-for="sg in SLOT_GROUPS" :key="`${row}-${sg.key}`">
+                <span :class="$style.slotHead">
+                  <span>{{ sg.label }}</span>
+                  <button v-if="slotLine(row, sg.key)" type="button" :class="$style.slotReset" title="Follow the row again" :aria-label="`${sg.label}: follow the row again`" @click="setSlot(row, sg.key, null, 0)">×</button>
+                </span>
+                <template v-for="r in RARITIES" :key="r">
+                  <button v-for="v in SHOW_FROM" :key="v" type="button" :class="[...slotCellClass(row, sg.key, r, v)]"
+                    :aria-pressed="slotValue(row, sg.key, r) === v" :disabled="row === 'build' && !buildCount"
+                    :title="`${sg.label}: ${stepTitle(row, r, v).toLowerCase()}`" @click="setSlot(row, sg.key, r, v)">{{ slotCellText(row, sg.key, r, v) }}</button>
+                  <span v-if="r === 'magic'" />
+                </template>
+              </template>
             </template>
           </template>
         </div>
@@ -116,7 +137,7 @@
           <div v-for="part in picked2.parts" :key="part.row" class="flex flex-col gap-1">
             <span class="w-dim text-xs">{{ ROW_LABEL[part.row] }} · {{ part.bases.length }}</span>
             <div class="flex flex-wrap gap-1">
-              <span v-for="b in part.bases.slice(0, part.open ? undefined : 40)" :key="b" :class="$style.baseChip" :title="baseTitle(b, part.row)">
+              <span v-for="b in part.bases.slice(0, part.open ? undefined : 40)" :key="b" v-item-tip="{ name: b, note: baseTitle(b, part.row) }" :class="$style.baseChip">
                 <img v-if="info(b).icon" :src="info(b).icon!" alt="" :class="$style.chipIcon">{{ b }}
               </span>
               <WButton v-if="part.bases.length > 40 && !part.open" size="sm" variant="ghost" @click="openParts.push(part.row)">+{{ part.bases.length - 40 }} more</WButton>
@@ -205,8 +226,8 @@
             <span class="w-faint text-xs">{{ lane.bases.length }}</span>
           </div>
           <div :class="$style.laneBody" class="w-scroll">
-            <button v-for="b in lane.bases.slice(0, LANE_CAP)" :key="b" type="button" :class="[$style.base, picked.includes(b) && $style.picked]"
-              :title="baseTitle(b, lane.key)" :aria-pressed="picked.includes(b)" @click="pick(b, $event)">
+            <button v-for="b in lane.bases.slice(0, LANE_CAP)" :key="b" v-item-tip="{ name: b, note: baseTitle(b, lane.key) }" type="button" :class="[$style.base, picked.includes(b) && $style.picked]"
+              :aria-label="baseTitle(b, lane.key)" :aria-pressed="picked.includes(b)" @click="pick(b, $event)">
               <img v-if="info(b).icon" :src="info(b).icon!" alt="" :class="$style.icon">
               <span :class="$style.baseText">
                 <span>{{ b }}</span>
@@ -227,11 +248,11 @@
 
 <script setup lang="ts">
 import { computed, ref, useCssModule } from 'vue'
-import { WButton, WChip, WField, WInfo, WSegmented, WToggle } from '../ui'
+import { WButton, WChip, WField, WInfo, WToggle, openMenu, vItemTip } from '../ui'
 import type { LootFilterStore } from './store'
 import type { LootFilterWidget } from './widget'
-import { DROP_TIERS, GEAR_ROWS, GEAR_TYPE, NO_TIER, QUALITY_ROWS, exoticBases, QUALITY_STEPS, RANKS, SHOW_FROM, buildBases, gearDefaults, laneOf, magicLikeRares, magicOff, rankLists, readTiered, shiftAll } from './gear'
-import type { GearRarity, GearRow, GearSettings, Lane } from './gear'
+import { DROP_TIERS, GEAR_ROWS, GEAR_TYPE, NO_TIER, QUALITY_ROWS, exoticBases, QUALITY_STEPS, RANKS, SHOW_FROM, buildBases, gearDefaults, laneOf, magicLikeRares, magicOff, rankLists, readTiered, shiftAll, takeOver, SLOT_GROUPS, SLOT_ROWS } from './gear'
+import type { GearRarity, GearRow, GearSettings, Lane, SlotGroup } from './gear'
 import { DEFENCES, DEFENCE_ATTR, DEFENCE_COLOURS, KIND_GROUPS, allGearBases, baseInfo, kindIcon } from './gear-bases'
 import type { BaseInfo, Defence } from './gear-bases'
 import { DECORATORS, rollPile } from './gear-pile'
@@ -292,18 +313,22 @@ const movedCount = computed(() => Object.keys(g.value.moves).length)
 // Takes NeverSink's numbers first, so the first change is the only change.
 function change (fn: (x: GearSettings) => void) {
   const x = g.value
-  if (!x.on) {
-    const doc = props.store.doc.value
-    if (doc && readTiered(doc)) {
-      const d = gearDefaults(doc)
-      x.show = d.show
-      if (!x.quality.on) x.quality.min.any = d.quality.min.any
-    }
-    x.on = true
-  }
+  const doc = props.store.doc.value
+  if (doc) takeOver(x, doc)
+  else x.on = true
   fn(x)
 }
 const quick = (fn: (x: GearSettings) => void) => change(fn)
+function quickMenu (e: MouseEvent) {
+  openMenu(e, [
+    { label: 'Magic off', action: () => quick(magicOff) },
+    { label: 'Magic like rares', action: () => quick(magicLikeRares) },
+    { label: 'Only my build\'s bases', action: () => quick(onlyBuild), disabled: !buildCount.value },
+    { separator: true as const },
+    { label: 'Everything one tier stricter', action: () => quick(x => shiftAll(x, 1)) },
+    { label: 'Everything one tier looser', action: () => quick(x => shiftAll(x, -1)) }
+  ])
+}
 
 function setShow (row: GearRow, r: GearRarity, v: number) {
   change(x => { x.show[row][r] = v })
@@ -315,13 +340,18 @@ function setQualityOn (v: boolean) {
   change(x => { x.quality.on = v })
 }
 function onlyBuild (x: GearSettings) {
-  for (const row of ['r1', 'r2', 'r3', 'any'] as const) x.show[row] = { magic: 0, rare: 0 }
+  for (const row of ['r1', 'r2', 'r3', 'any'] as const) {
+    x.show[row] = { magic: 0, rare: 0 }
+    x.slots = { ...x.slots, [row]: {} }
+  }
   if (!x.show.build.rare) x.show.build.rare = 2
 }
 function backToNeverSink () {
   const x = g.value
   x.on = false
   x.quality.on = false
+  // Slot lines belong to the rows NeverSink's numbers replace next time.
+  x.slots = {}
 }
 
 function rowSub (row: GearRow): string {
@@ -338,6 +368,40 @@ function stepTitle (row: GearRow, r: GearRarity, v: number): string {
   }
   if (v === NO_TIER) return `Show ${r} ${ROW_LABEL[row].toLowerCase()} at every drop tier, and with no tier`
   return `Show ${r} ${ROW_LABEL[row].toLowerCase()} from drop tier ${v}`
+}
+
+// ---- Per-slot lines (a row opened into its slots) ----
+const openRows = ref<GearRow[]>([])
+const slotLine = (row: GearRow, sg: SlotGroup) => g.value.slots[row]?.[sg] ?? null
+const slotValue = (row: GearRow, sg: SlotGroup, r: GearRarity) => slotLine(row, sg)?.[r] ?? shown.value[row][r]
+const slotCount = (row: GearRow) => Object.keys(g.value.slots[row] ?? {}).length
+function setSlot (row: GearRow, sg: SlotGroup, r: GearRarity | null, v: number) {
+  change(x => {
+    const prev = x.slots[row] ?? {}
+    const own = r == null ? null : { ...(prev[sg] ?? { ...x.show[row] }), [r]: v }
+    // Back to the row's own line: nothing to remember.
+    const keep = own && !(own.magic === x.show[row].magic && own.rare === x.show[row].rare)
+    const rowSlots = Object.fromEntries(Object.entries(prev).filter(([k]) => k !== sg))
+    if (keep) rowSlots[sg] = own
+    x.slots = { ...x.slots, [row]: rowSlots }
+  })
+}
+function slotCellClass (row: GearRow, sg: SlotGroup, r: GearRarity, v: number) {
+  const line = slotValue(row, sg, r)
+  const lit = v !== 0 && line !== 0 && v >= line
+  return [
+    useCss.cell,
+    useCss.slotCell,
+    !slotLine(row, sg) && useCss.inherit,
+    lit && (r === 'magic' ? useCss.litMagic : useCss.litRare),
+    line === v && useCss.line,
+    v === 0 && line === 0 && (row === 'build' ? useCss.followRank : useCss.off)
+  ]
+}
+function slotCellText (row: GearRow, sg: SlotGroup, r: GearRarity, v: number): string {
+  const line = slotValue(row, sg, r)
+  if (v === 0) return line === 0 ? (row === 'build' ? 'Rank' : 'Off') : ''
+  return line !== 0 && v >= line ? '✓' : ''
 }
 
 // A cell is lit when that drop tier shows; the picked one is the line.
@@ -382,6 +446,10 @@ const universe = computed(() => {
   for (const r of RANKS) lists.value[r].forEach(b => set.add(b))
   return [...set]
 })
+const slotOf = (b: string): SlotGroup | null => {
+  const cls = info(b).cls
+  return cls ? SLOT_GROUPS.find(sg => sg.classes.includes(cls))?.key ?? null : null
+}
 interface Count { n: number, byRow: Partial<Record<GearRow, string[]>> }
 const counts = computed(() => {
   const s = shown.value
@@ -397,8 +465,10 @@ const counts = computed(() => {
       for (const b of universe.value) {
         if (never.has(b)) continue
         const row = rankOf.get(b) ?? 'any'
-        const line = s[row][r]
-        const buildLine = inBuild.has(b) ? s.build[r] : 0
+        const sg = slotOf(b)
+        const lineOf = (rw: GearRow) => (g.value.on && sg ? g.value.slots[rw]?.[sg]?.[r] : undefined) ?? s[rw][r]
+        const line = lineOf(row)
+        const buildLine = inBuild.has(b) ? lineOf('build') : 0
         const exLine = exotics.value.has(b) ? s.exotic[r] : 0
         const by: GearRow | null = exLine && t >= exLine ? 'exotic' : buildLine && t >= buildLine ? 'build' : line && t >= line ? row : null
         if (!by) continue
@@ -666,6 +736,62 @@ function neverOffBuild () {
   align-items: center;
   justify-content: start;
 }
+.subTabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0;
+  border-bottom: 1px solid var(--w-border);
+}
+.subTab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--w-text-dim);
+  text-align: left;
+  cursor: pointer;
+  font-size: var(--w-fs-sm, 13px);
+}
+.subTab:hover { color: var(--w-text); }
+.subTabOn { color: #f3d48a; border-bottom-color: #e0b860; background: rgb(224 184 96 / 8%); }
+.subNum {
+  display: inline-grid;
+  place-items: center;
+  width: 1.4rem;
+  height: 1.4rem;
+  border-radius: 50%;
+  border: 1px solid currentColor;
+  font-size: var(--w-fs-xs, 11px);
+}
+.subHint { font-size: var(--w-fs-xs, 11px); color: var(--w-text-faint, #8f8573); }
+.expand {
+  width: 1.1rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--w-text-dim);
+  cursor: pointer;
+}
+.slotDot { color: #e0b860; font-size: 0.6em; }
+.slotHead {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding-left: 1.4rem;
+  font-size: var(--w-fs-xs, 12px);
+  color: var(--w-text-dim);
+}
+.slotReset {
+  border: 0;
+  background: transparent;
+  color: var(--w-text-dim);
+  cursor: pointer;
+}
+.slotCell { height: 1.6rem; }
+.inherit { opacity: 0.45; }
 .groupHead {
   font-size: var(--w-fs-sm, 13px);
   font-weight: 600;
