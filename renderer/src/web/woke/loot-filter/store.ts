@@ -4,6 +4,7 @@ import { MainProcess } from '@/web/background/IPC'
 import { hostRequest } from '../shared/host'
 import { customSoundsIn, installPackSounds } from './sounds'
 import { DUST_ILVL, applyPresetChanges, normalizePresets, presetsOn, priceGuard } from './presets'
+import { normalizeClusterPrices } from './cluster-prices'
 import { dustBases } from '../disenchant/calc'
 import { basesWithoutDust, dustUniques } from '../disenchant/data'
 import { clearUndoToasts } from '../ui/layer'
@@ -16,6 +17,7 @@ import { addEdit, blocksOf, nextEditId, readStyle } from './edits'
 import { lookChanges } from './look'
 import type { EditStatus, FilterEdit, NewFilterEdit, NumberBound, StylePatch } from './edits'
 import { numberChecks } from './numbers'
+import { clusterPrices, clusterPricesFor, loadClusterPrices } from './cluster-ninja'
 import { describeStep, measureSteps, observe, settingsAt } from './timeline'
 import type { Settings } from './timeline'
 import { HISTORY_SIZE, baseFromCopy, isWokeCopy, outputName } from './widget'
@@ -83,6 +85,7 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
   const presetChanges = ref(0)
   // NeverSink rules the Gear page's table replaced (0 while it's off).
   const gearReplaced = ref(0)
+  const clusterSig = ref('')
   const prices = useFilterPrices(() => cfg().priceTiers.uniqueRule)
   // Bases for the dust preset's price rule, only while it's on.
   const dustList = computed(() => {
@@ -109,8 +112,12 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
   // The look strip counts only while it changes something, so saves from
   // before it existed don't read as changed.
   const presetsSig = () => {
-    const { look, ...rest } = cfg().presets
-    return lookChanges(look) ? cfg().presets : rest
+    const p = cfg().presets
+    // Cluster prices count once you change them, like the look strip; keys
+    // keep their order, so saves from before them still match.
+    const drop = (k: string) => (k === 'look' && !lookChanges(p.look)) ||
+      (k === 'clusterPrices' && JSON.stringify(p.clusterPrices) === JSON.stringify(normalizeClusterPrices(undefined)))
+    return Object.fromEntries(Object.entries(p).filter(([k]) => !drop(k)))
   }
   const extraSig = () => {
     const parts: unknown[] = [activeMoves().map(moveKey), cfg().safetyNet.on ? safetyList.value : '']
@@ -271,7 +278,8 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
       },
       dustList: dustList.value,
       heldBack,
-      stackHeld: (group, base) => cfg().netDismissed[`${group.type}|${base}`] != null || movedDown(group, base)
+      stackHeld: (group, base) => cfg().netDismissed[`${group.type}|${base}`] != null || movedDown(group, base),
+      clusterPrices: clusterPricesFor(prices.currentLeague.value)
     })
   }
 
@@ -291,6 +299,7 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
     if (c.netFresh && JSON.stringify(cfg().safetyNet.last) !== JSON.stringify(c.netFresh)) cfg().safetyNet.last = c.netFresh
     presetChanges.value = c.presetChanges
     gearReplaced.value = c.gearReplaced
+    clusterSig.value = c.clusterSig
     presetList.value = c.presetSig
     statuses.value = cfg().edits.map(e => c.results.get(e.id)!)
     priceMoved = c.outOfPlace
@@ -511,6 +520,10 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
     rebuild()
     return () => { cfg().priceTiers.moves = before; rebuild() }
   }
+
+  // Cluster jewel prices come in their own request.
+  watch(clusterPrices, () => { if (baseText.value != null) rebuild() })
+  watch([prices.currentLeague, () => baseText.value != null], ([league, loaded]) => { if (loaded) loadClusterPrices(league) })
 
   // Price index updates, or settings that change the net: refresh.
   watch(() => [prices.lookup.value, prices.safety.value, cfg().safetyNet.on, cfg().safetyNet.minChaos, cfg().priceTiers.on, cfg().netDismissed, prices.currentLeague.value], () => {
@@ -845,6 +858,7 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
       loading.value = true
       error.value = null
       prices.wantPrices()
+      loadClusterPrices(prices.currentLeague.value)
       try {
         const ns = cfg().neversink
         const got = await readNeverSink(ns.version, ns.level)
@@ -885,6 +899,7 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
     loading.value = true
     error.value = null
     prices.wantPrices()
+    loadClusterPrices(prices.currentLeague.value)
     try {
       const source = cfg().sourceName
       let { text } = await hostRequest('filter-read', { dir: cfg().folder, name: source, online: cfg().sourceOnline })
@@ -1105,6 +1120,7 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
         build: hash(buildSig.value),
         extra: extraSig(),
         user: userSig(),
+        cluster: clusterSig.value,
         source: sourceStamp(baseText.value),
         edits: cfg().edits,
         moves: cfg().priceTiers.moves,
@@ -1126,6 +1142,7 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
       savedEdits.value = written.sig
       cfg().savedBuildSig = written.build
       cfg().savedExtraSig = written.extra
+      cfg().savedClusterSig = written.cluster
       cfg().savedUserSig = written.user
       pushHistory(written.edits, written.moves)
       cfg().lastVersion = written.version
@@ -1193,6 +1210,18 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
     // Nobody pressed anything, so nothing gets typed into chat for this.
     save({ noReload: true }).catch(() => {})
   }, { flush: 'post' })
+
+  // Cluster prices from poe.ninja: like the net, they reach the file by
+  // themselves when nothing of yours is unsaved. They never make the editor
+  // read "unsaved": they live in memory, and come a moment after each start.
+  watch(clusterSig, (sig) => {
+    if (!sig || sig === (cfg().savedClusterSig ?? '') || baseText.value == null) return
+    if (!outputSaved.value || dirty.value || !mayAutoSave()) return
+    save({ noReload: true }).catch(() => {})
+  }, { flush: 'post' })
+  // poe.ninja updates hourly; so do these while the editor's filter is loaded.
+  const clusterTimer = setInterval(() => { if (baseText.value != null) loadClusterPrices(prices.currentLeague.value) }, 30 * 60 * 1000)
+  onUnmounted(() => { clearInterval(clusterTimer) })
 
   watch(rulesSig, (sig) => { if (baseText.value != null && sig !== builtRulesSig) rebuild() })
 
