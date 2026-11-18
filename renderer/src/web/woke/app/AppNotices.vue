@@ -2,8 +2,8 @@
   <div v-if="show" :class="$style.stack">
     <div v-if="updateReady" data-w-popup :class="$style.pill" role="status">
       <i class="fas fa-arrow-circle-up w-accent" />
-      <span>Update {{ updateReady }} ready, installs when you quit</span>
-      <w-button size="sm" @click="restartNow">Restart now</w-button>
+      <span>Update {{ updateReady }} ready, installs when {{ whenClosed ? 'Path of Exile is closed' : 'you quit' }}</span>
+      <w-button v-if="!rollbackBlocks" size="sm" @click="restartNow">Restart now</w-button>
       <button type="button" class="w-icon-btn" title="Hide" aria-label="Hide" @click="hiddenUpdate = updateReady"><i class="fas fa-times" /></button>
     </div>
     <div v-if="configNotice" data-w-popup :class="$style.pill" role="alert">
@@ -38,6 +38,16 @@ const wm = inject<WidgetManager>('wm')!
 const show = computed(() => wm.active.value && !wm.widgets.value.some(w => w.wmZorder === 'exclusive' && w.wmWants === 'show'))
 
 const hiddenUpdate = shallowRef<string | null>(null)
+// Installs by itself once the game is closed, or only on quit (auto-update off, or blocked this run).
+// Going back to the previous version: the update doesn't install now.
+const rollbackBlocks = computed(() => {
+  const info = Host.updateInfo.value
+  return info.state === 'update-downloaded' && info.blocked === true
+})
+const whenClosed = computed(() => {
+  const info = Host.updateInfo.value
+  return info.state === 'update-downloaded' && info.whenClosed === true
+})
 const updateReady = computed(() => {
   const info = Host.updateInfo.value
   return info.state === 'update-downloaded' && info.version !== hiddenUpdate.value ? info.version : null

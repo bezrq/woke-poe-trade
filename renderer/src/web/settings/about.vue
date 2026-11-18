@@ -17,6 +17,7 @@
       <button v-if="info.action" @click="info.action"
         class="btn w-full mt-1">{{ info.actionText }}</button>
     </div>
+    <rollback-rows />
     <div class="text-center mt-auto py-8">
       <p>{{ t('app.contact_me') }} <br><span class="font-sans text-gray-500 select-all">@whec</span></p>
       <ul class="flex justify-center gap-4">
@@ -34,6 +35,7 @@ import { DateTime } from 'luxon'
 import { reportProblem, openCrashFolder } from '@/web/woke/app/report'
 import { AppConfig } from '@/web/Config'
 import { appIconUrl } from '@/web/woke/ui/app-icon'
+import RollbackRows from '@/web/woke/app/RollbackRows.vue'
 
 function checkForUpdates () {
   Host.sendEvent({
@@ -59,6 +61,7 @@ function fmtTime (millis: number) {
 
 export default defineComponent({
   name: 'settings.about',
+  components: { RollbackRows },
   inheritAttrs: false,
   setup () {
     const { t } = useI18n()
@@ -75,7 +78,7 @@ export default defineComponent({
         case 'error':
           return { str1: t('updates.maybe_outdated'), str2: t('updates.error'), action: openDownloadPage, actionText: t('updates.downloads_page') }
         case 'update-downloaded':
-          return { str1: t('updates.available', [rawInfo.version]), str2: t('updates.installed_on_exit'), action: quitAndInstall, actionText: t('updates.install_now') }
+          return { str1: t('updates.available', [rawInfo.version]), str2: t(rawInfo.whenClosed ? 'updates.installed_when_closed' : 'updates.installed_on_exit'), ...(rawInfo.blocked ? {} : { action: quitAndInstall, actionText: t('updates.install_now') }) }
         case 'update-available':
           return (rawInfo.noDownloadReason)
             ? { str1: t('updates.available', [rawInfo.version]), str2: (rawInfo.noDownloadReason === 'not-supported') ? t('updates.download_manually') : t('updates.download_disabled'), action: openDownloadPage, actionText: t('updates.downloads_page') }
