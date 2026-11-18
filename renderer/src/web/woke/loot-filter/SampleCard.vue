@@ -1,5 +1,5 @@
 <template>
-  <WPanel title="Filter rule for this item" size-key="sample" width="27rem" max-height="85vh">
+  <WPanel ref="panel" title="Filter rule for this item" size-key="sample" width="27rem" max-height="85vh">
     <template #actions>
       <span class="w-faint text-xs">{{ store.doc.value?.strictness ?? '' }} {{ store.doc.value?.version ?? '' }}</span>
     </template>
@@ -553,8 +553,12 @@ const quick = computed(() => {
 })
 
 const lookSection = ref<HTMLElement | null>(null)
+const panel = ref<InstanceType<typeof WPanel> | null>(null)
 const focused = ref(document.hasFocus())
 const onFocus = () => { focused.value = true }
+// The last click landed in another overlay window: keys are for that one now.
+let clickedAway = false
+const onPointer = (e: PointerEvent) => { clickedAway = !panel.value?.el?.contains(e.target as Node) }
 const onBlur = () => { focused.value = false }
 
 // The rule that decided the item, in the editor: the Base types tab for the
@@ -580,6 +584,9 @@ function onKey (e: KeyboardEvent) {
   if (e.ctrlKey || e.altKey || e.metaKey || e.repeat) return
   const t = e.target as HTMLElement | null
   if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return
+  // Only for this card: a key pressed in another overlay window mustn't edit
+  // and save the filter for an item you looked at earlier.
+  if (clickedAway || (t && t !== document.body && t !== document.documentElement && !panel.value?.el?.contains(t))) return
   if ((e.key === 'g' || e.key === 'G') && canGoTo.value) {
     e.preventDefault()
     goToRule()
@@ -594,11 +601,13 @@ onMounted(() => {
   window.addEventListener('keydown', onKey)
   window.addEventListener('focus', onFocus)
   window.addEventListener('blur', onBlur)
+  window.addEventListener('pointerdown', onPointer, true)
 })
 onUnmounted(() => {
   window.removeEventListener('keydown', onKey)
   window.removeEventListener('focus', onFocus)
   window.removeEventListener('blur', onBlur)
+  window.removeEventListener('pointerdown', onPointer, true)
 })
 
 function tri (r: Tri) {

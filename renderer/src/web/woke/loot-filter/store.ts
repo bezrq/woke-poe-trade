@@ -1232,6 +1232,7 @@ export function useLootFilter (cfg: () => LootFilterWidget) {
     get config () { return cfg() },
     prices,
     sourceGuard,
+    separateMoves,
     plan,
     health,
     safetyCount,

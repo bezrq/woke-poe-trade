@@ -4,7 +4,7 @@
 // Pure, so the tests run the same path the save does (store.ts compose).
 import { parseFilterCopy } from './parse'
 import type { FilterDoc } from './parse'
-import { ruleBlocks } from './rules'
+import { nameCheck, ruleBlocks } from './rules'
 import type { OwnRule } from './rules'
 import { applyPresetChanges, colourBlindActions, presetBlocks, scaleVolume } from './presets'
 import type { Presets, UniqueBreakdown } from './presets'
@@ -91,7 +91,7 @@ export function composeFilter (text: string, cfg: ComposeInput): Composed {
     build: input ? { uniqueBases: input.uniqueBases, weaponClasses: input.weaponClasses } : null
   })
   insertBuildBlocks(next, presetTop)
-  insertBuildBlocks(next, ruleBlocks(cfg.rules))
+  insertBuildBlocks(next, ruleBlocks(cfg.rules, nameCheck(next)))
   // Price moves next: your own moves (edits) are applied after them and win.
   let movesFit = 0
   let outOfPlace: PriceMove[] = []
