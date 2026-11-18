@@ -59,6 +59,13 @@ export interface Route {
 
 const TRIAL_TEXT = 'Trial of Ascendancy'
 
+// Typos in the upstream route files, put right when shown. The files stay as
+// exile-leveling has them, so an update copies straight over.
+const ARENA_FIXES: Record<string, string> = {
+  "The Bring King's Throne": "The Brine King's Throne"
+}
+export const arenaName = (name: string) => ARENA_FIXES[name] ?? name
+
 const DIRS = ['↑', '↗', '→', '↘', '↓', '↙', '←', '↖']
 
 function defines (opts: RouteOptions): Set<string> {
@@ -81,8 +88,12 @@ interface ParseState {
   portalArea: string | null
 }
 
+// Each fragment of a step line ("kill|Hillock"), with the area before and
+// after it and the index the step gets: what the zone facts are read from.
+export type OnFragment = (raw: string, before: string, after: string, step: number) => void
+
 // sources: route file text in act order.
-export function parseRoute (sources: string[], data: RouteData, opts: RouteOptions = DEFAULT_ROUTE_OPTIONS): Route {
+export function parseRoute (sources: string[], data: RouteData, opts: RouteOptions = DEFAULT_ROUTE_OPTIONS, onFragment?: OnFragment): Route {
   const defs = defines(opts)
   const state: ParseState = { area: '1_1_1', lastTown: '1_1_town', portalArea: null }
   const steps: RouteStep[] = []
@@ -112,7 +123,7 @@ export function parseRoute (sources: string[], data: RouteData, opts: RouteOptio
         return { kind: town ? 'town' : 'area', text: areaName(args[0]) }
       }
       case 'area': return { kind: 'area', text: areaName(args[0]) }
-      case 'arena': return { kind: 'area', text: args[0] }
+      case 'arena': return { kind: 'area', text: arenaName(args[0]) }
       case 'kill': return { kind: 'kill', text: shortBossName(args[0]) }
       case 'logout':
         enterArea(state.lastTown)
@@ -164,7 +175,8 @@ export function parseRoute (sources: string[], data: RouteData, opts: RouteOptio
     }
   }
 
-  function parseLine (text: string): Part[] {
+  // `step`: the line is a step (not a #sub), so `onFragment` hears of it.
+  function parseLine (text: string, step = false): Part[] {
     const parts: Part[] = []
     // Drop "#comment" tails (area names the route author wrote for themselves).
     const re = /\{([^}]+)\}|([^{#]+)|(#.*)/g
@@ -174,7 +186,9 @@ export function parseRoute (sources: string[], data: RouteData, opts: RouteOptio
       if (m[2]) {
         if (m[2].trim() || parts.length) parts.push({ kind: 'text', text: m[2] })
       } else if (m[1]) {
+        const before = state.area
         const part = fragment(m[1])
+        if (step) onFragment?.(m[1], before, state.area, steps.length)
         if (part) parts.push(part)
       }
     }
@@ -218,7 +232,7 @@ export function parseRoute (sources: string[], data: RouteData, opts: RouteOptio
       }
       if (line.startsWith('#')) continue
       const areaBefore = state.area
-      const parts = parseLine(line)
+      const parts = parseLine(line, true)
       if (!parts.length) continue
       const prev = steps[steps.length - 1]
       if (prev && isCraftOnly(parts)) {

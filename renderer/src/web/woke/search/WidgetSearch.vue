@@ -169,7 +169,7 @@ import { MAP_SCAN_TYPE, scanHotkeyTarget } from '../map-mods/scan'
 import { ESSENCE_SCAN_TYPE, essenceHotkeyTarget, essenceOnceTarget } from '../essence-scan/widget'
 import { RUN_TIMER_TYPE, hotkeyTarget as timerTarget } from '../campaign/run-timer'
 import { isFoulborn } from '../shared/item-identity'
-import { PRICE_GROUP_LIMIT, baseUniqueName, changeSince, groupKey, groupTip, rarityClass, searchNamed, searchPrices, tradeUrl, typeLabel, uniquePrices } from './search'
+import { PRICE_GROUP_LIMIT, arrangeSections, baseUniqueName, changeSince, groupKey, groupTip, rarityClass, searchNamed, searchPrices, tradeUrl, typeLabel, uniquePrices } from './search'
 import { basesOfUnique, hasUniques, uniquesOnBase } from '../shared/uniques-on-base'
 import type { PriceGroup } from './search'
 import LookupDetail from './LookupDetail.vue'
@@ -191,6 +191,20 @@ import { gemLookup, transfiguredBase } from './lookups/gems'
 import { keystoneUniques, passiveList, treeLookup } from './lookups/tree'
 import type { Passive } from './lookups/tree'
 import { betrayalLookup } from './lookups/betrayal'
+import { rewardCounts, zoneFacts, zoneLookup } from './lookups/zones'
+import type { Zone } from './lookups/zones'
+import { pantheonLookup } from './lookups/pantheon'
+import type { PantheonData } from './lookups/pantheon'
+import { savedItems, savedLookup } from './lookups/saved'
+import { savedOpenRequest } from '../shared/saved-open'
+import { REGEX_LIBRARY_TYPE } from '../regex-library/widget'
+import type { RegexLibraryWidget } from '../regex-library/widget'
+import { TRADE_SEARCHES_TYPE } from '../trade-searches/widget'
+import type { TradeSearchesWidget } from '../trade-searches/widget'
+import { POB_BUILDS_TYPE, lastBuildList, pobApi } from '../pob-builds/widget'
+import type { PobBuildsWidget } from '../pob-builds/widget'
+import { ATLAS_TYPE } from '../atlas/strategies'
+import type { AtlasWidget } from '../atlas/strategies'
 import { visceraLookup } from './lookups/viscera'
 import { loadViscera } from '../wickerman/viscera'
 import type { VisceraTable } from '../wickerman/viscera'
@@ -495,6 +509,50 @@ function loadTree () {
     passives.value = list
   }).catch(() => {})
 }
+// Campaign zones, from the Campaign tool's levelling route, read on first open.
+const zones = shallowRef<Zone[] | null>(null)
+function loadZones () {
+  if (zones.value) return
+  import('../campaign/route-data').then(m => { zones.value = zoneFacts(m.routeSources, m.routeData) }).catch(() => {})
+}
+const gemRewards = computed(() => rewardCounts(gemTable.value))
+// Pantheon gods and souls, a data file fetched on first open like the crafts.
+const pantheonData = shallowRef<PantheonData | null>(null)
+let pantheonLoading = false
+function loadPantheon () {
+  if (pantheonData.value || pantheonLoading) return
+  pantheonLoading = true
+  fetch(`${import.meta.env.BASE_URL}data/pantheon-data.json`)
+    .then(r => r.json())
+    .then(d => { pantheonData.value = d as PantheonData })
+    .catch(() => {})
+    .finally(() => { pantheonLoading = false })
+}
+// Your saved items, from the tools that are on. PoB builds are files: the
+// list the PoB window last read, or read here at most every 5 minutes.
+function toolOn<T> (type: string): T | undefined {
+  return wm.widgets.value.find(w => w.wmType === type && isWidgetTypeOn(AppConfig(), w.wmType)) as T | undefined
+}
+const BUILD_LIST_MAX_AGE = 5 * 60_000
+let buildsLoading = false
+function loadBuildList () {
+  const w = toolOn<PobBuildsWidget>(POB_BUILDS_TYPE)
+  const last = lastBuildList.value
+  if (!w || buildsLoading || (last && Date.now() - last.at < BUILD_LIST_MAX_AGE)) return
+  buildsLoading = true
+  const asked = Date.now()
+  pobApi.list(w)
+    // The PoB window may have read a newer list meanwhile.
+    .then(res => { if ((lastBuildList.value?.at ?? 0) < asked) lastBuildList.value = { at: Date.now(), builds: res.builds } })
+    .catch(() => {})
+    .finally(() => { buildsLoading = false })
+}
+const saved = computed(() => savedItems({
+  regex: toolOn<RegexLibraryWidget>(REGEX_LIBRARY_TYPE)?.entries,
+  trade: toolOn<TradeSearchesWidget>(TRADE_SEARCHES_TYPE)?.entries,
+  builds: toolOn<PobBuildsWidget>(POB_BUILDS_TYPE) ? lastBuildList.value?.builds : undefined,
+  atlas: toolOn<AtlasWidget>(ATLAS_TYPE)?.strategies
+}))
 // Betrayal slots you edited in League mechanics.
 function betrayalOverrides (): Record<string, string> {
   const w = wm.widgets.value.find(w => w.wmType === MECHANICS_TYPE) as MechanicsWidget | undefined
@@ -513,7 +571,7 @@ const stopDataWatch = onSharedDataChange(() => {
 })
 onBeforeUnmount(stopDataWatch)
 const knownItem = (ns: string, name: string) => !!ITEM_BY_REF(ns as BaseType['namespace'], name)?.length
-const lookups = computed(() => [currencyLookup(currencyNames.value), countdownLookup, bossLookup, dropLookup, cardLookup(cards.value, knownItem), recipeLookup, craftLookup(craftData.value), bestiaryLookup(bestiaryData.value), gemLookup(gemTable.value, gemNames.value), treeLookup(passives.value, keystoneGrants.value), betrayalLookup(betrayalOverrides), visceraLookup(isModuleOn(AppConfig(), 'wickerman') ? visceraTable.value : null), webLookup])
+const lookups = computed(() => [currencyLookup(currencyNames.value), countdownLookup, bossLookup, dropLookup, cardLookup(cards.value, knownItem), recipeLookup, craftLookup(craftData.value), bestiaryLookup(bestiaryData.value), gemLookup(gemTable.value, gemNames.value), treeLookup(passives.value, keystoneGrants.value), pantheonLookup(pantheonData.value, zones.value ?? []), zoneLookup(zones.value, gemRewards.value), savedLookup(saved.value), betrayalLookup(betrayalOverrides), visceraLookup(isModuleOn(AppConfig(), 'wickerman') ? visceraTable.value : null), webLookup])
 
 // Kept apart from the prices, so switching a tool doesn't rebuild them.
 const lookupTools = computed(() => new Set(wm.widgets.value.filter(w => isWidgetTypeOn(AppConfig(), w.wmType)).map(w => w.wmType)))
@@ -539,6 +597,10 @@ function act (action: LookupAction) {
   else if ('tool' in action) {
     const w = wm.widgets.value.find(w => w.wmType === action.tool)
     if (w) wm.show(w.wmId)
+  } else if ('open' in action) {
+    // The tool shows it; the palette steps aside.
+    savedOpenRequest.value = { ...action.open, at: Date.now() }
+    wm.hide(props.config.wmId)
   } else if ('trade' in action) tradeBeast(action.trade)
   else if ('copy' in action) copyText(action.copy).then(ok => { if (ok) toast(`Copied ${action.copy}`, { ms: 1800 }) })
   else {
@@ -582,18 +644,21 @@ const sections = computed<Array<{ label: string, entries: Entry[], capped?: bool
     .filter(g => !listed.has(groupKey(g)))
   const shownBases = new Set(bases.map(b => b.refName))
   const cards = lookupCards(q)
-  const out = [
-    ...cardSections(cards, ['Answer']),
-    { label: 'Prices', entries: groups.map(priceEntry) as Entry[], capped: groups.length >= PRICE_GROUP_LIMIT },
-    { label: bases.length === 1 ? `Uniques on ${bases[0].name}` : 'Uniques on these bases', entries: onBase.map(g => onBaseEntry(g, shownBases)) as Entry[] },
-    { label: 'Other items', entries: other as Entry[] },
-    ...cardSections(cards, null, ['Answer', 'Search the web']),
-    { label: 'Tools', entries: searchNamed(toolEntries(), q, e => e.name) as Entry[] },
-    { label: 'Do it now', entries: searchNamed(commandEntries(), q, e => e.name) as Entry[] },
-    { label: 'Settings', entries: searchNamed(settingEntries(), q, e => e.name) as Entry[] },
-    ...cardSections(cards, ['Search the web'])
-  ]
-  return out.filter(s => s.entries.length)
+  return arrangeSections<Entry>(q, {
+    answer: cardSections(cards, ['Answer']),
+    items: [
+      { label: 'Prices', entries: groups.map(priceEntry) as Entry[], capped: groups.length >= PRICE_GROUP_LIMIT },
+      { label: bases.length === 1 ? `Uniques on ${bases[0].name}` : 'Uniques on these bases', entries: onBase.map(g => onBaseEntry(g, shownBases)) as Entry[] },
+      { label: 'Other items', entries: other as Entry[] }
+    ],
+    cards: cardSections(cards, null, ['Answer', 'Search the web']),
+    tools: searchNamed(toolEntries(), q, e => e.name),
+    rest: [
+      { label: 'Do it now', entries: searchNamed(commandEntries(), q, e => e.name) as Entry[] },
+      { label: 'Settings', entries: searchNamed(settingEntries(), q, e => e.name) as Entry[] }
+    ],
+    web: cardSections(cards, ['Search the web'])
+  })
 })
 const entries = computed(() => sections.value.flatMap(s => s.entries))
 
@@ -984,6 +1049,8 @@ function forgetHeld () {
 }
 function start (text: string) {
   forgetHeld()
+  // An open asked for last time that no tool took.
+  savedOpenRequest.value = null
   holdPricesForSearch()
   query.value = text
   corrupted.value = 'any'
@@ -997,6 +1064,9 @@ function start (text: string) {
   whenIdle(loadBestiary)
   whenIdle(loadTree)
   whenIdle(loadVisceraTable)
+  whenIdle(loadZones)
+  whenIdle(loadPantheon)
+  whenIdle(loadBuildList)
 }
 function close () {
   forgetHeld()
