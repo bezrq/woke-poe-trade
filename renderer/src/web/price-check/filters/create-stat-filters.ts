@@ -665,7 +665,10 @@ function finalFilterTweaks (ctx: FiltersCreationContext) {
   }
 
   promoteFractured(ctx)
-  tickTopTierMods(ctx.filters, item)
+  // A fractured mod with no trade stat (3.30 granted skills) leads nothing:
+  // that item is picked like any other.
+  const fracLead = ctx.filters.some(f => f.fracLead)
+  tickTopTierMods(ctx.filters, item, fracLead)
 
   const basePercentile = ctx.filters.find(fitler => fitler.tradeId[0] === 'item.base_percentile')
   if (basePercentile && item.rarity === ItemRarity.Unique) {
@@ -682,6 +685,28 @@ function finalFilterTweaks (ctx: FiltersCreationContext) {
     tickUniqueStandouts(ctx.filters, item)
     // woke: a good armour base rarely sets a unique's price, and ticking it hides the cheap ones.
     if (basePercentile) basePercentile.disabled = true
+  }
+
+  if (fracLead) untickBesideFractured(ctx)
+}
+
+// woke (Guy, 2026-11-19): a fractured item is bought for its fractured mod on
+// that base, so its search starts as just those: the base (create-item-filters)
+// and the leading fractured rows. Every other mod, total and property starts
+// unticked. A cluster jewel's base is its enchant and passive count, so those
+// stay as set.
+function untickBesideFractured (ctx: FiltersCreationContext) {
+  const { item } = ctx
+  if (!item.isFractured) return
+  const cluster = item.category === ItemCategory.ClusterJewel
+  for (const f of ctx.filters) {
+    if (f.fracLead) continue
+    if (cluster && (f.tag === FilterTag.Enchant || f.statRef === 'Adds # Passive Skills')) continue
+    f.disabled = true
+  }
+  for (const g of ctx.groups) {
+    g.meta.disabled = true
+    for (const f of g.stats) f.disabled = true
   }
 }
 
@@ -753,30 +778,20 @@ function bestTier (filter: StatFilter): number {
   return Math.min(9, ...filter.sources.filter(source => isTopTierSource(filter, source)).map(s => s.modifier.info.tier!))
 }
 
-function tickTopTierMods (filters: StatFilter[], item: ParsedItem) {
-  if (item.rarity !== ItemRarity.Rare || item.isVeiled) return
+function tickTopTierMods (filters: StatFilter[], item: ParsedItem, fracLead: boolean) {
+  // A fractured item starts as its fractured mod alone (untickBesideFractured).
+  if (item.rarity !== ItemRarity.Rare || item.isVeiled || fracLead) return
 
-  // A fractured item's leading fractured rows are ticked already and count.
-  const lead = filters.filter(f => f.fracLead && !f.disabled).length
   filters
-    .filter(f => !f.hidden && !f.fracLead && isTopTierFilter(f, item))
+    .filter(f => !f.hidden && isTopTierFilter(f, item))
     .sort((a, b) => (bestTier(a) - bestTier(b)) || ((b.roll?.goodness ?? 1) - (a.roll?.goodness ?? 1)))
-    .slice(0, Math.max(MAX_TICKED_ON_RARE - lead, 0))
+    .slice(0, MAX_TICKED_ON_RARE)
     .forEach(f => { f.disabled = false })
 
   // Default totals give way to top mods. Properties like DPS don't count.
   const ticked = filters.filter(f => !f.disabled && !f.hidden && f.tag !== FilterTag.Property)
   const extra = ticked.filter(f => f.tag === FilterTag.Pseudo && !isTopTierFilter(f, item))
   extra.slice(0, Math.max(ticked.length - MAX_TICKED_ON_RARE, 0)).forEach(f => { f.disabled = true })
-
-  // A fractured item's leading rows take their place in the cap: the weakest
-  // other ticks give way to them.
-  if (lead) {
-    const others = filters
-      .filter(f => !f.disabled && !f.hidden && !f.fracLead && f.tag !== FilterTag.Property)
-      .sort((a, b) => (bestTier(b) - bestTier(a)) || ((a.roll?.goodness ?? 1) - (b.roll?.goodness ?? 1)))
-    others.slice(0, Math.max(lead + others.length - MAX_TICKED_ON_RARE, 0)).forEach(f => { f.disabled = true })
-  }
 }
 
 function applyClusterJewelRules (filters: StatFilter[], exact: boolean) {
