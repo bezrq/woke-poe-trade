@@ -1,5 +1,5 @@
 import type { ItemFilters } from './interfaces'
-import { ParsedItem, ItemCategory, ItemRarity } from '@/parser'
+import { ParsedItem, ItemCategory, ItemRarity, type SocketColours } from '@/parser'
 import { MAGIC_ONLY_OR_UNIQUE_ITEM, CONSUMABLE_CRAFTABLE_ITEM, JEWELLERY, WEAPON, ARMOUR } from '@/parser/meta'
 import { getPropQuality } from '@/parser/calc-q20'
 import { tradeTag } from '../trade/common'
@@ -7,6 +7,18 @@ import { ModifierType, ModifierMechanic } from '@/parser/modifiers'
 import { BaseType, ITEM_BY_REF } from '@/assets/data'
 import { CATEGORY_TO_TRADE_ID, VISCERA_SLOT_TRADE_ID } from '../trade/pathofexile-trade'
 import { PERMANENT_SC } from '../../background/Leagues'
+
+// The unique line that locks an item's sockets (Skin of the Loyal / Lords).
+const SOCKETS_LOCKED = 'Sockets cannot be modified'
+
+/** The R / G / B / W tiles at the item's own counts; `on` switches on each colour it has.
+ *  A colour the item lacks waits at 1, dashed, so switching it on asks for one. */
+export function socketColourFilters (colours: SocketColours, on: boolean): NonNullable<ItemFilters['socketColours']> {
+  const tile = (n: number) => n > 0
+    ? { value: n, disabled: !on }
+    : { value: 1, disabled: true, suggested: true }
+  return { r: tile(colours.r), g: tile(colours.g), b: tile(colours.b), w: tile(colours.w) }
+}
 
 export const SPECIAL_SUPPORT_GEM = ['Empower Support', 'Enlighten Support', 'Enhance Support']
 
@@ -272,6 +284,16 @@ export function createFilters (
   // Any item that takes quality gets the box, so you can ask for more than it has (a 27% Twilight Regalia).
   if (!filters.quality && takesQuality(item)) {
     filters.quality = suggestedQuality(item.quality ?? 0)
+  }
+
+  // woke: socket colours, only where nothing can change them: on for "Sockets cannot be
+  // modified" (Skin of the Loyal / Lords), offered off on corrupted 5L and 6L items.
+  const colours = item.sockets?.colours
+  if (colours && (colours.r + colours.g + colours.b + colours.w) > 0) {
+    const locked = item.statsByType.some(calc => calc.stat.ref === SOCKETS_LOCKED)
+    if (locked || (item.isCorrupted && (item.sockets?.linked ?? 0) >= 5)) {
+      filters.socketColours = socketColourFilters(colours, locked)
+    }
   }
 
   if (item.sockets?.linked) {

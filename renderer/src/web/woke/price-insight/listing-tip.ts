@@ -105,6 +105,20 @@ export function socketSummary (sockets: ListingItem['sockets']): { text: string,
   return { text: total ? `${total}S` : '', tone: '' }
 }
 
+/** A listing's sockets as coloured dots, in order; `link` says it joins the one before. */
+export function socketDots (sockets: ListingItem['sockets']): Array<{ colour: string, link: boolean }> {
+  return (sockets ?? []).map((s, i, all) => ({
+    colour: s.sColour.toLowerCase(),
+    link: i > 0 && all[i - 1].group === s.group
+  }))
+}
+
+/** Your item's sockets as dots, from the copy text's "R-R-G B". */
+export function ownSocketDots (layout: string | undefined): Array<{ colour: string, link: boolean }> {
+  return (layout ?? '').split(' ').filter(Boolean).flatMap(group =>
+    group.split('-').map((colour, i) => ({ colour: colour.toLowerCase(), link: i > 0 })))
+}
+
 function socketsText (sockets: ListingItem['sockets']): string {
   const groups = new Map<number, string[]>()
   for (const s of sockets ?? []) {

@@ -131,6 +131,9 @@ export interface TradeRequest {
         filters: {
           links?: FilterRange
           sockets?: {
+            r?: number
+            g?: number
+            b?: number
             w?: number
           }
         }
@@ -390,6 +393,14 @@ export function createTradeRequest (filters: ItemFilters, stats: FilterOrGroup[]
 
   if (filters.whiteSockets && !filters.whiteSockets.disabled) {
     propSet(query.filters, 'socket_filters.filters.sockets.w', filters.whiteSockets.value)
+  }
+
+  // woke: the trade site reads each colour as "at least this many".
+  if (filters.socketColours) {
+    for (const c of ['r', 'g', 'b', 'w'] as const) {
+      const tile = filters.socketColours[c]
+      if (!tile.disabled && tile.value > 0) propSet(query.filters, `socket_filters.filters.sockets.${c}`, tile.value)
+    }
   }
 
   if (filters.mapTier && !filters.mapTier.disabled) {

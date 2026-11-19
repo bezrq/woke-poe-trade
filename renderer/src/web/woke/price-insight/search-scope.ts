@@ -22,18 +22,27 @@ export function isBlankRareSearch (item: ParsedItem, filters: ItemFilters, stats
     filters.sentinelCharge != null ||
     (filters.itemLevel && !filters.itemLevel.disabled) ||
     (filters.linkedSockets && !filters.linkedSockets.disabled) ||
+    socketColoursOn(filters) ||
     (filters.quality && !filters.quality.disabled) ||
     (filters.veiled && !filters.veiled.disabled) ||
     filters.influences?.some(i => !i.disabled)
   )
 }
 
+/** Whether the search asks for any socket colour. */
+export function socketColoursOn (filters: ItemFilters): boolean {
+  const c = filters.socketColours
+  return c != null && Object.values(c).some(tile => !tile.disabled && tile.value > 0)
+}
+
 /**
  * Whether poe.ninja's price covers what this search looks for. Its unique
  * prices are for any roll, uncorrupted and without a Foulborn mod.
  */
-export function ninjaFitsSearch (item: ParsedItem, stats: FilterOrGroup[], corrupted?: CorruptedSearch): boolean {
+export function ninjaFitsSearch (item: ParsedItem, stats: FilterOrGroup[], corrupted?: CorruptedSearch, socketColours?: boolean): boolean {
   if (item.rarity !== ItemRarity.Unique) return true
+  // Its prices are for any socket colours.
+  if (socketColours) return false
   if (item.isFoulborn || corrupted === 'corrupted') return false
   if (item.isCorrupted && corrupted !== 'not-corrupted') return false
   // Its prices are for any catalyst quality, so a search for one (the Q tag) isn't covered.

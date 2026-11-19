@@ -56,8 +56,20 @@
       <div v-if="poe" class="w-poe-head-aside"><slot /></div>
     </div>
     <div class="filter-name-tiles">
-      <filter-btn-numeric :chip="poe" v-if="filters.linkedSockets" :limit="NUMERIC_LIMITS.links"
-        :filter="filters.linkedSockets" :name="t('item.linked_sockets')" />
+      <!-- woke: right-click Links to show or hide the socket colour tiles. -->
+      <span v-if="filters.linkedSockets" class="filter-name-links" data-links-tile
+        :title="item.sockets?.colours ? 'Right-click: socket colours' : undefined"
+        @contextmenu="toggleColourTiles">
+        <filter-btn-numeric :chip="poe" :limit="NUMERIC_LIMITS.links"
+          :filter="filters.linkedSockets" :name="t('item.linked_sockets')" />
+      </span>
+      <!-- woke: one tile per socket colour, each "at least this many" (Guy's pick B). -->
+      <template v-if="filters.socketColours">
+        <span v-for="c of SOCKET_COLOURS" :key="c" class="filter-name-scol" :class="c" :data-socket-colour="c">
+          <filter-btn-numeric :chip="poe" :limit="NUMERIC_LIMITS.sockets"
+            :filter="filters.socketColours[c]" :name="c.toUpperCase()" />
+        </span>
+      </template>
       <filter-btn-numeric :chip="poe" v-if="filters.mapTier" :limit="NUMERIC_LIMITS.mapTier"
         :filter="filters.mapTier" :name="t('item.map_tier')" />
       <filter-btn-numeric :chip="poe" v-if="filters.areaLevel" :limit="NUMERIC_LIMITS.areaLevel"
@@ -87,11 +99,14 @@ import { CATEGORY_TO_TRADE_ID } from '../trade/pathofexile-trade'
 import { WIcon } from '@/web/woke/ui'
 import FilterBtnNumeric from './FilterBtnNumeric.vue'
 import { NUMERIC_LIMITS } from './numeric-limits'
+import { socketColourFilters } from './create-item-filters'
 import FilterBtnLogical from './FilterBtnLogical.vue'
 import { poeOn } from '@/web/woke/price-insight/window-style'
 import type { FilterOrGroup } from './interfaces'
 import { clusterSizeOf } from '@/web/woke/cluster-type/apply'
 import ClusterTypePick from '@/web/woke/cluster-type/ClusterTypePick.vue'
+
+const SOCKET_COLOURS = ['r', 'g', 'b', 'w'] as const
 
 export default defineComponent({
   name: 'FilterName',
@@ -159,6 +174,19 @@ export default defineComponent({
       { search: 'corrupted', label: 'Corr' },
       { search: 'not-corrupted', label: 'Not' }
     ]
+    // Any linked item: right-click Links shows its colour tiles, off; again hides them unless one is on.
+    function toggleColourTiles (e: MouseEvent) {
+      // Anywhere on the tile, the number too: copy / paste of a link count isn't worth a dead spot.
+      e.preventDefault()
+      e.stopPropagation()
+      const { filters, item } = props
+      if (!filters.socketColours) {
+        if (item.sockets?.colours) filters.socketColours = socketColourFilters(item.sockets.colours, false)
+      } else if (Object.values(filters.socketColours).every(tile => tile.disabled)) {
+        delete filters.socketColours
+      }
+    }
+
     function cycleCorrupted () {
       const filter = props.filters.corrupted!
       const at = corruptedStates.findIndex(state => state.search === filter.search)
@@ -175,6 +203,8 @@ export default defineComponent({
     return {
       t,
       poe: poeOn,
+      SOCKET_COLOURS,
+      toggleColourTiles,
       clusterSize,
       NUMERIC_LIMITS,
       label,
@@ -265,6 +295,16 @@ export default defineComponent({
   border-color: var(--w-down);
   color: var(--w-down);
 }
+.filter-name-links, .filter-name-scol { display: inline-flex; }
+/* The colour tiles' letters in their socket colour. */
+.filter-name-scol.r :is(.w-poe-nlab, [class*="label"]) { color: #e0645c; }
+.filter-name-scol.g :is(.w-poe-nlab, [class*="label"]) { color: #7fc94f; }
+.filter-name-scol.b :is(.w-poe-nlab, [class*="label"]) { color: #6f9cf0; }
+.filter-name-scol.w :is(.w-poe-nlab, [class*="label"]) { color: #ece8de; }
+#price-window.w-poe .filter-name-scol.r .w-poe-nlab { color: #e0645c; }
+#price-window.w-poe .filter-name-scol.g .w-poe-nlab { color: #7fc94f; }
+#price-window.w-poe .filter-name-scol.b .w-poe-nlab { color: #6f9cf0; }
+#price-window.w-poe .filter-name-scol.w .w-poe-nlab { color: #ece8de; }
 .filter-name-tiles {
   display: flex;
   flex: none;

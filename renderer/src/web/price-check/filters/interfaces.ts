@@ -1,4 +1,4 @@
-import type { ItemInfluence, ItemCategory } from '@/parser'
+import type { ItemInfluence, ItemCategory, SocketColours } from '@/parser'
 import { ModifierType, ModifierMechanic, type StatCalculated } from '@/parser/modifiers'
 
 export type CorruptedSearch = 'any' | 'corrupted' | 'not-corrupted'
@@ -33,6 +33,8 @@ export interface ItemFilters {
   }
   linkedSockets?: FilterNumeric
   whiteSockets?: FilterNumeric
+  // woke: one tile per socket colour, each "at least this many" (Guy's pick B).
+  socketColours?: Record<keyof SocketColours, FilterNumeric>
   corrupted?: {
     search: CorruptedSearch
   }
