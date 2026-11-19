@@ -62,43 +62,44 @@
         <section v-if="mode === 'maps'" ref="rewardsEl" :class="[$style.pane, { [$style.flash]: flash }]" data-testid="map-rewards-table">
           <div class="flex items-baseline gap-2">
             <span class="w-group-label flex-1" style="padding: 0;">Rewards</span>
-            <span class="w-dim text-xs">{{ minsSet ? `${minsSet} ${minsSet === 1 ? 'minimum' : 'minimums'} set` : 'no minimums' }}</span>
+            <WInfo :text="REWARDS_HELP" />
           </div>
+          <div class="w-dim text-xs">What you want from a map. Minimums are ticked on the Alt+M card and filter the stash search for maps to run. Squares set how much a stat adds to the juice score.</div>
           <table :class="$style.rw">
             <thead>
               <tr>
                 <th>Stat</th>
-                <th title="The stash search and the map check card want at least this much">Need at least</th>
-                <th title="How much the stat counts toward the juice score">Juice</th>
+                <th title="Leave blank for no minimum">Map must have</th>
+                <th><span class="inline-flex items-center gap-1">Juice score <WInfo :text="JUICE_HELP" /></span></th>
               </tr>
             </thead>
             <tbody>
               <tr v-for="key in MIN_KEYS" :key="key">
                 <td :class="{ 'w-dim': isQuiet(key) }">{{ MIN_LABELS[key] }}</td>
                 <td>
-                  <WField type="number" :model-value="profile.mins[key] ?? ''" placeholder="any" suffix="%"
+                  <WField type="number" :model-value="profile.mins[key] ?? ''" placeholder="–" suffix="%"
                     :label="`Minimum ${MIN_LABELS[key].toLowerCase()}`" :class="$style.min"
                     @update:model-value="setMin(key, $event)" />
                 </td>
                 <td>
                   <span v-if="key === 'quality'" class="w-faint">–</span>
                   <span v-else :class="$style.pips" role="group" :aria-label="`${MIN_LABELS[key]} juice weight`"
-                    :title="`Counts ${weightOf(key).toFixed(1)}× toward juice. Click the last lit square to lower it`">
+                    :title="`Counts ${weightOf(key).toFixed(1)}× toward the juice score. Click the last lit square to lower it`">
                     <button v-for="n in PIPS" :key="n" type="button" :aria-label="`${n * PIP_STEP}×`"
                       :aria-pressed="pipsOf(key) >= n"
                       :class="[$style.pip, { [$style.on]: pipsOf(key) >= n }]"
                       @click="setPips(key, n)" />
-                    <span class="w-num w-faint" :class="$style.weight">{{ weightOf(key).toFixed(1) }}</span>
+                    <span class="w-faint" :class="$style.weight">{{ weightWord(key) }}</span>
                   </span>
                 </td>
               </tr>
             </tbody>
           </table>
           <div class="flex items-center gap-2 text-xs">
-            <span class="w-dim">A map needs</span>
+            <span class="w-dim" :title="`${minsSet} ${minsSet === 1 ? 'minimum' : 'minimums'} set`">A map must meet</span>
             <WSegmented :model-value="profile.minsAny ? 'any' : 'all'" :options="MINS_MODE_OPTIONS"
               @update:model-value="profile.minsAny = $event === 'any'" />
-            <span class="w-dim">minimums</span>
+            <span class="w-dim">minimum</span>
           </div>
         </section>
 
@@ -159,7 +160,7 @@ import type { ComponentPublicInstance } from 'vue'
 import { useFold } from '../ui/fold'
 import { MainProcess } from '@/web/background/IPC'
 import { pushHostConfig } from '@/web/Config'
-import { WPanel, WButton, WChip, WField, WSegmented, WSelect, WTabs, WToggle, WEmpty, toast } from '../ui'
+import { WPanel, WButton, WChip, WField, WInfo, WSegmented, WSelect, WTabs, WToggle, WEmpty, toast } from '../ui'
 import { useCopy } from '../ui/copy'
 import { SAVE_MESSAGE, renameSavedRegex, saveToRegexLibrary, savedRegexName } from '../regex-library/save'
 import { PRESETS, applyPreset, modListRows, modRatings, nextPresetRating, presetRating, searchOptions, setModRatings, setSearchOption, withRating } from './rules'
@@ -185,10 +186,18 @@ const HIGHLIGHT_OPTIONS = [
   { value: 'bad', label: 'Maps to skip' }
 ]
 const MINS_MODE_OPTIONS = [
-  { value: 'all', label: 'all' },
+  { value: 'all', label: 'every' },
   { value: 'any', label: 'any one' }
 ]
 const MIN_KEYS: MinStat[] = ['quantity', 'rarity', 'packSize', 'currency', 'scarabs', 'maps', 'divCards', 'quality']
+const REWARDS_HELP = 'Map must have: the lowest roll you accept, like 40 under More currency. Blank means no minimum. ' +
+  'The Alt+M card ticks or crosses each one, and when the stash search lights up maps to run, it shows only maps that have them. ' +
+  'Juice score: how much the stat counts toward the 0-100 score on the Alt+M card. ' +
+  'Every / any one: whether a map must meet all the minimums you set, or just one of them.'
+const JUICE_HELP = 'The Alt+M card scores each map from 0 to 100 on how rewarding it is. These squares set how much each stat counts. ' +
+  'Atlas drops, item rarity and pack size are weighed against each other. The More currency, scarabs, maps and div cards squares add on top. ' +
+  'No squares lit means the score ignores the stat. Click a square to set it, click the last lit one to lower it. ' +
+  'This changes only the score, never the search.'
 // Juice weight squares: each is half a point, four make the 2× maximum.
 const PIP_STEP = 0.5
 const PIPS = [1, 2, 3, 4]
@@ -311,14 +320,21 @@ type WeightKey = keyof JuiceWeights
 function weightOf (key: MinStat): number {
   return key === 'quality' ? 0 : props.config.weights[key as WeightKey] ?? 0
 }
+// Any weight above 0 lights at least one square, so "none lit" always means ignored.
 function pipsOf (key: MinStat): number {
-  return Math.round(weightOf(key) / PIP_STEP)
+  const w = weightOf(key)
+  return w > 0 ? Math.max(1, Math.min(PIPS.length, Math.round(w / PIP_STEP))) : 0
 }
 // Clicking the last lit square lowers it by one; any other square sets the weight there.
 function setPips (key: MinStat, n: number) {
   if (key === 'quality') return
   const next = pipsOf(key) === n ? n - 1 : n
   props.config.weights = { ...props.config.weights, [key]: next * PIP_STEP }
+}
+// The squares in words; the exact number is in the tooltip.
+const WEIGHT_WORDS = ['off', 'low', 'normal', 'high', 'max']
+function weightWord (key: MinStat): string {
+  return WEIGHT_WORDS[pipsOf(key)]
 }
 function isQuiet (key: MinStat): boolean {
   return !weightOf(key) && !(profile.value.mins[key] ?? 0)
@@ -441,7 +457,7 @@ function paste () {
   border: 1px solid var(--w-line-strong);
   background: var(--w-panel-3);
 }
-.weight { margin-left: 4px; font-size: var(--w-fs-xs); }
+.weight { margin-left: 4px; font-size: var(--w-fs-xs); min-width: 3.2em; }
 .pip:hover { border-color: var(--w-accent); }
 .pip.on { background: var(--w-accent); border-color: var(--w-accent); }
 .regex {
