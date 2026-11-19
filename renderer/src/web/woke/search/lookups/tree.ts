@@ -1,7 +1,7 @@
 // Passive tree lookup: keystones, notables, ascendancy notables and cluster
 // jewel notables, with what they do. From the PoB tool's tree data.
 import { matchRank } from '../search'
-import type { Lookup, LookupCard, LookupContext } from './types'
+import type { Lookup, LookupCard, LookupContext, LookupSection } from './types'
 
 export type PassiveKind = 'Keystone' | 'Notable' | 'Ascendancy notable' | 'Cluster jewel notable' | 'Cluster jewel keystone'
 
@@ -9,6 +9,8 @@ export interface Passive {
   name: string
   kind: PassiveKind
   stats: string[]
+  // The three oils that anoint it onto an amulet, lowest tier first.
+  oils?: string[]
 }
 
 const KINDS: Record<string, PassiveKind> = { key: 'Keystone', notable: 'Notable', asc: 'Ascendancy notable' }
@@ -59,6 +61,27 @@ export function keystoneUniques (
   return out
 }
 
+// Notables that can be anointed get their oils, from the game's recipes.
+export function withOils (list: Passive[], oilsOf: (name: string) => string[] | undefined): Passive[] {
+  return list.map(p => {
+    if (p.kind !== 'Notable') return p
+    const oils = oilsOf(p.name)
+    return oils ? { ...p, oils } : p
+  })
+}
+
+function anointSection (oils: readonly string[], ctx?: LookupContext): LookupSection {
+  const prices = oils.map(o => ctx?.price(o) ?? null)
+  const total = prices.every(c => c != null) ? prices.reduce<number>((a, c) => a + c!, 0) : null
+  return {
+    label: 'Anoint',
+    rows: [
+      ...oils.map((o, i) => ({ label: o, chaos: prices[i], item: { name: o }, bulk: true })),
+      ...(ctx ? [{ label: 'Total', chaos: total, dim: true }] : [])
+    ]
+  }
+}
+
 export function passiveCard (p: Passive, ctx?: LookupContext, grantedBy: readonly string[] = []): LookupCard {
   const slug = encodeURIComponent(p.name.replaceAll("'", '').replaceAll(' ', '_'))
   return {
@@ -69,6 +92,7 @@ export function passiveCard (p: Passive, ctx?: LookupContext, grantedBy: readonl
     icon: p.kind.includes('Keystone') ? 'fas fa-dharmachakra' : 'fas fa-circle-nodes',
     sections: [
       { label: p.kind, text: p.stats.length ? p.stats : ['No stats in the tree data.'] },
+      ...(p.oils ? [anointSection(p.oils, ctx)] : []),
       ...(grantedBy.length ? [{ label: 'Uniques that grant it', rows: grantedBy.map(name => ({ label: name, chaos: ctx?.price(name) ?? null, item: { name }, bulk: true })) }] : [])
     ],
     actions: [
