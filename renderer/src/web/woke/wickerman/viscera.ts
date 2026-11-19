@@ -5,6 +5,7 @@
 // League module: remove this folder, its entry in modules.ts, the strip in
 // CheckedItem.vue and the lookup in WidgetSearch.vue when the league ends.
 import { dataFileUrl, onSharedDataChange } from '../app/live-data'
+import { STAT_BY_MATCH_STR } from '@/assets/data'
 
 export type VisceraSlot = 'Head' | 'Torso' | 'Upper Limb' | 'Lower Limb'
 
@@ -61,8 +62,10 @@ export function loadViscera (): Promise<VisceraTable | null> {
 // "(10-15)% chance" -> template "#% chance" and the allowed [min, max] per number.
 function tierPattern (line: string): { template: string, ranges: Array<[number, number]> } {
   const ranges: Array<[number, number]> = []
-  const template = line.replace(/\((-?\d+(?:\.\d+)?)-(-?\d+(?:\.\d+)?)\)|-?\d+(?:\.\d+)?/g, (m, lo?: string, hi?: string) => {
-    ranges.push(lo != null ? [Number(lo), Number(hi)] : [Number(m), Number(m)])
+  // "-(30-20)" is a range of negative numbers: the item reads "-25".
+  const template = line.replace(/(?<![\w)])(-?)\((-?\d+(?:\.\d+)?)-(-?\d+(?:\.\d+)?)\)|-?\d+(?:\.\d+)?/g, (m, sign?: string, lo?: string, hi?: string) => {
+    const k = sign ? -1 : 1
+    ranges.push(lo != null ? [k * Number(lo), k * Number(hi)] : [Number(m), Number(m)])
     return '#'
   })
   return { template: norm(template), ranges }
@@ -79,10 +82,26 @@ function itemPattern (line: string): { template: string, values: number[] } {
 
 const norm = (s: string) => s.replace(/\s+/g, ' ').trim().toLowerCase()
 
+// The stat a line reads as, "#" for its numbers. The table's text comes from
+// the datamine, the item's from the game, and they word some lines apart
+// ("Enemies within 3 metres are Scorched" is "Nearby Enemies are Scorched"):
+// the stat list knows both wordings. A number can be part of the wording
+// ("within 3 metres"), so the line as written is tried too.
+function statRef (line: string): string | undefined {
+  const plain = line.replace(/(\d)\(-?\d+(?:\.\d+)?--?\d+(?:\.\d+)?\)/g, '$1').replace(/\s+/g, ' ').trim()
+  const shape = plain.replace(/\((-?\d+(?:\.\d+)?)-(-?\d+(?:\.\d+)?)\)/g, '#').replace(/\d+(?:\.\d+)?/g, '#')
+  return (STAT_BY_MATCH_STR(shape) ?? STAT_BY_MATCH_STR(plain))?.stat.ref
+}
+
 function lineMatches (tierLine: string, itemLine: string): boolean {
   const t = tierPattern(tierLine)
   const i = itemPattern(itemLine)
-  if (t.template !== i.template || t.ranges.length !== i.values.length) return false
+  if (t.template !== i.template) {
+    const ref = statRef(tierLine)
+    if (ref == null || ref !== statRef(itemLine)) return false
+    // Worded apart: the rolls compare only when both lines have the same numbers.
+    if (t.ranges.length !== i.values.length) return true
+  } else if (t.ranges.length !== i.values.length) return false
   return t.ranges.every(([lo, hi], k) => {
     const v = i.values[k]
     return v >= Math.min(lo, hi) && v <= Math.max(lo, hi)
@@ -252,14 +271,55 @@ export function tierItemName (v: Viscera, tier: number): string {
   return label === 'Low' ? `Lesser ${v.name}` : label === 'High' ? `Greater ${v.name}` : v.name
 }
 
+// ---- price check by name ----
+
+// A Viscera's name as a search or poe.ninja row writes it ("Greater Eater of
+// Worlds' Head"): the Viscera, and the version its Lesser / Greater word
+// says, else the version whose text reads like `effect` (a poe.ninja row's
+// variant), else the plain one.
+export function visceraByName (table: VisceraTable, name: string, effect?: string): { v: Viscera, tier: number } | null {
+  const word = /^(lesser|greater)\s+/i.exec(name.trim())
+  const v = table.byName.get(name.trim().replace(/^(lesser|greater)\s+/i, '').toLowerCase())
+  if (!v || !v.tiers.length) return null
+  const byLabel = (label: string) => v.tiers.findIndex(t => t.label === label)
+  if (word) {
+    const i = byLabel(word[1].toLowerCase() === 'lesser' ? 'Low' : 'High')
+    if (i >= 0) return { v, tier: i }
+  }
+  // The versions whose effect reads like the row's (Queen, Uber); Low, Med
+  // and High often read alike, and a plain name among them is Med.
+  const want = effect ? effectShape(effect) : null
+  const fits = v.tiers.map((t, i) => i).filter(i => want == null || effectShape(v.tiers[i].text) === want)
+  const pool = fits.length ? fits : v.tiers.map((_t, i) => i)
+  const med = pool.find(i => v.tiers[i].label === 'Med')
+  return { v, tier: med ?? pool[0] }
+}
+
+// An advanced game copy of that version, each roll at the bottom of its
+// range, for the price check to read as if you'd copied one.
+export function visceraItemText (v: Viscera, tier: number, name = tierItemName(v, tier)): string {
+  const mod = v.tiers[tier].text.split('\n')
+    .map(l => l.replace(/\((-?\d+(?:\.\d+)?)-(-?\d+(?:\.\d+)?)\)/g, (_m, lo: string, hi: string) => `${lo}(${lo}-${hi})`))
+  return [
+    'Item Class: Viscera', name, '--------',
+    v.slot, '--------',
+    '{ Implicit Modifier }', ...mod, '--------',
+    'Take this to the Wickerman in a town or hideout to attach it.'
+  ].join('\n')
+}
+
 // poe.ninja has one row per effect per name, its variant the effect with #
 // for numbers. The row whose variant reads like this version's text, else
 // the only row.
 export function pickPriceRow<T extends { variant?: string }> (rows: readonly T[], tierText: string): T | null {
   if (rows.length <= 1) return rows[0] ?? null
-  const shape = (s: string) => norm(s.replace(/\(-?\d+(?:\.\d+)?--?\d+(?:\.\d+)?\)|-?\d+(?:\.\d+)?/g, '#'))
-  const want = shape(tierText.split('\n')[0])
-  return rows.find(r => r.variant != null && shape(r.variant.split('\n')[0]) === want) ?? null
+  const want = effectShape(tierText)
+  return rows.find(r => r.variant != null && effectShape(r.variant) === want) ?? null
+}
+
+// An effect's first line with "#" for its numbers, "+" signs dropped.
+function effectShape (text: string): string {
+  return norm(text.split('\n')[0].replace(/\+(?=[\d(#])/g, '').replace(/\(-?\d+(?:\.\d+)?--?\d+(?:\.\d+)?\)|-?\d+(?:\.\d+)?/g, '#'))
 }
 
 // "Act 1 · Fire Fury, The Coast"
