@@ -45,6 +45,9 @@ const isSetupWindow = window.location.hash === '#setup'
     await I18n.loadLang(AppConfig().language)
   })
 
+  // woke: the mouse wheel steps every number box (ui/number-wheel.ts). Its own
+  // chunk, so startup JS stays inside the budget.
+  import('./web/woke/ui/number-wheel').then(m => m.installNumberWheel()).catch(() => {})
   const app = createApp(App)
   app.config.errorHandler = captureVueError
   app.use(i18nPlugin).mount('#app')

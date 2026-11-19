@@ -126,6 +126,10 @@ test('the element picker makes the row search any element, and Search shows whic
   const panel = overlay.widget('price-check')
   const picker = panel.locator('[data-swap-element]')
   await expect(picker).toHaveText(/Cold/)
+  // A search held back until the window's code loads runs with whatever the
+  // row says by then: let the code finish loading before picking, or on a slow
+  // runner the pick is what that search sends and no Search button comes back.
+  await overlay.page.waitForLoadState('networkidle')
   await overlay.page.waitForTimeout(300)
   const before = searches.length
 
