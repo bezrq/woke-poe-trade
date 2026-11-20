@@ -1,5 +1,5 @@
 <template>
-  <div ref="box" :class="$style.chart" @mousemove="onMove" @mouseleave="hover = null" @click="onClick">
+  <div ref="box" :class="$style.chart" :style="height ? { height: `${height}px` } : undefined" @mousemove="onMove" @mouseleave="hover = null" @click="onClick">
     <svg :viewBox="`0 0 ${W} ${H}`" preserveAspectRatio="none" :class="$style.svg" aria-hidden="true">
       <template v-if="mode === 'total'">
         <path v-if="area" :d="area" :class="$style.area" />
@@ -15,7 +15,7 @@
       <span :class="$style.dot" :style="{ left: shown.x + '%', top: shown.y + '%' }" />
       <!-- Follows the mouse; a click keeps it open (pinned), and then its item
            names take the item tooltip and menu. -->
-      <div ref="tipEl" :class="[$style.tip, place.below ? $style.below : $style.above, $style[place.align], { [$style.pinned]: !!pinned }]"
+      <div ref="tipEl" :class="[$style.tip, place.below ? $style.below : $style.above, $style[place.align], { [$style.pinned]: !!pinned, [$style.wide]: !!tipBelow }]"
         :style="{ left: shown.x + '%', top: shown.y + '%' }" data-chart-card>
         <b class="w-num">{{ when(shown.p.at) }} · {{ fmt(shown.p.div) }}<Coin /><template v-if="shown.p.netDiv != null"> · {{ signed(shown.p.netDiv) }}<Coin /></template></b>
         <span v-if="shown.p.top.length">
@@ -49,6 +49,11 @@ const props = defineProps<{
   goalDiv: number | null
   // The item tooltip for a name in a pinned card.
   tipOf?: (name: string, count: number) => ItemTipRef
+  // px; 80 when left out (the dock card uses a shorter one).
+  height?: number
+  // Always open the hover card below the line (the dock card scrolls, so
+  // one above the chart would be cut off).
+  tipBelow?: boolean
 }>()
 
 const W = 400
@@ -92,7 +97,11 @@ watch(pinned, (on, was) => {
     document.removeEventListener('keydown', onKey)
   }
 })
-watch(() => [props.series, props.mode], () => { pinned.value = null })
+// New points drop the pinned card only when its point is gone (the dock card
+// rebuilds its series as the clock moves).
+watch(() => [props.series, props.mode], () => {
+  if (pinned.value && !props.series.some(p => p.at === pinned.value!.p.at)) pinned.value = null
+})
 onUnmounted(() => {
   document.removeEventListener('pointerdown', outside, true)
   document.removeEventListener('keydown', onKey)
@@ -112,7 +121,11 @@ const span = computed(() => {
   return { t0, t1: t1 === t0 ? t0 + 1 : t1, lo, hi }
 })
 
-const place = computed(() => shown.value ? tipPlacement(shown.value.x, shown.value.y) : { below: false, align: 'center' as const })
+const place = computed(() => {
+  if (!shown.value) return { below: false, align: 'center' as const }
+  const p = tipPlacement(shown.value.x, shown.value.y)
+  return props.tipBelow ? { ...p, below: true } : p
+})
 
 const xOf = (at: number) => (at - span.value.t0) / (span.value.t1 - span.value.t0) * W
 const yOf = (v: number) => H - PAD - (v - span.value.lo) / (span.value.hi - span.value.lo) * (H - 2 * PAD)
@@ -176,6 +189,8 @@ function when (at: number) {
   padding: 4px 7px; font-size: var(--w-fs-xs); color: var(--w-fg); box-shadow: 0 4px 12px rgba(0, 0, 0, .5);
 }
 .pinned { pointer-events: auto; border-color: var(--w-gold); }
+/* Below the point, as wide as the chart: never past the dock card's sides. */
+.wide { left: 0 !important; right: 0; width: auto; max-width: none; transform: translate(0, 12px) !important; }
 .item { text-decoration: underline dotted; text-underline-offset: 2px; cursor: help; }
 .chart { cursor: pointer; }
 .above { --ty: calc(-100% - 10px); }
