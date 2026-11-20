@@ -21,7 +21,7 @@ async function expectAt (marker: Locator, cursor: { x: number, y: number }) {
   expect(Math.abs(box.y + box.height / 2 - cursor.y * 0.75)).toBeLessThan(3)
 }
 
-test('Alt+S scans the hovered map: a map with max res down gets CAREFUL with its flagged mods', async ({ overlay }) => {
+test('Alt+S scans the hovered map: a map with max res down gets Risky with its flagged mods', async ({ overlay }) => {
   await overlay.boot({ widgets: [{ wmType: 'woke-map-scan' }, { wmType: 'woke-map-mods' }] })
   // Real screenshot: Players have -20% to all maximum Resistances, cursed
   // with Temporal Chains and Enfeeble.
@@ -32,7 +32,7 @@ test('Alt+S scans the hovered map: a map with max res down gets CAREFUL with its
 
   const badge = overlay.page.locator('[class*="badge"]').first()
   await expect(badge).toBeVisible({ timeout: 20_000 })
-  await expect(badge).toContainText('CARE')
+  await expect(badge).toContainText('Risky')
   await expect(badge).toContainText(/maximum Resistances|max res/i)
   await overlay.snap('map scan badge on a max res map')
 
