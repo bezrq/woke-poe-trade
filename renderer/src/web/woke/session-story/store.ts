@@ -10,9 +10,35 @@ import { stashGainsBetween } from '../net-worth/gains'
 import { ledgerKey } from '../net-worth/glance'
 import { NIGHT_GAP_MS, bestDrop, hasMaps, isNightStory, keepNight, summarize } from './story'
 import type { NightDraft, NightStory } from './story'
+import { isMapRecord, keepMap } from './map-log'
+import type { MapRecord } from './map-log'
 
 export const NIGHTS_COLLECTION = 'session-story'
 export const NIGHTS_KEY = 'nights'
+// One small file per day of maps (map-history/2026-11-20.json): saving a map
+// rewrites only its day. Memory holds only the last RECENT maps, also kept in
+// their own small file, for the chip's average, Ctrl+Space and where the log
+// replay starts.
+export const MAPS_COLLECTION = 'map-history'
+export function dayKey (ms: number): string {
+  const d = new Date(ms)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+const DAY_MS = 86_400_000
+export const DAY_MS_EXPORT = DAY_MS
+const RECENT = 20
+const RECENT_KEY = 'recent-maps'
+
+export async function readMapDay (key: string, strict = false, collection = MAPS_COLLECTION): Promise<MapRecord[]> {
+  const saved = await (hostRequest(strict ? 'doc-get-strict' : 'doc-get', { collection, key }) as Promise<unknown>)
+  return Array.isArray(saved) ? saved.filter(isMapRecord) : []
+}
+
+// Every saved day, for the history tab (read when it opens, never kept).
+export async function readAllMaps (): Promise<MapRecord[]> {
+  const days = await (hostRequest('doc-list', { collection: MAPS_COLLECTION }) as Promise<unknown[]>)
+  return days.flatMap(d => Array.isArray(d) ? d.filter(isMapRecord) : []).sort((a, b) => b.enteredAt - a.enteredAt)
+}
 
 export const useNights = createGlobalState(() => {
   const nights = shallowRef<NightStory[]>([])
@@ -21,6 +47,13 @@ export const useNights = createGlobalState(() => {
   // Nights finished since the app started: wakes the dock icon.
   const finished = shallowRef(0)
   let loading: Promise<void> | null = null
+  // The last RECENT maps, newest first.
+  const maps = shallowRef<MapRecord[]>([])
+  const mapsError = shallowRef('')
+  let mapsLoading: Promise<void> | null = null
+  let recentBad = false
+  // Saves run one at a time: each reads its day after the last one wrote.
+  let saving: Promise<void> = Promise.resolve()
 
   function load (): Promise<void> {
     // Strict: null only when there's no file (main keeps a broken one aside);
@@ -33,6 +66,40 @@ export const useNights = createGlobalState(() => {
 
   // Stash numbers for the night, when the reader read inside it (or within
   // the quiet gap after, which is when the last map's loot lands).
+  function loadMaps (): Promise<void> {
+    // Kept with the nights, not in map-history: the history tab lists that folder.
+    mapsLoading ??= readMapDay(RECENT_KEY, true, NIGHTS_COLLECTION)
+      .then((list) => { maps.value = list.sort((a, b) => b.enteredAt - a.enteredAt).slice(0, RECENT) })
+      .catch((e) => {
+        recentBad = true
+        mapsError.value = e instanceof Error ? e.message : String(e)
+      })
+    return mapsLoading
+  }
+
+  async function saveMap (rec: MapRecord): Promise<void> {
+    await loadMaps()
+    const key = dayKey(rec.enteredAt)
+    const league = useLeagues().selectedId.value
+    const row = { ...rec, npcs: [...rec.npcs], ...(league ? { league } : {}) }
+    maps.value = keepMap(maps.value, row).slice(0, RECENT)
+    if (!recentBad) await hostRequest('doc-put', { collection: NIGHTS_COLLECTION, key: RECENT_KEY, value: maps.value }).catch(() => {})
+    let day: MapRecord[]
+    try {
+      day = await readMapDay(key, true)
+    } catch (e) {
+      // There but unreadable (locked): never written over.
+      mapsError.value = e instanceof Error ? e.message : String(e)
+      return
+    }
+    await hostRequest('doc-put', { collection: MAPS_COLLECTION, key, value: keepMap(day, row) }).catch(() => {})
+  }
+
+  function addMap (rec: MapRecord): Promise<void> {
+    saving = saving.then(() => saveMap(rec)).catch(() => {})
+    return saving
+  }
+
   // A night that ended because the game restarted gets no extra time: the
   // next one starts right away. Reads already counted for an earlier night
   // never count again.
@@ -83,5 +150,5 @@ export const useNights = createGlobalState(() => {
   }
   const keptDraft = () => draft
 
-  return { nights, live, loadError, finished, load, finish, setLive, keptDraft }
+  return { nights, live, loadError, finished, load, finish, setLive, keptDraft, maps, mapsError, loadMaps, addMap }
 })
