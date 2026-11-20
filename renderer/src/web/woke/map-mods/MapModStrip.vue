@@ -12,18 +12,27 @@
       <i class="fas w-dim text-xs" :class="open ? 'fa-chevron-up' : 'fa-chevron-down'" />
     </button>
     <div :class="$style.chips">
-      <span v-for="p in result.props" :key="p.label" :class="$style.chip" class="w-num">{{ p.label }} {{ p.value }}%</span>
+      <!-- A number with a trade filter is a toggle: on, the search wants at least the min. -->
+      <template v-for="p in result.props" :key="p.label">
+        <button v-if="propFilter(p.label)" type="button" :class="[$style.chip, $style.propChip, !propFilter(p.label)!.disabled && $style.propOn]" class="w-num"
+          :aria-pressed="!propFilter(p.label)!.disabled" :title="propTitle(p.label)" :data-map-prop="p.label"
+          data-own-wheel @click="toggleProp(p.label)" @wheel.prevent.stop="wheelMin(p.label, $event)">
+          {{ p.label }} {{ p.value }}%<template v-if="!propFilter(p.label)!.disabled && minOf(p.label) != null"> ≥{{ minOf(p.label) }}</template>
+        </button>
+        <span v-else :class="$style.chip" class="w-num">{{ p.label }} {{ p.value }}%</span>
+      </template>
       <!-- What the mod switches below add to the search, while the list is folded too. -->
       <span v-if="picked" :class="[$style.chip, $style.pickChip]" data-map-mod-picked>{{ picked }}</span>
     </div>
     <div v-if="open" :class="$style.list">
-      <div v-if="searchable.length" :class="$style.listHead"><span>Mods</span><span>Any / Has / Not</span></div>
+      <div v-if="searchable.length" :class="$style.listHead"><span>Mods</span>
+        <span class="flex items-center gap-1">Trade search <WInfo text="Only this price check's trade search. Has finds maps with the mod, Not finds maps without it, Any ignores it. Your Map mods ratings (the dots and the verdict) don't change." /></span></div>
       <div v-for="(row, i) in rows" :key="`${i}:${row.mod.matcher}`" :class="[$style.mod, row.filter && $style[stateOf(row.filter)]]" data-map-mod>
         <span :class="[$style.dot, $style[row.mod.rating]]" />
         <span :class="[$style.text, { 'w-dim': row.mod.rating === 'ok' && !row.filter?.disabled }]">{{ row.mod.text }}</span>
         <span v-if="row.filter" :class="$style.seg" role="radiogroup" :aria-label="`Search ${row.mod.text}`">
           <button v-for="opt in STATES" :key="opt" type="button" role="radio" :aria-checked="stateOf(row.filter) === opt"
-            :class="stateOf(row.filter) === opt && $style[`on_${opt}`]" :data-state="opt"
+            :class="stateOf(row.filter) === opt && $style[`on_${opt}`]" :data-state="opt" :title="STATE_TITLE[opt]"
             @click="setState(row.filter, opt)">{{ STATE_LABEL[opt] }}</button>
         </span>
       </div>
@@ -32,12 +41,14 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, inject, onBeforeUnmount, watchEffect } from 'vue'
+import type { ShallowRef } from 'vue'
+import { WInfo } from '../ui'
 import { useFold } from '../ui/fold'
 import type { ParsedItem } from '@/parser'
 import { shortLabel } from './rules'
 import { VERDICT_LABEL } from './rules'
-import { checkMap, findMapModsConfig, isMapLike, isUnsure } from './check'
+import { checkMap, findMapModsConfig, isMapLike, isUnsure, PROP_TRADE_ID } from './check'
 import type { FilterOrGroup, StatFilter } from '@/web/price-check/filters/interfaces'
 
 const props = defineProps<{ item: ParsedItem, stats?: FilterOrGroup[] }>()
@@ -49,6 +60,12 @@ const result = computed(() => {
   if (!config || !config.stripOnPriceCheck || !isMapLike(props.item) || props.item.isUnidentified) return null
   return checkMap(props.item, config)
 })
+
+// Tells the price check which number rows the chips stand in for (CheckedItem.vue).
+const owns = inject<ShallowRef<ReadonlySet<string> | null> | null>('map-strip-owns', null)
+const PROP_IDS: ReadonlySet<string> = new Set(Object.values(PROP_TRADE_ID))
+watchEffect(() => { if (owns) owns.value = result.value ? PROP_IDS : null })
+onBeforeUnmount(() => { if (owns) owns.value = null })
 
 const headline = computed(() => {
   const v = result.value!.verdict
@@ -65,6 +82,11 @@ const headline = computed(() => {
 type ModState = 'any' | 'has' | 'not'
 const STATES: ModState[] = ['any', 'has', 'not']
 const STATE_LABEL: Record<ModState, string> = { any: 'Any', has: 'Has', not: 'Not' }
+const STATE_TITLE: Record<ModState, string> = {
+  any: 'Trade search ignores this mod',
+  has: 'Trade search finds maps with this mod',
+  not: 'Trade search finds maps without this mod'
+}
 const searchable = computed(() => (props.stats ?? []).filter((s): s is StatFilter => !s.group && !!s.mapMod))
 const rows = computed(() => {
   const used = new Set<StatFilter>()
@@ -94,6 +116,36 @@ function setState (f: StatFilter, state: ModState) {
     f.roll.max = state === 'not' ? '' : made.max
   }
 }
+function propFilter (label: string): StatFilter | null {
+  const id = PROP_TRADE_ID[label]
+  if (!id) return null
+  return (props.stats ?? []).find((s): s is StatFilter => !s.group && s.tradeId[0] === id) ?? null
+}
+function minOf (label: string): number | null {
+  const min = propFilter(label)?.roll?.min
+  return typeof min === 'number' ? min : null
+}
+function toggleProp (label: string) {
+  const f = propFilter(label)
+  if (f) f.disabled = !f.disabled
+}
+// The wheel moves the min, as on the rows it replaced; turns the chip on.
+function wheelMin (label: string, e: WheelEvent) {
+  const f = propFilter(label)
+  // Sideways scroll and Ctrl+wheel (zoom) aren't a step, as on the other chips.
+  if (!f?.roll || e.deltaY === 0 || e.ctrlKey) return
+  const now = typeof f.roll.min === 'number' ? f.roll.min : f.roll.value
+  // Never past the map's own number, or the search leaves this map out.
+  f.roll.min = Math.min(f.roll.value, Math.max(0, now + (e.deltaY < 0 ? 1 : -1)))
+  f.disabled = false
+}
+function propTitle (label: string): string {
+  const on = !propFilter(label)!.disabled
+  // Checked 2026-11-15: the trade site's Atlas Drops filter matched no listing.
+  if (label === 'Drops') return on ? 'Searching Atlas Drops. The trade site found no listings for this filter in 3.30, so results may be empty.' : 'Search at least this Atlas Drops. The trade site found no listings for this filter in 3.30.'
+  return on ? 'In the search. Scroll to change the minimum, click to leave it out.' : 'Click to search at least this, scroll to set the minimum.'
+}
+
 const picked = computed(() => {
   const has = searchable.value.filter(f => stateOf(f) === 'has').length
   const not = searchable.value.filter(f => stateOf(f) === 'not').length
@@ -157,6 +209,9 @@ const warnText = computed(() => result.value!.verdict.warn.map(m => shortLabel(m
 .seg .on_has { background: color-mix(in srgb, var(--w-up) 28%, transparent); color: var(--w-fg); }
 .seg .on_not { background: color-mix(in srgb, var(--w-down) 28%, transparent); color: var(--w-fg); }
 .pickChip { color: var(--w-fg); background: var(--w-accent-soft); }
+.propChip { cursor: pointer; border: 1px solid transparent; }
+.propChip:hover { border-color: var(--w-line-strong); color: var(--w-fg); }
+.propOn { color: var(--w-fg); background: var(--w-accent-soft); border-color: var(--w-accent); }
 .dot { flex: none; width: 7px; height: 7px; border-radius: var(--w-r-sm); background: var(--w-panel-3); }
 .dot.deadly { background: var(--w-down); }
 .dot.warn { background: var(--w-warn); }
