@@ -5,11 +5,25 @@
       :wake="store.finished.value" card-width="24rem" :menu="dockMenu">
       <template #card>
         <NightCard v-if="shown" :story="shown.story" :live="shown.live" :farm="farmOf(shown.story)" :title="shown.live ? 'Tonight so far' : nightTitle(shown.story)" />
+        <div :class="$style.cardGear">
+          <button type="button" class="w-icon-btn text-xs" :class="{ 'w-accent': cardGear }" data-chip-gear-card
+            title="After a map: where its time shows and how it goes away" @click="cardGear = !cardGear"><i class="fas fa-cog" /> After a map</button>
+          <ChipSettings v-if="cardGear" :config="config" :show-me="showMe" :can-show="!!store.maps.value.length" live class="mt-1" />
+        </div>
       </template>
     </DockItem>
     <WPanel :title="config.wmTitle || 'Session story'" width="34rem" max-height="80vh">
       <template v-if="store.loadError.value" #banner>
         <WBanner>Couldn't read your saved nights: {{ store.loadError.value }}</WBanner>
+      </template>
+      <template #actions>
+        <button type="button" class="w-icon-btn" :class="{ 'w-accent': gearOpen }" title="After a map: where its time shows and how it goes away"
+          data-chip-gear @click="gearOpen = !gearOpen"><i class="fas fa-cog" /></button>
+      </template>
+      <template v-if="gearOpen" #toolbar>
+        <div :class="$style.gear">
+          <ChipSettings :config="config" :show-me="showMe" :can-show="!!store.maps.value.length" live />
+        </div>
       </template>
       <WEmpty v-if="!list.length" icon="fas fa-moon">
         No nights yet. A night is read from the game's log, from your first map until it goes quiet for 15 minutes.
@@ -28,6 +42,7 @@
         </button>
       </template>
     </WPanel>
+    <MapToast :chip="chip" :click-to-close="config.chipClick === true" @close="closeChip" />
   </Widget>
 </template>
 
@@ -42,7 +57,9 @@ export default { widget: widgetSessionStorySpec }
 import { computed, inject, nextTick, onUnmounted, shallowRef } from 'vue'
 import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
-import { WBanner, WEmpty, WPanel, toast } from '../ui'
+import { WBanner, WEmpty, WPanel } from '../ui'
+import MapToast from './MapToast.vue'
+import ChipSettings from './ChipSettings.vue'
 import { formatChaos, formatClock, formatDuration, nowMinute } from '../ui/format'
 import DockItem from '../dock/DockItem.vue'
 import type { DockMenuAction } from '../dock/dock'
@@ -54,10 +71,14 @@ import { NIGHT_GAP_MS, NightTracker, farmingProfit } from './story'
 import { useSessionStore } from '../analytics/store'
 import { sessionTotals } from '../analytics/stats'
 import type { NightStory } from './story'
-import { MapLog, tierText, usualMapMs } from './map-log'
+import { MapLog } from './map-log'
+import { chipLines, compareMap } from './chip'
+import type { MapCompare } from './chip'
 import type { MapRecord } from './map-log'
 import { useNights } from './store'
+import { CHIP_CLOSE_TARGET } from './widget'
 import type { SessionStoryWidget } from './widget'
+import { MainProcess } from '@/web/background/IPC'
 
 const props = defineProps<{ config: SessionStoryWidget }>()
 const wm = inject<WidgetManager>('wm')!
@@ -68,9 +89,37 @@ if (props.config.wmFlags[0] === 'uninitialized') {
 hideWhilePlaying(props.config)
 
 const store = useNights()
-const dockRef = shallowRef<{ peek: (text: string, ms?: number) => void } | null>(null)
+const dockRef = shallowRef<{ peek: (text: string, ms?: number) => void, unpeek: () => void } | null>(null)
 // The map chip stays this long after you leave a map.
 const CHIP_MS = 8000
+// "Until the next map" still lets go after this long.
+const UNTIL_MAP_MS = 2 * 3_600_000
+const chipMs = () => {
+  const s = props.config.chipSeconds
+  return s === 0 ? UNTIL_MAP_MS : typeof s === 'number' && s > 0 ? s * 1000 : CHIP_MS
+}
+// The toast in the middle of the screen, while it shows.
+const chip = shallowRef<{ rec: MapRecord, cmp: MapCompare } | null>(null)
+let chipTimer: ReturnType<typeof setTimeout> | undefined
+function showChip (rec: MapRecord, cmp: MapCompare, ms: number) {
+  clearTimeout(chipTimer)
+  chip.value = { rec: { ...rec, npcs: [...rec.npcs] }, cmp }
+  chipTimer = setTimeout(() => { chip.value = null }, ms)
+}
+onUnmounted(() => { clearTimeout(chipTimer) })
+// The dock is showing the map line (not the night's summary).
+let chipPeek = false
+function closeChip () {
+  clearTimeout(chipTimer)
+  chip.value = null
+  if (chipPeek) dockRef.value?.unpeek()
+  chipPeek = false
+}
+// The close hotkey (Settings).
+const chipKeySub = MainProcess.onEvent('MAIN->CLIENT::widget-action', (e) => {
+  if (e.target === CHIP_CLOSE_TARGET) closeChip()
+})
+onUnmounted(() => { chipKeySub.abort() })
 // A finished night shows on the dock for this long.
 const RECENT_MS = 12 * 3_600_000
 
@@ -79,9 +128,18 @@ const mapLog = new MapLog({
   onLeave: (rec) => {
     if (!live) return
     const place = props.config.chipPlace ?? 'dock'
-    // The note in the middle never takes the mouse: clicks go to the game.
-    if (place === 'center') toast(chipText(rec), { center: true, ms: CHIP_MS })
-    else if (place === 'dock') dockRef.value?.peek(chipText(rec), CHIP_MS)
+    // The note in the middle takes the mouse only with "Click closes it" on,
+    // and only while the cursor is over it.
+    if (place === 'center') showChip(rec, compareMap(rec, store.maps.value), chipMs())
+    else if (place === 'dock') {
+      dockRef.value?.peek(chipText(rec), chipMs())
+      chipPeek = true
+    }
+  },
+  // Into a map: a line set to stay until then goes, and so does a clickable
+  // one (a click on it in a fight would close it by accident).
+  onEnter: () => {
+    if (live && (props.config.chipSeconds === 0 || props.config.chipClick === true)) closeChip()
   },
   onDone: (rec) => { store.addMap(rec).catch(() => {}) }
 })
@@ -91,7 +149,9 @@ const tracker = new NightTracker((draft) => {
   store.finish(draft).then(async (story) => {
     // The icon only shows once the saved night is drawn; a peek before that is dropped.
     await nextTick()
-    if (live) dockRef.value?.peek(peekText(story))
+    if (!live) return
+    dockRef.value?.peek(peekText(story))
+    chipPeek = false
   }).catch(() => {})
 })
 // Back after the module was off: carry on with the night it was reading.
@@ -199,17 +259,22 @@ function profitOf (s: NightStory): number | null {
   return s.profitChaos ?? farmOf(s)?.chaos ?? null
 }
 
-// "Fortress T16 · 6:42 ▼0:38 · 1 death · Einhar, Niko · Level 95"
+// One line on the dock: "Fortress T16 · 1:30 · 1h avg 2:15 (2) ▼0:45 · …"
 function chipText (rec: MapRecord): string {
-  const parts = [`${rec.name} ${tierText(rec.areaLevel)}`]
-  const usual = usualMapMs(store.maps.value)
-  const diff = usual != null ? rec.mapMs - usual : null
-  const delta = diff != null && Math.abs(diff) >= 5000 ? ` ${diff < 0 ? '▼' : '▲'}${formatClock(Math.abs(diff))}` : ''
-  parts.push(`${formatClock(rec.mapMs)}${delta}`)
-  if (rec.deaths) parts.push(`${rec.deaths} ${rec.deaths === 1 ? 'death' : 'deaths'}`)
-  if (rec.npcs.length) parts.push(rec.npcs.join(', '))
-  if (rec.levelsGained && rec.charLevel != null) parts.push(`Level ${rec.charLevel + rec.levelsGained}`)
-  return parts.join(' · ')
+  return chipLines(rec, compareMap(rec, store.maps.value), formatClock).join(' · ')
+}
+
+// The settings' preview: your last saved map, against the maps before it.
+const gearOpen = shallowRef(false)
+const cardGear = shallowRef(false)
+function showMe () {
+  const [last, ...before] = store.maps.value
+  if (!last) return
+  if ((props.config.chipPlace ?? 'dock') === 'center') showChip(last, compareMap(last, before), chipMs())
+  else {
+    dockRef.value?.peek(chipLines(last, compareMap(last, before), formatClock).join(' · '), chipMs())
+    chipPeek = true
+  }
 }
 
 function peekText (s: NightStory): string {
@@ -218,6 +283,7 @@ function peekText (s: NightStory): string {
   return `${formatDuration(s.endedAt - s.startedAt)} · ${s.maps.length} maps${profit}`
 }
 
+// Same choice as in Settings › Farming & sessions.
 const dockMenu = computed<DockMenuAction[]>(() => [{
   label: 'All nights',
   icon: 'fas fa-list',
@@ -226,6 +292,8 @@ const dockMenu = computed<DockMenuAction[]>(() => [{
 </script>
 
 <style module>
+.gear { padding: 0 2px; }
+.cardGear { padding: 4px var(--w-pad) 6px; border-top: 1px solid var(--w-line-soft); }
 .label { padding: 10px var(--w-pad) 2px; border-top: 1px solid var(--w-line); margin-top: 6px; }
 .row {
   display: flex;
