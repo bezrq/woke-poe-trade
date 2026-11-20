@@ -30,6 +30,7 @@ export interface NightDraft {
   lastAt: number
   segs: Seg[]
   deaths: Array<{ at: number, key: string }>
+  levels?: Array<{ char: string, level: number }>
   // The game was closed and opened again: the next night can start right away.
   endedByOpening?: boolean
 }
@@ -62,6 +63,10 @@ export interface NightStory {
   profitChaos: number | null
   divine: number | null
   best: { name: string, chaos: number } | null
+  // Characters that levelled: the level before the first level-up, and the last.
+  levelUps?: Array<{ char: string, from: number, to: number }>
+  // The longest time out of maps between two maps.
+  longestBreakMs?: number
   // Stash reads up to here count for this night (the next one starts after).
   stashTo?: number
   endedByOpening?: boolean
@@ -96,6 +101,8 @@ export class NightTracker {
         seg.name = ev.name
         seg.named = true
       }
+    } else if (ev?.kind === 'level' && this.draft) {
+      (this.draft.levels ??= []).push({ char: ev.charName, level: ev.level })
     } else if (!ev && this.draft) {
       const seg = this.draft.segs[this.draft.segs.length - 1]
       if (seg && slainName(line)) this.draft.deaths.push({ at, key: seg.key })
@@ -152,6 +159,20 @@ export function summarize (d: NightDraft, endedAt = d.lastAt): NightStory {
     if (prev && prev.map === part) prev.ms += ms
     else strip.push({ ms, map: part })
   })
+  // Only gaps with a map on both sides: not the time before the first or after the last.
+  let longestBreakMs = 0
+  strip.forEach((p, i) => {
+    if (p.map == null && i > 0 && i < strip.length - 1) longestBreakMs = Math.max(longestBreakMs, p.ms)
+  })
+  // Party members' level-ups are logged too: follow the first character
+  // that levels, as the run timer does.
+  const levelUps: Array<{ char: string, from: number, to: number }> = []
+  const mine = d.levels?.[0]?.char
+  for (const l of d.levels ?? []) {
+    if (l.char !== mine) continue
+    if (levelUps[0]) levelUps[0].to = Math.max(levelUps[0].to, l.level)
+    else levelUps.push({ char: l.char, from: l.level - 1, to: l.level })
+  }
   for (const death of d.deaths) {
     const idx = byKey.get(death.key)
     if (idx != null) maps[idx].deaths++
@@ -168,6 +189,8 @@ export function summarize (d: NightDraft, endedAt = d.lastAt): NightStory {
     profitChaos: null,
     divine: null,
     best: null,
+    levelUps,
+    longestBreakMs,
     endedByOpening: d.endedByOpening
   }
 }
@@ -182,6 +205,18 @@ export function keepNight (nights: NightStory[], story: NightStory): NightStory[
 export function isNightStory (v: unknown): v is NightStory {
   const n = v as NightStory
   return !!n && typeof n.id === 'string' && typeof n.startedAt === 'number' && Array.isArray(n.maps) && Array.isArray(n.strip)
+}
+
+// Profit from Farming sessions of the night (loot minus map costs, as
+// Session analytics counts them), or null when there were none. A session
+// belongs to the night it started in (or just before), never to two:
+// `nextStartedAt` is the next night's start.
+export function farmingProfit (night: Pick<NightStory, 'startedAt' | 'endedAt'>, nextStartedAt: number | null, sessions: Array<{ startedAt: number, endedAt: number, profit: number }>): { chaos: number, sessions: number } | null {
+  const inside = sessions.filter(s => s.startedAt + NIGHT_GAP_MS >= night.startedAt &&
+    s.startedAt <= night.endedAt + NIGHT_GAP_MS &&
+    (nextStartedAt == null || s.startedAt + NIGHT_GAP_MS < nextStartedAt))
+  if (!inside.length) return null
+  return { chaos: inside.reduce((n, s) => n + s.profit, 0), sessions: inside.length }
 }
 
 // The biggest single gain in stash changes between two times.
