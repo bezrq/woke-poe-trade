@@ -14,6 +14,11 @@ import { NODE_RADIUS } from '../pob-builds/passive-tree'
 import { pathTo } from './atlas-tree'
 import type { AtlasTreeModel } from './atlas-tree'
 
+// How far frame glow reaches past the lit lines. A shrunk picture's arcs
+// don't read, so whole branches show only by their frames (8 kept all of a
+// 150-point snip; 3 lost 13); unbounded, stray glow could run the tree.
+const GLOW_STEPS = 8
+
 export interface ShotRead {
   // Passives taken, start left out.
   nodes: number[]
@@ -97,16 +102,22 @@ export function readShots (model: AtlasTreeModel, lines: BuildLine[], lit: boole
     for (const id of group) taken.add(id)
     left = left.filter((_, j) => j !== i)
   }
-  // Lit frames next to what's taken, until no more join.
+  // Lit frames next to what's taken, at most GLOW_STEPS out from what the
+  // lines gave: blue icons inside unlit frames can read as glow too (the
+  // website's do, all of them; picture-worker.ts reads no frames there).
   const glows = new Set(ringIds.filter((_, i) => rings.some(r => r[i])))
   taken.add(model.start)
-  for (let grew = true; grew;) {
-    grew = false
-    for (const id of glows) {
-      if (taken.has(id) || !(model.links.get(id) ?? []).some(m => taken.has(m))) continue
-      taken.add(id)
-      grew = true
+  let edge = [...taken]
+  for (let step = 0; step < GLOW_STEPS && edge.length; step++) {
+    const next: number[] = []
+    for (const a of edge) {
+      for (const id of model.links.get(a) ?? []) {
+        if (!glows.has(id) || taken.has(id)) continue
+        taken.add(id)
+        next.push(id)
+      }
     }
+    edge = next
   }
   taken.delete(model.start)
   return { nodes: [...taken], joined, lines: on.filter(Boolean).length }
