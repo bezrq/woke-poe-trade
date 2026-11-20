@@ -56,7 +56,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, inject, onBeforeUnmount, watchEffect } from 'vue'
+import { computed, inject, onBeforeUnmount, watch, watchEffect } from 'vue'
 import type { ShallowRef } from 'vue'
 import { WInfo } from '../ui'
 import { useFold } from '../ui/fold'
@@ -68,7 +68,8 @@ import type { FilterOrGroup, ItemFilters, StatFilter } from '@/web/price-check/f
 import FilterAddMod from '@/web/price-check/filters/FilterAddMod.vue'
 
 // addMods: off on the bulk preset, which searches maps by type only.
-const props = defineProps<{ item: ParsedItem, stats?: FilterOrGroup[], filters?: ItemFilters, addMods?: boolean }>()
+// worth: the worth slot is filled (a Nightmare Map).
+const props = defineProps<{ item: ParsedItem, stats?: FilterOrGroup[], filters?: ItemFilters, addMods?: boolean, worth?: boolean }>()
 
 const open = useFold('map-mod-strip')
 
@@ -77,6 +78,16 @@ const result = computed(() => {
   if (!config || !config.stripOnPriceCheck || !isMapLike(props.item) || props.item.isUnidentified) return null
   return checkMap(props.item, config)
 })
+
+// With Worth running in the slot (a Nightmare Map), one of it and Trade search
+// is open at a time, so neither pushes the other out of the window (Guy, 2026-11-20).
+// The strip is reused from item to item, so it watches the worth prop rather
+// than checking once at setup.
+const worthOpen = useFold('nightmare-strip', true)
+const accordion = computed(() => !!props.worth && !!result.value)
+watch(accordion, (on) => { if (on && open.value && worthOpen.value) open.value = false }, { immediate: true })
+watch(open, (now) => { if (now && accordion.value) worthOpen.value = false })
+watch(worthOpen, (now) => { if (now && accordion.value) open.value = false })
 
 // Tells the price check which number rows the chips stand in for (CheckedItem.vue).
 const owns = inject<ShallowRef<ReadonlySet<string> | null> | null>('map-strip-owns', null)
