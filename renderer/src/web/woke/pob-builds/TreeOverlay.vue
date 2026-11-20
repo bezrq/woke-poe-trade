@@ -24,7 +24,9 @@ import { loadPassiveTree, passiveTreeArt, NODE_RADIUS } from './passive-tree'
 import type { TreeArt, TreeNode } from './passive-tree'
 import { markTreeOverlaySeen, registerTreeDrawer, treeOn, treeOverlaySeen } from './tree-toggle'
 import type { BuildLine, BuildPath } from './tree-overlay'
-import { isTreeHotkeyTarget, treeHotkeyOf } from './widget'
+import { POB_BUILDS_TYPE, isTreeHotkeyTarget, treeHotkeyOf } from './widget'
+import { AppConfig } from '@/web/Config'
+import { isWidgetTypeOn } from '../modules'
 import { atlasDrawer } from '../atlas/atlas-overlay-toggle'
 import type { PobTreeSpec } from './widget'
 
@@ -384,7 +386,11 @@ async function press () {
   if (on.value) { stop(); return }
   const atlas = atlasDrawer()
   if (atlas?.isOn()) { atlas.stop(); return }
-  if (!atlas?.ready()) { await start(); return }
+  if (!atlas?.ready()) {
+    // PoB builds off: the key is only here for the atlas drawing.
+    if (!isWidgetTypeOn(AppConfig(), POB_BUILDS_TYPE)) { note('Select an atlas strategy with a tree first.'); return }
+    await start(); return
+  }
   const build = Boolean(active.details.value)
   if (!build) { await atlas.start(); return }
   const tryAtlas = () => atlas.start(true)
