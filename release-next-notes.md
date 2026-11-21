@@ -21,3 +21,5 @@
 - Ctrl+Space search: "maps" opens Map history, and each map in the card has a Show button that opens Map history at that map's row. The tonight card can open Map history too.
 - Session story: tonight's night carries on after the app restarts. Before, a restart rebuilt it from the end of the game's log only, so the map count dropped back to about a dozen maps.
 - Session story no longer has a window of its own. Its dock icon is now called Session analytics and works the same way (tonight's card, the after-map line), and clicking it opens Session analytics. Its right-click menu has Map history and All nights.
+- Incarnation of Fear, Neglect and Dread fights (normal and Uber) no longer count as maps in Session story, the map toast, Map history, Farming and Net worth's map count. Boss runs now knows their arenas.
+- Ctrl+Space search: the tonight and "maps" cards only offer their Session analytics buttons while Session analytics is on, and the maps card says "Your last N maps" instead of claiming the last 2 days.
