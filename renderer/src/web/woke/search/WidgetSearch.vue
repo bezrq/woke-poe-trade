@@ -21,7 +21,7 @@
           <div ref="listEl" :class="$style.list" class="w-scroll">
             <template v-for="section in sections" :key="section.label">
               <div :class="$style.head">{{ section.label }}<template v-if="section.capped"> · first {{ PRICE_GROUP_LIMIT }}, keep typing</template></div>
-              <button v-for="e in section.entries" :key="e.id" v-item-tip="tipOf(e)" tabindex="-1" :class="[$style.res, { [$style.sel]: e === selected }]"
+              <button v-for="e in section.entries" :key="e.id" v-item-tip="tipOf(e)" :data-no-item-tip="e.kind === 'setting' ? 'a setting named after a mechanic or item, not the item itself' : undefined" tabindex="-1" :class="[$style.res, { [$style.sel]: e === selected }]"
                 :data-selected="e === selected || undefined" @click="selected = e" @dblclick="run(e)">
                 <WIcon v-if="e.kind === 'price'" :src="ninjaIcon(e.group.type, e.group.name) ?? ninjaArt(e.group.type, e.group.name)" size="md" />
                 <WIcon v-else-if="e.kind === 'item'" :src="e.info.icon" size="md" />
@@ -153,6 +153,7 @@ import { pressedKeys, sortKeys, isHotkeyTail, isModifierCode } from '../loot-fil
 import { whenIdle } from '../shared/perf'
 import { nudgeUiSize, uiSize } from '../ui/ui-size'
 import { PAGES } from '../settings/pages'
+import { settingsHits } from './settings-index'
 import { ICON_TOOL_NAMES, iconFor, parseWidgetTitle } from '../tab-bar/tools'
 import { pastedItemText } from './pasted-item'
 import { holdPricesForSearch, useSearchSnapshot } from '../market/price-index'
@@ -428,19 +429,22 @@ function commandEntries (): ActionEntry[] {
   return out
 }
 
-function settingEntries (): ActionEntry[] {
-  return PAGES.map(page => ({
+function settingEntries (q: string): ActionEntry[] {
+  return settingsHits(PAGES, q).map(hit => ({
     kind: 'setting' as const,
-    id: `s:${page.id}`,
-    name: page.name,
-    sub: 'Settings page',
-    icon: 'fas fa-cog',
-    about: `The ${page.name} page in Settings.`,
-    verb: 'Open settings',
+    id: hit.id,
+    name: hit.name,
+    sub: hit.sub,
+    icon: hit.label ? 'fas fa-sliders' : 'fas fa-cog',
+    about: hit.label
+      ? `${hit.label}, on the ${hit.page!.name} page in Settings.`
+      : hit.page ? `The ${hit.page.name} page in Settings. ${hit.page.description}` : 'The settings window, where you left it.',
+    verb: hit.label ? 'Go to the setting' : 'Open settings',
     action: () => {
       const settings = wm.widgets.value.find(w => w.wmType === 'settings')
       if (!settings) return
-      wm.setFlag(settings.wmId, `settings::page=${page.name}`, true)
+      if (hit.page) wm.setFlag(settings.wmId, `settings::page=${hit.page.id}`, true)
+      if (hit.label) wm.setFlag(settings.wmId, `settings::find=${hit.label}`, true)
       wm.show(settings.wmId)
     }
   }))
@@ -754,7 +758,7 @@ const sections = computed<Array<{ label: string, entries: Entry[], capped?: bool
     tools: searchNamed(toolEntries(), q, e => e.name),
     rest: [
       { label: 'Do it now', entries: searchNamed(commandEntries(), q, e => e.name) as Entry[] },
-      { label: 'Settings', entries: searchNamed(settingEntries(), q, e => e.name) as Entry[] }
+      { label: 'Settings', entries: settingEntries(q) as Entry[] }
     ],
     web: cardSections(cards, ['Search the web'])
   })
