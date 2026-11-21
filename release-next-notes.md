@@ -34,3 +34,4 @@
 - Price check: a Bulk button above the listings shows only sellers with 2 or more copies at one price. If fewer than 10 show, the click loads more listings (up to 100) right then; opening a check never loads extra.
 - Price check: Search bulk, next to Search, does both in one go: it searches with Bulk already on, loading more listings if fewer than 10 bulk sellers show.
 - Price check: the hideout and stash icons come first in each row, before the ×count, so they sit in one column.
+- After-map toast: maps where you went into a Starfall Crater (the Black Knight's fallen star) get a Starfall Crater chip, also shown in map history and Ctrl+Space search. The crater stays part of the map's run and time.
