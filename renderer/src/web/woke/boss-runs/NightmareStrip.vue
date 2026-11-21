@@ -16,7 +16,7 @@
         <span :title="c.name">{{ c.short }}</span>
         <span :class="$style.bar"><i :class="(c.profit ?? c.loot) >= 0 ? $style.barUp : $style.barDown" :style="{ width: barWidth(c) }" /></span>
         <b :class="(c.profit ?? c.loot) >= 0 ? 'w-up' : 'w-down'">{{ c.profit == null ? chaos(c.loot) : signed(c.profit) }}</b>
-        <!-- The vault this map spawns about half the time; a tag, not in profit (Guy's pick, 2026-11-21). -->
+        <!-- The vault this map can spawn; a tag, not in profit (Guy's pick, 2026-11-21). -->
         <span :class="$style.vault" :title="c.vault ? vaultTitle(c.vault) : undefined" :data-nightmare-vault="c.id">{{ c.vault?.short ?? '' }}</span>
       </template>
     </div>
@@ -39,9 +39,6 @@
           <span v-else class="w-faint" :title="r.note">varies</span>
         </div>
       </div>
-    </div>
-    <div v-if="open && gridOpen && bigTab === 'vaults' && vaultTable" :class="$style.note">
-      About {{ DEFAULT_NIGHTMARE_VAULT_CHANCE }}% of Nightmare maps spawn their boss's quadrant vault ({{ NIGHTMARE_VAULT_SOURCE }}). {{ TYPICAL_TIP }} Gems at level 1. Arkhon's Vault can also give a Nightmare Map.
     </div>
     <div v-if="open && gridOpen && (bigTab === 'frags' || !vaultTable)" :class="$style.wrap">
       <table :class="$style.grid">
@@ -107,7 +104,7 @@ import type { BossPrefs, DropRow } from './calc'
 import { DEFAULT_FRAGMENTS_PER_KILL, NIGHTMARE_MAP, NIGHTMARE_MAPS, nightmareBosses, UBER_FRAGMENTS } from './nightmare'
 import { BOSS_RUNS_TYPE } from './widget'
 import type { BossRunsWidget } from './widget'
-import { DEFAULT_NIGHTMARE_VAULT_CHANCE, loadVaults, nightmareMapsFor, NIGHTMARE_VAULT_SOURCE, rewardPrice, shortName, typicalPick, vaultForNightmare } from '../vaults/vaults'
+import { loadVaults, nightmareMapsFor, rewardPrice, shortName, typicalPick, vaultForNightmare } from '../vaults/vaults'
 import type { Vault, VaultTable } from '../vaults/vaults'
 
 const open = useFold('nightmare-strip', true)
@@ -162,8 +159,12 @@ onBeforeUnmount(onSharedDataChange(() => { vaultTable.value = null; readVaults()
 const bigTab = shallowRef<'frags' | 'vaults'>('frags')
 const TYPICAL_TIP = '~ = the estimated typical pick: the best of four offers, no weights are published.'
 const priceOf = (name: string, variant?: string) => px.value.price(name, variant)
-function vaultTitle (v: { name: string, typical: number | null }) {
-  return `${v.name}: about ${DEFAULT_NIGHTMARE_VAULT_CHANCE}% of maps spawn it · ~${chaos(v.typical)} typical pick`
+// The hover: the vault's reward options and their prices, dearest first (Guy, 2026-11-21).
+function vaultTitle (v: { id: string }) {
+  const b = vaultBlocks.value.find(x => x.id === v.id)
+  if (!b) return undefined
+  const lines = b.rewards.map(r => `${r.text}${r.rare ? ' (rare)' : ''}: ${r.chaos != null ? chaos(r.chaos) : 'varies'}`)
+  return [`${b.name} · ${b.quadrant} · ~${chaos(b.typical)} typical pick`, ...lines].join('\n')
 }
 // Every vault, the ones these maps spawn first, best typical pick first.
 const vaultBlocks = computed(() => {
@@ -196,7 +197,7 @@ const copies = (d: DropRow) => (d.chance ?? 0) * d.qty
 
 function vaultOf (mapId: string) {
   const v = vaultTable.value ? vaultForNightmare(vaultTable.value, mapId) : null
-  return v ? { name: v.name, short: shortName(v), typical: typicalPick(v, priceOf) } : null
+  return v ? { id: v.id, name: v.name, short: shortName(v), typical: typicalPick(v, priceOf) } : null
 }
 const cols = computed(() => results.value.map(r => {
   const map = NIGHTMARE_MAPS.find(m => m.id === r.boss.id)!

@@ -9,8 +9,9 @@
 // - A vault can spawn after a pinnacle boss kill in its quadrant, in the boss's
 //   own arena (not Maven's invitations or Valdo maps).
 // - Nightmare (T17) maps spawn them too, which the wiki doesn't say (Guy,
-//   2026-11-21). His Client.txt, Nov 4-21: 107 of 198 Nightmare runs were
-//   followed by a vault (54%), always the map boss's quadrant vault: Fortress
+//   2026-11-21). How often depends on how you play, so the app shows no
+//   rate. His Client.txt, Nov 4-21: the vault was always the map boss's
+//   quadrant vault: Fortress
 //   -> Zealot's 102/182, Abomination -> Arkhon's 5/11, Ziggurat -> Scholar's
 //   1/2. Citadel -> Zealot's and Sanctuary -> Machinist's follow the same rule
 //   (their favoured fragments' fights) but weren't seen yet.
@@ -53,9 +54,6 @@ export interface VaultTable {
 
 export const OFFERS = 4
 export const RARE_WEIGHT = 0.1
-// Percent of Nightmare map runs followed by a vault (Guy's log, see above).
-export const DEFAULT_NIGHTMARE_VAULT_CHANCE = 54
-export const NIGHTMARE_VAULT_SOURCE = '107 of 198 Nightmare maps measured in Nov 2026'
 
 let job: Promise<VaultTable | null> | null = null
 onSharedDataChange(() => { job = null })
