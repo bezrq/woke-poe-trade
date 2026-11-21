@@ -16,6 +16,8 @@ export interface SessionStoryWidget extends Widget {
   chipClick?: boolean
   // The toast's size, set by dragging its corner; 1 = as designed.
   chipScale?: number
+  // Where the toast sits (its top centre, share of the screen), set by dragging its title bar.
+  chipPos?: { x: number, y: number }
   // Areas left out as maps, by the name the game logs (see skip-areas.ts); undefined: the defaults.
   skipAreas?: string[]
   // Session analytics › Map history also lists those areas (marked).
@@ -24,6 +26,8 @@ export interface SessionStoryWidget extends Widget {
   chipKey?: string | null
   // While in a map: a thin bar at the top with the map, its time so far and tonight's total. Off unless on.
   glance?: boolean
+  // Where the glance bar sits (its top centre, share of the screen), set by dragging it.
+  glancePos?: { x: number, y: number }
 }
 
 export const CHIP_CLOSE_TARGET = 'woke-session-story-chip'
