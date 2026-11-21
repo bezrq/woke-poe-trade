@@ -13,3 +13,4 @@
 - Nightmare map price check: each map shows the vault it can spawn (Fortress and Citadel: Zealot's, Abomination: Arkhon's, Ziggurat: Scholar's, Sanctuary: Machinist's), and the big view has a Vaults tab with each vault's rewards and prices.
 - Session analytics › Map history: a Vaults chip lists vault runs too (marked "not counted"); they stay out of the count and average.
 - Price check: listings now sort by real value. Chaos and divine prices (and other currencies) are compared at the current poe.ninja rate, so a 150c listing no longer shows after a 1 div one.
+- Session analytics: tonight's strip and totals (from Session story) now sit at the top of the window on every tab, and the window opens on Map history first. First step toward one Session window.

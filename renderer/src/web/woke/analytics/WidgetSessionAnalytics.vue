@@ -1,10 +1,12 @@
 <template>
   <Widget :config="config" move-handles="corners" :inline-edit="false" :readonly="true">
     <WPanel ref="panel" :keys="windowKeys.help" :title="config.wmTitle || 'Session analytics'" :icon="panelIcon" width="34rem" :busy="busy">
-      <template v-if="store.error.value" #banner>
-        <WBanner>Couldn't read your saved sessions: {{ store.error.value }}
+      <template v-if="store.error.value || storyOn" #banner>
+        <WBanner v-if="store.error.value">Couldn't read your saved sessions: {{ store.error.value }}
           <template #actions><WButton size="sm" @click="reload">Retry</WButton></template>
         </WBanner>
+        <!-- Tonight's strip and totals stay on top of every tab (Session story's card). -->
+        <div v-if="storyOn" :class="$style.tonight" data-analytics-tonight><TonightBand /></div>
       </template>
       <template #tabs>
         <WTabs v-model="tab" :options="tabOptions" />
@@ -184,7 +186,8 @@
         </template>
 
         <!-- ===== Stacked decks (woke/stacked-decks) ===== -->
-        <MapHistory v-else-if="tab === 'history'" :range="config.range" :league="league" :now="now" />
+        <!-- Only while the window is open: it reads every map day from disk, and the window mounts hidden at startup. -->
+        <template v-else-if="tab === 'history'"><MapHistory v-if="config.wmWants === 'show'" :range="config.range" :league="league" :now="now" /></template>
         <DeckHistory v-else-if="tab === 'decks'" :range="config.range" :unit="config.unit" :league="league" :now="now" />
 
         <!-- ===== Maps ===== -->
@@ -218,7 +221,7 @@ export default { widget: widgetSessionAnalyticsSpec }
 
 <script setup lang="ts">
 import { popupAnchor } from '../ui/window-anchor'
-import { inject, computed, shallowRef, watch } from 'vue'
+import { defineAsyncComponent, inject, computed, shallowRef, watch } from 'vue'
 import type { WidgetManager } from '@/web/overlay/interfaces'
 import Widget from '@/web/overlay/Widget.vue'
 import { formatDuration } from '../ui/format'
@@ -238,8 +241,8 @@ import { evaluateBoss, priceResolver } from '../boss-runs/calc'
 import { useSessionStore } from './store'
 import { tradeTotals, tradesInRange, useTradeLog } from '../trade/log-store'
 import { isModuleOn } from '../modules'
-import DeckHistory from '../stacked-decks/DeckHistory.vue'
 import MapHistory from '../session-story/MapHistory.vue'
+import DeckHistory from '../stacked-decks/DeckHistory.vue'
 import { useVisibleClock } from '../shared/visible-clock'
 import {
   MIN_UNITS_FOR_RANGE, buildRow, chanceBetter, exportRows, filterSessions, formatSessionDate,
@@ -247,6 +250,9 @@ import {
 } from './stats'
 import type { StrategyRow, Unit } from './stats'
 import type { AnalyticsWidget, MapRun, SessionRecord } from './types'
+// Tonight's card, from Session story's own chunk (already loaded when Session
+// story is on), so it adds nothing to startup.
+const TonightBand = defineAsyncComponent(() => import('../session-story/WidgetSessionStory.vue').then(m => m.TonightBand))
 // The header shows the module's own art, the same as the dock and tab bar.
 const panelIcon = moduleIcon('session-analytics').art ?? 'divine'
 
@@ -266,12 +272,16 @@ if (props.config.wmFlags[0] === 'uninitialized') {
   wm.show(props.config.wmId)
 }
 
-const tab = shallowRef<'strategies' | 'sessions' | 'maps' | 'history' | 'decks'>('strategies')
+const storyOn = computed(() => isModuleOn(AppConfig(), 'session-story'))
+// With Session story on, the window opens on the maps you ran: tonight's strip sits above them.
+const tab = shallowRef<'strategies' | 'sessions' | 'maps' | 'history' | 'decks'>(storyOn.value ? 'history' : 'strategies')
+// Session story turned off while its tab shows: back to Strategies.
+watch(storyOn, (on) => { if (!on && tab.value === 'history') tab.value = 'strategies' })
 const tabOptions = computed(() => [
+  ...(storyOn.value ? [{ value: 'history', label: 'Map history' }] : []),
   { value: 'strategies', label: 'Strategies' },
   { value: 'sessions', label: 'Sessions' },
   { value: 'maps', label: 'Maps' },
-  ...(isModuleOn(AppConfig(), 'session-story') ? [{ value: 'history', label: 'Map history' }] : []),
   ...(isModuleOn(AppConfig(), 'stacked-decks') ? [{ value: 'decks', label: 'Stacked decks' }] : [])
 ])
 const rangeOptions = [{ value: '7d', label: '7 days' }, { value: 'league', label: 'League' }, { value: 'all', label: 'All' }]
@@ -543,6 +553,7 @@ const tiles = computed(() => mapTileRows(inView.value, props.config.unit, divine
 </script>
 
 <style module>
+.tonight:not(:empty) { padding: 2px 0 8px; border-bottom: 1px solid var(--w-line); }
 .stratGrid { grid-template-columns: minmax(0, 1fr) 40px 40px 136px 52px; gap: 6px; }
 .sessGrid { grid-template-columns: 104px minmax(0, 1fr) 36px 52px 56px 52px; gap: 6px; }
 .tileGrid { grid-template-columns: minmax(0, 1fr) 36px 56px 56px 56px 48px; gap: 6px; }
