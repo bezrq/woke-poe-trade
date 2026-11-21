@@ -239,6 +239,7 @@ import type { GemTable } from './lookups/gems'
 import type { CardInfo } from './lookups/cards'
 import { loadTipBases, loadTipDrops, loadTipItems, loadTipUniques, loadTipVestigial } from '../ui/tooltip/item-tip'
 import { onSharedDataChange } from '../app/live-data'
+import { openReportDialog } from '../app/report'
 import { dropOf } from '../ui/tooltip/tip-content'
 import type { TipItem, TipPack } from '../ui/tooltip/tip-content'
 import { SEARCH_TARGET, searchRequest } from './widget'
@@ -449,6 +450,21 @@ function commandEntries (): ActionEntry[] {
       }
     })
   }
+  // The palette steps aside; the overlay stays open for the form.
+  out.push({
+    kind: 'command',
+    id: 'c:report-issue',
+    name: 'Report an issue',
+    sub: 'Bug or idea, on GitHub',
+    icon: 'fas fa-bug',
+    aliases: ['report', 'bug', 'issue', 'feedback', 'github', 'idea'],
+    about: 'Write up a bug or an idea. Opens a pre-filled GitHub issue in your browser; nothing is sent by itself.',
+    verb: 'Open',
+    action: () => {
+      wm.hide(props.config.wmId)
+      openReportDialog()
+    }
+  })
   return out
 }
 
@@ -776,7 +792,7 @@ const sections = computed<Array<{ label: string, entries: Entry[], capped?: bool
     .filter(g => !listed.has(groupKey(g)))
   const shownBases = new Set(bases.map(b => b.refName))
   const cards = lookupCards(q)
-  const commands = searchNamed(commandEntries(), q, e => e.name)
+  const commands = searchNamed(commandEntries(), q, e => bestName([e.name, ...(e.aliases ?? [])], q))
   // A command and a setting row of the same name ("Check for updates"): the command does more.
   const commandNames = new Set(commands.map(c => c.name.toLowerCase()))
   return arrangeSections<Entry>(q, {

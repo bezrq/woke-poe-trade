@@ -31,6 +31,9 @@
       <w-setting-row label="Crash reports folder">
         <w-button size="sm" @click="hostRequest('crash-folder', null)">Open folder</w-button>
       </w-setting-row>
+      <w-setting-row label="Report an issue" hint="A bug or an idea. Opens a pre-filled GitHub issue in your browser; nothing is sent by itself.">
+        <w-button size="sm" icon="fas fa-bug" @click="openReportDialog()">Report an issue…</w-button>
+      </w-setting-row>
     </w-setting-section>
     <w-setting-section title="Setup">
       <w-setting-row label="Setup window" hint="The first-run guide: finds the game log and picks modules. Opens as its own window.">
@@ -46,6 +49,7 @@ import { computed, shallowRef } from 'vue'
 import { WButton, WSettingRow, WSettingSection, WToggle } from '../ui'
 import { hostRequest } from '../shared/host'
 import { checkLine, runUpdateCheck, updateCheck } from './update-check'
+import { openReportDialog } from '../app/report'
 
 interface Prefs {
   version: string
