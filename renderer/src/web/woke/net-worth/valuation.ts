@@ -45,6 +45,10 @@ export interface Priced {
   variant?: string
   // A thin market: poe.ninja had no price on 3+ of its last 7 days.
   thin?: boolean
+  // Days of poe.ninja's last 7 with no price.
+  gaps?: number
+  // poe.ninja priced it today and on none of the days before (prices.ts).
+  oneDay?: boolean
 }
 export type PriceOf = (item: StashItemLike) => Priced | null
 
@@ -72,6 +76,12 @@ export interface ValuedLine {
   // poe.ninja's price jumped in a thin market: unitChaos is the last read's
   // price, held since then (see holdJump). ninjaChaos is the jumped one.
   heldSince?: number
+  // 'jump': a thin price jump, held up to 6 hours. 'one-day': a price poe.ninja
+  // has on only one day, not counted until it has a second (see holdJump).
+  heldKind?: HoldKind
+  // The last price from poe.ninja that could be trusted, kept through reads
+  // with no price or a held one (saved in the baseline as ref).
+  refChaos?: number
 }
 
 export interface Valuation {
@@ -120,7 +130,7 @@ function categoryOfFrame (frame: number): Category {
   return frame >= 1 && frame <= 4 ? 'gear' : 'other'
 }
 
-export interface ItemPrice { chaos: number, category: Category, graph?: Array<number | null>, ninja: number | null, mine: boolean, variant?: string, heldSince?: number }
+export interface ItemPrice { chaos: number, category: Category, graph?: Array<number | null>, ninja: number | null, mine: boolean, variant?: string, heldSince?: number, heldKind?: HoldKind, solid?: boolean }
 
 // ---------- price jumps in thin markets ----------
 // One fake listing can set a thin item's poe.ninja price: The Witch read
@@ -129,19 +139,41 @@ export interface ItemPrice { chaos: number, category: Category, graph?: Array<nu
 // hours. It takes the new price sooner once poe.ninja's comes back down or
 // the market stops being thin. Backtested on 3 days of poe.ninja prices: 2 in
 // 3 fakes were gone within 6 hours; a real rise shows up at most 6 hours late.
+//
+// A price poe.ninja has on only one of the last 7 days, at 10c or more, is
+// worse: The Web dropped off poe.ninja, came back at 28,886c (really 2c) and
+// stayed for over a day; an Alteration Shard read 214c for 29 hours. Such a
+// price doesn't count at all while it's 5x or more over the item's last solid
+// price (ref), or there is none, until poe.ninja prices it on a second day.
+// In 3 days of prices every card that did this was fake, and real one-day
+// prices (maps, scrying orbs) stayed near their earlier price.
 export const HOLD_RATIO = 5
 export const HOLD_MIN_JUMP = 1
 export const HOLD_MS = 6 * 3_600_000
+export const ONE_DAY_MIN = 10
+
+export type HoldKind = 'jump' | 'one-day'
 
 // The last read's price for an item, and since when it was held.
 export interface HoldGuard { before: Baseline | null, now: number }
 
-// The held price and since when, or null to take poe.ninja's.
-export function holdJump (ninja: number, thin: boolean | undefined, prev: Baseline[string] | undefined, now: number): { chaos: number, since: number } | null {
-  if (!thin || !prev || prev.mine || !(prev.unitChaos > 0)) return null
-  if (ninja < prev.unitChaos * HOLD_RATIO || ninja - prev.unitChaos < HOLD_MIN_JUMP) return null
-  const since = prev.heldSince ?? now
-  return now - since < HOLD_MS ? { chaos: prev.unitChaos, since } : null
+// The price to count instead and since when, or null to take poe.ninja's.
+// Gear (uniques, gems) is left to the jump rule: many trade on so few days
+// that poe.ninja's line is mostly empty, and those were real prices.
+export function holdJump (ninja: number, p: { thin?: boolean, oneDay?: boolean, category?: Category }, prev: Baseline[string] | undefined, now: number): { chaos: number, since: number, kind: HoldKind } | null {
+  const sinceFor = (kind: HoldKind) => prev?.heldSince != null && (prev.heldKind ?? 'jump') === kind ? prev.heldSince : now
+  // Only a solid price vouches for a one-day one: an older baseline's price
+  // may itself have been a fake.
+  const ref = prev?.ref != null && prev.ref > 0 ? prev.ref : null
+  if (p.oneDay && p.category !== 'gear' && ninja >= ONE_DAY_MIN && (ref == null || ninja >= ref * HOLD_RATIO)) {
+    return { chaos: ref ?? 0, since: sinceFor('one-day'), kind: 'one-day' }
+  }
+  if (!p.thin || !prev || prev.mine) return null
+  const base = ref ?? prev.unitChaos
+  if (!(base > 0) || ninja < base * HOLD_RATIO || ninja - base < HOLD_MIN_JUMP) return null
+  // A one-day hold that ended gets the full 6 hours as a jump.
+  const since = sinceFor('jump')
+  return now - since < HOLD_MS ? { chaos: base, since, kind: 'jump' } : null
 }
 
 // One item's price with your prices on top. null: no price.
@@ -154,9 +186,12 @@ export function priceItem (item: StashItemLike, priceOf: PriceOf, prefs: PricePr
     return { chaos: own, category: ninja?.category ?? categoryOfFrame(item.frame), graph: ninja?.graph, ninja: ninjaChaos, mine: true, variant: ninja?.variant }
   }
   if (!ninja || ninjaChaos == null) return null
-  const held = guard ? holdJump(ninjaChaos, ninja.thin, guard.before?.[key], guard.now) : null
+  const held = guard ? holdJump(ninjaChaos, ninja, guard.before?.[key], guard.now) : null
   const out: ItemPrice = { chaos: held?.chaos ?? ninjaChaos, category: ninja.category, graph: ninja.graph, ninja: ninjaChaos, mine: false, variant: ninja.variant }
-  if (held) out.heldSince = held.since
+  if (held) {
+    out.heldSince = held.since
+    out.heldKind = held.kind
+  } else if (!ninja.oneDay) out.solid = true
   return out
 }
 
@@ -230,7 +265,12 @@ export function valueStash (tabs: StashTabLike[], priceOf: PriceOf, prefs: Price
           ninjaChaos: price?.ninja ?? null,
           state: off ? 'ignored' : price ? undefined : 'unpriced'
         }
-        if (price?.heldSince != null) line.heldSince = price.heldSince
+        if (price?.heldSince != null) {
+          line.heldSince = price.heldSince
+          line.heldKind = price.heldKind
+        }
+        const ref = price?.solid ? price.chaos : guard?.before?.[key]?.ref
+        if (ref != null && ref > 0) line.refChaos = ref
         into.set(key, line)
       }
       if (tab.id && !line.tabIds.includes(tab.id)) line.tabIds.push(tab.id)
@@ -253,7 +293,8 @@ export function valueStash (tabs: StashTabLike[], priceOf: PriceOf, prefs: Price
 // cat: where the item belongs (older baselines lack it).
 // heldSince: the price is held (holdJump) since then.
 // mine: unitChaos is your own price, so it isn't the last poe.ninja price.
-export type Baseline = Record<string, { name: string, icon: string, count: number, unitChaos: number, cat?: Category, heldSince?: number, mine?: boolean }>
+// ref: the last solid poe.ninja price (ValuedLine.refChaos); older baselines lack it.
+export type Baseline = Record<string, { name: string, icon: string, count: number, unitChaos: number, cat?: Category, heldSince?: number, heldKind?: HoldKind, mine?: boolean, ref?: number }>
 
 // Marks a baseline that holds unpriced and ignored items too (see diffStash).
 export const BASELINE_V2 = '\u0000v2'
@@ -267,7 +308,11 @@ export function baselineOf (v: Valuation): Baseline {
     out[l.key] = { name: l.name, icon: l.icon, count: (had?.count ?? 0) + l.count, unitChaos: Math.max(had?.unitChaos ?? 0, l.unitChaos), cat: l.category }
     const since = l.heldSince ?? had?.heldSince
     if (since != null) out[l.key].heldSince = since
+    const kind = l.heldKind ?? had?.heldKind
+    if (kind) out[l.key].heldKind = kind
     if (l.mine || had?.mine) out[l.key].mine = true
+    const ref = l.refChaos ?? had?.ref
+    if (ref != null) out[l.key].ref = ref
   }
   return out
 }
