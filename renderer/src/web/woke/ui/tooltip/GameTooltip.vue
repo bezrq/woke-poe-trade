@@ -82,7 +82,7 @@
           <div><span :class="$style.label">Item Level: </span><span :class="$style.value">{{ item.itemLevel }}</span></div>
         </section>
         <section v-if="item.implicits.length" :class="$style.block">
-          <div v-for="(m, i) in item.implicits" :key="i" :class="$style.mod">{{ m }}</div>
+          <div v-for="(m, i) in item.implicits" :key="i" :class="item.implicitKinds?.[i] === 'vestigial' ? $style.vestigial : $style.mod">{{ m }}</div>
         </section>
         <section v-if="tieredMods" :class="$style.block">
           <ListingModGroup :group="{ heading: '', lines: tieredMods }" />
@@ -520,6 +520,7 @@ onUnmounted(() => {
 .mod { color: var(--w-r-magic); }
 .crafted { color: var(--w-mod-crafted); }
 .fractured { color: var(--w-mod-fractured); }
+.vestigial { color: var(--w-mod-vestigial); }
 .corrupted { color: var(--w-down); }
 .note { color: var(--w-dim); font-family: var(--w-body); font-size: var(--w-fs-sm); white-space: pre-line; }
 .sockets { display: flex; align-items: center; justify-content: center; gap: 8px; }

@@ -161,7 +161,8 @@ export default defineComponent({
 
     const baseName = computed(() => {
       const { item, filters } = props
-      if (item.uniqueBase) return item.uniqueBase.name
+      // The game names the base "Vestigial Great Crown".
+      if (item.uniqueBase) return item.isVestigial ? `Vestigial ${item.uniqueBase.name}` : item.uniqueBase.name
       if (filters.searchRelaxed) return ''
       return (item.info.name !== label.value) ? item.info.name : ''
     })
