@@ -59,6 +59,12 @@ export function fixedPriceItem (item: FixedItem): boolean {
   return item.itemLevel == null || info.refName.endsWith('Wombgift')
 }
 
+/** An unidentified unique jewel the price check has a unique for (picked or guessed, WOKEPOET-481). */
+export function isUnidUniqueJewel (item: { rarity?: string, isUnidentified: boolean, uniqueBase?: unknown, category?: string }): boolean {
+  return item.rarity === 'Unique' && item.isUnidentified && item.uniqueBase != null &&
+    (item.category === 'Jewel' || item.category === 'Abyss Jewel')
+}
+
 // ---- How a poe.ninja price reads on the instant card and the verdict ----
 
 function num (v: number): string {
