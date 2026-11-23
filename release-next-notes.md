@@ -1,5 +1,6 @@
 # Next release notes
 
+- Net worth's stash reader is no longer hidden: its switch is in Settings › Modules › Economy for everyone (Ctrl+Space "net worth" or "stash reader" finds it). It's still off until you turn it on and still asks first, saying it uses a pathofexile.com page GGG doesn't support for tools; the row reads "Unofficial" and the warning banner under it is gone. The 5 clicks on Economy now only show the AI link.
 - Price check: the small poe.ninja card, the poe.ninja verdict and the exchange verdict show chaos and divine prices with the currency's icon instead of "c" and "div".
 - Price check: right-clicking Links for the socket colour tiles no longer pushes iLvl and Quality off the window's right edge; the numbers wrap onto a second row.
 - Divination cards: where they drop. Ctrl+Space on a card shows a Drops in section with its atlas maps (with tier), other sources such as bosses and campaign zones, the lowest area level and how rare it is (1 in 121k cards for The Doctor, by stacked-deck weights). Hover a map for every card in it with prices. Type a map's name ("burial chambers") to list the cards that drop there, dearest first. The card's small price check shows its maps too. Sources come from the community Divcord sheet, rarity from the Prohibited Library's stacked-deck weights.
