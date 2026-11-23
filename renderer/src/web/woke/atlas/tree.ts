@@ -9,6 +9,8 @@ export interface DecodedTree {
   version: number
   nodes: number[]
   masteries: Array<{ node: number, effect: number }>
+  // The nodes come sorted by id, not in the order taken (poeatlasplanner).
+  sorted?: boolean
 }
 
 function base64UrlToBytes (code: string): Uint8Array {
@@ -27,6 +29,9 @@ export function extractTreeCode (input: string): string | null {
   let code = trimmed
   try {
     const url = new URL(trimmed)
+    // poeatlasplanner.com keeps its code in the hash: #p=<code>
+    const planner = /poeatlasplanner\.com$/i.test(url.hostname) ? /(?:^#|&)p=([^&]+)/.exec(url.hash) : null
+    if (planner) return /^[A-Za-z0-9_-]+$/.test(planner[1]) ? planner[1] : null
     const parts = url.pathname.split('/').filter(Boolean)
     code = parts[parts.length - 1] ?? ''
   } catch {}
@@ -47,6 +52,7 @@ export function decodeTree (input: string): DecodedTree {
   const bytes = base64UrlToBytes(code)
   const view = new DataView(bytes.buffer)
   if (bytes.length < 7) throw new Error('Tree link is too short')
+  if (isAtlasPlanner(bytes)) return decodeAtlasPlanner(bytes)
   // GGG's u32 version always starts with a zero byte; poeplanner's doesn't.
   if (bytes[0] !== 0) {
     if (bytes[0] > 15 || bytes[1] !== 0) throw new Error('Not a tree link')
@@ -217,4 +223,67 @@ export function diffTrees (a: DecodedTree, b: DecodedTree): { added: number[], r
     added: b.nodes.filter(n => !sa.has(n)),
     removed: a.nodes.filter(n => !sb.has(n))
   }
+}
+
+// poeatlasplanner.com (#p= links): u8 format 2, then two length-prefixed
+// strings (game version "3.30.0", data version "3.30.0-r1"), then LEB128
+// varints: points, node count, each node id as the step from the previous
+// (sorted), then a pick count and (index into the nodes, effect) pairs.
+function isAtlasPlanner (bytes: Uint8Array): boolean {
+  if (bytes[0] !== 2 || bytes.length < 4) return false
+  const n = bytes[1]
+  return n > 0 && n < 32 && /^\d+\.\d+/.test(String.fromCharCode(...bytes.subarray(2, 2 + n)))
+}
+
+function decodeAtlasPlanner (bytes: Uint8Array): DecodedTree {
+  let pos = 1
+  for (let s = 0; s < 2; s++) {
+    if (pos >= bytes.length || pos + 1 + bytes[pos] > bytes.length) throw new Error('Tree link is cut short')
+    pos += 1 + bytes[pos]
+  }
+  const varint = () => {
+    let x = 0
+    let shift = 0
+    for (;;) {
+      if (pos >= bytes.length) throw new Error('Tree link is cut short')
+      const b = bytes[pos++]
+      x += (b & 127) * 2 ** shift
+      shift += 7
+      if (!(b & 128)) return x
+      if (shift > 28) throw new Error('Not a tree link')
+    }
+  }
+  const head = pos
+  // Points, then the node count; both 150 on a full tree, so which is which
+  // isn't sure: the one that reads the link to its exact end wins.
+  for (const countFirst of [false, true]) {
+    pos = head
+    try {
+      const a = varint()
+      const b = varint()
+      const count = countFirst ? a : b
+      if (count > 1024) throw new Error('Not a tree link')
+      const nodes: number[] = []
+      let id = 0
+      for (let i = 0; i < count; i++) {
+        id += varint()
+        if (id > 0xffff) throw new Error('Not a tree link')
+        nodes.push(id)
+      }
+      const masteries: Array<{ node: number, effect: number }> = []
+      if (pos < bytes.length) {
+        const picks = varint()
+        for (let i = 0; i < picks; i++) {
+          const at = varint()
+          const effect = varint()
+          if (nodes[at] != null) masteries.push({ node: nodes[at], effect })
+        }
+      }
+      if (pos !== bytes.length) throw new Error('Not a tree link')
+      return { version: 6, nodes, masteries, sorted: true }
+    } catch (err) {
+      if (countFirst) throw err
+    }
+  }
+  throw new Error('Not a tree link')
 }
