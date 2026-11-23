@@ -1841,9 +1841,9 @@ function openFolder () {
   border: 1px solid var(--w-warn);
   border-radius: var(--w-r-sm);
   color: var(--w-warn);
-  font-size: calc(9px * var(--w-text-scale, 1));
+  font-size: var(--w-fs-xs);
   font-weight: 600;
-  line-height: calc(13px * var(--w-text-scale, 1));
+  line-height: calc(14px * var(--w-text-scale, 1));
   letter-spacing: 0.04em;
   text-transform: uppercase;
   vertical-align: 1px;
