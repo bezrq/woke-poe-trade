@@ -8,6 +8,61 @@
     </template>
     <template v-else>
       <div v-if="status?.error && status.error.kind !== 'signed-out'" class="text-xs" :class="$style.warn">{{ status.error.message }}</div>
+      <!-- Pick Q1: while a run goes, the card opens on it; Net worth is a click away. -->
+      <WSegmented v-if="run" :model-value="tab" :options="TAB_OPTIONS" data-card-tabs @update:model-value="tab = $event === 'worth' ? 'worth' : 'run'" />
+      <template v-if="run && tab === 'run'">
+        <div :class="$style.runHead" data-card-run>
+          <b class="w-trunc" :class="$style.runName">{{ run.name }}</b>
+          <span class="w-dim w-num text-xs">{{ runFor }} · {{ run.maps }} {{ run.maps === 1 ? 'map' : 'maps' }}</span>
+        </div>
+        <div :class="$style.total">
+          <b class="w-num" :class="tone(run.profitChaos)" data-card-run-profit>{{ signed(toDiv(run.profitChaos)) }}<Coin :chaos="!divineRate" /></b>
+          <span class="w-dim text-xs">profit</span>
+        </div>
+        <template v-if="run.faustusChaos">
+          <div :class="$style.kv" title="Listed at Faustus during the run, sold and not collected yet, and items held outside"><span>Outside the stash</span><span class="w-num" :class="tone(run.faustusChaos)">{{ signed(toDiv(run.faustusChaos)) }}<Coin :chaos="!divineRate" /></span></div>
+          <div :class="$style.kv" data-card-run-total><span :class="$style.gold">Total</span><span class="w-num" :class="tone(run.profitChaos + run.faustusChaos)">{{ signed(toDiv(run.profitChaos + run.faustusChaos)) }}<Coin :chaos="!divineRate" /></span></div>
+        </template>
+        <div :class="$style.stats" class="w-dim w-num text-xs" data-card-run-stats>
+          <span v-if="run.maps">{{ signed(toDiv(run.profitChaos / run.maps)) }}<Coin :chaos="!divineRate" />/map</span><span v-else>No maps yet</span>
+          <span v-if="perHour != null" :title="withHub ? 'Per hour of the whole run' : 'Per hour, hideout and town time left out'">{{ signed(toDiv(perHour)) }}<Coin :chaos="!divineRate" />/h</span><span v-else>Per hour after 10 min</span>
+          <span v-if="run.costPerMapChaos != null">Costs {{ div(run.costPerMapChaos) }}<Coin :chaos="!divineRate" />/map</span>
+        </div>
+        <!-- Where the run's time went (Client.txt): maps, hideout and town, away. -->
+        <template v-if="time">
+          <div :class="$style.timeBar" data-card-run-time>
+            <i v-for="p in time.parts" :key="p.id" :class="$style[p.id]" :style="{ flexGrow: p.ms }" :title="`${p.label}: ${formatDuration(p.ms)}`" />
+          </div>
+          <div :class="$style.timeKey" class="w-dim w-num text-xs">
+            <span v-for="p in time.parts" :key="p.id"><i :class="[$style.dot, $style[p.id]]" />{{ p.label }} {{ formatDuration(p.ms) }}</span>
+            <WToggle :model-value="withHub" :class="$style.hubToggle" title="Count hideout and town time in the run's per hour" data-card-run-hub @update:model-value="emit('run-hub', $event)">Count hideout</WToggle>
+          </div>
+        </template>
+        <!-- What brought the most in (the stash's tally since the start). -->
+        <template v-if="topCame.length">
+          <div :class="$style.caps">Most income</div>
+          <div v-for="r in topCame" :key="r.key" :class="$style.row" data-card-run-came>
+            <img v-if="r.line.icon" :src="r.line.icon" alt="" :class="$style.art"><span v-else :class="$style.art" />
+            <span v-item-tip="tipFor(tips, r.key, r.line.name, Math.abs(r.net))" class="w-trunc">{{ r.net > 1 ? `${fmt(r.net)} × ` : '' }}{{ r.line.name }}</span>
+            <span class="w-num w-up" :title="inChaos(r.netChaos)">{{ signed(toDiv(r.netChaos)) }}</span>
+          </div>
+        </template>
+        <button type="button" :class="$style.fold" title="Show Net worth" data-card-fold @click="tab = 'worth'">
+          <span class="w-dim">Net worth</span>
+          <b v-if="v" class="w-num">{{ div(v.chaos) }}<Coin :chaos="!divineRate" /></b>
+          <span v-if="today != null" class="w-num text-xs" :class="tone(today)">{{ today >= 0 ? '▲' : '▼' }} {{ signed(today) }} today</span>
+          <i class="fas fa-chevron-right w-dim" :class="$style.chev" />
+        </button>
+        <div :class="$style.foot">
+          <button type="button" :class="[$style.refresh, $style.left, $style.stop]" data-card-stop :disabled="!canStop"
+            :title="canStop ? 'Stop the run: reads your Faustus listings, then keeps the summary' : 'Waiting for Net worth to load'" @click="stopClick">
+            <i class="fas fa-stop" /> {{ stopping ? 'Stopping…' : confirmStop ? 'Stop the run?' : 'Stop' }}
+          </button>
+          <button type="button" :class="[$style.refresh, $style.left]" data-card-open-run @click="emit('open-run')">Open run</button>
+          <span class="w-dim text-xs" :class="$style.readEnd">{{ readLine }}</span>
+        </div>
+      </template>
+      <template v-else>
       <template v-if="status?.lastReadAt">
         <div v-if="v" :class="$style.total">
           <b class="w-num">{{ div(v.chaos) }}<Coin :chaos="!divineRate" /></b>
@@ -43,6 +98,7 @@
           {{ status?.running ? (status.progress ? `reading ${status.progress.done}/${status.progress.total}` : 'reading…') : waitMs > 0 ? `in ${Math.ceil(waitMs / 60_000)} min` : 'Refresh' }}
         </button>
       </div>
+      </template>
     </template>
   </div>
 </template>
@@ -50,13 +106,17 @@
 <script setup lang="ts">
 // Loaded the first time the card opens, with the window's data (store.ts).
 import { computed, onMounted, onUnmounted, shallowRef, watch } from 'vue'
-import { WSegmented, vItemTip } from '../ui'
+import { WSegmented, WToggle, vItemTip } from '../ui'
 import { tipFor, tipIndex } from './tips'
-import { agoPhrase, formatAmount } from '../ui/format'
+import { agoPhrase, formatAmount, formatDuration } from '../ui/format'
 import { divine as divineRate, historyNow, ledger, onStatus, ratesAt, pricePrefs, setLeague, stashNow, summary, valuation, wantPrices } from './store'
 import { bigGains, refreshWaitMs, seriesFor, topCardChanges } from './ledger'
 import type { SeriesPoint } from './ledger'
 import type { ReaderStatus } from './widget'
+import type { RunGlance } from './runs'
+import { tallyRows } from './runs'
+import { loadRuns, runsDoc } from './run-store'
+import { runTimeIn } from './run-time'
 import Coin from './Coin.vue'
 import LedgerChart from './LedgerChart.vue'
 import { RATE_WINDOWS, rateTip, startOfDay } from './play-time'
@@ -69,8 +129,14 @@ const props = defineProps<{
   withHub?: boolean
   // The per hour window picked (here or in the window).
   rateWindow?: RateWindow
+  // The run going (its saved glance), or null.
+  run?: RunGlance | null
+  // Stop pressed, until the run is saved stopped.
+  stopping?: boolean
+  // The run's per hour counts hideout and town time.
+  runWithHub?: boolean
 }>()
-const emit = defineEmits<{ (e: 'refresh' | 'settings'): void, (e: 'window', w: RateWindow): void }>()
+const emit = defineEmits<{ (e: 'refresh' | 'settings' | 'stop' | 'open-run'): void, (e: 'window', w: RateWindow): void, (e: 'run-hub', on: boolean): void }>()
 
 // The clock for "in N min" and "3h ago": only while the card is shown.
 const now = shallowRef(Date.now())
@@ -131,6 +197,61 @@ const rate = computed(() => {
   return { div: !sameLeague.value || x.perHour == null ? null : toDiv(x.perHour), tip: rateTip(win.value, x, r.fromLog, amount, r.withHub) }
 })
 
+// ---------- the run going (pick Q1) ----------
+const TAB_OPTIONS = [{ value: 'run', label: 'Run' }, { value: 'worth', label: 'Net worth' }]
+const tab = shallowRef<'run' | 'worth'>('run')
+const runFor = computed(() => props.run ? formatDuration(Math.max(0, now.value - props.run.startAt)) : '')
+// Stopping keeps totals from the chart's reads: wait for them to load.
+const canStop = computed(() => sameLeague.value && ledger.value.points.length > 0 && !props.stopping)
+// Two clicks: a stopped run can't be resumed.
+const confirmStop = shallowRef(false)
+let confirmTimer: ReturnType<typeof setTimeout> | undefined
+function stopClick () {
+  if (!canStop.value) return
+  if (!confirmStop.value) {
+    confirmStop.value = true
+    clearTimeout(confirmTimer)
+    confirmTimer = setTimeout(() => { confirmStop.value = false }, 3000)
+    return
+  }
+  clearTimeout(confirmTimer)
+  confirmStop.value = false
+  emit('stop')
+}
+onUnmounted(() => { clearTimeout(confirmTimer) })
+// The run's saved doc, for its tally.
+watch(() => props.run ? props.league : null, (l) => { if (l) loadRuns(l).catch(() => {}) }, { immediate: true })
+const liveDoc = computed(() => props.run && runsDoc.value.live?.league === props.league && runsDoc.value.live.startAt === props.run.startAt ? runsDoc.value.live : null)
+const topCame = computed(() => liveDoc.value ? tallyRows(liveDoc.value).came.slice(0, 3) : [])
+// Time in each state from the start to the last stash read (the stretch the
+// run's profit covers): read when the card opens and after each read.
+const spent = shallowRef<Record<'map' | 'play' | 'hub' | 'off', number> | null>(null)
+watch(() => props.run ? [props.run.startAt, props.run.at] as const : null, (span) => {
+  if (!span) { spent.value = null; return }
+  const [from, to] = span
+  runTimeIn(from, to).then((t) => { if (props.run?.startAt === from && props.run.at === to) spent.value = t }).catch(() => {})
+}, { immediate: true })
+const time = computed(() => {
+  const t = spent.value
+  if (!t) return null
+  const parts = [
+    { id: 'map', label: 'Maps', ms: t.map + t.play },
+    { id: 'hub', label: 'Hideout', ms: t.hub },
+    { id: 'off', label: 'Away', ms: t.off }
+  ].filter(p => p.ms >= 60_000)
+  return parts.length ? { parts, ...t } : null
+})
+const withHub = computed(() => props.runWithHub !== false)
+// Hideout left out: profit over the time in maps and other zones only
+// (away, closed or AFK, is left out too).
+const perHour = computed(() => {
+  const r = props.run
+  if (!r) return null
+  if (withHub.value || !spent.value) return r.perHourChaos
+  const ms = spent.value.map + spent.value.play
+  return ms >= 10 * 60_000 ? r.profitChaos / (ms / 3_600_000) : null
+})
+
 const fmt = (n: number) => formatAmount(n)
 const toDiv = (chaos: number) => divineRate.value ? chaos / divineRate.value : chaos
 const div = (chaos: number) => {
@@ -156,5 +277,24 @@ const tone = (n: number | null | undefined) => n == null || n === 0 ? 'w-dim' : 
 .refresh:hover:not(:disabled) { border-color: var(--w-gold); }
 .refresh:disabled { opacity: .55; cursor: default; }
 .warn { color: var(--w-warn); }
+.runHead { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+.runName { font-family: var(--w-caps-face); color: var(--w-gold); font-weight: 500; min-width: 0; }
+.kv { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; border-bottom: 1px solid var(--w-line); padding-bottom: 2px; }
+.gold { color: var(--w-gold); }
+.stats { display: flex; flex-wrap: wrap; gap: 2px 12px; }
+.fold { display: flex; align-items: baseline; gap: 8px; padding: 4px 0 0; border: 0; border-top: 1px solid var(--w-line); background: none; color: var(--w-fg); cursor: pointer; text-align: left; font: inherit; }
+.fold:hover .chev { color: var(--w-gold); }
+.chev { margin-left: auto; font-size: var(--w-fs-xs); }
+.left { margin-left: 0; }
+.stop:not(:disabled) { color: var(--w-down); }
+.readEnd { margin-left: auto; }
+.timeBar { display: flex; height: 6px; gap: 1px; border-radius: var(--w-r-sm); overflow: hidden; }
+.timeBar i { display: block; min-width: 2px; }
+.map { background: var(--w-up); }
+.hub { background: var(--w-gold); }
+.off { background: var(--w-line-strong); }
+.timeKey { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 10px; }
+.dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 4px; }
+.hubToggle { margin-left: auto; }
 .link { align-self: flex-start; color: var(--w-gold); text-decoration: underline; cursor: pointer; font-size: var(--w-fs-sm); }
 </style>

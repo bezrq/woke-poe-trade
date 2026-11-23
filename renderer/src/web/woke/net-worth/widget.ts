@@ -11,6 +11,9 @@ export const NET_WORTH_MODULE = 'net-worth'
 export interface NetWorthWidget extends Widget {
   anchor: Anchor
   hotkey: string | null
+  // Adds the hovered item to the run going, as held outside the stash
+  // (left out: RUN_HOLD_KEY; null: off).
+  runHotkey?: string | null
   dockIcon: boolean
   // "Hide < N div" and "Hide < N c" in the item table, each on or off. Defaults
   // 1 div and 10 c, both off. On a row's total, not each.
@@ -34,6 +37,8 @@ export interface NetWorthWidget extends Widget {
   // town time counted as play (default left out).
   rateWindow?: RateWindow
   rateWithHub?: boolean
+  // The dock card's run per hour counts hideout and town time (undefined: yes).
+  runWithHub?: boolean
   // Section sizes dragged under Details (layout.ts).
   layout?: PanelLayout
   // What the window shows: your stash (default) or your sales (pick C), and
@@ -92,11 +97,19 @@ export function parseHotkeyTarget (target: string): number | null {
   return m ? Number(m[1]) : null
 }
 
+export const RUN_HOLD_TARGET = 'woke-net-worth-run-hold'
+export const RUN_HOLD_KEY = 'Alt + H'
+export const runHotkeyOf = (w: NetWorthWidget): string | null => w.runHotkey === undefined ? RUN_HOLD_KEY : w.runHotkey
+
 // The hotkey also gives the overlay focus, so you can click right away.
 export function netWorthShortcuts (widget: Widget): ShortcutAction[] {
-  const key = (widget as NetWorthWidget).hotkey
-  if (!key) return []
-  return [{ shortcut: key, keepModKeys: true, action: { type: 'trigger-event', target: hotkeyTarget(widget.wmId), focusOverlay: true } }]
+  const w = widget as NetWorthWidget
+  const out: ShortcutAction[] = []
+  if (w.hotkey) out.push({ shortcut: w.hotkey, keepModKeys: true, action: { type: 'trigger-event', target: hotkeyTarget(widget.wmId), focusOverlay: true } })
+  // Strategy runs: the hovered item, held outside the stash (K1).
+  const hold = runHotkeyOf(w)
+  if (hold) out.push({ shortcut: hold, action: { type: 'copy-item', target: RUN_HOLD_TARGET } })
+  return out
 }
 
 // What main reports about reading (main/src/woke/personal/stash-reader.ts).

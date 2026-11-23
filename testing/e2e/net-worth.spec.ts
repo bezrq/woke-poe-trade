@@ -143,9 +143,41 @@ test('the stash reader turns on, reads the picked tabs, and Net worth prices the
     await panel.getByRole('button', { name: 'Per map', exact: true }).click()
     await expect(card.getByLabel('Strand Map per map')).toHaveValue('1')
     await overlay.snap('net worth strategy run')
+    // The run hotkey: the hovered item is held outside the stash, counted
+    // until the stash, a listing or a sale shows it.
+    fakeApp.focusGame(true)
+    await overlay.copyItem('items/card-the-doctor.txt', 'Alt + H')
+    await overlay.pressHotkey(overlay.config.overlayKey)
+    const heldRow = card.locator('[data-run-held]')
+    await expect(heldRow).toContainText('The Doctor')
+    await heldRow.getByText('The Doctor').hover()
+    await expect(overlay.page.getByRole('tooltip')).toContainText('The Doctor')
+    await overlay.page.mouse.move(0, 0)
     // Listed during the run, before Stop.
     listings = [listing('l1', 'Mageblood', 'Heavy Belt', new Date(Date.now() - 1000).toISOString(), 2), ...listings]
-    await card.getByRole('button', { name: 'Stop' }).click()
+    // Stop from the dock card's Run tab (pick Q1): two clicks.
+    fakeApp.focusGame(true)
+    const runTab = overlay.page.locator('[data-card-run]')
+    await expect(async () => {
+      await overlay.hoverDockIcon('net-worth')
+      await expect(runTab).toBeVisible({ timeout: 2000 })
+    }).toPass({ timeout: 20_000 })
+    await expect(runTab).toContainText('Nightmare maps')
+    await expect(overlay.page.locator('[data-card-run-total]')).toBeVisible()
+    // What brought the most in, with its item tooltip.
+    await expect(overlay.page.locator('[data-card-run-came]').first()).toContainText('The Apothecary')
+    await expect(overlay.page.locator('[data-card-run-came] [data-item-tip]').first()).toBeVisible()
+    await overlay.snap('net worth dock card run')
+    const stopBtn = overlay.page.locator('[data-card-stop]')
+    await stopBtn.click()
+    await expect(stopBtn).toContainText('Stop the run?')
+    // The confirm lapses after a few seconds: on a slow runner, arm it again.
+    await expect(async () => {
+      const label = await stopBtn.innerText().catch(() => '')
+      if (/Stop/.test(label) && !/Stopping/.test(label)) await stopBtn.click()
+      await expect(runTab).toHaveCount(0, { timeout: 4000 })
+    }).toPass({ timeout: 30_000 })
+    await overlay.pressHotkey(overlay.config.overlayKey)
     await expect(panel.locator('[data-past-run]').first()).toContainText('Nightmare maps')
     expect(searches).toHaveLength(2)
     expect(searches[0]).toContain('Tester#1234')
@@ -154,7 +186,7 @@ test('the stash reader turns on, reads the picked tabs, and Net worth prices the
     const listed = panel.locator('[data-run-listed]')
     await expect(listed).toHaveCount(1)
     await expect(listed).toContainText('Mageblood')
-    await expect(panel.locator('[data-run-total]')).toContainText('In Faustus')
+    await expect(panel.locator('[data-run-total]')).toContainText('Outside the stash')
     await listed.getByText('Mageblood').hover()
     await expect(overlay.page.getByRole('tooltip')).toContainText('Mageblood')
     await overlay.page.mouse.move(0, 0)

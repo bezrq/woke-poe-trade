@@ -4,7 +4,8 @@
       :badge="badge" :stack="stack" :glow="!!liveRun" :wheel="swapGlance" card-width="25rem" :menu="dockMenu" @open-change="cardOpen = $event">
       <template #card>
         <!-- Its data loads the first time the card opens, never at startup. -->
-        <NetWorthCard v-if="cardOpen && personalReady" :status="status" :league="leagueId" :with-hub="config.rateWithHub === true" :rate-window="config.rateWindow ?? '1h'" @window="config.rateWindow = $event" @refresh="refresh" @settings="openSettingsPage(wm, 'Game & league')" />
+        <NetWorthCard v-if="cardOpen && personalReady" :status="status" :league="leagueId" :with-hub="config.rateWithHub === true" :rate-window="config.rateWindow ?? '1h'" @window="config.rateWindow = $event" @refresh="refresh" @settings="openSettingsPage(wm, 'Game & league')"
+          :run="liveRun" :stopping="stopping" :run-with-hub="config.runWithHub !== false" @stop="stopLive" @open-run="openRun" @run-hub="config.runWithHub = $event" />
         <div v-else class="w-dim text-xs" style="padding: 6px var(--w-pad);">{{ cardText }}</div>
       </template>
     </DockItem>
@@ -39,7 +40,7 @@ import { hideWhilePlaying, openSettingsPage, showWithOverlay } from '../dock/doc
 import { popupAnchor } from '../ui/window-anchor'
 import { agoPhrase, nowMinute } from '../ui/format'
 import { hostRequest } from '../shared/host'
-import { parseHotkeyTarget } from './widget'
+import { RUN_HOLD_TARGET, parseHotkeyTarget } from './widget'
 import { DOCS, GLANCE_LABELS, glanceFromPoints, glanceKey, glanceText, isGlance, ledgerKey, nextShows } from './glance'
 import type { Glance } from './glance'
 import { isRunGlance, runGlanceKey } from './runs'
@@ -139,6 +140,21 @@ watch(leagueId, (league) => {
     .catch(() => {})
 }, { immediate: true })
 const liveRun = computed(() => runG.value && runG.value.league === leagueId.value ? runG.value : null)
+// The run hotkey (K1, run-hold.ts): listened to only while a run goes.
+let holdListener: AbortController | null = null
+watch(() => !!liveRun.value, (on) => {
+  holdListener?.abort()
+  holdListener = null
+  if (!on) return
+  holdListener = MainProcess.onEvent('MAIN->CLIENT::item-text', (e) => {
+    const league = leagueId.value
+    if (e.target !== RUN_HOLD_TARGET || !league) return
+    Promise.all([import('./run-hold'), store ? Promise.resolve(store) : import('./store')])
+      .then(([hold, s]) => hold.holdHovered(e.clipboard, league, s.ledger.value.points, s.divine.value))
+      .catch(() => {})
+  })
+}, { immediate: true })
+onUnmounted(() => { holdListener?.abort() })
 const stack = computed(() => {
   const r = liveRun.value
   if (r) return glanceText({ league: r.league, at: r.at, chaos: r.profitChaos, netChaos: r.profitChaos, divine: r.divine }, 'change', nowMinute.value)
@@ -183,6 +199,25 @@ const cardText = computed(() => {
 
 function refresh () {
   hostRequest('stash-reader-read', null, 15 * 60_000).catch(() => {})
+}
+
+// The card's Run tab (pick Q1): Stop, and Open run (the window's Runs view).
+const stopping = shallowRef(false)
+async function stopLive () {
+  const league = leagueId.value
+  if (!league || stopping.value) return
+  stopping.value = true
+  try {
+    const [s, rs] = await Promise.all([import('./store'), import('./run-stop')])
+    if (!s.ledger.value.points.length) return
+    await rs.stopLiveRun(league, s.ledger.value.points, s.divine.value)
+    // The store may not be watched here yet (it loads with the window).
+    if (leagueId.value === league) runG.value = s.runGlance.value
+  } catch {} finally { stopping.value = false }
+}
+function openRun () {
+  props.config.view = 'runs'
+  showWithOverlay(wm, props.config.wmId)
 }
 
 const dockMenu = computed<DockMenuAction[]>(() => [
