@@ -102,40 +102,77 @@ const toDiv = (chaos: number, rate: number | null, fallback: number | null) => {
   return r ? chaos / r : chaos
 }
 
-// A read whose value a price glitch moved and the next read moved back: the
-// price change into it (value change minus what came in) and out of it go
-// opposite ways, each over 25% of the value, and the second undoes at least
-// half the first. The Witch at 7,075c for one read doubled a net worth.
+// Reads whose value a price glitch moved and a later read moved back. From
+// the read before it, the price change so far (value change minus what came
+// in, summed) jumps over 25% of the value, stays that way, and within a day
+// falls back to half or less of its peak. Each read in between is drawn
+// without its own share of it, so drift during the glitch and a return in
+// steps are taken out too. The Witch at 7,075c for one read doubled a net
+// worth; Rain Tempter at 98 div held for an hour of reads (1,947 div for 476).
 const SPIKE_SHARE = 0.25
 const SPIKE_UNDONE = 0.5
+const SPIKE_MAX_MS = 24 * 3_600_000
 
-export function priceSpikes (points: LedgerPoint[]): Set<number> {
-  const out = new Set<number>()
+// Each glitched read and the chaos to take off it.
+export function priceGlitches (points: LedgerPoint[]): Map<number, number> {
+  const out = new Map<number, number>()
   for (let i = 1; i < points.length - 1; i++) {
-    const [a, p, b] = [points[i - 1], points[i], points[i + 1]]
-    if (out.has(a.at) || p.netChaos == null || b.netChaos == null) continue
-    const into = p.chaos - a.chaos - p.netChaos
-    const back = b.chaos - p.chaos - b.netChaos
-    const base = Math.max(a.chaos, b.chaos)
-    if (!(base > 0) || Math.sign(into) === Math.sign(back)) continue
-    if (Math.abs(into) < base * SPIKE_SHARE || Math.abs(back) < base * SPIKE_SHARE) continue
-    if (Math.min(Math.abs(into), Math.abs(back)) < Math.max(Math.abs(into), Math.abs(back)) * SPIKE_UNDONE) continue
-    out.add(p.at)
+    const a = points[i - 1]
+    if (!(a.chaos > 0)) continue
+    const excess: number[] = []
+    let net = 0
+    let peak = 0
+    let end = -1
+    for (let k = i; k < points.length && points[k].at - a.at <= SPIKE_MAX_MS; k++) {
+      const n = points[k].netChaos
+      if (n == null) break
+      net += n
+      const e = points[k].chaos - a.chaos - net
+      if (k === i) {
+        if (Math.abs(e) < a.chaos * SPIKE_SHARE) break
+        peak = e
+      } else if (Math.sign(e) !== Math.sign(peak) || Math.abs(e) <= Math.abs(peak) * SPIKE_UNDONE) {
+        // Back: whatever is left counts as a real move from the start.
+        if (Math.abs(peak) - Math.abs(e) >= a.chaos * SPIKE_SHARE) {
+          end = k
+          for (let m = 0; m < excess.length; m++) excess[m] -= e
+        }
+        break
+      } else if (Math.abs(e) > Math.abs(peak)) peak = e
+      excess.push(e)
+    }
+    if (end === -1) continue
+    excess.forEach((e, m) => out.set(points[i + m].at, e))
+    i = end - 1
   }
   return out
 }
 
-// A glitched read at the read before's prices: its value plus what came in,
-// each category scaled alike. What changed and spends stay.
+export function priceSpikes (points: LedgerPoint[]): Set<number> {
+  return new Set(priceGlitches(points).keys())
+}
+
+// A glitched read without the glitch, taken off the categories that rose
+// (or fell) with it since the read before. What changed and spends stay.
 function unglitched (points: LedgerPoint[]): LedgerPoint[] {
-  const spikes = priceSpikes(points)
-  if (!spikes.size) return points
+  const glitches = priceGlitches(points)
+  if (!glitches.size) return points
+  let before: LedgerPoint | null = null
   return points.map((p, i) => {
-    if (!spikes.has(p.at)) return p
-    const a = points[i - 1]
-    const chaos = Math.max(0, a.chaos + (p.netChaos ?? 0))
-    const k = a.chaos > 0 ? chaos / a.chaos : 0
-    const byCategory = Object.fromEntries(Object.entries(a.byCategory).map(([c, v]) => [c, v * k])) as Record<Category, number>
+    const off = glitches.get(p.at)
+    if (off == null) { before = p; return p }
+    const a = before ?? points[Math.max(0, i - 1)]
+    const chaos = Math.max(0, p.chaos - off)
+    const byCategory = { ...p.byCategory }
+    const moved = (Object.keys(byCategory) as Category[]).map(c => [c, byCategory[c] - (a.byCategory[c] ?? 0)] as const)
+    const same = moved.filter(([, d]) => Math.sign(d) === Math.sign(off))
+    const total = same.reduce((s, [, d]) => s + d, 0)
+    if (total !== 0) {
+      for (const [c, d] of same) byCategory[c] = Math.max(0, byCategory[c] - off * d / total)
+    } else {
+      const k = p.chaos > 0 ? chaos / p.chaos : 0
+      for (const c of Object.keys(byCategory) as Category[]) byCategory[c] *= k
+    }
     return { ...p, chaos, byCategory }
   })
 }

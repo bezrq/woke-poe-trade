@@ -193,12 +193,13 @@ describe('priceSpikes', () => {
   // Guy's reads on 2026-11-22: 4 pm doubled by The Witch and Rain Tempter.
   const reads = [p(1, 82955, 1137), p(2, 196339, -4288), p(3, 100436, 7824), p(4, 100673, 238)]
 
-  it('finds the 4 pm read and charts it at the read before\'s prices', () => {
+  it('finds the 4 pm read and charts it without the glitch', () => {
     expect([...priceSpikes(reads)]).toEqual([2])
     const s = seriesFor(reads, {}, 'league', 5, 214)
     expect(s.map(x => x.at)).toEqual([1, 2, 3, 4])
-    expect(s[1].div * 214).toBeCloseTo(82955 - 4288)
-    expect(s[1].byCategory.cards * 214).toBeCloseTo(82955 - 4288)
+    // The read after kept 13,945c of price rise: counted as real from the start.
+    expect(s[1].div * 214).toBeCloseTo(82955 - 4288 + 13945)
+    expect(s[1].byCategory.cards * 214).toBeCloseTo(82955 - 4288 + 13945)
     // What came in at that read still shows.
     expect(s[1].netDiv! * 214).toBeCloseTo(-4288)
   })
@@ -216,5 +217,55 @@ describe('priceSpikes', () => {
 
   it('finds a glitch down too', () => {
     expect([...priceSpikes([p(1, 1000, 0), p(2, 400, 0), p(3, 990, 0)])]).toEqual([2])
+  })
+})
+
+describe('price glitches over several reads', () => {
+  const cats = (cards: number, currency = 0) => ({ currency, fragments: 0, cards, gear: 0, other: 0 })
+  const p = (at: number, cards: number, netChaos: number | null, currency = 50000): LedgerPoint =>
+    ({ at, chaos: cards + currency, divine: 204, byCategory: cats(cards, currency), netChaos, top: [] })
+  // Guy's reads on 2026-11-23: Rain Tempter at 98 div lifted 476 div to
+  // about 1,947 div for an hour of reads (60 div spent at one), then fell back.
+  const fake = 300000
+  const reads = [
+    p(1, 47000, 0),
+    p(2, 47000 + fake, 0),
+    p(3, 47000 + fake, -12240, 37760),
+    p(4, 47000 + fake, 500, 38260),
+    p(5, 47000, 300, 38560),
+    p(6, 47000, 0, 38560)
+  ]
+
+  it('finds the whole run and charts it without the glitch, keeping what came and went', () => {
+    expect([...priceSpikes(reads)]).toEqual([2, 3, 4])
+    const s = seriesFor(reads, {}, 'league', 7, 204)
+    // The glitch: the price change into the first read (what came in kept).
+    const glitch = fake
+    for (const i of [1, 2, 3]) expect(s[i].div * 204).toBeCloseTo(reads[i].chaos - glitch)
+    expect(s[2].byCategory.cards * 204).toBeCloseTo(47000)
+    expect(s[2].byCategory.currency * 204).toBeCloseTo(37760)
+    expect(s[4].div * 204).toBeCloseTo(reads[4].chaos)
+    // What came in at each read still shows.
+    expect(s[2].netDiv! * 204).toBeCloseTo(-12240)
+  })
+
+  it('leaves a rise that stays, and a run broken by another big price move', () => {
+    expect(priceSpikes([p(1, 47000, 0), p(2, 347000, 0), p(3, 347000, 0), p(4, 350000, 0)]).size).toBe(0)
+  })
+
+  const q = (at: number, chaos: number, netChaos: number | null = 0): LedgerPoint => ({ at, chaos, divine: 204, byCategory: cats(chaos, 0), netChaos, top: [] })
+  const drawn = (pts: LedgerPoint[]) => seriesFor(pts, {}, 'league', 1e9, 204).map(x => Math.round(x.div * 204))
+
+  it('takes out drift during the glitch and a return in steps', () => {
+    expect(drawn([q(1, 100), q(2, 300), q(3, 400), q(4, 100)])).toEqual([100, 100, 100, 100])
+    expect(drawn([q(1, 100), q(2, 300), q(3, 260), q(4, 220), q(5, 100)])).toEqual([100, 100, 100, 100, 100])
+    // 300 -> 180 -> 100: the last step is a real move from the start.
+    expect(drawn([q(1, 100), q(2, 300), q(3, 180), q(4, 180)])).toEqual([100, 180, 180, 180])
+  })
+
+  it('leaves a glitch broken by a tab change, or a rise held over a day', () => {
+    expect(priceSpikes([q(1, 100), q(2, 300), q(3, 300, null), q(4, 100)]).size).toBe(0)
+    const H = 3_600_000
+    expect(priceSpikes([q(0, 100), q(H, 300), q(20 * H, 300), q(30 * H, 100)]).size).toBe(0)
   })
 })
