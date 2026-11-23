@@ -1,6 +1,7 @@
 // Price check (APT) with the toolkit's additions, from the hotkey press in
 // game to the panel: the item is copied by the fake game, priced from
 // recorded trade site and poe.ninja responses.
+import type { Page } from '@playwright/test'
 import { test, expect } from './harness'
 
 // Each test boots its own overlay: the file's tests can spread over workers
@@ -468,4 +469,83 @@ test('an item price check can\'t read offers its copied text to copy', async ({ 
   await expect(panel.getByRole('button', { name: 'Copy text' })).toBeVisible()
   // No Rarity line, so there's no name to search by.
   await expect(panel.getByRole('button', { name: 'Search on trade' })).toHaveCount(0)
+})
+
+// Sellers asking divines often ask "1 div" for items worth a few chaos. The first
+// search (both currencies, sorted by the raw number) then holds the chaos side
+// back; the check loads it and leads with the cheaper market (WOKEPOET-487).
+const XCHG_LIMITS = { 'x-rate-limit-rules': 'Ip', 'x-rate-limit-ip': '100:1:0', 'x-rate-limit-ip-state': '1:1:0' }
+const xchgOffer = (id: string, currency: string, amount: number, stock: number) => ({
+  id,
+  item: null,
+  listing: {
+    indexed: new Date().toISOString(),
+    account: { name: `${id}#1`, lastCharacterName: `${id}c`, online: { league: 'Testleague' } },
+    offers: [{ exchange: { currency, amount, whisper: '' }, item: { currency: 'originators-exalted-orb', amount: 1, stock, id, whisper: '' } }],
+    whisper: ''
+  }
+})
+
+// The exchange for Originator's Exalted Orb as seen live: the first search (both
+// currencies) is mostly "1 div" rows, the chaos one is 1-3c. failChaos: the chaos
+// search fails `failChaos` times first.
+async function fakeOriginatorExchange (page: Page, failChaos = 0) {
+  const haves: string[][] = []
+  await page.route('**/api/trade/exchange/**', (route) => {
+    const have: string[] = JSON.parse(route.request().postData()!).query.have
+    haves.push(have)
+    if (have.length === 1 && failChaos > 0) {
+      failChaos--
+      return route.fulfill({ status: 400, contentType: 'application/json', headers: XCHG_LIMITS, body: JSON.stringify({ error: { code: 1, message: 'Test failure' } }) })
+    }
+    const rows = have.length > 1
+      ? [...Array.from({ length: 85 }, (_, i) => xchgOffer(`d${i}`, 'divine', 1, 10 + i)), ...Array.from({ length: 15 }, (_, i) => xchgOffer(`c${i}`, 'chaos', 1, 5 + i))]
+      : Array.from({ length: 30 }, (_, i) => xchgOffer(`c${i}`, 'chaos', 1 + Math.floor(i / 10), 5 + i))
+    return route.fulfill({
+      contentType: 'application/json',
+      headers: XCHG_LIMITS,
+      body: JSON.stringify({ id: 'xq', total: have.length > 1 ? 1222 : 911, result: Object.fromEntries(rows.map(r => [r.id, r])) })
+    })
+  })
+  return haves
+}
+
+test('bulk: leads with the cheaper chaos offers when divine sellers ask 1 div each', async ({ overlay }) => {
+  const haves = await fakeOriginatorExchange(overlay.page)
+  await overlay.boot()
+  await overlay.copyItem('items/currency-originators-exalted.txt')
+  const panel = overlay.widget('price-check')
+  const price = panel.getByTestId('bulk-verdict-price')
+  await expect(price).toHaveText('1c')
+  await expect(panel).toContainText('Chaos offers, with stock for your 3')
+  // The divine offers are named, with their chaos value.
+  await expect(panel.getByTestId('bulk-verdict-other')).toHaveText('Divine offers ask 1 div each (≈ 180c), 180× as much')
+  // Every price in the table carries its currency's icon.
+  const each = panel.getByTestId('bulk-each').first()
+  await expect(each).toHaveText('1')
+  await expect(each.locator('img')).toHaveAttribute('alt', 'chaos')
+  expect(haves).toEqual([['divine', 'chaos'], ['chaos']])
+  await overlay.snap('bulk check leads with chaos offers')
+  // Picking divine shows those offers, priced in div with their chaos value.
+  await panel.locator('.w-pc-matched button').nth(1).click()
+  await expect(price).toHaveText('1 div')
+  await expect(panel).toContainText('each ≈ 180c')
+  await expect(panel.getByTestId('bulk-verdict-other')).toContainText('Chaos offers ask 1c each')
+  await expect(each.locator('img')).toHaveAttribute('alt', 'divine')
+})
+
+test('bulk: when the chaos offers fail to load, the verdict says so and a click loads them', async ({ overlay }) => {
+  const haves = await fakeOriginatorExchange(overlay.page, 1)
+  await overlay.boot()
+  await overlay.copyItem('items/currency-originators-exalted.txt')
+  const panel = overlay.widget('price-check')
+  await expect(panel.getByTestId('bulk-verdict-price')).toHaveText('1 div')
+  await expect(panel.getByTestId('bulk-verdict-other')).toContainText("Chaos offers didn't load")
+  // The divine count isn't double-reduced: the first search's total less the chaos rows it had.
+  await expect(panel.locator('.w-pc-matched button').nth(1)).toContainText('1207')
+  await panel.locator('.w-pc-matched button').nth(0).click()
+  await expect(panel.getByTestId('bulk-verdict-price')).toHaveText('1c')
+  expect(haves).toEqual([['divine', 'chaos'], ['chaos'], ['chaos']])
+  // Once chaos loaded, divine's count is the first search's total less chaos's.
+  await expect(panel.locator('.w-pc-matched button').nth(1)).toContainText('311')
 })
