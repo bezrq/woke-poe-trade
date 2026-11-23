@@ -16,6 +16,9 @@ export interface TabBarConfig extends WidgetMenu {
   // Left by older versions, which had a "remove from bar" button. Every tool
   // is in the launcher now, so migrateToRail drops it.
   dismissed?: number[]
+  // A fresh install's first tools on the rail, by type, until each is opened
+  // (it becomes a real pin then). Nothing is placed or loaded before that.
+  starterPins?: string[]
 }
 
 export type RailSize = 's' | 'm' | 'l' | 'xl' | 'xxl'
@@ -59,6 +62,16 @@ export function railDropEdge (x: number, y: number, w: number, h: number): 'top'
 
 // Pinned on the rail until the user picks their own in the launcher.
 const DEFAULT_PIN_TYPES = ['woke-market-tracker', 'woke-boss-runs', 'woke-map-mods', 'woke-loot-filter']
+
+// A fresh install's rail: the first of these that are switched on.
+const STARTER_PIN_TYPES = [
+  'woke-market-tracker', 'woke-map-mods', 'woke-atlas-strategies', 'woke-pob-builds', 'woke-trade',
+  'woke-run-timer', 'woke-lab', 'woke-scarab-flip', 'woke-trade-searches', 'woke-regex-library', 'woke-challenges'
+]
+export const STARTER_PIN_COUNT = 5
+export function pickStarterPins (isOn: (wmType: string) => boolean): string[] {
+  return STARTER_PIN_TYPES.filter(isOn).slice(0, STARTER_PIN_COUNT)
+}
 
 // A window title that is only an icon ("{icon=fa-cog}"): settings and search.
 export function parseWidgetTitle (wmTitle: string): { icon?: string, title: string } {
@@ -188,6 +201,8 @@ export interface ModuleGroupOf<T> {
 export function groupByModule<T extends { wmType: string }> (items: T[]): Array<ModuleGroupOf<T>> {
   const groupOf = new Map<string, ModuleGroup>()
   for (const m of MODULES) for (const t of m.widgetTypes) groupOf.set(t, m.group)
+  // Net worth's module is listed only while its stash reader is on; its off row is still Economy.
+  if (!groupOf.has('woke-net-worth')) groupOf.set('woke-net-worth', 'economy')
   const groups: Array<ModuleGroupOf<T>> = MODULE_GROUPS
     .filter(g => g.id !== 'apt')
     .map(g => ({ label: g.label, items: items.filter(i => groupOf.get(i.wmType) === g.id) }))

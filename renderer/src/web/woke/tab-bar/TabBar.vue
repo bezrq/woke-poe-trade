@@ -11,8 +11,9 @@
     </span>
     <span :class="$style.sep" />
     <button :class="[$style.ic, $style.tools, { [$style.toolsOn]: popup?.kind === 'launcher' }]" aria-label="All tools"
-      @click="openLauncher" @mouseenter="showTip('All tools', false, $event)" @mouseleave="hideTip">
+      @click="openLauncher" @mouseenter="showTip(newsCount ? `All tools · ${newsCount} new` : 'All tools', false, $event)" @mouseleave="hideTip">
       <i class="fas fa-th" />
+      <span v-if="newsCount" :class="$style.newsCount" data-news-count>{{ newsCount }}</span>
     </button>
 
     <template v-if="fixedTabs.length">
@@ -31,6 +32,15 @@
         :aria-label="tab.name" @mousedown="startIconDrag(tab, $event)"
         @click="toggle(tab)" @contextmenu.prevent="openMenu(tab, $event)"
         @mouseenter="showTip(tab.name, tab.open, $event)" @mouseleave="hideTip">
+        <tool-icon :art="tab.art" :icon="tab.icon" />
+      </button>
+    </template>
+
+    <!-- A fresh install's first tools: placed and loaded only once clicked. -->
+    <template v-if="starterTabs.length">
+      <span v-if="!pinTabs.length" :class="$style.sep" />
+      <button v-for="tab in starterTabs" :key="tab.wmType" :data-starter-pin="tab.wmType" :class="$style.ic" :aria-label="tab.name"
+        @click="openStarter(tab.wmType)" @mouseenter="showTip(tab.name, false, $event)" @mouseleave="hideTip">
         <tool-icon :art="tab.art" :icon="tab.icon" />
       </button>
     </template>
@@ -67,6 +77,10 @@
           {{ tip.text }}<span v-if="tip.open" :class="$style.tipOpen">open</span>
         </div>
 
+        <!-- First-run help (welcome.ts): loaded only while there's some to show. -->
+        <rail-welcome v-if="welcomeDue" :rail="railEl" :flat="flat" :on-right="onRight" :busy="!!popup" :labels-busy="!!popup || !!tip || !!iconDrag?.active"
+          :tool-open="tabs.some(tab => tab.open && !tab.iconOnly)" :layout="[config.railSize, config.anchor]" />
+
         <div v-if="popup" :class="$style.backdrop" @mousedown="closePopup" @contextmenu.prevent="closePopup" />
 
         <!-- Tools: every tool, one box for search and item paste -->
@@ -92,11 +106,12 @@
                 <div v-if="group.items.length" :class="['w-category', $style.head, $style.groupHead]">{{ group.label }}</div>
                 <div v-for="entry in group.items" :key="entry.key"
                   :class="[$style.row, { [$style.rowPinned]: entry.tab?.pinned, [$style.rowOff]: entry.state === 'off' }]"
-                  @mouseenter="hovered = entry" @focusin="hovered = entry"
+                  @mouseenter="pointAt(entry)" @focusin="pointAt(entry)"
                   @contextmenu.prevent.stop="entry.tab && openMenu(entry.tab, $event)">
-                  <button :class="$style.rowMain" :aria-label="entry.name" :title="ENTRY_HINT[entry.state]" @click="activate(entry)">
+                  <button :class="$style.rowMain" :aria-label="entry.name" :title="entryHint(entry)" @click="activate(entry)">
                     <tool-icon :art="entry.art" :icon="entry.icon" />
                     <span :class="$style.rowName">{{ entry.name }}</span>
+                    <span v-if="newsOf(entry)" :class="$style.newSeal" data-news-seal>New</span>
                     <span v-if="entry.tab?.open" :class="$style.openDot" title="Window open" />
                     <span v-if="entry.tab && entry.tab.copies > 1" :class="$style.dup" title="Several copies of this tool">×{{ entry.tab.copies }}</span>
                   </button>
@@ -113,7 +128,7 @@
           </div>
           <div v-if="!launcherHasMatch && !priceGroups.length" :class="$style.none">Nothing matches "{{ launcherQuery }}"</div>
           <div v-else :class="$style.foot" data-launcher-foot>
-            <template v-if="hovered"><span :class="$style.footName">{{ hovered.name }}</span><span :class="$style.footText">{{ [toolDescription(hovered.wmType), ENTRY_HINT[hovered.state]].filter(Boolean).join('. ') }}</span></template>
+            <template v-if="hovered"><span :class="$style.footName">{{ hovered.name }}</span><span :class="$style.footText">{{ [hoveredNote ?? toolDescription(hovered.wmType), entryHint(hovered)].filter(Boolean).join('. ') }}</span></template>
             <span v-else :class="$style.footHint">Point at a tool to see what it does. Right-click for more.</span>
           </div>
         </div>
@@ -194,18 +209,18 @@
 
 <script setup lang="ts">
 import { popupAnchor } from '../ui/window-anchor'
-import { computed, inject, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
+import { computed, defineAsyncComponent, inject, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 import type { WidgetManager } from '@/web/overlay/interfaces'
 import type { Widget, Anchor } from '@/web/overlay/widgets'
 import { registry } from '@/web/overlay/widget-registry'
-import { AppConfig, pushHostConfig } from '@/web/Config'
+import { AppConfig, pushHostConfig, saveConfigQuietly } from '@/web/Config'
 import { appIconUrl } from '../ui/app-icon'
 import { MODULES, ensureWokeConfig, isRetiredWidgetType, isWidgetTypeOn, setModuleOn } from '@/web/woke/modules'
 import { useI18n } from 'vue-i18n'
 import { useHotkeyHealth } from '../switchboard/hotkey-health'
 import ToolIcon from './ToolIcon.vue'
 import { MAX_UI_SIZE, MIN_UI_SIZE, nudgeUiSize, uiSize } from '../ui/ui-size'
-import { ICON_TOOL_NAMES, RAIL_DEFAULT_SIZE, RAIL_SIZES, RAIL_ZOOM, movePin, railAnchor, railDropEdge, stepRailSize, artFor, iconFor, allowsCopies, groupByModule, launcherEntries, migrateToRail, parseWidgetTitle, toolDescription } from './tools'
+import { ICON_TOOL_NAMES, RAIL_DEFAULT_SIZE, RAIL_SIZES, RAIL_ZOOM, movePin, railAnchor, railDropEdge, stepRailSize, artFor, iconFor, allowsCopies, groupByModule, launcherEntries, migrateToRail, parseWidgetTitle, pickStarterPins, toolDescription } from './tools'
 import { pastedItemText } from '../search/pasted-item'
 import type { LauncherEntry, LauncherState, RailSize, TabBarConfig } from './tools'
 import { WIcon, WPrice, ninjaIcon, WOKE_LOOKS, isLookPicked, pickLook, vItemTip } from '../ui'
@@ -213,6 +228,12 @@ import { holdPricesForSearch, useSearchSnapshot } from '../market/price-index'
 import { groupKey, groupTip, rarityClass, searchPrices } from '../search/search'
 import { searchRequest } from '../search/widget'
 import { usePriceText } from '../shared/price'
+import { markNewsSeen, newsFor } from './news'
+import { personalOn } from '../personal'
+import { openSettingsPage } from '../dock/dock'
+
+// First-run help, shown once per install: kept out of the startup JS (perf budget).
+const RailWelcome = defineAsyncComponent(() => import('./RailWelcome.vue'))
 
 const props = defineProps<{ config: TabBarConfig }>()
 const emit = defineEmits<{ (e: 'paste', text: string, from: DOMRect): void }>()
@@ -299,6 +320,34 @@ const pinnedTabs = computed(() => {
 const fixedTabs = computed(() => pinnedTabs.value.filter(tab => tab.iconOnly))
 const pinTabs = computed(() => pinnedTabs.value.filter(tab => !tab.iconOnly))
 const openUnpinned = computed(() => tabs.value.filter(tab => !tab.pinned && tab.open))
+
+// ---- Starter pins (a fresh install) ----
+// Picked once, when the first-run help starts, from the tools that are on.
+watch(() => AppConfig().woke?.welcome?.due, due => {
+  if (!due || props.config.starterPins != null) return
+  props.config.starterPins = pickStarterPins(type => isWidgetTypeOn(AppConfig(), type))
+  // A type a fresh config already places (Regex library) is pinned right away.
+  pinPlacedStarters()
+}, { immediate: true })
+const starterTabs = computed(() => (props.config.starterPins ?? [])
+  .filter(type => isWidgetTypeOn(AppConfig(), type) && !AppConfig().widgets.some(w => w.wmType === type))
+  .map(type => ({ wmType: type, name: typeName(type), icon: iconFor(type), art: artFor(type) })))
+// Placed by any path (its icon, the launcher, search): it becomes a real pin.
+watch(() => tabs.value.map(tab => tab.wmId).join(), () => { pinPlacedStarters() })
+function pinPlacedStarters () {
+  const starters = props.config.starterPins
+  if (!starters?.length) return
+  for (const type of starters) {
+    const tab = tabs.value.find(t => t.wmType === type)
+    if (!tab) continue
+    if (!tab.pinned) props.config.pinned = [...(props.config.pinned ?? []), tab.wmId]
+    props.config.starterPins = props.config.starterPins!.filter(x => x !== type)
+  }
+}
+function openStarter (wmType: string) {
+  hideTip()
+  placeAndOpen(wmType)
+}
 
 // Two actions on one key, or a key another program holds: either way one
 // of them silently does nothing, so say so where it's always seen.
@@ -639,6 +688,12 @@ watch(() => wm.active.value, active => {
   }
 })
 
+// ---- First-run help (welcome.ts) ----
+const welcomeDue = computed(() => {
+  const w = AppConfig().woke?.welcome
+  return !!w && (w.due || w.labelOpens > 0)
+})
+
 const query = ref('')
 const searchInput = ref<HTMLInputElement | HTMLTextAreaElement>()
 
@@ -653,7 +708,31 @@ const launcherAll = computed(() => launcherEntries(
   tabs.value,
   wmType => !isWidgetTypeOn(AppConfig(), wmType),
   wmType => AppConfig().widgets.some(w => w.wmType === wmType && w.wmFlags.includes('menu::skip'))
-))
+).concat(personalOn.value ? [] : [NET_WORTH_OFF]))
+// Net worth's code loads only once its stash reader is on, so while it's off
+// the launcher lists it by hand. Turning it on asks first, in Settings.
+const NET_WORTH_OFF: LauncherEntry<Tab> = {
+  key: 'net-worth-off', wmType: 'woke-net-worth', name: 'Net worth', icon: 'fa-scale-balanced', art: null, state: 'off', tab: null
+}
+function entryHint (entry: LauncherEntry<Tab>): string | undefined {
+  if (entry.key === NET_WORTH_OFF.key) return 'Off. Click for its switch in Settings (it asks first)'
+  return ENTRY_HINT[entry.state]
+}
+
+// ---- What's new (news.ts) ----
+const seenNews = computed(() => AppConfig().woke?.seenNews)
+function newsOf (entry: LauncherEntry<Tab>) {
+  return newsFor(entry.wmType, seenNews.value)
+}
+// Counted on what the launcher lists, so a switched-off tool still counts.
+const newsCount = computed(() => new Set(launcherAll.value.map(e => newsOf(e)?.id).filter(Boolean)).size)
+const hoveredNote = shallowRef<string | null>(null)
+function pointAt (entry: LauncherEntry<Tab>) {
+  hovered.value = entry
+  const news = newsOf(entry)
+  hoveredNote.value = news?.note ?? null
+  if (news) markNewsSeen(ensureWokeConfig(AppConfig()).woke, [news.id])
+}
 const ENTRY_HINT: Record<LauncherState, string | undefined> = {
   placed: undefined,
   available: undefined,
@@ -672,7 +751,7 @@ const launcherHasMatch = computed(() => launcherMatches.value.length > 0)
 const launcherColumns = computed(() => groupByModule(launcherMatches.value).map(g => [g]))
 // The tool under the mouse, explained along the launcher's foot.
 const hovered = shallowRef<LauncherEntry<Tab> | null>(null)
-watch([query, () => popup.value?.kind, launcherMatches], () => { hovered.value = null })
+watch([query, () => popup.value?.kind, launcherMatches], () => { hovered.value = null; hoveredNote.value = null })
 // Opening a tool is what the launcher is for, so it steps aside; closing one
 // leaves it up for the next.
 function onRowClick (tab: Tab) {
@@ -682,6 +761,13 @@ function onRowClick (tab: Tab) {
 function activate (entry: LauncherEntry<Tab>) {
   if (entry.tab) {
     onRowClick(entry.tab)
+    return
+  }
+  if (entry.key === NET_WORTH_OFF.key) {
+    closePopup()
+    // An open Settings window holds back the usual save (seen news).
+    saveConfigQuietly()
+    openSettingsPage(wm, 'All modules')
     return
   }
   if (entry.state === 'dock') openModuleSettings(entry.wmType)
@@ -1026,6 +1112,20 @@ onBeforeUnmount(() => document.removeEventListener('paste', onOverlayPaste))
 .footName { flex: none; color: var(--w-accent); font-family: var(--w-caps-face); font-size: var(--w-fs-xl); }
 .footText, .footHint { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .footHint { color: var(--w-faint); }
+.newsCount {
+  position: absolute;
+  right: 1px;
+  top: 1px;
+  min-width: 13px;
+  height: calc(13px * var(--w-text-scale, 1));
+  padding: 0 2px;
+  border-radius: var(--w-r-sm);
+  font: var(--w-fs-xs)/calc(13px * var(--w-text-scale, 1)) var(--w-num);
+  text-align: center;
+  color: var(--w-accent-fg);
+  background: var(--w-accent);
+}
+.newSeal { flex: none; padding: 0 4px; font-family: var(--w-caps-face, var(--w-head)); font-size: var(--w-fs-xs); letter-spacing: 0.06em; text-transform: uppercase; color: var(--w-accent-fg); background: var(--w-accent); border-radius: var(--w-r-sm); }
 .rowTag { flex: none; padding: 0 4px; font-size: var(--w-fs-sm); color: var(--w-dim); }
 .rowOff .rowName, .rowOff .rowMain > * { opacity: 0.55; }
 
