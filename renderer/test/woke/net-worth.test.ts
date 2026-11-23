@@ -55,6 +55,24 @@ describe('since last refresh', () => {
     expect(d.netChaos).toBe(1180)
   })
 
+  it('rolled maps priced for the first time are not a gain (a baseline from before kept them by name)', () => {
+    const rare = (name: string) => item('Nightmare Map', 1, { name, frame: 2, mapTier: 17 })
+    const mapPrice: PriceOf = (i) => i.typeLine === 'Nightmare Map' ? { chaos: 200, category: 'other' } : priceOf(i)
+    const before = baselineOf(valueStash([{ name: 'A', items: [rare('Doom Sanctum'), rare('Ghastly Ward')] }], priceOf))
+    // As saved before the change: no v3 marker, maps under their own names.
+    const oldBase = Object.fromEntries(Object.entries(before).filter(([k]) => k !== '\u0000v3').map(([k, v]) => [k.startsWith('R:') ? `R:x ${k.slice(2)}` : k, v]))
+    const after = valueStash([{ name: 'A', items: [rare('Doom Sanctum'), rare('Ghastly Ward')] }], mapPrice)
+    expect(diffStash(oldBase, after, 1).netChaos).toBe(0)
+    // From then on a new map is new.
+    const next = valueStash([{ name: 'A', items: [rare('Doom Sanctum'), rare('Ghastly Ward'), rare('Fell Ward')] }], mapPrice)
+    expect(diffStash(baselineOf(after), next, 2).netChaos).toBe(200)
+  })
+
+  it('blighted rolled maps keep "Blighted"', () => {
+    const m = item('Blighted Strand Map', 1, { baseType: 'Strand Map', frame: 2, name: 'Grim Path', mapTier: 16 })
+    expect(itemKey(m)).toBe('R:Blighted Strand Map|T16')
+  })
+
   it('moving between tabs is no change', () => {
     const before = baselineOf(valueStash([{ name: 'A', items: [item('Divine Orb', 2)] }], priceOf))
     const d = diffStash(before, valueStash([{ name: 'B', items: [item('Divine Orb', 2)] }], priceOf), 1)
@@ -92,6 +110,15 @@ describe('your prices and ignored items', () => {
 
   it('two rares on one base are two things', () => {
     expect(itemKey(rare)).not.toBe(itemKey({ ...rare, name: 'Grim Halo' }))
+  })
+
+  it('rare and magic maps go by their base: one row, one price', () => {
+    const map = { name: 'Doom Sanctum', typeLine: 'Nightmare Map', baseType: 'Nightmare Map', frame: 2, stack: 1, icon: '', mapTier: 17 }
+    expect(itemKey(map)).toBe(itemKey({ ...map, name: 'Ghastly Ward' }))
+    expect(itemKey(map)).not.toBe(itemKey({ ...map, frame: 0, name: '' }))
+    expect(itemLabel(map)).toBe('Nightmare Map (T17, rare)')
+    const magic = { ...map, name: '', typeLine: 'Burning Nightmare Map of Giants', frame: 1 }
+    expect(itemLabel(magic)).toBe('Nightmare Map (T17, magic)')
   })
 
   it('ignored items leave the totals and tab values but stay listed', () => {
