@@ -451,3 +451,52 @@ test("a unique's details: variants, Foulborn kinds with what they replace, and i
   await expect(panel.getByText('Majestic Plate · Level 53', { exact: false })).toBeVisible()
   await overlay.snap('search-unique-details-utula')
 })
+
+test('the palette resizes from its corner, adding room, and keeps its size', async ({ overlay }) => {
+  await overlay.boot(bootOptions())
+  await overlay.pressHotkey(SEARCH_KEY)
+  const palette = overlay.widget('woke-search')
+  const panel = palette.locator('[data-w-panel]')
+  await expect(palette.getByRole('textbox', { name: 'Search', exact: true })).toBeVisible()
+  const before = (await panel.boundingBox())!
+  const font = await palette.locator('[data-search-palette]').evaluate(el => getComputedStyle(el).fontSize)
+  const grip = panel.locator('[title^="Drag to resize"]').last()
+  const g = (await grip.boundingBox())!
+  const page = overlay.page
+  await page.mouse.move(g.x + g.width / 2, g.y + g.height / 2)
+  await page.mouse.down()
+  await page.mouse.move(g.x + 120, g.y + 80, { steps: 6 })
+  await page.mouse.up()
+  const after = (await panel.boundingBox())!
+  // The corner stays under the mouse: centred, it grows on both sides.
+  expect(Math.abs((after.x + after.width) - (before.x + before.width + 120))).toBeLessThan(12)
+  expect(after.width).toBeGreaterThan(before.width + 200)
+  expect(after.height).toBeGreaterThan(before.height + 40)
+  // More room, not bigger text.
+  expect(await palette.locator('[data-search-palette]').evaluate(el => getComputedStyle(el).fontSize)).toBe(font)
+  await overlay.snap('search-resized')
+
+  // Closed and opened again, it keeps the size.
+  await page.keyboard.press('Escape')
+  await expect(panel).toBeHidden()
+  await overlay.pressHotkey(SEARCH_KEY)
+  await expect(panel).toBeVisible()
+  const again = (await panel.boundingBox())!
+  expect(Math.abs(again.width - after.width)).toBeLessThan(2)
+  expect(Math.abs(again.height - after.height)).toBeLessThan(2)
+
+  // It can't be shrunk past where it still works.
+  const g2 = (await grip.boundingBox())!
+  await page.mouse.move(g2.x + g2.width / 2, g2.y + g2.height / 2)
+  await page.mouse.down()
+  await page.mouse.move(g2.x - 1200, g2.y - 800, { steps: 6 })
+  await page.mouse.up()
+  const small = (await panel.boundingBox())!
+  expect(small.width).toBeGreaterThanOrEqual(570)
+  expect(small.height).toBeGreaterThanOrEqual(280)
+
+  // Right-click, Reset size: back to where it started.
+  await palette.locator('[data-search-palette] [class*="detail"]').first().click({ button: 'right' })
+  await page.getByRole('menuitem', { name: 'Reset size' }).click()
+  await expect.poll(async () => Math.round((await panel.boundingBox())!.width)).toBe(Math.round(before.width))
+})
