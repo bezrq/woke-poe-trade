@@ -206,3 +206,4 @@
 - What's new: Show me on the price check's seller spread line opens a sample Exalted Orb check and points at the spread; the map cards line opens Ctrl+Space with a map typed.
 - What's new: Show me on the price check's upgrade and recipe lines opens a sample check (Xoph's Inception, The Will of Uul-Netol) and points at the side list. Lines with nothing to show have no Show me, only dismiss, instead of opening Settings.
 - Net worth Runs: the "small" mark's hover names the best drop it leaves out ("Without your best drop (Mageblood, 40c): ..."), and the past runs column reads "Without best drop".
+- Map price check: rare-only (yellow) map mods are in the one mod list again, in their game colour, with Any/Has/Not; a buried Sentinel or Evocator among them searches any of its kinds. Atlas Drops is searched like Rarity and Pack, and the + for another number sits on the tiles' row.
