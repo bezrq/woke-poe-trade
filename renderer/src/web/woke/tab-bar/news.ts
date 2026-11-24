@@ -22,6 +22,7 @@ export interface NewsItem {
 }
 
 export const NEWS: NewsItem[] = [
+  { id: 'glance-bar-default', wmType: 'woke-session-analytics', name: 'Session analytics', settingsPage: 'Sessions', note: 'New: a thin bar at the top while mapping. Off in Settings' },
   { id: 'glance-bar-fields', wmType: 'woke-session-analytics', name: 'Session analytics', settingsPage: 'Sessions', note: 'New: pick what the in-map glance bar shows, and keep it up while a run goes' },
   { id: 'forbidden-pair-finder', wmType: 'woke-forbidden', name: 'Forbidden pair finder', note: 'New: the Forbidden Flame and Flesh notables your build can take, with what each pair costs' },
   { id: 'price-check-ninja-trust', wmType: 'price-check', name: 'Price check', settingsPage: 'Price check', note: 'New: the instant card says when poe.ninja\'s price looks fake, with the item\'s usual price' },
@@ -57,9 +58,10 @@ export function markAllNewsSeen (woke: WokeModulesConfig): void {
 }
 
 // What counts as seen. Before setup's first Finish (or with it closed
-// unfinished) it's all of it: a new player has nothing "new".
+// unfinished) it's all of it: a new player has nothing "new". The same with
+// What's new switched off, for players who update every day or two.
 export function seenNewsIds (woke: WokeModulesConfig | undefined): readonly string[] {
-  return woke?.setupDone ? (woke.seenNews ?? []) : NEWS.map(n => n.id)
+  return woke?.setupDone && !woke.newsOff ? (woke.seenNews ?? []) : NEWS.map(n => n.id)
 }
 
 // Lines not seen yet. Like the All tools count, a switched-off tool's line
