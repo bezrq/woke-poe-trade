@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { addToTally, cleanDoc, countLabel, emptyRun, leftOf, lineCost, mapsIn, runPerHour, runTotals, tallyFrom, tallyRows, unitOf } from '@/web/woke/net-worth/runs'
+import { addToTally, cleanDoc, countLabel, emptyRun, leftOf, lineCost, mapsIn, shownMaps, shownFights, runPerHour, runTotals, tallyFrom, tallyRows, unitOf } from '@/web/woke/net-worth/runs'
 import type { Run } from '@/web/woke/net-worth/runs'
 import { runsLookup } from '@/web/woke/search/lookups/runs'
 import type { LookupContext } from '@/web/woke/search/lookups/types'
@@ -185,5 +185,31 @@ describe('Ctrl+Space run card', () => {
     expect(cells).toContain('Boss fights: 4')
     expect(cells).toContain('Per fight: +200 c')
     expect(cells).toContain('Cost per fight: 50 c')
+  })
+})
+
+describe('shownMaps', () => {
+  const final = { profitChaos: 0, maps: 19, perMapChaos: null, perHourChaos: null }
+  it('a stopped run keeps the count Stop saved, even before (or without) a read for it', () => {
+    expect(shownMaps({ stoppedAt: 10, final }, null)).toBe(19)
+    // Another run's maps read 0 in this window: never below what Stop saved.
+    expect(shownMaps({ stoppedAt: 10, final }, 0)).toBe(19)
+    expect(shownMaps({ stoppedAt: 10, final }, 20)).toBe(20)
+  })
+  it('the live run counts what was read for it', () => {
+    expect(shownMaps({}, 13)).toBe(13)
+    expect(shownMaps({}, null)).toBe(0)
+  })
+})
+
+describe('shownFights', () => {
+  const final = { profitChaos: 0, maps: 2, fights: 3, perMapChaos: null, perHourChaos: null }
+  it('a stopped run keeps the fights Stop saved when Client.txt reads none', () => {
+    expect(shownFights({ stoppedAt: 10, final }, { fights: 0 })).toBe(3)
+    expect(shownFights({ stoppedAt: 10, final }, null)).toBe(3)
+  })
+  it('the live run counts what was read', () => {
+    expect(shownFights({}, { fights: 1 })).toBe(1)
+    expect(shownFights({}, null)).toBe(0)
   })
 })
