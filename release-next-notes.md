@@ -1,5 +1,6 @@
 # Next release notes
 
+- Game icons on chips: league mechanics you met in a map (Delirium, Einhar, Mirage, Niko, Blight…) now show their art on the post-map plaque, the glance bar, Map history and over each map's bar in a run's Map times chart. The map price check's Farming goals, the Map planner's goals, and Net worth's Listed and Sales types show icons too.
 - Run summary: the filler captions are gone. "Worth a look" no longer says "only what the numbers back", and the bar charts show a small key (Usual / This run, Slow / Death / Average) instead of sentences like "Dark bar: your usual. Gold: this run."
 - Map check: Alt + M pressed in the first second or two after the app starts now checks the map. It used to be lost while the map check was still loading.
 - Help "?" cards are easier to read: a short first line, then one bullet per control, with button names in bold and keys and clicks boxed. The map price check, Valdo maps, Megalomaniac, Forbidden Flame and Flesh, map scan, map regex rewards and juice score, loot filter presets and gear, Disenchant, Session analytics, Boss runs, Stacked decks and a few long Settings hints are rewritten this way.
