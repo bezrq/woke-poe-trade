@@ -1,6 +1,6 @@
 <template>
-  <DockItem id="whats-new" icon="fas fa-gift" :art="gameIcon(DOCK_ART_ITEMS.whatsNew)" title="What's new" :show="lines.length > 0"
-    :badge="lines.length" :wake="lines.length" card-width="24rem" pinnable :menu="dockMenu">
+  <DockItem id="whats-new" icon="fas fa-gift" :art="gameIcon(DOCK_ART_ITEMS.whatsNew)" title="What's new" :show="count > 0"
+    :badge="count" :wake="count" card-width="24rem" pinnable :menu="dockMenu">
     <template #card>
       <div :class="$style.body">
         <!-- A tool with one line shows it as before; more fold under a heading
@@ -27,9 +27,22 @@
             </div>
           </div>
         </div>
+        <!-- Worth knowing (tab-bar/worth-knowing.ts): on its own, after the update's lines. -->
+        <div v-if="worth" :class="$style.group" data-whats-new-group>
+          <div :class="$style.lines">
+            <div :class="$style.line" data-whats-new-line data-worth-knowing>
+              <div :class="$style.text">
+                <span :class="$style.name" data-no-item-tip="A tool's name, not an item"><ToolIcon :art="artFor(worth.wmType)" :icon="iconFor(worth.wmType)" :class="$style.toolIcon" />{{ worth.name }}<span :class="$style.topic">· Worth knowing</span></span>
+                <span>{{ worth.note }}</span>
+              </div>
+              <w-button size="sm" variant="ghost" data-whats-new-show @click="show(worth, $event)">Show me</w-button>
+              <w-button size="sm" variant="ghost" icon="fas fa-times" title="Dismiss" data-whats-new-dismiss @click="markSeen([worth])" />
+            </div>
+          </div>
+        </div>
         <div :class="$style.foot">
           <span class="w-faint text-xs">With the overlay open, click the icon to keep this card up. Right-click it to turn What's new off.</span>
-          <w-button size="sm" variant="ghost" data-whats-new-dismiss-all @click="markSeen(lines)">Dismiss all</w-button>
+          <w-button size="sm" variant="ghost" data-whats-new-dismiss-all @click="markSeen(all)">Dismiss all</w-button>
         </div>
       </div>
     </template>
@@ -64,6 +77,8 @@ import { searchRequest } from '../search/widget'
 import { elementPoint, openPriceCheck } from '../ui/tooltip/item-price-check'
 import type { ItemMenuRef } from '../ui/tooltip/item-menu-logic'
 import { uiTrace } from '../app/ui-trace'
+import { WORTH_PREFIX, dayOf, worthLine } from '../tab-bar/worth-knowing'
+import { hintPlaceOk, holdTour, retireHint } from '../shared/hints'
 import DockItem from './DockItem.vue'
 import { openOverlay, openSettingsPage, showWithOverlay } from './dock'
 import { moduleSettingsPage } from '../tab-bar/tools'
@@ -78,6 +93,22 @@ function typeName (wmType: string): string {
 }
 const lines = computed(() => unseenNews(AppConfig().woke, MainProcess.version.value))
 const groups = computed(() => groupNews(lines.value))
+// The Worth knowing line of the day, if one is due (not in a map, not with
+// What's new off). Shaped as a line, so Show me and dismiss work the same.
+const worth = computed<NewsItem | null>(() => {
+  const woke = AppConfig().woke
+  if (!woke || woke.newsOff || !hintPlaceOk()) return null
+  const l = worthLine(woke.hints, {
+    unseenNews: new Set(lines.value.map(n => n.id)),
+    byName: AppConfig().language === 'en',
+    reader: personalOn.value,
+    toolOn: t => isWidgetTypeOn(AppConfig(), t)
+  })
+  return l && hasShowMe(l, AppConfig().language === 'en', personalOn.value) ? { ...l, since: '' } : null
+})
+const all = computed(() => worth.value ? [...lines.value, worth.value] : lines.value)
+const count = computed(() => all.value.length)
+const isWorth = (n: NewsItem) => n.id.startsWith(WORTH_PREFIX)
 // The open group: the first (newest) until one is picked, and again once
 // the picked one is gone. '' is all folded (this time only).
 const picked = ref<string | undefined>(AppConfig().woke?.newsOpen)
@@ -107,7 +138,15 @@ function sentence (note: string) {
 // Saved now: a click in game (its menu, a pinned card) has no blur to save
 // on, and an open Settings window holds back the usual save.
 function markSeen (items: NewsItem[]) {
-  markNewsSeen(ensureWokeConfig(AppConfig()).woke, items.map(n => n.id))
+  markNewsSeen(ensureWokeConfig(AppConfig()).woke, items.filter(n => !isWorth(n)).map(n => n.id))
+  // A Worth knowing line goes like a tip: once (shared/hints.ts). The next one
+  // comes tomorrow.
+  for (const n of items) {
+    if (!isWorth(n)) continue
+    retireHint(n.id)
+    const h = AppConfig().woke?.hints
+    if (h?.wk?.id === n.id) h.wk = { id: n.id, day: dayOf(new Date()) }
+  }
   saveConfigQuietly()
 }
 
@@ -162,6 +201,7 @@ function show (n: NewsItem, e?: MouseEvent) {
 
 // A sample price check, then its spot flashed once the results draw.
 async function runCheck (n: NewsItem, ref: ItemMenuRef, spot: string, e?: MouseEvent) {
+  holdTour()
   const at = e?.currentTarget ? elementPoint(e) : { x: window.screenX + window.innerWidth / 2, y: window.screenY + window.innerHeight / 2 }
   if (!await openPriceCheck(ref, at)) {
     uiTrace(`What's new › Show me: can't price check ${ref.name}`)
@@ -182,7 +222,7 @@ function forgetRailSlot (wmId: number) {
 }
 
 const dockMenu = computed<DockMenuAction[]>(() => [
-  { label: 'Dismiss all', icon: 'fas fa-check', action: () => { markSeen(lines.value) } },
+  { label: 'Dismiss all', icon: 'fas fa-check', action: () => { markSeen(all.value) } },
   { label: "Turn off What's new", icon: 'fas fa-bell-slash', action: turnOff }
 ])
 
