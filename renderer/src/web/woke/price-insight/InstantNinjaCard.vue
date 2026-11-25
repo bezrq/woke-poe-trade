@@ -1,8 +1,10 @@
 <template>
   <!-- woke: the instant price check for an exchange item poe.ninja prices: a small card by
        the item instead of the window (WOKEPOET-480). Space opens the window and searches. -->
-  <div ref="el" :class="$style.anchor" :style="anchorStyle" data-testid="instant-ninja-card">
-    <div :class="$style.top">
+  <div ref="el" :class="[$style.anchor, { [$style.flipped]: flipped }]" :style="anchorStyle" data-testid="instant-ninja-card">
+    <!-- The card by the mouse with its graph box under it, the related lists beside
+         them (Guy's pick L2, 2026-11-25); left of the mouse, the lists go on the far side. -->
+    <div :class="$style.main" data-main>
     <!-- The game's own tooltip look (Guy's pick I2, 2026-11-25): its header art and
          separators, the exchange rates, then what your stack is worth. -->
     <div :class="[$style.card, $style[frame]]" data-card>
@@ -31,15 +33,16 @@
         Price check<w-kbd keys="Space" :class="$style.kbd" /><span :class="$style.slash">/</span><svg :class="$style.lmb" viewBox="0 0 12 16" width="11" height="15" aria-label="left click"><rect x="0.75" y="0.75" width="10.5" height="14.5" rx="5.25" fill="none" stroke="currentColor" stroke-width="1.3" /><path d="M6 0.75 V6.5 H0.75 V6 A5.25 5.25 0 0 1 6 0.75 Z" fill="currentColor" /></svg>
       </button>
     </div>
-    <!-- The price over 24h, 3 days or 7 days in its own box beside the card: a click on a
+    <!-- The price over 24h, 3 days or 7 days in its own box under the card: a click on a
          range or the mouse wheel steps through them (Guy, 2026-11-25). -->
-    <!-- The graph box, and a divine's parts in chaos under it (Guy, 2026-11-25). -->
+    <!-- The graph box, and beside it a divine's parts in chaos (Guy, 2026-11-25). -->
     <div :class="$style.aside" data-aside>
     <div v-if="info" :class="$style.gbox" data-testid="instant-ninja-graph" :title="hasHistory ? 'Scroll or click: 24h, 3 days, 7 days' : undefined" @wheel="onWheel">
       <div v-if="hasHistory" :class="$style.gtabs">
         <button v-for="r in RANGES" :key="r.id" type="button" tabindex="-1" :class="{ [$style.on]: r.id === range }" :data-testid="`instant-ninja-range-${r.id}`" @mousedown.prevent @click="setRange(r.id)">{{ r.id }}</button>
       </div>
-      <w-spark v-if="spark.length > 1" :values="spark" :width="92" :height="32" />
+      <!-- The graph stretches to the box's width, which fills the card's width (Guy, 2026-11-25). -->
+      <div v-if="spark.length > 1" ref="plot" :class="$style.plot" data-testid="instant-ninja-plot"><w-spark :values="spark" :width="plotSize.w" :height="plotSize.h" /></div>
       <div v-else-if="hasHistory && !(range === '24h' && savedLoading)" :class="$style.nograph">No change yet</div>
       <span v-if="change != null" :class="change >= 0 ? 'w-up' : 'w-down'" :title="changeTitle" data-testid="instant-ninja-change">{{ change >= 0 ? '▲' : '▼' }}{{ Math.abs(change) }}%</span>
       <span :class="$style.src" data-testid="instant-ninja-badge" :title="badgeTip" :data-tip-keys="againKeys ?? 'Space'">poe.ninja<template v-if="age">, {{ age }}</template></span>
@@ -56,7 +59,7 @@
     </div>
     </div>
     <!-- Related items (the item's family, what drops it), as beside the window. -->
-    <slot />
+    <div :class="$style.lists"><slot /></div>
   </div>
 </template>
 
@@ -109,8 +112,6 @@ const emit = defineEmits<{
 const RIGHT_GAP = 40
 const LEFT_GAP = 16
 const ABOVE = 12
-// Between the card and the lists under it, in screen px (.instantSide's margin).
-const SIDE_GAP = 10
 
 const { findPriceByQuery, xchgRate, updatedAt } = usePoeninja()
 const info = computed(() => {
@@ -243,10 +244,9 @@ watch(info, async (row) => {
 // Left of the cursor when the right side has no room, above it when the bottom has none.
 const el = shallowRef<HTMLElement | null>(null)
 const pos = shallowRef({ left: props.at.x + RIGHT_GAP, top: props.at.y - ABOVE })
-// The lists under the card get the room left below it (--w-instant-room), so
-// the card itself stays by the mouse (Guy, 2026-11-25: "the price box must be next to the mouse").
-const room = shallowRef<number | null>(null)
-const anchorStyle = computed(() => ({ left: `${pos.value.left}px`, top: `${pos.value.top}px`, ...(room.value != null ? { '--w-instant-room': `${room.value}px` } : {}) }))
+const anchorStyle = computed(() => ({ left: `${pos.value.left}px`, top: `${pos.value.top}px` }))
+// Left of the mouse: the card goes on the mouse's side, the lists beyond it.
+const flipped = computed(() => pos.value.left < props.at.x)
 
 // Right of and below the cursor; left of it when the right has no room, and up
 // as far as the screen needs when the bottom has none.
@@ -254,20 +254,30 @@ function place () {
   const node = el.value
   if (!node) return
   const w = node.offsetWidth
-  // Only the card and the graph box beside it decide the height: the lists under
-  // them shrink to the room left (the card stays by the mouse).
-  const card = node.querySelector('[data-card]')?.getBoundingClientRect()
-  const aside = node.querySelector('[data-aside]')?.getBoundingClientRect()
-  const head = Math.max(card?.height ?? node.offsetHeight, aside?.height ?? 0)
+  // Only the card and the graph box under it decide the height, so the card stays
+  // by the mouse (Guy, 2026-11-25); the lists beside fold groups to fit the screen.
+  const head = node.querySelector('[data-main]')?.getBoundingClientRect().height ?? node.offsetHeight
   const { x, y } = props.at
   const left = x + RIGHT_GAP + w <= window.innerWidth ? x + RIGHT_GAP : Math.max(0, x - LEFT_GAP - w)
   const top = Math.max(0, Math.min(y - ABOVE, window.innerHeight - head))
-  const below = Math.max(0, Math.round(window.innerHeight - top - (card?.height ?? 0) - SIDE_GAP))
   if (left !== pos.value.left || top !== pos.value.top) pos.value = { left, top }
-  if (below !== room.value) room.value = below
 }
 // Related items load after the card, and change its size.
 let resize: ResizeObserver | undefined
+// The plot's own size (clientWidth is in the box's zoomed CSS px, as the svg's).
+const plot = shallowRef<HTMLElement | null>(null)
+const plotSize = shallowRef({ w: 92, h: 32 })
+const plotResize = new ResizeObserver(() => {
+  const p = plot.value
+  if (!p) return
+  const w = Math.max(40, Math.floor(p.clientWidth))
+  const h = Math.max(24, Math.floor(p.clientHeight))
+  if (w !== plotSize.value.w || h !== plotSize.value.h) plotSize.value = { w, h }
+})
+watch(plot, (now, was) => {
+  if (was) plotResize.unobserve(was)
+  if (now) plotResize.observe(now)
+})
 let stopKids: (() => void) | undefined
 
 function onKey (e: KeyboardEvent) {
@@ -339,6 +349,7 @@ watch(() => props.at, placeAndReport)
 onUnmounted(() => {
   document.removeEventListener('keydown', onKey)
   resize?.disconnect()
+  plotResize.disconnect()
   stopKids?.()
 })
 </script>
@@ -346,10 +357,28 @@ onUnmounted(() => {
 <style module>
 /* The card reads at a glance by a stash cell: 40% over the app's UI size
    (Guy, 2026-11-24, "small and hard to read"). The list beside it follows. */
-.anchor { --w-instant-scale: 1.4; position: absolute; pointer-events: auto; z-index: 5; display: grid; grid-template-columns: auto auto; column-gap: calc(6px * var(--w-ui-size, 1) * var(--w-instant-scale, 1)); justify-items: start; align-items: start; max-height: 100%; }
+.anchor { --w-instant-scale: 1.4; --w-instant-gap: calc(6px * var(--w-ui-size, 1) * var(--w-instant-scale, 1)); position: absolute; pointer-events: auto; z-index: 5; display: flex; align-items: flex-start; gap: var(--w-instant-gap); max-height: 100%; }
+.flipped { flex-direction: row-reverse; }
+/* No game showing through anywhere on the card or beside it (Guy, 2026-11-25), whatever
+   the panel see-through setting says: it beats theme.css's #overlay-window * rule. */
+:global(#overlay-window) .anchor.anchor.anchor, :global(#overlay-window) .anchor.anchor.anchor * {
+  --w-panel: var(--w-panel-solid-base);
+  --w-panel-solid: var(--w-panel-solid-base);
+  --w-panel-2: var(--w-panel-2-base);
+  --w-pc-well: var(--w-pc-well-base);
+  --w-tip-bg: #060504;
+}
+/* The boxes meet edge to edge (Guy, 2026-11-25, "corners all touching"): the lists are
+   as tall as the card and its graph box, the card and graph box as wide as each other.
+   .main keeps its own height, which place() keeps by the mouse. */
+.anchor { align-items: stretch; }
+.main { align-self: flex-start; display: flex; flex-direction: column; align-items: flex-start; gap: var(--w-instant-gap); }
+.flipped .main { align-items: flex-end; }
+.lists { display: flex; flex-direction: column; gap: var(--w-instant-gap); min-height: 0; max-height: 100%; }
+.lists:empty { display: none; }
+/* The last list grows to the bottom of the graph box. */
+.lists > :last-child { flex-grow: 1; }
 .card {
-  grid-column: 1;
-  grid-row: 1;
   zoom: calc(var(--w-ui-size, 1) * var(--w-instant-scale, 1));
   --tip: var(--w-r-normal);
   --tip-rgb: 200, 200, 200;
@@ -397,10 +426,9 @@ onUnmounted(() => {
 .coin { width: 1.3em; height: 1.3em; object-fit: contain; }
 .doubt { color: var(--w-warn, #e0a03c); max-width: 18rem; }
 .fg { color: var(--w-r-magic, #8888ff); }
-/* Beside the card and the list under it, so the list sits right under the card. */
-.aside { grid-column: 2; grid-row: 1 / span 9; display: flex; flex-direction: column; align-items: flex-start; gap: calc(6px * var(--w-ui-size, 1) * var(--w-instant-scale, 1)); }
-.top { display: contents; }
-.anchor > * { grid-column: 1; }
+/* The graph box and, for a divine, its parts in chaos: side by side under the card. */
+/* As wide as the card, the graph box taking the width the table leaves (Guy, 2026-11-25: width, not height). */
+.aside { align-self: stretch; display: flex; align-items: flex-start; gap: var(--w-instant-gap); }
 .tenths {
   zoom: calc(var(--w-ui-size, 1) * var(--w-instant-scale, 1));
   border: 1px solid var(--w-line-strong, var(--w-line));
@@ -423,8 +451,11 @@ onUnmounted(() => {
 .headIcon { flex: none; width: 1.4em; height: 1.4em; object-fit: contain; margin-right: 4px; }
 .gbox {
   zoom: calc(var(--w-ui-size, 1) * var(--w-instant-scale, 1));
-  display: grid;
-  justify-items: center;
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   gap: 2px;
   padding: 4px 6px 5px;
   border: 1px solid rgba(170, 158, 130, .55);
@@ -439,6 +470,9 @@ onUnmounted(() => {
 .gtabs button { background: none; border: 1px solid transparent; color: var(--w-dim); font: inherit; font-size: var(--w-fs-xs); padding: 0 5px; cursor: pointer; }
 .gtabs button:hover { color: var(--w-fg); }
 .gtabs .on { color: var(--w-r-currency); border-color: rgba(170, 158, 130, .55); background: rgba(170, 158, 130, .1); }
+/* Out of the flow, so the graph never sets the box's size, only fills it. */
+.plot { position: relative; align-self: stretch; height: 32px; }
+.plot > svg { position: absolute; inset: 0; }
 .nograph { font-size: var(--w-fs-xs); padding: 8px 0; }
 .src { font-size: var(--w-fs-xs); opacity: .8; }
 /* One game-style button at the foot (Guy's pick I2). */
